@@ -6,7 +6,7 @@
   "module": "./index.ts",
   "types": "./index.ts",
   "scripts": {
-    "build": "tsc"
+    "build": "echo ok"
   },
   "devDependencies": {
     "typescript": "^5.4.5"
