@@ -49,7 +49,7 @@ export const AccountPage = () => {
     if (window.google?.accounts?.id) {
       try {
         window.google.accounts.id.initialize({
-          client_id: '928340192834-jmstorefront.apps.googleusercontent.com', // Standard GSI initialization
+          client_id: '956359117844-bsni44cn83dldpearikrb19dh9gau8qk.apps.googleusercontent.com',
           callback: (response) => {
             if (response.credential) {
               try {
@@ -62,7 +62,7 @@ export const AccountPage = () => {
                 const payload = JSON.parse(jsonPayload);
                 loginWithGoogle(payload.email, payload.name, payload.picture);
               } catch (err) {
-                loginWithGoogle('usuario.google@gmail.com', 'Usuario Google Real');
+                console.error('JWT Decode Error:', err);
               }
             }
           },
@@ -70,14 +70,26 @@ export const AccountPage = () => {
           cancel_on_tap_outside: true
         });
       } catch (err) {
-        console.warn('GSI client init:', err);
+        console.warn('GSI client init error:', err);
       }
     }
   }, [loginWithGoogle]);
 
   const triggerRealGoogleLogin = () => {
-    // Open Google Account Chooser UI modal directly to allow account selection
-    setShowGoogleModal(true);
+    if (window.google?.accounts?.id) {
+      try {
+        // Trigger native Google One-Tap / Popup login window
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            setShowGoogleModal(true);
+          }
+        });
+      } catch (e) {
+        setShowGoogleModal(true);
+      }
+    } else {
+      setShowGoogleModal(true);
+    }
   };
 
   const handleSelectGoogleAccount = (email, name) => {
