@@ -6,8 +6,8 @@ import { PRODUCTS } from '../data/mockData';
 import ProductCard from '../components/Product/ProductCard';
 
 export const WishlistPage = () => {
-  const { wishlist, moveWishlistToCart } = useECommerceStore();
-  const wishlistProducts = PRODUCTS.filter((p) => wishlist.includes(p.id));
+  const { wishlist, products, moveWishlistToCart } = useECommerceStore();
+  const wishlistProducts = products.filter((p) => wishlist.includes(p.id));
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>

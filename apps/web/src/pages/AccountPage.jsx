@@ -150,7 +150,8 @@ export const AccountPage = () => {
     window.location.reload();
   };
 
-  const wishlistProducts = PRODUCTS.filter((p) => wishlist.includes(p.id));
+  const { products } = useECommerceStore();
+  const wishlistProducts = products.filter((p) => wishlist.includes(p.id));
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
