@@ -106,114 +106,164 @@ export const AccountPage = () => {
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
       <div className="jm-container">
-        {/* LOGIN CARD IF NOT LOGGED IN */}
+        {/* SHOPIFY-STYLE ACCOUNT LOGIN / REGISTER CARD */}
         {!isCustomerLoggedIn ? (
-          <div style={{ maxWidth: '440px', margin: '2rem auto', border: '1px solid #E4E4E7', borderRadius: '12px', padding: '2.5rem', backgroundColor: '#FFFFFF', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <span style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.12em', color: '#09090B' }}>J&M FASHION STORE</span>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '0.6rem', color: '#09090B' }}>
-                {isRegisterMode ? 'CREAR UNA CUENTA' : 'INICIAR SESIÓN'}
+          <div style={{ maxWidth: '440px', margin: '2rem auto', border: '1px solid #E4E4E7', borderRadius: '24px', padding: '2.5rem 2rem', backgroundColor: '#FFFFFF', boxShadow: '0 12px 36px rgba(0,0,0,0.06)' }}>
+            <div style={{ textAlign: 'left', marginBottom: '1.75rem' }}>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#09090B', letterSpacing: '-0.02em' }}>
+                {isRegisterMode ? 'Crear cuenta' : 'Iniciar sesión'}
               </h2>
-              <p style={{ fontSize: '0.85rem', color: '#71717A', marginTop: '0.2rem' }}>
-                Accede a tu historial de compras, favoritos y seguimiento de envíos en Colombia.
+              <p style={{ fontSize: '0.88rem', color: '#71717A', marginTop: '0.25rem' }}>
+                Continuar con <strong>J&M Fashion Store</strong>
               </p>
-            </div>
-
-            {/* GOOGLE OAUTH BUTTON */}
-            <button
-              onClick={() => setShowGoogleModal(true)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.75rem',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #D4D4D8',
-                borderRadius: '8px',
-                padding: '0.8rem',
-                fontWeight: 700,
-                fontSize: '0.88rem',
-                color: '#09090B',
-                cursor: 'pointer',
-                marginBottom: '1.5rem',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-              }}
-            >
-              <span style={{ fontWeight: 900, color: '#4285F4', fontSize: '1.1rem' }}>G</span>
-              Continuar con Google
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-              <div style={{ flex: 1, height: '1px', backgroundColor: '#E4E4E7' }} />
-              <span style={{ fontSize: '0.75rem', color: '#A1A1AA', fontWeight: 600 }}>O CON CORREO</span>
-              <div style={{ flex: 1, height: '1px', backgroundColor: '#E4E4E7' }} />
             </div>
 
             <form onSubmit={handleEmailAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {isRegisterMode && (
                 <div>
-                  <label style={labelStyle}>Nombre Completo</label>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#09090B', marginBottom: '0.4rem' }}>Nombre completo</label>
                   <input
                     type="text"
                     required
                     placeholder="Ej. Alejandro Morales"
                     value={inputName}
                     onChange={(e) => setInputName(e.target.value)}
-                    style={inputStyle}
+                    style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #2563EB', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
                   />
                 </div>
               )}
 
               <div>
-                <label style={labelStyle}>Correo Electrónico</label>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#09090B', marginBottom: '0.4rem' }}>Correo electrónico</label>
                 <input
                   type="email"
                   required
                   placeholder="ejemplo@correo.com"
                   value={inputEmail}
                   onChange={(e) => setInputEmail(e.target.value)}
-                  style={inputStyle}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #2563EB', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
                 />
               </div>
 
               <div>
-                <label style={labelStyle}>Contraseña</label>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#09090B', marginBottom: '0.4rem' }}>Contraseña</label>
                 <input
                   type="password"
                   required
                   placeholder="••••••••"
-                  style={inputStyle}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1px solid #D4D4D8', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
                 />
               </div>
 
               <button
                 type="submit"
                 style={{
-                  backgroundColor: '#09090B',
-                  color: '#FFFFFF',
-                  padding: '0.85rem',
-                  borderRadius: '6px',
-                  fontWeight: 800,
+                  backgroundColor: '#E4E4E7',
+                  color: '#71717A',
+                  padding: '0.88rem',
+                  borderRadius: '8px',
+                  fontWeight: 700,
                   fontSize: '0.88rem',
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
+                  border: 'none',
                   cursor: 'pointer',
-                  marginTop: '0.5rem'
+                  marginTop: '0.25rem',
+                  transition: 'all 0.2s'
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#09090B'; e.currentTarget.style.color = '#FFFFFF'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#E4E4E7'; e.currentTarget.style.color = '#71717A'; }}
               >
-                {isRegisterMode ? 'REGISTRARME' : 'INGRESAR A MI CUENTA'}
+                {isRegisterMode ? 'Crear cuenta con correo' : 'Continuar con el correo electrónico'}
               </button>
             </form>
 
-            <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.82rem', color: '#71717A' }}>
-              {isRegisterMode ? '¿Ya tienes una cuenta? ' : '¿Aún no tienes cuenta? '}
+            {/* DIVIDER WITH "o" */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.5rem 0' }}>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#E4E4E7' }} />
+              <span style={{ fontSize: '0.75rem', color: '#71717A', fontWeight: 500 }}>o</span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#E4E4E7' }} />
+            </div>
+
+            {/* PASSKEY BUTTON */}
+            <button
+              type="button"
+              onClick={() => setShowGoogleModal(true)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                backgroundColor: '#F4F4F5',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '0.85rem',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                color: '#09090B',
+                cursor: 'pointer',
+                marginBottom: '1.25rem'
+              }}
+            >
+              <User size={18} /> Iniciar sesión con la clave de acceso
+            </button>
+
+            {/* SOCIAL AUTH BUTTONS BAR (Google, Apple, Facebook, WhatsApp) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {/* Google Button with "Último uso" badge */}
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#2563EB', color: '#FFFFFF', fontSize: '0.62rem', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', whiteSpace: 'nowrap', zIndex: 2 }}>
+                  Último uso
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleModal(true)}
+                  title="Continuar con Google"
+                  style={{ width: '100%', height: '48px', border: '1px solid #E4E4E7', borderRadius: '8px', backgroundColor: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 900, color: '#4285F4' }}
+                >
+                  G
+                </button>
+              </div>
+
+              {/* Apple Button */}
+              <button
+                type="button"
+                onClick={() => setShowGoogleModal(true)}
+                title="Continuar con Apple"
+                style={{ width: '100%', height: '48px', border: '1px solid #E4E4E7', borderRadius: '8px', backgroundColor: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.3rem', fontWeight: 900, color: '#09090B' }}
+              >
+                
+              </button>
+
+              {/* Facebook Button */}
+              <button
+                type="button"
+                onClick={() => setShowGoogleModal(true)}
+                title="Continuar con Facebook"
+                style={{ width: '100%', height: '48px', border: '1px solid #E4E4E7', borderRadius: '8px', backgroundColor: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 900, color: '#1877F2' }}
+              >
+                f
+              </button>
+
+              {/* WhatsApp Button */}
+              <button
+                type="button"
+                onClick={() => setShowGoogleModal(true)}
+                title="Continuar con WhatsApp"
+                style={{ width: '100%', height: '48px', border: '1px solid #E4E4E7', borderRadius: '8px', backgroundColor: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem', color: '#25D366' }}
+              >
+                💬
+              </button>
+            </div>
+
+            {/* SWITCH REGISTER / LOGIN LINK */}
+            <div style={{ textAlign: 'left', fontSize: '0.85rem', color: '#71717A' }}>
+              {isRegisterMode ? '¿Ya tienes una cuenta? ' : '¿Eres nuevo en J&M? '}
               <button
                 type="button"
                 onClick={() => setIsRegisterMode(!isRegisterMode)}
-                style={{ border: 'none', background: 'none', fontWeight: 800, color: '#09090B', cursor: 'pointer', textDecoration: 'underline' }}
+                style={{ border: 'none', background: 'none', fontWeight: 700, color: '#2563EB', cursor: 'pointer' }}
               >
-                {isRegisterMode ? 'Inicia Sesión' : 'Regístrate gratis'}
+                {isRegisterMode ? 'Inicia sesión →' : 'Empieza →'}
               </button>
             </div>
           </div>
