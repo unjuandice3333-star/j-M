@@ -26,11 +26,12 @@ export const useECommerceStore = create(
       loginWithGoogle: () => {
         const googleCustomer = {
           id: `usr-google-${Date.now()}`,
-          name: 'Alejandro Morales',
-          email: 'alejo.morales@gmail.com',
+          name: 'Usuario Google',
+          email: 'usuario.google@gmail.com',
           avatar: 'https://lh3.googleusercontent.com/a/default-user',
           provider: 'google'
         };
+        try { sessionStorage.setItem('jm_customer_session', 'active'); } catch (e) {}
         set({
           isCustomerLoggedIn: true,
           customerUser: googleCustomer,
@@ -50,6 +51,7 @@ export const useECommerceStore = create(
           email,
           provider: 'email'
         };
+        try { sessionStorage.setItem('jm_customer_session', 'active'); } catch (e) {}
         set({
           isCustomerLoggedIn: true,
           customerUser: emailCustomer,
@@ -63,6 +65,7 @@ export const useECommerceStore = create(
       },
 
       customerLogout: () => {
+        try { sessionStorage.removeItem('jm_customer_session'); } catch (e) {}
         set({ isCustomerLoggedIn: false, customerUser: null });
       },
 

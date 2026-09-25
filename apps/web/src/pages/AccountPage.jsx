@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { User, Package, Heart, MapPin, Settings, CheckCircle2, Truck, Plus, Save, LogOut } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
@@ -23,6 +23,15 @@ export const AccountPage = () => {
     wishlist,
     moveWishlistToCart
   } = useECommerceStore();
+
+  useEffect(() => {
+    try {
+      const activeSession = sessionStorage.getItem('jm_customer_session');
+      if (!activeSession && isCustomerLoggedIn) {
+        customerLogout();
+      }
+    } catch (e) {}
+  }, []);
 
   const [inputEmail, setInputEmail] = useState('');
   const [inputName, setInputName] = useState('');
