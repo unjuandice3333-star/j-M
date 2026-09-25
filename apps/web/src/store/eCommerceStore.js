@@ -23,12 +23,14 @@ export const useECommerceStore = create(
       isCustomerLoggedIn: false,
       customerUser: null,
 
-      loginWithGoogle: () => {
+      loginWithGoogle: (email, name, avatar) => {
+        const userEmail = email || 'usuario.google@gmail.com';
+        const userName = name || userEmail.split('@')[0].split('.')[0].toUpperCase();
         const googleCustomer = {
           id: `usr-google-${Date.now()}`,
-          name: 'Usuario Google',
-          email: 'usuario.google@gmail.com',
-          avatar: 'https://lh3.googleusercontent.com/a/default-user',
+          name: userName,
+          email: userEmail,
+          avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=09090B&color=fff`,
           provider: 'google'
         };
         try { sessionStorage.setItem('jm_customer_session', 'active'); } catch (e) {}

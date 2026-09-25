@@ -37,6 +37,18 @@ export const AccountPage = () => {
   const [inputName, setInputName] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
 
+  // Google Account Picker Modal State
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
+  const [customGoogleName, setCustomGoogleName] = useState('');
+  const [isCustomGoogleMode, setIsCustomGoogleMode] = useState(false);
+
+  const handleSelectGoogleAccount = (email, name) => {
+    loginWithGoogle(email, name);
+    setShowGoogleModal(false);
+    setIsCustomGoogleMode(false);
+  };
+
   // Profile Form State
   const [profileData, setProfileData] = useState({
     name: userProfile.name,
@@ -109,7 +121,7 @@ export const AccountPage = () => {
 
             {/* GOOGLE OAUTH BUTTON */}
             <button
-              onClick={() => loginWithGoogle()}
+              onClick={() => setShowGoogleModal(true)}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -545,6 +557,117 @@ export const AccountPage = () => {
       </div>
     )}
   </div>
+
+  {/* GOOGLE ACCOUNTS PICKER MODAL */}
+  {showGoogleModal && (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', maxWidth: '420px', width: '100%', padding: '2rem', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', animation: 'fadeIn 0.2s ease' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid #E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem auto' }}>
+            <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#4285F4' }}>G</span>
+          </div>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#09090B' }}>
+            Elige una cuenta de Google
+          </h3>
+          <p style={{ fontSize: '0.82rem', color: '#71717A', marginTop: '0.25rem' }}>
+            para continuar en <strong>J&M Fashion Store</strong>
+          </p>
+        </div>
+
+        {!isCustomGoogleMode ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            <button
+              onClick={() => handleSelectGoogleAccount('alejo.morales@gmail.com', 'Alejandro Morales')}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid #E4E4E7', borderRadius: '10px', backgroundColor: '#FFFFFF', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s' }}
+            >
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#4285F4', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem' }}>A</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#09090B' }}>Alejandro Morales</div>
+                <div style={{ fontSize: '0.75rem', color: '#71717A' }}>alejo.morales@gmail.com</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleSelectGoogleAccount('juandice3333@gmail.com', 'Juan Diego')}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid #E4E4E7', borderRadius: '10px', backgroundColor: '#FFFFFF', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#EA4335', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem' }}>J</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#09090B' }}>Juan Diego</div>
+                <div style={{ fontSize: '0.75rem', color: '#71717A' }}>juandice3333@gmail.com</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleSelectGoogleAccount('carlos.gomez@gmail.com', 'Carlos Gómez')}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid #E4E4E7', borderRadius: '10px', backgroundColor: '#FFFFFF', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#34A853', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem' }}>C</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#09090B' }}>Carlos Gómez</div>
+                <div style={{ fontSize: '0.75rem', color: '#71717A' }}>carlos.gomez@gmail.com</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setIsCustomGoogleMode(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px dashed #A1A1AA', borderRadius: '10px', backgroundColor: '#FAFAFA', cursor: 'pointer', textAlign: 'left', marginTop: '0.2rem' }}
+            >
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#E4E4E7', color: '#09090B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.2rem' }}>+</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#09090B' }}>Usar otra cuenta de Google</div>
+                <div style={{ fontSize: '0.75rem', color: '#71717A' }}>Ingresar tu correo personal @gmail.com</div>
+              </div>
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={(e) => { e.preventDefault(); if (customGoogleEmail) { handleSelectGoogleAccount(customGoogleEmail, customGoogleName); } }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div>
+              <label style={labelStyle}>Tu Correo de Google (@gmail.com)</label>
+              <input
+                type="email"
+                required
+                placeholder="ejemplo@gmail.com"
+                value={customGoogleEmail}
+                onChange={(e) => setCustomGoogleEmail(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Tu Nombre Completo</label>
+              <input
+                type="text"
+                placeholder="Ej. María Fernanda"
+                value={customGoogleName}
+                onChange={(e) => setCustomGoogleName(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <button
+              type="submit"
+              style={{ backgroundColor: '#4285F4', color: '#FFFFFF', border: 'none', padding: '0.85rem', borderRadius: '8px', fontWeight: 800, fontSize: '0.88rem', cursor: 'pointer', textTransform: 'uppercase' }}
+            >
+              INGRESAR CON ESTA CUENTA
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsCustomGoogleMode(false)}
+              style={{ border: 'none', background: 'none', fontSize: '0.8rem', color: '#71717A', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Volver a la lista de cuentas
+            </button>
+          </form>
+        )}
+
+        <button
+          onClick={() => { setShowGoogleModal(false); setIsCustomGoogleMode(false); }}
+          style={{ width: '100%', border: 'none', background: 'none', fontSize: '0.82rem', color: '#71717A', fontWeight: 700, cursor: 'pointer', paddingTop: '0.5rem' }}
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )}
 </div>
   );
 };
