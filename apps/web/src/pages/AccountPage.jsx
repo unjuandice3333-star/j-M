@@ -258,6 +258,19 @@ export const AccountPage = () => {
             >
               <MapPin size={18} /> Mis Direcciones ({savedAddresses.length})
             </button>
+            <button
+              onClick={() => customerLogout()}
+              style={{
+                ...accountTabBtn(false),
+                color: '#E11D48',
+                backgroundColor: '#FFF1F2',
+                border: '1px solid #FECDD3',
+                marginTop: '1rem',
+                cursor: 'pointer'
+              }}
+            >
+              <LogOut size={18} /> Cerrar Sesión
+            </button>
           </div>
 
           {/* MAIN CONTENT PANEL */}
