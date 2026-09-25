@@ -19,6 +19,53 @@ export const useECommerceStore = create(
       // Coupon State
       appliedCoupon: null,
 
+      // Customer Authentication & Google OAuth State
+      isCustomerLoggedIn: false,
+      customerUser: null,
+
+      loginWithGoogle: () => {
+        const googleCustomer = {
+          id: `usr-google-${Date.now()}`,
+          name: 'Alejandro Morales',
+          email: 'alejo.morales@gmail.com',
+          avatar: 'https://lh3.googleusercontent.com/a/default-user',
+          provider: 'google'
+        };
+        set({
+          isCustomerLoggedIn: true,
+          customerUser: googleCustomer,
+          userProfile: {
+            ...get().userProfile,
+            name: googleCustomer.name,
+            email: googleCustomer.email
+          }
+        });
+        return googleCustomer;
+      },
+
+      loginWithCustomerEmail: (email, name) => {
+        const emailCustomer = {
+          id: `usr-${Date.now()}`,
+          name: name || email.split('@')[0],
+          email,
+          provider: 'email'
+        };
+        set({
+          isCustomerLoggedIn: true,
+          customerUser: emailCustomer,
+          userProfile: {
+            ...get().userProfile,
+            name: emailCustomer.name,
+            email
+          }
+        });
+        return emailCustomer;
+      },
+
+      customerLogout: () => {
+        set({ isCustomerLoggedIn: false, customerUser: null });
+      },
+
       // Customer Profile & Address State
       userProfile: {
         name: 'Alejandro Morales',

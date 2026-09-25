@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { User, Package, Heart, MapPin, Settings, CheckCircle2, Truck, Plus, Save } from 'lucide-react';
+import { User, Package, Heart, MapPin, Settings, CheckCircle2, Truck, Plus, Save, LogOut } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { PRODUCTS, formatCOP } from '../data/mockData';
 import ProductCard from '../components/Product/ProductCard';
@@ -10,6 +10,11 @@ export const AccountPage = () => {
   const activeTab = searchParams.get('tab') || 'pedidos'; // 'pedidos' | 'favoritos' | 'datos' | 'direcciones'
 
   const {
+    isCustomerLoggedIn,
+    customerUser,
+    loginWithGoogle,
+    loginWithCustomerEmail,
+    customerLogout,
     userProfile,
     updateProfile,
     savedAddresses,
@@ -18,6 +23,10 @@ export const AccountPage = () => {
     wishlist,
     moveWishlistToCart
   } = useECommerceStore();
+
+  const [inputEmail, setInputEmail] = useState('');
+  const [inputName, setInputName] = useState('');
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
 
   // Profile Form State
   const [profileData, setProfileData] = useState({
@@ -56,28 +65,173 @@ export const AccountPage = () => {
     }
   };
 
+  const handleEmailAuthSubmit = (e) => {
+    e.preventDefault();
+    if (inputEmail) {
+      loginWithCustomerEmail(inputEmail, inputName);
+    }
+  };
+
   const wishlistProducts = PRODUCTS.filter((p) => wishlist.includes(p.id));
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
       <div className="jm-container">
-        {/* ACCOUNT HEADER */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '1.5rem' }}>
-          <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#09090B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.4rem' }}>
-            {userProfile.name.charAt(0)}
-          </div>
-          <div>
-            <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>
-              MI CUENTA J&M
-            </h1>
-            <p style={{ fontSize: '0.88rem', color: '#71717A' }}>
-              Bienvenido de nuevo, <strong>{userProfile.name}</strong> • {userProfile.email}
-            </p>
-          </div>
-        </div>
+        {/* LOGIN CARD IF NOT LOGGED IN */}
+        {!isCustomerLoggedIn ? (
+          <div style={{ maxWidth: '440px', margin: '2rem auto', border: '1px solid #E4E4E7', borderRadius: '12px', padding: '2.5rem', backgroundColor: '#FFFFFF', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <span style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.12em', color: '#09090B' }}>J&M FASHION STORE</span>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: '0.6rem', color: '#09090B' }}>
+                {isRegisterMode ? 'CREAR UNA CUENTA' : 'INICIAR SESIÓN'}
+              </h2>
+              <p style={{ fontSize: '0.85rem', color: '#71717A', marginTop: '0.2rem' }}>
+                Accede a tu historial de compras, favoritos y seguimiento de envíos en Colombia.
+              </p>
+            </div>
 
-        {/* ACCOUNT NAVIGATION TABS */}
-        <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '3rem' }} className="account-layout">
+            {/* GOOGLE OAUTH BUTTON */}
+            <button
+              onClick={() => loginWithGoogle()}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.75rem',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #D4D4D8',
+                borderRadius: '8px',
+                padding: '0.8rem',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                color: '#09090B',
+                cursor: 'pointer',
+                marginBottom: '1.5rem',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              }}
+            >
+              <span style={{ fontWeight: 900, color: '#4285F4', fontSize: '1.1rem' }}>G</span>
+              Continuar con Google
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#E4E4E7' }} />
+              <span style={{ fontSize: '0.75rem', color: '#A1A1AA', fontWeight: 600 }}>O CON CORREO</span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: '#E4E4E7' }} />
+            </div>
+
+            <form onSubmit={handleEmailAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {isRegisterMode && (
+                <div>
+                  <label style={labelStyle}>Nombre Completo</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Alejandro Morales"
+                    value={inputName}
+                    onChange={(e) => setInputName(e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label style={labelStyle}>Correo Electrónico</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="ejemplo@correo.com"
+                  value={inputEmail}
+                  onChange={(e) => setInputEmail(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Contraseña</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  style={inputStyle}
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  backgroundColor: '#09090B',
+                  color: '#FFFFFF',
+                  padding: '0.85rem',
+                  borderRadius: '6px',
+                  fontWeight: 800,
+                  fontSize: '0.88rem',
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  marginTop: '0.5rem'
+                }}
+              >
+                {isRegisterMode ? 'REGISTRARME' : 'INGRESAR A MI CUENTA'}
+              </button>
+            </form>
+
+            <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.82rem', color: '#71717A' }}>
+              {isRegisterMode ? '¿Ya tienes una cuenta? ' : '¿Aún no tienes cuenta? '}
+              <button
+                type="button"
+                onClick={() => setIsRegisterMode(!isRegisterMode)}
+                style={{ border: 'none', background: 'none', fontWeight: 800, color: '#09090B', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                {isRegisterMode ? 'Inicia Sesión' : 'Regístrate gratis'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            {/* ACCOUNT HEADER */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2.5rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {customerUser?.avatar ? (
+                  <img src={customerUser.avatar} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#09090B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.4rem' }}>
+                    {userProfile.name.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>
+                    MI CUENTA J&M
+                  </h1>
+                  <p style={{ fontSize: '0.88rem', color: '#71717A' }}>
+                    Bienvenido de nuevo, <strong>{customerUser?.name || userProfile.name}</strong> - {customerUser?.email || userProfile.email}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={customerLogout}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.6rem 1rem',
+                  border: '1px solid #E4E4E7',
+                  borderRadius: '6px',
+                  backgroundColor: '#FFFFFF',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#E11D48',
+                  cursor: 'pointer'
+                }}
+              >
+                <LogOut size={16} /> Cerrar Sesión
+              </button>
+            </div>
+
+            {/* ACCOUNT NAVIGATION TABS */}
+            <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '3rem' }} className="account-layout">
           {/* SIDEBAR TABS */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             <button
@@ -142,7 +296,7 @@ export const AccountPage = () => {
                               <img src={item.image} alt="" style={{ width: '45px', height: '55px', objectFit: 'cover', borderRadius: '4px' }} />
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#09090B' }}>{item.name}</div>
-                                <div style={{ fontSize: '0.75rem', color: '#71717A' }}>Talla: {item.size} • Color: {item.color} • Cant: {item.quantity}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#71717A' }}>Talla: {item.size} - Color: {item.color} - Cant: {item.quantity}</div>
                               </div>
                               <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#09090B' }}>
                                 {formatCOP(item.price * item.quantity)}
@@ -338,7 +492,7 @@ export const AccountPage = () => {
                         )}
                       </div>
                       <p style={{ fontSize: '0.88rem', color: '#27272A', lineHeight: 1.5, marginBottom: '0.4rem' }}>{addr.address}</p>
-                      <p style={{ fontSize: '0.78rem', color: '#71717A' }}>{addr.neighborhood} • {addr.city}, {addr.department}</p>
+                      <p style={{ fontSize: '0.78rem', color: '#71717A' }}>{addr.neighborhood} - {addr.city}, {addr.department}</p>
                     </div>
                   ))}
                 </div>
@@ -347,13 +501,9 @@ export const AccountPage = () => {
           </div>
         </div>
       </div>
-
-      <style>{`
-        @media (max-width: 900px) {
-          .account-layout { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-    </div>
+    )}
+  </div>
+</div>
   );
 };
 
