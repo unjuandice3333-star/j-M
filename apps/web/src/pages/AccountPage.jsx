@@ -232,29 +232,7 @@ export const AccountPage = () => {
               <div style={{ flex: 1, height: '1px', backgroundColor: '#E4E4E7' }} />
             </div>
 
-            {/* PASSKEY BUTTON */}
-            <button
-              type="button"
-              onClick={() => setShowGoogleModal(true)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                backgroundColor: '#F4F4F5',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '0.85rem',
-                fontWeight: 700,
-                fontSize: '0.88rem',
-                color: '#09090B',
-                cursor: 'pointer',
-                marginBottom: '1.25rem'
-              }}
-            >
-              <User size={18} /> Iniciar sesión con la clave de acceso
-            </button>
+
 
             {/* GOOGLE SINGLE PROMINENT BUTTON */}
             <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
