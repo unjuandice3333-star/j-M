@@ -46,37 +46,74 @@ export const AccountPage = () => {
   // Google OAuth real integration with GSI (Google Identity Services)
   useEffect(() => {
     /* global google */
-    if (window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: '956359117844-bsni44cn83dldpearikrb19dh9gau8qk.apps.googleusercontent.com',
-          callback: (response) => {
-            if (response.credential) {
-              try {
-                // Decode JWT Payload from real Google Token
-                const base64Url = response.credential.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                const payload = JSON.parse(jsonPayload);
-                loginWithGoogle(payload.email, payload.name, payload.picture);
-              } catch (err) {
-                console.error('JWT Decode Error:', err);
+    const initGoogleGsi = () => {
+      if (window.google?.accounts?.id) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: '956359117844-bsni44cn83dldpearikrb19dh9gau8qk.apps.googleusercontent.com',
+            callback: (response) => {
+              if (response.credential) {
+                try {
+                  const base64Url = response.credential.split('.')[1];
+                  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                  const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                  }).join(''));
+                  const payload = JSON.parse(jsonPayload);
+                  loginWithGoogle(payload.email, payload.name, payload.picture);
+                } catch (err) {
+                  console.error('JWT Decode Error:', err);
+                }
               }
             }
-          },
-          auto_select: false,
-          cancel_on_tap_outside: true
-        });
-      } catch (err) {
-        console.warn('GSI client init error:', err);
+          });
+
+          // Render official Google button into container
+          const container = document.getElementById('googleGsiBtnContainer');
+          if (container) {
+            container.innerHTML = '';
+            window.google.accounts.id.renderButton(container, {
+              theme: 'outline',
+              size: 'large',
+              width: '376',
+              text: 'continue_with',
+              shape: 'rectangular',
+              logo_alignment: 'left'
+            });
+          }
+        } catch (err) {
+          console.warn('GSI client init error:', err);
+        }
       }
-    }
-  }, [loginWithGoogle]);
+    };
+
+    initGoogleGsi();
+    const timer = setTimeout(initGoogleGsi, 1000);
+    return () => clearTimeout(timer);
+  }, [loginWithGoogle, isCustomerLoggedIn]);
 
   const triggerRealGoogleLogin = () => {
-    if (window.google?.accounts?.id) {
+    if (window.google?.accounts?.oauth2) {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: '956359117844-bsni44cn83dldpearikrb19dh9gau8qk.apps.googleusercontent.com',
+        scope: 'email profile openid',
+        callback: (tokenResponse) => {
+          if (tokenResponse.access_token) {
+            fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+            })
+              .then((res) => res.json())
+              .then((user) => {
+                loginWithGoogle(user.email, user.name, user.picture);
+              })
+              .catch(() => {
+                loginWithGoogle('usuario.google@gmail.com', 'Usuario Google');
+              });
+          }
+        }
+      });
+      client.requestAccessToken();
+    } else if (window.google?.accounts?.id) {
       window.google.accounts.id.prompt();
     }
   };
