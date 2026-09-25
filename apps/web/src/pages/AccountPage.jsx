@@ -27,11 +27,11 @@ export const AccountPage = () => {
   useEffect(() => {
     try {
       const activeSession = sessionStorage.getItem('jm_customer_session');
-      if (!activeSession || !customerUser) {
+      if (!activeSession || !customerUser || !isCustomerLoggedIn) {
         customerLogout();
       }
     } catch (e) {}
-  }, []);
+  }, [customerUser, isCustomerLoggedIn]);
 
   const [inputEmail, setInputEmail] = useState('');
   const [inputName, setInputName] = useState('');

@@ -67,7 +67,10 @@ export const useECommerceStore = create(
       },
 
       customerLogout: () => {
-        try { sessionStorage.removeItem('jm_customer_session'); } catch (e) {}
+        try {
+          sessionStorage.removeItem('jm_customer_session');
+          localStorage.removeItem('jm_customer_session');
+        } catch (e) {}
         set({ isCustomerLoggedIn: false, customerUser: null });
       },
 
