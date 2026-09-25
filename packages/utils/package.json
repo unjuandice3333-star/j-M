@@ -1,0 +1,14 @@
+{
+  "name": "@jm/utils",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./index.ts",
+  "module": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

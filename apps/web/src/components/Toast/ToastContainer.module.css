@@ -1,0 +1,86 @@
+.container {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 9999;
+  font-family: var(--font-sans);
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-width: 280px;
+  max-width: 400px;
+  animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.success {
+  background-color: var(--card);
+  border-left: 4px solid var(--success);
+  color: var(--foreground);
+}
+
+.error {
+  background-color: var(--card);
+  border-left: 4px solid var(--destructive);
+  color: var(--foreground);
+}
+
+.info {
+  background-color: var(--card);
+  border-left: 4px solid var(--primary);
+  color: var(--foreground);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.success .icon { color: var(--success); }
+.error .icon { color: var(--destructive); }
+.info .icon { color: var(--primary); }
+
+.message {
+  flex-grow: 1;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.closeBtn:hover {
+  background-color: var(--secondary);
+  color: var(--foreground);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
