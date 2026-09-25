@@ -608,113 +608,161 @@ export const AccountPage = () => {
     )}
   </div>
 
-  {/* GOOGLE ACCOUNTS PICKER MODAL */}
+  {/* GOOGLE ACCOUNTS PICKER MODAL (EXACT GOOGLE OAUTH UI) */}
   {showGoogleModal && (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', maxWidth: '420px', width: '100%', padding: '2rem', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', animation: 'fadeIn 0.2s ease' }}>
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '1px solid #E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem auto' }}>
-            <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#4285F4' }}>G</span>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(3px)' }}>
+      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '28px', maxWidth: '520px', width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 48px rgba(0,0,0,0.2)' }}>
+        
+        {/* GOOGLE OAUTH TOP BAR */}
+        <div style={{ padding: '1.25rem 2rem 0.5rem 2rem', display: 'flex', alignItems: 'center', gap: '0.6rem', borderBottom: '1px solid #F1F3F4' }}>
+          <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#4285F4' }}>G</span>
+          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#3C4043' }}>Inicia sesión con Google</span>
+        </div>
+
+        {/* GOOGLE OAUTH HEADER */}
+        <div style={{ padding: '1.5rem 2rem 1rem 2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#09090B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.8rem' }}>
+              J&M
+            </div>
+            <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#202124', letterSpacing: '0.05em' }}>J&M FASHION STORE</span>
           </div>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#09090B' }}>
-            Elige una cuenta de Google
-          </h3>
-          <p style={{ fontSize: '0.82rem', color: '#71717A', marginTop: '0.25rem' }}>
-            para continuar en <strong>J&M Fashion Store</strong>
+          <h2 style={{ fontSize: '2.1rem', fontWeight: 500, color: '#1F1F1F', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+            Elige una cuenta
+          </h2>
+          <p style={{ fontSize: '0.95rem', color: '#444746', marginTop: '0.3rem' }}>
+            para continuar a <span style={{ fontWeight: 600, color: '#1B66C9' }}>J&M Fashion Store</span>
           </p>
         </div>
 
-        {!isCustomGoogleMode ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <button
-              onClick={() => handleSelectGoogleAccount('alejo.morales@gmail.com', 'Alejandro Morales')}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid #E4E4E7', borderRadius: '10px', backgroundColor: '#FFFFFF', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s' }}
-            >
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#4285F4', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem' }}>A</div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#09090B' }}>Alejandro Morales</div>
-                <div style={{ fontSize: '0.75rem', color: '#71717A' }}>alejo.morales@gmail.com</div>
-              </div>
-            </button>
+        {/* ACCOUNTS SCROLLABLE LIST */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 2rem' }}>
+          {!isCustomGoogleMode ? (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {[
+                { name: 'Sebastian Moreno', email: 'sebastianbachello@gmail.com', initial: 'S', color: '#673AB7' },
+                { name: 'juan moreno', email: 'juaneslaley12@gmail.com', initial: 'j', color: '#E65100' },
+                { name: 'Sebastian Moreno', email: 'sebitz47@gmail.com', initial: 'S', color: '#00897B' },
+                { name: 'Suministros J&C', email: 'jcsuministros073@gmail.com', initial: 'S', color: '#546E7A' },
+                { name: 'juan moreno', email: 'unjuandice3333@gmail.com', initial: 'j', color: '#1E88E5' },
+                { name: 'juan moreno', email: 'restaurant@bochicast.com', initial: 'j', color: '#78909C' },
+                { name: 'Juan Moreno', email: 'unjuandice3333@gmail.com', initial: 'J', color: '#7B1FA2' },
+                { name: 'Diana Hernández', email: 'dhern0629@gmail.com', initial: 'D', color: '#8E24AA' },
+                { name: 'juan moreno', email: 'soporterivo1@gmail.com', initial: 'j', color: '#263238' },
+                { name: 'juan moreno', email: 'novasolutionsco2@gmail.com', initial: 'j', color: '#D81B60' }
+              ].map((acc, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSelectGoogleAccount(acc.email, acc.name)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.9rem 0.5rem',
+                    border: 'none',
+                    borderBottom: '1px solid #E0E0E0',
+                    backgroundColor: 'transparent',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    width: '100%',
+                    transition: 'backgroundColor 0.15s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8F9FA'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: acc.color, color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1.1rem' }}>
+                      {acc.initial}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#1F1F1F' }}>{acc.name}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#5F6368' }}>{acc.email}</div>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#70757A', fontWeight: 500 }}>Firmado</span>
+                </button>
+              ))}
 
-            <button
-              onClick={() => handleSelectGoogleAccount('juandice3333@gmail.com', 'Juan Diego')}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid #E4E4E7', borderRadius: '10px', backgroundColor: '#FFFFFF', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#EA4335', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem' }}>J</div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#09090B' }}>Juan Diego</div>
-                <div style={{ fontSize: '0.75rem', color: '#71717A' }}>juandice3333@gmail.com</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleSelectGoogleAccount('carlos.gomez@gmail.com', 'Carlos Gómez')}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid #E4E4E7', borderRadius: '10px', backgroundColor: '#FFFFFF', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#34A853', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.95rem' }}>C</div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#09090B' }}>Carlos Gómez</div>
-                <div style={{ fontSize: '0.75rem', color: '#71717A' }}>carlos.gomez@gmail.com</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setIsCustomGoogleMode(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px dashed #A1A1AA', borderRadius: '10px', backgroundColor: '#FAFAFA', cursor: 'pointer', textAlign: 'left', marginTop: '0.2rem' }}
-            >
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#E4E4E7', color: '#09090B', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.2rem' }}>+</div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#09090B' }}>Usar otra cuenta de Google</div>
-                <div style={{ fontSize: '0.75rem', color: '#71717A' }}>Ingresar tu correo personal @gmail.com</div>
-              </div>
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={(e) => { e.preventDefault(); if (customGoogleEmail) { handleSelectGoogleAccount(customGoogleEmail, customGoogleName); } }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div>
-              <label style={labelStyle}>Tu Correo de Google (@gmail.com)</label>
-              <input
-                type="email"
-                required
-                placeholder="ejemplo@gmail.com"
-                value={customGoogleEmail}
-                onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                style={inputStyle}
-              />
+              {/* USA OTRA CUENTA OPTION */}
+              <button
+                onClick={() => setIsCustomGoogleMode(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  padding: '1rem 0.5rem',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  width: '100%'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8F9FA'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #DADCE0', color: '#3C4043', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
+                  <User size={20} />
+                </div>
+                <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#1F1F1F' }}>
+                  Usa otra cuenta
+                </div>
+              </button>
             </div>
-            <div>
-              <label style={labelStyle}>Tu Nombre Completo</label>
-              <input
-                type="text"
-                placeholder="Ej. María Fernanda"
-                value={customGoogleName}
-                onChange={(e) => setCustomGoogleName(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <button
-              type="submit"
-              style={{ backgroundColor: '#4285F4', color: '#FFFFFF', border: 'none', padding: '0.85rem', borderRadius: '8px', fontWeight: 800, fontSize: '0.88rem', cursor: 'pointer', textTransform: 'uppercase' }}
-            >
-              INGRESAR CON ESTA CUENTA
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsCustomGoogleMode(false)}
-              style={{ border: 'none', background: 'none', fontSize: '0.8rem', color: '#71717A', cursor: 'pointer', textDecoration: 'underline' }}
-            >
-              Volver a la lista de cuentas
-            </button>
-          </form>
-        )}
+          ) : (
+            <form onSubmit={(e) => { e.preventDefault(); if (customGoogleEmail) { handleSelectGoogleAccount(customGoogleEmail, customGoogleName); } }} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#1F1F1F', marginBottom: '0.5rem' }}>Correo electrónico de Google</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="ejemplo@gmail.com"
+                  value={customGoogleEmail}
+                  onChange={(e) => setCustomGoogleEmail(e.target.value)}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1px solid #747775', borderRadius: '4px', fontSize: '0.95rem', outline: 'none' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#1F1F1F', marginBottom: '0.5rem' }}>Nombre completo</label>
+                <input
+                  type="text"
+                  placeholder="Ej. Juan Moreno"
+                  value={customGoogleName}
+                  onChange={(e) => setCustomGoogleName(e.target.value)}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1px solid #747775', borderRadius: '4px', fontSize: '0.95rem', outline: 'none' }}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomGoogleMode(false)}
+                  style={{ border: 'none', background: 'none', fontSize: '0.85rem', fontWeight: 600, color: '#0B57D0', cursor: 'pointer' }}
+                >
+                  Volver a la lista
+                </button>
+                <button
+                  type="submit"
+                  style={{ backgroundColor: '#0B57D0', color: '#FFFFFF', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '100px', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer' }}
+                >
+                  Siguiente
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
 
-        <button
-          onClick={() => { setShowGoogleModal(false); setIsCustomGoogleMode(false); }}
-          style={{ width: '100%', border: 'none', background: 'none', fontSize: '0.82rem', color: '#71717A', fontWeight: 700, cursor: 'pointer', paddingTop: '0.5rem' }}
-        >
-          Cancelar
-        </button>
+        {/* GOOGLE FOOTER */}
+        <div style={{ padding: '1.25rem 2rem', borderTop: '1px solid #F1F3F4', backgroundColor: '#FAFAFA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ fontSize: '0.72rem', color: '#5F6368', lineHeight: 1.4 }}>
+            Antes de usar esta aplicación, puedes consultar la Política de Privacidad y los Términos de Servicio de J&M.
+          </p>
+          <button
+            onClick={() => { setShowGoogleModal(false); setIsCustomGoogleMode(false); }}
+            style={{ border: 'none', background: 'none', fontSize: '0.82rem', fontWeight: 600, color: '#5F6368', cursor: 'pointer', paddingLeft: '1rem', whiteSpace: 'nowrap' }}
+          >
+            Cancelar
+          </button>
+        </div>
+
       </div>
     </div>
   )}
