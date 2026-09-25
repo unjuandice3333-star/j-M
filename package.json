@@ -6,7 +6,7 @@
   "scripts": {
     "dev:web": "pnpm --filter @jm/web dev",
     "dev:mobile": "pnpm --filter @jm/mobile dev",
-    "build": "pnpm --filter @jm/web build",
+    "build": "node scripts/build.js",
     "lint": "pnpm --recursive lint",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css,json,md,sql}\"",
     "prepare": "husky"
