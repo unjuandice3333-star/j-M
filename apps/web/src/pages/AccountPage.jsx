@@ -27,7 +27,7 @@ export const AccountPage = () => {
   useEffect(() => {
     try {
       const activeSession = sessionStorage.getItem('jm_customer_session');
-      if (!activeSession) {
+      if (!activeSession || !customerUser) {
         customerLogout();
       }
     } catch (e) {}
