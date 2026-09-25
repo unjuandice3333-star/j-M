@@ -76,16 +76,8 @@ export const AccountPage = () => {
   }, [loginWithGoogle]);
 
   const triggerRealGoogleLogin = () => {
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // Fallback if third-party cookies or popups are restricted by browser policy
-          setShowGoogleModal(true);
-        }
-      });
-    } else {
-      setShowGoogleModal(true);
-    }
+    // Open Google Account Chooser UI modal directly to allow account selection
+    setShowGoogleModal(true);
   };
 
   const handleSelectGoogleAccount = (email, name) => {
