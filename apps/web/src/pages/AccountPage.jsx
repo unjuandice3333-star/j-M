@@ -171,10 +171,8 @@ export const AccountPage = () => {
   const handleLogout = () => {
     customerLogout();
     try {
-      localStorage.removeItem('jm-fashion-store-cart-v4');
-      localStorage.removeItem('jm-fashion-store-cart-v3');
-      localStorage.removeItem('jm_customer_session');
-      sessionStorage.removeItem('jm_customer_session');
+      localStorage.clear();
+      sessionStorage.clear();
     } catch (e) {}
     window.location.reload();
   };
