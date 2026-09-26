@@ -1,7 +1,11 @@
 {
-  "cleanUrls": true,
-  "trailingSlash": false,
+  "buildCommand": "pnpm --filter @jm/web build",
+  "outputDirectory": "apps/web/dist",
+  "framework": "vite",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
