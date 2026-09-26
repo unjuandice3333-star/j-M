@@ -183,7 +183,7 @@ export const AccountPage = () => {
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
       <div className="jm-container">
         {/* SHOPIFY-STYLE ACCOUNT LOGIN / REGISTER CARD */}
-        {!isCustomerLoggedIn ? (
+        {(!isCustomerLoggedIn || !customerUser) ? (
           <div style={{ maxWidth: '440px', margin: '2rem auto', border: '1px solid #E4E4E7', borderRadius: '24px', padding: '2.5rem 2rem', backgroundColor: '#FFFFFF', boxShadow: '0 12px 36px rgba(0,0,0,0.06)' }}>
             <div style={{ textAlign: 'left', marginBottom: '1.75rem' }}>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#09090B', letterSpacing: '-0.02em' }}>

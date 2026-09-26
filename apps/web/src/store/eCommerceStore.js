@@ -76,9 +76,9 @@ export const useECommerceStore = create(
 
       // Customer Profile & Address State
       userProfile: {
-        name: 'Alejandro Morales',
-        email: 'alejo.morales@gmail.com',
-        phone: '+57 310 456 7890',
+        name: '',
+        email: '',
+        phone: '',
         preferredSize: 'M',
         preferredFit: 'REGULAR'
       },
