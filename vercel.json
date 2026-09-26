@@ -1,7 +1,6 @@
 {
   "buildCommand": "pnpm --filter @jm/web build",
   "outputDirectory": "apps/web/dist",
-  "framework": "vite",
   "rewrites": [
     {
       "source": "/(.*)",
