@@ -170,7 +170,10 @@ export const AccountPage = () => {
   const handleLogout = () => {
     customerLogout();
     try {
-      localStorage.clear();
+      localStorage.removeItem('jm-fashion-store-cart-v4');
+      localStorage.removeItem('jm-fashion-store-cart-v3');
+      localStorage.removeItem('jm_customer_session');
+      sessionStorage.removeItem('jm_customer_session');
     } catch (e) {}
     window.location.reload();
   };
@@ -233,8 +236,8 @@ export const AccountPage = () => {
               <button
                 type="submit"
                 style={{
-                  backgroundColor: '#E4E4E7',
-                  color: '#71717A',
+                  backgroundColor: '#09090B',
+                  color: '#FFFFFF',
                   padding: '0.88rem',
                   borderRadius: '8px',
                   fontWeight: 700,
@@ -244,8 +247,6 @@ export const AccountPage = () => {
                   marginTop: '0.25rem',
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#09090B'; e.currentTarget.style.color = '#FFFFFF'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#E4E4E7'; e.currentTarget.style.color = '#71717A'; }}
               >
                 {isRegisterMode ? 'Crear cuenta con correo' : 'Continuar con el correo electrónico'}
               </button>
