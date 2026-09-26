@@ -345,6 +345,8 @@ export const useECommerceStore = create(
         items: state.items,
         wishlist: state.wishlist,
         appliedCoupon: state.appliedCoupon,
+        isCustomerLoggedIn: state.isCustomerLoggedIn,
+        customerUser: state.customerUser,
         userProfile: state.userProfile,
         savedAddresses: state.savedAddresses,
         orders: state.orders

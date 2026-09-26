@@ -29,10 +29,6 @@ export const AccountPage = () => {
       localStorage.removeItem('jm-fashion-store-cart-v3');
       localStorage.removeItem('jm-fashion-store-cart-v2');
       localStorage.removeItem('jm-fashion-store-cart');
-      const activeSession = sessionStorage.getItem('jm_customer_session');
-      if (!activeSession || !customerUser || !isCustomerLoggedIn) {
-        customerLogout();
-      }
     } catch (e) {}
   }, []);
 
@@ -314,18 +310,6 @@ export const AccountPage = () => {
           </div>
         ) : (
           <div>
-            {/* UNMISSABLE TOP LOGOUT BANNER */}
-            <div style={{ backgroundColor: '#FFF1F2', border: '1px solid #FECDD3', padding: '1rem 1.5rem', borderRadius: '8px', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-              <span style={{ fontSize: '0.88rem', color: '#9F1239', fontWeight: 700 }}>
-                Sesión activa como: <strong>{customerUser?.email || userProfile.email}</strong>. Cierra sesión para registrarte o ingresar con Google.
-              </span>
-              <button
-                onClick={handleLogout}
-                style={{ backgroundColor: '#E11D48', color: '#FFFFFF', border: 'none', padding: '0.65rem 1.25rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 2px 6px rgba(225,29,72,0.2)' }}
-              >
-                <LogOut size={16} /> CERRAR SESIÓN AHORA
-              </button>
-            </div>
             {/* ACCOUNT HEADER */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2.5rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '1.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
