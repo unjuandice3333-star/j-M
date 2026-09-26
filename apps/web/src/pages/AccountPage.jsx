@@ -1,27 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { User, Package, Heart, MapPin, Settings, CheckCircle2, Truck, Plus, Save, LogOut } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
-import { PRODUCTS, formatCOP } from '../data/mockData';
-import ProductCard from '../components/Product/ProductCard';
 
 export const AccountPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'pedidos'; // 'pedidos' | 'favoritos' | 'datos' | 'direcciones'
-
   const {
     isCustomerLoggedIn,
     customerUser,
     loginWithGoogle,
-    loginWithCustomerEmail,
-    customerLogout,
-    userProfile,
-    updateProfile,
-    savedAddresses,
-    addAddress,
-    orders,
-    wishlist,
-    moveWishlistToCart
+    loginWithCustomerEmail
   } = useECommerceStore();
 
   useEffect(() => {
@@ -35,12 +20,6 @@ export const AccountPage = () => {
   const [inputEmail, setInputEmail] = useState('');
   const [inputName, setInputName] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
-
-  // Google Account Picker Modal State
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
-  const [customGoogleName, setCustomGoogleName] = useState('');
-  const [isCustomGoogleMode, setIsCustomGoogleMode] = useState(false);
 
   // Google OAuth real integration with GSI (Google Identity Services)
   useEffect(() => {
@@ -66,20 +45,6 @@ export const AccountPage = () => {
               }
             }
           });
-
-          // Render official Google button into container
-          const container = document.getElementById('googleGsiBtnContainer');
-          if (container) {
-            container.innerHTML = '';
-            window.google.accounts.id.renderButton(container, {
-              theme: 'outline',
-              size: 'large',
-              width: '376',
-              text: 'continue_with',
-              shape: 'rectangular',
-              logo_alignment: 'left'
-            });
-          }
         } catch (err) {
           console.warn('GSI client init error:', err);
         }
@@ -89,7 +54,7 @@ export const AccountPage = () => {
     initGoogleGsi();
     const timer = setTimeout(initGoogleGsi, 1000);
     return () => clearTimeout(timer);
-  }, [loginWithGoogle, isCustomerLoggedIn]);
+  }, [loginWithGoogle]);
 
   const triggerRealGoogleLogin = () => {
     if (window.google?.accounts?.oauth2) {
@@ -117,67 +82,12 @@ export const AccountPage = () => {
     }
   };
 
-  const handleSelectGoogleAccount = (email, name) => {
-    loginWithGoogle(email, name);
-    setShowGoogleModal(false);
-    setIsCustomGoogleMode(false);
-  };
-
-  // Profile Form State
-  const [profileData, setProfileData] = useState({
-    name: userProfile.name,
-    email: userProfile.email,
-    phone: userProfile.phone,
-    preferredSize: userProfile.preferredSize,
-    preferredFit: userProfile.preferredFit
-  });
-  const [profileSaved, setProfileSaved] = useState(false);
-
-  // Address Form State
-  const [showAddAddress, setShowAddAddress] = useState(false);
-  const [newAddr, setNewAddr] = useState({
-    name: 'Casa',
-    department: 'Cundinamarca',
-    city: 'Bogotá D.C.',
-    address: '',
-    neighborhood: '',
-    notes: ''
-  });
-
-  const handleSaveProfile = (e) => {
-    e.preventDefault();
-    updateProfile(profileData);
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 3000);
-  };
-
-  const handleAddAddressSubmit = (e) => {
-    e.preventDefault();
-    if (newAddr.address && newAddr.city) {
-      addAddress(newAddr);
-      setShowAddAddress(false);
-      setNewAddr({ name: 'Casa', department: 'Cundinamarca', city: '', address: '', neighborhood: '', notes: '' });
-    }
-  };
-
   const handleEmailAuthSubmit = (e) => {
     e.preventDefault();
     if (inputEmail) {
       loginWithCustomerEmail(inputEmail, inputName);
     }
   };
-
-  const handleLogout = () => {
-    customerLogout();
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-    } catch (e) {}
-    window.location.reload();
-  };
-
-  const { products } = useECommerceStore();
-  const wishlistProducts = products.filter((p) => wishlist.includes(p.id));
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
@@ -201,7 +111,7 @@ export const AccountPage = () => {
                   <input
                     type="text"
                     required
-                    placeholder="Ej. Alejandro Morales"
+                    placeholder="Ej. Nombre completo"
                     value={inputName}
                     onChange={(e) => setInputName(e.target.value)}
                     style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #2563EB', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
@@ -257,13 +167,8 @@ export const AccountPage = () => {
               <div style={{ flex: 1, height: '1px', backgroundColor: '#E4E4E7' }} />
             </div>
 
-
-
             {/* GOOGLE SINGLE PROMINENT BUTTON */}
             <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
-              <span style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#2563EB', color: '#FFFFFF', fontSize: '0.62rem', fontWeight: 700, padding: '1px 8px', borderRadius: '4px', whiteSpace: 'nowrap', zIndex: 2 }}>
-                Último uso
-              </span>
               <button
                 type="button"
                 onClick={triggerRealGoogleLogin}
@@ -311,46 +216,6 @@ export const AccountPage = () => {
       </div>
     </div>
   );
-};
-
-const panelTitleStyle = {
-  fontSize: '1.25rem',
-  fontWeight: 900,
-  color: '#09090B',
-  marginBottom: '1.5rem',
-  textTransform: 'uppercase'
-};
-
-const accountTabBtn = (isActive) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.75rem',
-  padding: '0.85rem 1rem',
-  borderRadius: '6px',
-  fontWeight: isActive ? 800 : 600,
-  fontSize: '0.88rem',
-  color: isActive ? '#FFFFFF' : '#09090B',
-  backgroundColor: isActive ? '#09090B' : '#FAFAFA',
-  border: '1px solid #E4E4E7',
-  transition: 'all 0.15s',
-  textAlign: 'left'
-});
-
-const labelStyle = {
-  display: 'block',
-  fontSize: '0.82rem',
-  fontWeight: 700,
-  color: '#09090B',
-  marginBottom: '0.4rem'
-};
-
-const inputStyle = {
-  width: '100%',
-  padding: '0.75rem 0.9rem',
-  border: '1px solid #D4D4D8',
-  borderRadius: '6px',
-  fontSize: '0.88rem',
-  outline: 'none'
 };
 
 export default AccountPage;
