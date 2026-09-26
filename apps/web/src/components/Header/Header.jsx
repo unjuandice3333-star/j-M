@@ -151,8 +151,13 @@ export const Header = () => {
               <Search size={21} />
             </button>
 
+            {/* Account Link */}
+            <Link to="/cuenta" style={iconBtnStyle} title="Mi cuenta">
+              <User size={21} />
+            </Link>
+
             {/* Wishlist Link */}
-            <Link to="/favoritos" style={{ ...iconBtnStyle, position: 'relative' }} title="Favoritos">
+            <Link to="/cuenta/favoritos" style={{ ...iconBtnStyle, position: 'relative' }} title="Favoritos">
               <Heart size={21} />
               {wishlist.length > 0 && (
                 <span style={badgeStyle}>{wishlist.length}</span>

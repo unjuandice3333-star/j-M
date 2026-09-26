@@ -89,9 +89,11 @@ export const AppRoutes = () => {
           <Route path="/carrito" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/checkout/confirmacion" element={<OrderConfirmationPage />} />
-          <Route path="/cuenta" element={<Navigate to="/" replace />} />
-          <Route path="/cuenta/*" element={<Navigate to="/" replace />} />
-          <Route path="/favoritos" element={<WishlistPage />} />
+          <Route path="/cuenta" element={<AccountPage />} />
+          <Route path="/cuenta/pedidos" element={<AccountPage />} />
+          <Route path="/cuenta/favoritos" element={<WishlistPage />} />
+          <Route path="/cuenta/datos" element={<AccountPage />} />
+          <Route path="/cuenta/direcciones" element={<AccountPage />} />
         </Route>
 
         {/* ADMIN DASHBOARD ROUTES (PHASE 3 & PHASE 4) */}
