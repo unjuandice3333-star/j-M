@@ -28,7 +28,7 @@ export const AccountPage = () => {
     try {
       const activeSession = sessionStorage.getItem('jm_customer_session');
       if (!activeSession) {
-        customerLogout();
+        useECommerceStore.setState({ isCustomerLoggedIn: false, customerUser: null });
       }
     } catch (e) {}
   }, []);
