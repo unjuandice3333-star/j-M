@@ -71,7 +71,11 @@ export const useECommerceStore = create(
           sessionStorage.removeItem('jm_customer_session');
           localStorage.removeItem('jm_customer_session');
         } catch (e) {}
-        set({ isCustomerLoggedIn: false, customerUser: null });
+        set({
+          isCustomerLoggedIn: false,
+          customerUser: null,
+          userProfile: { name: '', email: '', phone: '', preferredSize: 'M', preferredFit: 'REGULAR' }
+        });
       },
 
       // Customer Profile & Address State

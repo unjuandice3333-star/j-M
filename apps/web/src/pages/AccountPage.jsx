@@ -327,7 +327,7 @@ export const AccountPage = () => {
                     MI CUENTA J&M
                   </h1>
                   <p style={{ fontSize: '0.88rem', color: '#71717A' }}>
-                    Bienvenido de nuevo, <strong>{customerUser?.name}</strong> - {customerUser?.email}
+                    Bienvenido de nuevo, <strong>{customerUser?.name || userProfile?.name || 'Cliente J&M'}</strong> - {customerUser?.email || userProfile?.email}
                   </p>
                 </div>
               </div>
