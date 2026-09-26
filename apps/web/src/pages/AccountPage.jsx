@@ -319,7 +319,7 @@ export const AccountPage = () => {
                   <img src={customerUser.avatar} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
                 ) : (
                   <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#09090B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.4rem' }}>
-                    {userProfile.name.charAt(0)}
+                    {(customerUser?.name || userProfile?.name || 'U').charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div>
