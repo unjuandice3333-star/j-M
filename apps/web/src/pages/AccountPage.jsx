@@ -26,12 +26,15 @@ export const AccountPage = () => {
 
   useEffect(() => {
     try {
+      localStorage.removeItem('jm-fashion-store-cart-v3');
+      localStorage.removeItem('jm-fashion-store-cart-v2');
+      localStorage.removeItem('jm-fashion-store-cart');
       const activeSession = sessionStorage.getItem('jm_customer_session');
       if (!activeSession || !customerUser || !isCustomerLoggedIn) {
         customerLogout();
       }
     } catch (e) {}
-  }, [customerUser, isCustomerLoggedIn]);
+  }, []);
 
   const [inputEmail, setInputEmail] = useState('');
   const [inputName, setInputName] = useState('');

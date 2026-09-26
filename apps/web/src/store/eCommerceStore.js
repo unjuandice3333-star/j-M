@@ -339,7 +339,7 @@ export const useECommerceStore = create(
       }
     }),
     {
-      name: 'jm-fashion-store-cart-v3',
+      name: 'jm-fashion-store-cart-v4',
       partialize: (state) => ({
         products: state.products,
         items: state.items,
