@@ -343,15 +343,13 @@ export const useECommerceStore = create(
       }
     }),
     {
-      name: 'jm-fashion-store-cart-v5',
+      name: 'jm-fashion-store-cart-v6',
       partialize: (state) => ({
         products: state.products,
         items: state.items,
         wishlist: state.wishlist,
         appliedCoupon: state.appliedCoupon,
-        userProfile: state.userProfile,
-        savedAddresses: state.savedAddresses,
-        orders: state.orders
+        savedAddresses: state.savedAddresses
       })
     }
   )
