@@ -28,13 +28,6 @@ if (fs.existsSync(indexHtmlPath)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
     fs.writeFileSync(path.join(targetDir, '404.html'), htmlContent);
-    routes.forEach((route) => {
-      const routeDir = path.join(targetDir, route);
-      if (!fs.existsSync(routeDir)) {
-        fs.mkdirSync(routeDir, { recursive: true });
-      }
-      fs.writeFileSync(path.join(routeDir, 'index.html'), htmlContent);
-    });
   }
 
   // 1. Populate current dist
