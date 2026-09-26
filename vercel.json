@@ -1,10 +1,11 @@
 {
+  "version": 2,
   "buildCommand": "pnpm --filter @jm/web build",
   "outputDirectory": "apps/web/dist",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
