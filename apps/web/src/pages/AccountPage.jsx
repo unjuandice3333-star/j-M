@@ -26,10 +26,14 @@ export const AccountPage = () => {
 
   useEffect(() => {
     try {
+      localStorage.removeItem('jm-fashion-store-cart-v5');
       localStorage.removeItem('jm-fashion-store-cart-v4');
       localStorage.removeItem('jm-fashion-store-cart-v3');
       localStorage.removeItem('jm-fashion-store-cart-v2');
       localStorage.removeItem('jm-fashion-store-cart');
+      if (!sessionStorage.getItem('jm_customer_session')) {
+        customerLogout();
+      }
     } catch (e) {}
   }, []);
 
