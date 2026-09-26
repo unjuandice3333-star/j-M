@@ -87,35 +87,10 @@ export const useECommerceStore = create(
         preferredFit: 'REGULAR'
       },
 
-      savedAddresses: [
-        {
-          id: 'addr-1',
-          name: 'Casa Principal',
-          department: 'Cundinamarca',
-          city: 'Bogotá D.C.',
-          address: 'Calle 93B # 11A - 28, Apt 402',
-          neighborhood: 'El Chicó',
-          notes: 'Dejar en portería con el celador de turno',
-          isDefault: true
-        }
-      ],
+      savedAddresses: [],
 
       // Orders History State
-      orders: [
-        {
-          id: 'JM-1024',
-          date: '20 de Septiembre, 2026',
-          status: 'Enviado',
-          total: 319800,
-          paymentMethod: 'Tarjeta de Crédito (Visa ***4242)',
-          shippingAddress: 'Calle 93B # 11A - 28, Apt 402, Bogotá D.C.',
-          trackingNumber: 'ENV-COL-8849201',
-          items: [
-            { name: 'Camiseta Heavyweight Oversize Essential', size: 'M', color: 'Negro Azabache', price: 129900, quantity: 1, image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=400' },
-            { name: 'Camisa Oxford Premium Manga Larga', size: 'M', color: 'Azul Celeste', price: 189900, quantity: 1, image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&q=80&w=400' }
-          ]
-        }
-      ],
+      orders: [],
 
       // Modals
       activeModal: null,

@@ -309,9 +309,7 @@ export const AccountPage = () => {
               </button>
             </div>
           </div>
-        ) : (
-          <div></div>
-        )}
+        ) : null}
       </div>
     </div>
   );
