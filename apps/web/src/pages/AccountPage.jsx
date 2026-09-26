@@ -27,10 +27,8 @@ export const AccountPage = () => {
   useEffect(() => {
     try {
       localStorage.clear();
-      const activeSession = sessionStorage.getItem('jm_customer_session');
-      if (!activeSession) {
-        useECommerceStore.setState({ isCustomerLoggedIn: false, customerUser: null });
-      }
+      sessionStorage.clear();
+      useECommerceStore.setState({ isCustomerLoggedIn: false, customerUser: null });
     } catch (e) {}
   }, []);
 
