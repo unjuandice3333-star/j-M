@@ -1,54 +1,141 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Package, Truck, Clock, MessageCircle, Printer, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Clock, MessageCircle, Printer, ArrowRight, ShieldCheck, Truck } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { formatCOP } from '../data/mockData';
+import { analyticsService } from '../services/analytics';
+import supabase from '../config/supabase';
 
 export const OrderConfirmationPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { orders } = useECommerceStore();
 
+  const [dbOrder, setDbOrder] = useState(null);
+  const [timelineEvents, setTimelineEvents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const orderId = searchParams.get('orderId') || 'JM-1024';
-  const order = orders.find((o) => o.id === orderId) || orders[0];
+  const fallbackOrder = orders.find((o) => o.id === orderId || o.order_number === orderId) || orders[0];
 
-  const handlePrint = () => {
-    window.print();
-  };
+  useEffect(() => {
+    const fetchRealOrderDetails = async () => {
+      setIsLoading(true);
+      try {
+        const { data: oData, error: oErr } = await supabase
+          .from('online_orders')
+          .select(`
+            id,
+            order_number,
+            customer_name,
+            customer_email,
+            shipping_address,
+            shipping_city,
+            total,
+            status,
+            created_at,
+            online_order_items (
+              id, product_name, size, color, unit_price, quantity, total
+            )
+          `)
+          .or(`id.eq.${orderId.includes('-') && orderId.length === 36 ? orderId : '00000000-0000-0000-0000-000000000000'},order_number.eq.${orderId}`)
+          .single();
 
-  const whatsappMessage = `Hola J&M Fashion Store, acabo de realizar la compra #${order.id}. Quisiera confirmar los detalles de despacho a Colombia.`;
+        if (!oErr && oData) {
+          const normOrder = {
+            id: oData.order_number || oData.id,
+            rawId: oData.id,
+            email: oData.customer_email,
+            customerName: oData.customer_name,
+            shippingAddress: `${oData.shipping_address}, ${oData.shipping_city}`,
+            paymentMethod: 'Wompi / Online',
+            total: Number(oData.total),
+            status: oData.status,
+            items: (oData.online_order_items || []).map((i) => ({
+              name: i.product_name,
+              size: i.size,
+              color: i.color,
+              price: Number(i.unit_price),
+              quantity: i.quantity,
+              image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=300'
+            }))
+          };
+          setDbOrder(normOrder);
+
+          // Cargar timeline de eventos reales en order_events
+          const { data: eData } = await supabase
+            .from('order_events')
+            .select('event_type, previous_status, new_status, created_at')
+            .eq('order_id', oData.id)
+            .order('created_at', { ascending: true });
+
+          if (eData) {
+            setTimelineEvents(eData);
+          }
+        } else {
+          setDbOrder(fallbackOrder);
+        }
+      } catch (e) {
+        setDbOrder(fallbackOrder);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRealOrderDetails();
+  }, [orderId]);
+
+  const activeOrder = dbOrder || fallbackOrder;
+
+  useEffect(() => {
+    if (activeOrder && !activeOrder._analyticsTracked) {
+      analyticsService.purchase(activeOrder);
+      activeOrder._analyticsTracked = true;
+    }
+  }, [activeOrder]);
+
+  const isPendingPayment = activeOrder.status === 'pending' || activeOrder.status === 'payment_pending';
+
+  const whatsappMessage = `Hola J&M Fashion Store, acabo de realizar la compra #${activeOrder.id}. Quisiera confirmar los detalles de despacho en Colombia.`;
   const whatsappUrl = `https://wa.me/573000000000?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
       <div className="jm-container" style={{ maxWidth: '820px' }}>
-        {/* SUCCESS ICON & BANNER */}
+        {/* SUCCESS OR PENDING STATUS BANNER */}
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-          <CheckCircle2 size={64} color="#10B981" style={{ margin: '0 auto 1rem auto' }} />
-          <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', color: '#10B981', textTransform: 'uppercase' }}>
-            ¡COMPRA REALIZADA CON ÉXITO!
+          {isPendingPayment ? (
+            <Clock size={64} color="#D97706" style={{ margin: '0 auto 1rem auto' }} />
+          ) : (
+            <CheckCircle2 size={64} color="#10B981" style={{ margin: '0 auto 1rem auto' }} />
+          )}
+          
+          <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', color: isPendingPayment ? '#D97706' : '#10B981', textTransform: 'uppercase' }}>
+            {isPendingPayment ? 'ESTAMOS ESPERANDO CONFIRMACIÓN DEL PAGO' : '¡COMPRA REALIZADA CON ÉXITO!'}
           </span>
           <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0 0.5rem 0' }}>
-            ¡GRACIAS POR TU PEDIDO! #{order.id}
+            {isPendingPayment ? 'PEDIDO REGISTRADO #' : '¡GRACIAS POR TU PEDIDO! #'}{activeOrder.id}
           </h1>
           <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
-            Hemos enviado la confirmación y recibo detallado al correo <strong>{order.email || 'tu correo registrado'}</strong>.
+            {isPendingPayment
+              ? 'Tu pedido se encuentra en espera de confirmación de pago por Wompi.'
+              : `Hemos enviado la confirmación y recibo detallado al correo ${activeOrder.email || 'tu correo registrado'}.`}
           </p>
         </div>
 
-        {/* ORDER TIMELINE TRACKING */}
+        {/* ORDER TIMELINE TRACKING (FROM ORDER_EVENTS) */}
         <div style={{ backgroundColor: '#FAFAFA', border: '1px solid #E4E4E7', padding: '2rem', borderRadius: '12px', marginBottom: '2.5rem' }}>
           <h3 style={{ fontSize: '0.95rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '1.5rem', color: '#09090B' }}>
-            SEGUIMIENTO EN TIEMPO REAL DEL PEDIDO
+            SEGUIMIENTO EN TIEMPO REAL DEL PEDIDO (TIMELINE EN POSTGRESQL)
           </h3>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', textAlign: 'center', position: 'relative' }}>
             {[
-              { title: 'Pedido Recibido', active: true, done: true },
-              { title: 'Pago Confirmado', active: true, done: true },
-              { title: 'En Preparación', active: true, done: false },
-              { title: 'Enviado', active: false, done: false },
-              { title: 'Entregado', active: false, done: false }
+              { statusKey: 'payment_pending', title: 'Pedido Recibido', active: true, done: true },
+              { statusKey: 'paid', title: 'Pago Confirmado', active: activeOrder.status !== 'payment_pending', done: activeOrder.status !== 'payment_pending' },
+              { statusKey: 'preparing', title: 'En Preparación', active: ['preparing', 'shipped', 'delivered'].includes(activeOrder.status), done: ['shipped', 'delivered'].includes(activeOrder.status) },
+              { statusKey: 'shipped', title: 'Enviado', active: ['shipped', 'delivered'].includes(activeOrder.status), done: activeOrder.status === 'delivered' },
+              { statusKey: 'delivered', title: 'Entregado', active: activeOrder.status === 'delivered', done: activeOrder.status === 'delivered' }
             ].map((step, idx) => (
               <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                 <div style={{
@@ -81,7 +168,7 @@ export const OrderConfirmationPage = () => {
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            {order.items?.map((item, idx) => (
+            {activeOrder.items?.map((item, idx) => (
               <div key={idx} style={{ display: 'flex', gap: '1rem', alignItems: 'center', borderBottom: '1px solid #F4F4F5', paddingBottom: '1rem' }}>
                 <img src={item.image} alt="" style={{ width: '55px', height: '70px', objectFit: 'cover', borderRadius: '6px' }} />
                 <div style={{ flex: 1 }}>
@@ -98,13 +185,13 @@ export const OrderConfirmationPage = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', fontSize: '0.88rem', color: '#27272A', backgroundColor: '#FAFAFA', padding: '1.25rem', borderRadius: '8px' }}>
             <div>
               <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#71717A', display: 'block' }}>DIRECCIÓN DE ENTREGA</span>
-              <p style={{ fontWeight: 600, marginTop: '0.2rem' }}>{order.shippingAddress || 'Dirección registrada en Colombia'}</p>
+              <p style={{ fontWeight: 600, marginTop: '0.2rem' }}>{activeOrder.shippingAddress || 'Dirección registrada en Colombia'}</p>
             </div>
             <div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#71717A', display: 'block' }}>MÉTODO DE PAGO</span>
-              <p style={{ fontWeight: 600, marginTop: '0.2rem' }}>{order.paymentMethod}</p>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#71717A', display: 'block' }}>ESTADO DE PAGO DE LA ORDEN</span>
+              <p style={{ fontWeight: 800, marginTop: '0.2rem', color: isPendingPayment ? '#D97706' : '#10B981' }}>{activeOrder.status}</p>
               <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#09090B', marginTop: '0.4rem' }}>
-                TOTAL PAID: {formatCOP(order.total)}
+                TOTAL: {formatCOP(activeOrder.total)}
               </div>
             </div>
           </div>
@@ -133,7 +220,7 @@ export const OrderConfirmationPage = () => {
           </a>
 
           <button
-            onClick={handlePrint}
+            onClick={() => window.print()}
             style={{
               backgroundColor: '#FFFFFF',
               border: '1px solid #E4E4E7',

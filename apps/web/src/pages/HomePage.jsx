@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles, ShieldCheck, Truck, RotateCcw, MapPin, Mail, ChevronRight, Check } from 'lucide-react';
+import { ArrowRight, Sparkles, ShieldCheck, Truck, RefreshCw, Headphones, MapPin, Mail, ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { CATEGORIES, OCCASIONS, STYLE_LINES } from '../data/mockData';
 import ProductCard from '../components/Product/ProductCard';
 import CompleteTheLook from '../components/Product/CompleteTheLook';
 import { useECommerceStore } from '../store/eCommerceStore';
+import SafeImage from '../components/Common/SafeImage';
 
 export const HomePage = () => {
   const navigate = useNavigate();
-  const { products, openFitGuide } = useECommerceStore();
+  const { products, editorialImages } = useECommerceStore();
+  const carouselRef = useRef(null);
+
+  const getEditorialImg = (key, fallback) => (editorialImages && editorialImages[key]) ? editorialImages[key] : fallback;
 
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
@@ -16,6 +20,16 @@ export const HomePage = () => {
   const activeProducts = products.filter((p) => p.status !== 'borrador' && p.status !== 'archivado');
   const newProducts = activeProducts.filter((p) => p.isNew);
   const bestSellerProducts = activeProducts.filter((p) => p.isBestSeller);
+
+  const scrollCarousel = (direction) => {
+    if (carouselRef.current) {
+      const scrollAmount = carouselRef.current.clientWidth * 0.75;
+      carouselRef.current.scrollBy({
+        left: direction === 'next' ? scrollAmount : -scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const handleNewsletterSubmit = (e) => {
     e.preventDefault();
@@ -27,387 +41,906 @@ export const HomePage = () => {
   return (
     <div style={{ backgroundColor: '#FFFFFF' }}>
       {/* 1. HERO SECTION */}
-      <section style={{
-        position: 'relative',
-        height: '85vh',
-        minHeight: '580px',
-        maxHeight: '800px',
-        backgroundColor: '#09090B',
-        overflow: 'hidden',
-        display: 'flex',
-        alignItems: 'center'
-      }}>
-        {/* Background Editorial Fashion Image */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: 'url("https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&q=80&w=2000")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center top',
-          opacity: 0.55
-        }} />
+      <section
+        role="region"
+        aria-label="Campaña principal"
+        style={{
+          position: 'relative',
+          height: '76vh',
+          minHeight: '520px',
+          maxHeight: '740px',
+          backgroundColor: '#09090B',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center'
+        }}
+      >
+        {/* Background Editorial Male Fashion Image */}
+        <div
+          role="img"
+          aria-label="Colección Moda Masculina J&M"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url("${getEditorialImg('hero_main', 'https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&q=80&w=2000')}")`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center top',
+            opacity: 0.85
+          }}
+        />
 
-        {/* Gradient Overlay */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(to right, rgba(9,9,11,0.95) 0%, rgba(9,9,11,0.6) 50%, transparent 100%)'
-        }} />
+        {/* Localized Gradient Overlay: Rich Left Dark Contrast -> Bright Right Transparency */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, rgba(9,9,11,0.88) 0%, rgba(9,9,11,0.68) 35%, rgba(9,9,11,0.20) 70%, rgba(9,9,11,0.05) 100%)'
+          }}
+        />
 
-        {/* Hero Content */}
-        <div className="jm-container" style={{ position: 'relative', zIndex: 10, color: '#FFFFFF' }}>
-          <div style={{ maxWidth: '640px' }} className="animate-fade-in">
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              backgroundColor: 'rgba(212, 175, 55, 0.15)',
-              border: '1px solid #D4AF37',
-              color: '#D4AF37',
-              fontSize: '0.75rem',
-              fontWeight: 800,
-              letterSpacing: '0.15em',
-              padding: '6px 14px',
-              borderRadius: '999px',
-              marginBottom: '1.25rem',
-              textTransform: 'uppercase'
-            }}>
-              <Sparkles size={14} /> TIENDA MULTIMARCA MASCULINA
+        {/* Hero Content Block - Micro-shifted 16px to the right for editorial balance */}
+        <div
+          className="jm-container"
+          style={{
+            position: 'relative',
+            zIndex: 10,
+            color: '#FFFFFF',
+            transform: 'translateY(-6px)',
+            width: '100%',
+            paddingLeft: 'calc(1rem + 16px)'
+          }}
+        >
+          <div style={{ maxWidth: '560px' }} className="animate-fade-in">
+            {/* Refined Eyebrow Badge */}
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                backgroundColor: 'rgba(212, 175, 55, 0.08)',
+                border: '1px solid rgba(212, 175, 55, 0.70)',
+                color: '#D4AF37',
+                fontSize: '0.66rem',
+                fontWeight: 700,
+                letterSpacing: '0.22em',
+                padding: '4px 11px',
+                borderRadius: '999px',
+                marginBottom: '0.90rem',
+                textTransform: 'uppercase'
+              }}
+            >
+              MODA MASCULINA · COLOMBIA
             </span>
 
-            <h1 style={{
-              fontFamily: "'Outfit', sans-serif",
-              fontSize: 'clamp(2.5rem, 5vw, 4.2rem)',
-              fontWeight: 900,
-              letterSpacing: '0.04em',
-              lineHeight: 1.05,
-              marginBottom: '1.2rem',
-              textTransform: 'uppercase'
-            }}>
-              3 ESTILOS.<br />UNA SOLA FIRMA.
+            {/* Campaign Headline (+6% Size Increase, 1.02 Line-Height for High-Impact Editorial Feel) */}
+            <h1
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 'clamp(2.35rem, 4.5vw, 3.75rem)',
+                fontWeight: 900,
+                letterSpacing: '0.02em',
+                lineHeight: 1.02,
+                marginBottom: '1.15rem',
+                textTransform: 'uppercase'
+              }}
+            >
+              VISTE TU ESTILO.<br />VIVE TU ESENCIA.
             </h1>
 
-            <p style={{
-              fontSize: 'clamp(1rem, 1.5vw, 1.2rem)',
-              color: '#D4D4D8',
-              lineHeight: 1.6,
-              marginBottom: '2rem',
-              fontWeight: 400
-            }}>
-              Explora nuestras 3 líneas exclusivas: <strong>Urbana</strong> (Streetwear), <strong>Elegante</strong> (Oficina & Seda) y <strong>Smart Casual</strong> (Denim de Mezclilla).
+            {/* Subtitle Description with 18px Vertical Separation */}
+            <p
+              style={{
+                fontSize: 'clamp(0.90rem, 1.2vw, 1.05rem)',
+                color: '#E4E4E7',
+                lineHeight: 1.58,
+                maxWidth: '540px',
+                marginBottom: '1.9rem',
+                fontWeight: 400
+              }}
+            >
+              Moda masculina para cada momento. Descubre prendas diseñadas para acompañarte todos los días.
             </p>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+            {/* Action CTAs (52px Height, 15px Gap, High Legibility Outline) */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.95rem', alignItems: 'center' }}>
               <button
                 onClick={() => navigate('/ropa')}
+                aria-label="Comprar ahora en la tienda"
                 style={{
+                  height: '52px',
                   backgroundColor: '#FFFFFF',
                   color: '#09090B',
-                  padding: '1.1rem 2.2rem',
+                  padding: '0 2.2rem',
                   borderRadius: '6px',
                   fontWeight: 800,
-                  fontSize: '0.92rem',
-                  letterSpacing: '0.1em',
+                  fontSize: '0.86rem',
+                  letterSpacing: '0.08em',
                   textTransform: 'uppercase',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.6rem',
-                  transition: 'transform 0.15s, background 0.15s'
+                  justifyContent: 'center',
+                  gap: '0.55rem',
+                  cursor: 'pointer',
+                  border: 'none',
+                  transition: 'all 220ms ease-out'
                 }}
+                className="hero-primary-btn"
               >
-                EXPLORAR TIENDA <ArrowRight size={18} />
+                <span>COMPRAR AHORA</span>
+                <ArrowRight size={17} className="hero-arrow-icon" style={{ transition: 'transform 220ms ease-out' }} />
+              </button>
+
+              <button
+                onClick={() => navigate('/colecciones')}
+                aria-label="Descubrir colecciones masculinas"
+                style={{
+                  height: '52px',
+                  backgroundColor: 'rgba(9, 9, 11, 0.28)',
+                  backdropFilter: 'blur(4px)',
+                  WebkitBackdropFilter: 'blur(4px)',
+                  color: '#FFFFFF',
+                  border: '1.5px solid rgba(255, 255, 255, 0.95)',
+                  padding: '0 2.2rem',
+                  borderRadius: '6px',
+                  fontWeight: 800,
+                  fontSize: '0.86rem',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 220ms ease-out'
+                }}
+                className="hero-secondary-btn"
+              >
+                DESCUBRIR COLECCIÓN
               </button>
             </div>
           </div>
         </div>
+
+        {/* Micro-interactions & Responsive Styles */}
+        <style>{`
+          .hero-primary-btn:hover {
+            background-color: #F4F4F5 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 22px rgba(255,255,255,0.22);
+          }
+          .hero-primary-btn:hover .hero-arrow-icon {
+            transform: translateX(4px);
+          }
+          .hero-secondary-btn:hover {
+            background-color: rgba(255, 255, 255, 0.18) !important;
+            border-color: #FFFFFF !important;
+            transform: translateY(-1px);
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .hero-primary-btn, .hero-secondary-btn, .hero-arrow-icon {
+              transition: none !important;
+              transform: none !important;
+            }
+          }
+          @media (max-width: 768px) {
+            .hero-primary-btn, .hero-secondary-btn {
+              width: 100%;
+            }
+          }
+        `}</style>
       </section>
 
-      {/* 2. LAS 3 LÍNEAS DE ESTILO MULTIMARCA */}
-      <section style={{ padding: '4.5rem 0', backgroundColor: '#09090B', color: '#FFFFFF' }}>
+      {/* 2. TRES LÍNEAS DE ESTILO J&M */}
+      <section
+        role="region"
+        aria-label="Líneas de estilo masculinas J&M"
+        style={{ padding: '4.5rem 0', backgroundColor: '#09090B', color: '#FFFFFF' }}
+      >
         <div className="jm-container">
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', color: '#D4AF37', textTransform: 'uppercase' }}>
-              CONCEPTO MULTIMARCA J&M
+          {/* Section Header */}
+          <div style={{ textAlign: 'center', marginBottom: '2.8rem' }}>
+            <span
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                letterSpacing: '0.22em',
+                color: '#D4AF37',
+                textTransform: 'uppercase',
+                display: 'inline-block',
+                marginBottom: '0.4rem'
+              }}
+            >
+              LÍNEAS DE ESTILO J&amp;M
             </span>
-            <h2 style={{ fontSize: '2.2rem', fontWeight: 900, textTransform: 'uppercase', marginTop: '0.3rem', letterSpacing: '0.04em' }}>
-              EXPLORA SEGÚN TU ESTILO
+            <h2
+              style={{
+                fontSize: 'clamp(1.45rem, 2.4vw, 2.05rem)',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                color: '#FFFFFF',
+                lineHeight: 1.25,
+                margin: 0
+              }}
+            >
+              UNA FORMA DE VESTIR PARA CADA MOMENTO
             </h2>
-            <p style={{ fontSize: '0.95rem', color: '#A1A1AA', maxWidth: '600px', margin: '0.5rem auto 0 auto' }}>
-              Selecciona el concepto que define tu día a día y descubre prendas de ingeniería textil superior.
-            </p>
           </div>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '1.75rem'
-          }}>
+          {/* 3-Column Responsive Grid */}
+          <div className="style-lines-grid">
             {STYLE_LINES.map((line) => (
               <div
                 key={line.id}
                 onClick={() => navigate(`/linea/${line.slug}`)}
-                style={{
-                  position: 'relative',
-                  height: '420px',
-                  borderRadius: '16px',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  border: '1px solid #27272A',
-                  transition: 'transform 0.3s, border-color 0.3s'
+                tabIndex={0}
+                role="button"
+                aria-label={`Explorar línea ${line.name}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/linea/${line.slug}`);
+                  }
                 }}
-                className="hover-card-zoom"
+                className="style-line-card"
               >
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  backgroundImage: `url("${line.image}")`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  transition: 'transform 0.5s'
-                }} />
+                {/* Background Image with Smooth Hover Zoom */}
+                <SafeImage
+                  src={getEditorialImg(`style_${line.id}`, line.image)}
+                  alt={line.name}
+                  className="style-line-img"
+                />
 
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'linear-gradient(to top, rgba(9,9,11,0.95) 0%, rgba(9,9,11,0.4) 60%, transparent 100%)'
-                }} />
+                {/* Micro-tuned Progressive Bottom Overlay (Subtle 0.88 max alpha to keep photo vibrant) */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(to top, rgba(9,9,11,0.88) 0%, rgba(9,9,11,0.52) 48%, rgba(9,9,11,0.06) 82%, transparent 100%)',
+                    zIndex: 2,
+                    pointerEvents: 'none'
+                  }}
+                />
 
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  padding: '2rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'flex-end',
-                  color: '#FFFFFF'
-                }}>
-                  <span style={{
-                    alignSelf: 'flex-start',
-                    backgroundColor: '#D4AF37',
-                    color: '#09090B',
-                    fontSize: '0.68rem',
-                    fontWeight: 900,
-                    letterSpacing: '0.12em',
-                    padding: '4px 10px',
-                    borderRadius: '4px',
-                    marginBottom: '0.8rem',
-                    textTransform: 'uppercase'
-                  }}>
-                    {line.badge}
-                  </span>
-
-                  <h3 style={{ fontSize: '1.75rem', fontWeight: 900, textTransform: 'uppercase', marginBottom: '0.2rem' }}>
+                {/* Card Content Hierarchy */}
+                <div
+                  style={{
+                    position: 'relative',
+                    zIndex: 3,
+                    height: '100%',
+                    padding: '2rem 1.65rem 1.65rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end',
+                    color: '#FFFFFF'
+                  }}
+                >
+                  {/* Line Name */}
+                  <h3
+                    style={{
+                      fontFamily: "'Outfit', sans-serif",
+                      fontSize: '1.65rem',
+                      fontWeight: 900,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      marginBottom: '0.35rem',
+                      lineHeight: 1.1,
+                      color: '#FFFFFF'
+                    }}
+                  >
                     {line.name}
                   </h3>
 
-                  <p style={{ fontSize: '0.88rem', color: '#E4E4E7', fontWeight: 600, marginBottom: '0.5rem' }}>
-                    {line.tagline}
+                  {/* Tagline */}
+                  <p
+                    style={{
+                      fontSize: '0.88rem',
+                      color: '#E4E4E7',
+                      fontWeight: 600,
+                      marginBottom: '0.50rem',
+                      fontStyle: 'italic',
+                      lineHeight: 1.3
+                    }}
+                  >
+                    &quot;{line.tagline}&quot;
                   </p>
 
-                  <p style={{ fontSize: '0.8rem', color: '#A1A1AA', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                  {/* Description (Enhanced +1px font size & #D4D4D8 contrast) */}
+                  <p
+                    style={{
+                      fontSize: '0.84rem',
+                      color: '#D4D4D8',
+                      lineHeight: 1.52,
+                      marginBottom: '1.2rem',
+                      fontWeight: 400
+                    }}
+                  >
                     {line.description}
                   </p>
 
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontSize: '0.85rem',
-                    fontWeight: 800,
-                    color: '#FFFFFF',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase'
-                  }}>
-                    VER COLECCIÓN <ArrowRight size={16} color="#D4AF37" />
+                  {/* Editorial Link CTA with Hover Micro-interaction */}
+                  <div className="style-line-cta">
+                    <span>EXPLORAR LÍNEA</span>
+                    <ArrowRight
+                      size={16}
+                      color="#D4AF37"
+                      className="style-line-arrow"
+                      style={{ transition: 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+                    />
                   </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Embedded Dynamic Card Animations & Micro-interactions */}
+        <style>{`
+          .style-lines-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+          }
+          @media (max-width: 992px) {
+            .style-lines-grid {
+              grid-template-columns: repeat(2, 1fr);
+            }
+          }
+          @media (max-width: 640px) {
+            .style-lines-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+          .style-line-card {
+            position: relative;
+            height: 420px;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 1px solid #27272A;
+            background-color: #18181B;
+            transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1),
+                        border-color 400ms cubic-bezier(0.4, 0, 0.2, 1),
+                        box-shadow 400ms cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .style-line-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(212, 175, 55, 0.55);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+          }
+          .style-line-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 450ms cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .style-line-card:hover .style-line-img {
+            transform: scale(1.025);
+          }
+          .style-line-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.80rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+            transition: color 280ms cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .style-line-card:hover .style-line-cta {
+            color: #D4AF37;
+          }
+          .style-line-card:hover .style-line-arrow {
+            transform: translateX(4px);
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .style-line-card, .style-line-img, .style-line-arrow, .style-line-cta {
+              transition: none !important;
+              transform: none !important;
+            }
+          }
+        `}</style>
       </section>
 
-      {/* 2. NUEVOS PRODUCTOS */}
-      <section style={{ padding: '4.5rem 0' }}>
+      {/* 3. NUEVA COLECCIÓN */}
+      <section
+        role="region"
+        aria-label="Nueva colección recien llegada"
+        style={{ padding: '3rem 0' }}
+      >
         <div className="jm-container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
+          {/* Section Header */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-end',
+              marginBottom: '1.5rem'
+            }}
+          >
             <div>
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.12em', color: '#71717A', textTransform: 'uppercase' }}>
+              <span
+                style={{
+                  fontSize: '0.70rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.20em',
+                  color: '#D4AF37',
+                  textTransform: 'uppercase',
+                  display: 'inline-block',
+                  marginBottom: '0.25rem'
+                }}
+              >
                 RECIÉN LLEGADOS
               </span>
-              <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', marginTop: '0.2rem' }}>
+              <h2
+                style={{
+                  fontSize: 'clamp(1.4rem, 2.2vw, 1.85rem)',
+                  fontWeight: 900,
+                  color: '#09090B',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  margin: 0
+                }}
+              >
                 NUEVA COLECCIÓN
               </h2>
             </div>
-            <Link to="/nuevo" style={{ fontSize: '0.88rem', fontWeight: 700, color: '#09090B', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              VER TODO <ChevronRight size={18} />
+          {/* Carousel Controls & Section Link */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="carousel-nav-btns" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              <button
+                onClick={() => scrollCarousel('prev')}
+                aria-label="Anterior producto"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  border: '1px solid #E4E4E7',
+                  backgroundColor: '#FFFFFF',
+                  color: '#09090B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                className="carousel-btn"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={() => scrollCarousel('next')}
+                aria-label="Siguiente producto"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  border: '1px solid #E4E4E7',
+                  backgroundColor: '#FFFFFF',
+                  color: '#09090B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                className="carousel-btn"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+
+            <Link
+              to="/nuevo"
+              style={{
+                fontSize: '0.82rem',
+                fontWeight: 800,
+                color: '#09090B',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                textDecoration: 'none',
+                transition: 'color 0.2s ease',
+                marginLeft: '0.5rem'
+              }}
+              className="ver-todo-link"
+            >
+              <span>VER TODO</span>
+              <ChevronRight size={17} className="ver-todo-arrow" style={{ transition: 'transform 0.2s ease' }} />
             </Link>
           </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-            gap: '1.5rem'
-          }}>
-            {newProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
         </div>
+
+        {/* Carousel Scroll Container */}
+        <div
+          ref={carouselRef}
+          className="new-collection-carousel"
+          style={{
+            display: 'flex',
+            gap: '1.25rem',
+            overflowX: 'auto',
+            scrollSnapType: 'x mandatory',
+            scrollBehavior: 'smooth',
+            paddingBottom: '0.75rem',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          {newProducts.map((product) => (
+            <div
+              key={product.id}
+              className="carousel-item"
+              style={{
+                flex: '0 0 calc(25% - 0.94rem)',
+                minWidth: '240px',
+                scrollSnapAlign: 'start'
+              }}
+            >
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        .new-collection-carousel::-webkit-scrollbar {
+          display: none;
+        }
+        .new-collection-carousel {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .carousel-btn:hover {
+          border-color: #09090B !important;
+          background-color: #F4F4F5 !important;
+        }
+        .ver-todo-link:hover {
+          color: #71717A !important;
+        }
+        .ver-todo-link:hover .ver-todo-arrow {
+          transform: translateX(3px);
+        }
+        @media (max-width: 1024px) {
+          .carousel-item {
+            flex: 0 0 calc(33.333% - 0.84rem) !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .carousel-item {
+            flex: 0 0 calc(50% - 0.625rem) !important;
+            min-width: 170px !important;
+          }
+        }
+      `}</style>
       </section>
 
-      {/* 3. CATEGORÍAS PRINCIPALES */}
-      <section style={{ padding: '3.5rem 0', backgroundColor: '#FAFAFA' }}>
+      {/* 4. CATEGORÍAS DESTACADAS */}
+      <section style={{ padding: '3.75rem 0', backgroundColor: '#FAFAFA' }}>
         <div className="jm-container">
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.12em', color: '#71717A', textTransform: 'uppercase' }}>
-              EXPLORA EL CATÁLOGO
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <span
+              style={{
+                fontSize: '0.70rem',
+                fontWeight: 800,
+                letterSpacing: '0.20em',
+                color: '#D4AF37',
+                textTransform: 'uppercase',
+                display: 'inline-block',
+                marginBottom: '0.35rem'
+              }}
+            >
+              CATÁLOGO DE PRENDAS
             </span>
-            <h2 style={{ fontSize: '2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', marginTop: '0.2rem' }}>
+            <h2
+              style={{
+                fontSize: 'clamp(1.5rem, 2.3vw, 1.95rem)',
+                fontWeight: 900,
+                color: '#09090B',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                margin: 0
+              }}
+            >
               CATEGORÍAS DESTACADAS
             </h2>
           </div>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: '1.25rem'
-          }}>
+          <div className="featured-categories-grid">
             {CATEGORIES.map((cat) => (
               <Link
                 key={cat.id}
                 to={`/ropa/${cat.slug}`}
+                className="category-card"
                 style={{
                   position: 'relative',
-                  height: '280px',
+                  height: '270px',
                   borderRadius: '10px',
                   overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'flex-end',
-                  padding: '1.5rem',
+                  padding: '1.25rem',
                   textDecoration: 'none',
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.06)'
+                  backgroundColor: '#18181B',
+                  border: '1px solid #E4E4E7'
                 }}
               >
-                <img
-                  src={cat.image}
+                <SafeImage
+                  src={getEditorialImg(`category_${cat.id}`, cat.image)}
                   alt={cat.name}
+                  className="category-card-img"
                   style={{
                     position: 'absolute',
                     inset: 0,
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
-                    transition: 'transform 0.4s ease'
+                    transition: 'transform 450ms cubic-bezier(0.16, 1, 0.3, 1), filter 450ms ease'
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.06)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
                 />
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'linear-gradient(to top, rgba(9,9,11,0.85) 0%, rgba(9,9,11,0.2) 60%, transparent 100%)'
-                }} />
-                <div style={{ position: 'relative', zIndex: 10, color: '#FFFFFF' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#D4AF37', letterSpacing: '0.1em' }}>
-                    {activeProducts.filter((p) => p.category === cat.slug).length || cat.count} PRENDAS
-                  </span>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, textTransform: 'uppercase', marginTop: '0.1rem' }}>
+                <div
+                  className="category-card-overlay"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(to top, rgba(9,9,11,0.88) 0%, rgba(9,9,11,0.25) 55%, transparent 100%)',
+                    transition: 'background 350ms ease'
+                  }}
+                />
+                <div
+                  className="category-card-content"
+                  style={{
+                    position: 'relative',
+                    zIndex: 10,
+                    color: '#FFFFFF',
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'transform 300ms ease'
+                  }}
+                >
+                  <h3 style={{ fontSize: '1.08rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
                     {cat.name}
                   </h3>
+                  <ChevronRight size={18} className="category-card-arrow" style={{ transition: 'transform 300ms ease, color 300ms ease, opacity 300ms ease', opacity: 0.85 }} />
                 </div>
               </Link>
             ))}
           </div>
         </div>
+
+        <style>{`
+          .featured-categories-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.25rem;
+          }
+          .category-card {
+            cursor: pointer;
+            transition: border-color 300ms ease, box-shadow 300ms ease;
+          }
+          .category-card:hover {
+            border-color: rgba(212, 175, 55, 0.45) !important;
+          }
+          .category-card:hover .category-card-img {
+            transform: scale(1.03);
+            filter: brightness(1.04) contrast(1.03);
+          }
+          .category-card:hover .category-card-content {
+            transform: translateY(-3px);
+          }
+          .category-card:hover .category-card-arrow {
+            transform: translateX(4px);
+            opacity: 1;
+            color: #D4AF37 !important;
+          }
+          @media (max-width: 1024px) {
+            .featured-categories-grid {
+              grid-template-columns: repeat(2, 1fr);
+              gap: 1.1rem;
+            }
+          }
+          @media (max-width: 640px) {
+            .featured-categories-grid {
+              grid-template-columns: repeat(2, 1fr);
+              gap: 0.85rem;
+            }
+            .category-card {
+              height: 210px !important;
+              padding: 0.95rem !important;
+            }
+            .category-card h3 {
+              font-size: 0.92rem !important;
+            }
+          }
+        `}</style>
       </section>
 
-      {/* 4. COMPRA POR OCASIÓN */}
-      <section style={{ padding: '4.5rem 0' }}>
+      {/* 5. COMPRA POR OCASIÓN */}
+      <section style={{ padding: '80px 0', backgroundColor: '#FFFFFF' }}>
         <div className="jm-container">
-          <div style={{ marginBottom: '2.5rem' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.12em', color: '#71717A', textTransform: 'uppercase' }}>
-              ENCUENTRA TU ESTILO SEGÚN EL MOMENTO
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <span
+              style={{
+                fontSize: '0.70rem',
+                fontWeight: 800,
+                letterSpacing: '0.20em',
+                color: '#D4AF37',
+                textTransform: 'uppercase',
+                display: 'inline-block',
+                marginBottom: '15px'
+              }}
+            >
+              SELECCIÓN POR OCASIÓN
             </span>
-            <h2 style={{ fontSize: '2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', marginTop: '0.2rem' }}>
+            <h2
+              style={{
+                fontSize: 'clamp(1.5rem, 2.3vw, 1.95rem)',
+                fontWeight: 900,
+                color: '#09090B',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                margin: 0
+              }}
+            >
               COMPRA POR OCASIÓN
             </h2>
           </div>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '1.5rem'
-          }}>
-            {OCCASIONS.map((occ) => (
-              <Link
-                key={occ.id}
-                to={`/colecciones?ocasion=${occ.id}`}
-                style={{
-                  position: 'relative',
-                  height: '240px',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'flex-end',
-                  padding: '1.5rem',
-                  textDecoration: 'none'
-                }}
-              >
-                <img
-                  src={occ.image}
-                  alt={occ.name}
+          <div className="occasions-grid">
+            {OCCASIONS.map((occ) => {
+              const occKey = occ.id === 'trabajo' ? 'occasion_trabajo_oficina'
+                : occ.id === 'cita' ? 'occasion_cita_salidas'
+                : occ.id === 'casual' ? 'occasion_casual_urbano'
+                : occ.id === 'fiesta' ? 'occasion_noche_eventos'
+                : occ.id === 'fin-de-semana' ? 'occasion_fin_semana'
+                : 'occasion_streetwear';
+
+              return (
+                <Link
+                  key={occ.id}
+                  to={`/colecciones?ocasion=${occ.id}`}
+                  className="occasion-card"
                   style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    transition: 'transform 0.4s ease'
+                    position: 'relative',
+                    height: '270px',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end',
+                    padding: '1.35rem',
+                    textDecoration: 'none',
+                    backgroundColor: '#18181B',
+                    border: '1px solid #E4E4E7'
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                />
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'linear-gradient(to top, rgba(9,9,11,0.9) 0%, transparent 80%)'
-                }} />
-                <div style={{ position: 'relative', zIndex: 10, color: '#FFFFFF' }}>
-                  <h3 style={{ fontSize: '1.35rem', fontWeight: 900, textTransform: 'uppercase' }}>
-                    {occ.name}
-                  </h3>
-                  <p style={{ fontSize: '0.82rem', color: '#D4D4D8', marginTop: '0.25rem' }}>
-                    {occ.subtitle}
-                  </p>
-                </div>
-              </Link>
-            ))}
+                >
+                  <SafeImage
+                    src={getEditorialImg(occKey, occ.image)}
+                    alt={occ.name}
+                    className="occasion-card-img"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      transition: 'transform 400ms cubic-bezier(0.16, 1, 0.3, 1), filter 400ms ease'
+                    }}
+                  />
+                  <div
+                    className="occasion-card-overlay"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(to top, rgba(9,9,11,0.92) 0%, rgba(9,9,11,0.30) 55%, transparent 100%)',
+                      transition: 'background 350ms ease'
+                    }}
+                  />
+                  <div
+                    className="occasion-card-content"
+                    style={{
+                      position: 'relative',
+                      zIndex: 10,
+                      color: '#FFFFFF',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'flex-end',
+                      justifyContent: 'space-between',
+                      transition: 'transform 300ms ease'
+                    }}
+                  >
+                    <div>
+                      <h3 style={{ fontSize: '1.10rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
+                        {occ.name}
+                      </h3>
+                      <p style={{ fontSize: '0.80rem', color: '#E4E4E7', marginTop: '0.3rem', fontWeight: 400, margin: '0.3rem 0 0 0' }}>
+                        "{occ.subtitle}"
+                      </p>
+                    </div>
+                    <ChevronRight size={19} className="occasion-card-arrow" style={{ transition: 'transform 300ms ease, color 300ms ease, opacity 300ms ease', opacity: 0.85, flexShrink: 0, marginLeft: '0.5rem' }} />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
+
+        <style>{`
+          .occasions-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 22px;
+          }
+          .occasion-card {
+            cursor: pointer;
+            transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), border-color 300ms ease, box-shadow 300ms ease;
+          }
+          .occasion-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(212, 175, 55, 0.45) !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.20);
+          }
+          .occasion-card:hover .occasion-card-img {
+            transform: scale(1.03);
+            filter: brightness(1.04) contrast(1.03);
+          }
+          .occasion-card:hover .occasion-card-content {
+            transform: translateY(-2px);
+          }
+          .occasion-card:hover .occasion-card-arrow {
+            transform: translateX(4px);
+            opacity: 1;
+            color: #D4AF37 !important;
+          }
+          @media (max-width: 1024px) {
+            .occasions-grid {
+              grid-template-columns: repeat(2, 1fr);
+              gap: 20px;
+            }
+          }
+          @media (max-width: 640px) {
+            .occasions-grid {
+              grid-template-columns: 1fr;
+              gap: 16px;
+            }
+            .occasion-card {
+              height: 230px !important;
+              padding: 1.15rem !important;
+            }
+            .occasion-card h3 {
+              font-size: 1.02rem !important;
+            }
+            .occasion-card p {
+              font-size: 0.78rem !important;
+            }
+          }
+        `}</style>
       </section>
 
-      {/* 5. MÁS VENDIDOS */}
-      <section style={{ padding: '4.5rem 0', backgroundColor: '#FAFAFA' }}>
+      {/* 6. MÁS VENDIDOS */}
+      <section style={{ padding: '4rem 0', backgroundColor: '#FAFAFA' }}>
         <div className="jm-container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem' }}>
             <div>
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.12em', color: '#71717A', textTransform: 'uppercase' }}>
-                PRENDAS ICONO
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.15em', color: '#71717A', textTransform: 'uppercase' }}>
+                PRENDAS FAVORITAS
               </span>
-              <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', marginTop: '0.2rem' }}>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', marginTop: '0.2rem' }}>
                 MÁS VENDIDOS
               </h2>
             </div>
-            <Link to="/mas-vendidos" style={{ fontSize: '0.88rem', fontWeight: 700, color: '#09090B', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <Link to="/mas-vendidos" style={{ fontSize: '0.85rem', fontWeight: 700, color: '#09090B', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               VER TODOS <ChevronRight size={18} />
             </Link>
           </div>
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
             gap: '1.5rem'
           }}>
             {bestSellerProducts.map((product) => (
@@ -417,126 +950,142 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* 6. COMPLETA EL LOOK EDITORIAL */}
-      <section style={{ padding: '2.5rem 0' }}>
+      {/* 7. COMPLETA EL LOOK EDITORIAL */}
+      <section style={{ padding: '2rem 0' }}>
         <div className="jm-container">
           <CompleteTheLook lookId="look-1" />
         </div>
       </section>
 
-      {/* 7. PROPUESTA DE VALOR J&M */}
-      <section style={{ padding: '5rem 0', backgroundColor: '#09090B', color: '#FFFFFF' }}>
-        <div className="jm-container" style={{ textAlign: 'center', maxWidth: '840px' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.2em', color: '#D4AF37', textTransform: 'uppercase' }}>
-            LA PROMESA J&M FASHION STORE
-          </span>
-          <h2 style={{ fontSize: '2.2rem', fontWeight: 900, textTransform: 'uppercase', margin: '0.6rem 0 1.5rem 0' }}>
-            CONFECCIÓN COLOMBIANA CON ESTÁNDARES INTERNACIONALES
-          </h2>
-          <p style={{ fontSize: '1rem', color: '#A1A1AA', lineHeight: 1.7, marginBottom: '2.5rem' }}>
-            Seleccionamos los textiles de mayor gramaje y suavidad del mercado nacional e internacional. Cada prenda es terminada con controles rigurosos para asegurar que vista impecable tras múltiples lavados.
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', textTransform: 'uppercase', fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.08em' }}>
-            <div style={{ border: '1px solid #27272A', padding: '1.25rem', borderRadius: '8px' }}>
-              100% Algodón Seleccionado
-            </div>
-            <div style={{ border: '1px solid #27272A', padding: '1.25rem', borderRadius: '8px' }}>
-              Costuras de Alta Resistencia
-            </div>
-            <div style={{ border: '1px solid #27272A', padding: '1.25rem', borderRadius: '8px' }}>
-              Guía de Fit Transparente
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 8. TIENDA FÍSICA BANNER */}
-      <section id="tienda-fisica" style={{ padding: '4.5rem 0', backgroundColor: '#FFFFFF' }}>
+      {/* 8. BENEFICIOS J&M FASHION STORE */}
+      <section style={{ padding: '3rem 0', backgroundColor: '#FFFFFF', borderTop: '1px solid #E4E4E7', borderBottom: '1px solid #E4E4E7' }}>
         <div className="jm-container">
           <div style={{
-            backgroundColor: '#FAFAFA',
-            border: '1px solid #E4E4E7',
-            borderRadius: '16px',
-            overflow: 'hidden',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            alignItems: 'center'
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '2.5rem',
+            textAlign: 'center',
+            alignItems: 'start'
           }}>
-            <div style={{ padding: '3rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#D4AF37', fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
-                <MapPin size={18} /> EXPERIENCIA EN TIENDA FÍSICA
+            <div style={{ padding: '0.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#FAFAFA', border: '1px solid #E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                <Truck size={24} color="#09090B" />
               </div>
-              <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', marginBottom: '1rem' }}>
-                PRUÉBATE NUESRAS PRENDAS EN PERSONA
-              </h2>
-              <p style={{ fontSize: '0.92rem', color: '#71717A', lineHeight: 1.6, marginBottom: '1.8rem' }}>
-                Visita nuestros showrooms exclusivos en Bogotá y Medellín. Nuestro personal te asesorará para encontrar el fit perfecto según tu morfología.
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.4rem' }}>
+                ENVÍOS A TODO COLOMBIA
+              </h4>
+              <p style={{ fontSize: '0.80rem', color: '#71717A', lineHeight: 1.5, margin: 0, maxWidth: '240px' }}>
+                Despachos rápidos y seguros a ciudades principales y municipios.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.88rem', fontWeight: 600, color: '#27272A' }}>
-                <div>📍 Flagship Bogotá: Zona T / Calle 82 # 12-34</div>
-                <div>📍 Flagship Medellín: El Poblado / Cra 37 # 10-15</div>
-              </div>
             </div>
 
-            <div style={{ height: '100%', minHeight: '320px', position: 'relative' }}>
-              <img
-                src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=1000"
-                alt="Tienda Física J&M"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+            <div style={{ padding: '0.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#FAFAFA', border: '1px solid #E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                <RefreshCw size={24} color="#09090B" />
+              </div>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.4rem' }}>
+                CAMBIOS FÁCILES
+              </h4>
+              <p style={{ fontSize: '0.80rem', color: '#71717A', lineHeight: 1.5, margin: 0, maxWidth: '240px' }}>
+                Solicita cambios de talla o prenda sin trámites molestos.
+              </p>
+            </div>
+
+            <div style={{ padding: '0.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#FAFAFA', border: '1px solid #E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                <ShieldCheck size={24} color="#09090B" />
+              </div>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.4rem' }}>
+                PAGO SEGURO
+              </h4>
+              <p style={{ fontSize: '0.80rem', color: '#71717A', lineHeight: 1.5, margin: 0, maxWidth: '240px' }}>
+                Transacciones protegidas con tarjeta, PSE o transferencia.
+              </p>
+            </div>
+
+            <div style={{ padding: '0.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#FAFAFA', border: '1px solid #E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                <Headphones size={24} color="#09090B" />
+              </div>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.4rem' }}>
+                ATENCIÓN PERSONALIZADA
+              </h4>
+              <p style={{ fontSize: '0.80rem', color: '#71717A', lineHeight: 1.5, margin: 0, maxWidth: '240px' }}>
+                Asesoría de estilo y fit directamente por WhatsApp.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 9. NEWSLETTER */}
-      <section style={{ padding: '4rem 0', backgroundColor: '#F4F4F5', borderTop: '1px solid #E4E4E7' }}>
-        <div className="jm-container" style={{ textAlign: 'center', maxWidth: '620px' }}>
-          <Mail size={32} color="#09090B" style={{ margin: '0 auto 1rem auto' }} />
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#09090B', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+      {/* 9. ÚNETE AL CLUB J&M */}
+      <section style={{ padding: '3.25rem 0', backgroundColor: '#FAFAFA' }}>
+        <div className="jm-container" style={{ textAlign: 'center', maxWidth: '580px' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
+            <Mail size={22} color="#09090B" />
+          </div>
+
+          <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.18em', color: '#D4AF37', textTransform: 'uppercase', display: 'block', marginBottom: '0.3rem' }}>
+            10% OFF EN TU PRIMERA COMPRA
+          </span>
+
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '0.4rem' }}>
             ÚNETE AL CLUB J&M
           </h2>
-          <p style={{ fontSize: '0.88rem', color: '#71717A', marginBottom: '1.75rem' }}>
-            Recibe 10% de descuento en tu primera compra y entérate antes que nadie de los lanzamientos exclusivos.
+
+          <p style={{ fontSize: '0.85rem', color: '#71717A', marginBottom: '1.75rem', lineHeight: 1.5 }}>
+            Recibe novedades, lanzamientos y beneficios exclusivos de J&M.
           </p>
 
           {newsletterSubscribed ? (
-            <div style={{ backgroundColor: '#D1FAE5', color: '#065F46', padding: '1rem', borderRadius: '6px', fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-              <Check size={18} /> ¡Gracias por suscribirte! Revisa tu correo para usar tu 10% OFF.
+            <div style={{ backgroundColor: '#D1FAE5', color: '#065F46', padding: '0.9rem 1.2rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: '1px solid #A7F3D0' }}>
+              <Check size={18} /> ¡Gracias por suscribirte! Revisa tu correo para tu beneficio.
             </div>
           ) : (
-            <form onSubmit={handleNewsletterSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                type="email"
-                required
-                placeholder="Tu correo electrónico"
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: '0.9rem 1.1rem',
-                  border: '1px solid #D4D4D8',
-                  borderRadius: '6px',
-                  fontSize: '0.9rem',
-                  outline: 'none'
-                }}
-              />
-              <button
-                type="submit"
-                style={{
-                  backgroundColor: '#09090B',
-                  color: '#FFFFFF',
-                  padding: '0 1.8rem',
-                  borderRadius: '6px',
-                  fontWeight: 800,
-                  fontSize: '0.85rem',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase'
-                }}
-              >
-                SUSCRIBIRME
-              </button>
+            <form onSubmit={handleNewsletterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <input
+                  type="email"
+                  required
+                  placeholder="Tu correo electrónico"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: '240px',
+                    padding: '0.85rem 1.1rem',
+                    border: '1px solid #D4D4D8',
+                    borderRadius: '6px',
+                    fontSize: '0.88rem',
+                    outline: 'none',
+                    backgroundColor: '#FFFFFF'
+                  }}
+                />
+                <button
+                  type="submit"
+                  style={{
+                    backgroundColor: '#09090B',
+                    color: '#FFFFFF',
+                    padding: '0.85rem 1.8rem',
+                    borderRadius: '6px',
+                    fontWeight: 800,
+                    fontSize: '0.82rem',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    border: 'none',
+                    transition: 'background-color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#27272A')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#09090B')}
+                >
+                  QUIERO MI 10% OFF
+                </button>
+              </div>
+
+              <span style={{ fontSize: '0.72rem', color: '#A1A1AA', fontWeight: 500, marginTop: '0.2rem' }}>
+                Sin spam. Solo novedades y beneficios J&M.
+              </span>
             </form>
           )}
         </div>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Search,
   ShoppingBag,
@@ -14,31 +14,44 @@ import {
   Plus,
   Minus,
   Trash2,
-  Sparkles
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { formatCOP } from '../../data/mockData';
 
 export const Header = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const store = useECommerceStore();
   const {
-    products,
-    items,
-    wishlist,
-    isCartOpen,
+    products = [],
+    items = [],
+    wishlist = [],
+    isCartOpen = false,
     setCartOpen,
-    isSearchOpen,
+    isSearchOpen = false,
     setSearchOpen,
-    isMobileMenuOpen,
+    isMobileMenuOpen = false,
     setMobileMenuOpen,
     removeItem,
     updateQuantity,
     getTotals
-  } = useECommerceStore();
+  } = store;
 
   const [searchQuery, setSearchQuery] = useState('');
-  const totals = getTotals();
-  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const totals = typeof getTotals === 'function' ? getTotals() : { subtotal: 0, total: 0, shippingCost: 0, hasFreeShipping: false, amountForFreeShipping: 200000 };
+  const cartCount = (items || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+  // Scroll listener for subtle header elevation
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const filteredSearchProducts = searchQuery.trim()
     ? products.filter(
@@ -57,111 +70,214 @@ export const Header = () => {
     }
   };
 
+  const isActivePath = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
   return (
     <>
       {/* 1. ANNOUNCEMENT BAR */}
-      <div style={{
-        backgroundColor: '#09090B',
-        color: '#FFFFFF',
-        fontSize: '0.78rem',
-        fontWeight: 500,
-        letterSpacing: '0.05em',
-        padding: '0.55rem 1rem',
-        textAlign: 'center',
-        borderBottom: '1px solid #1F1F23',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0.75rem'
-      }}>
-        <span>ENVÍOS GRATIS EN COLOMBIA POR COMPRAS SUPERIORES A $200.000 COP</span>
-        <span style={{ opacity: 0.4 }}>•</span>
+      <div 
+        role="region"
+        aria-label="Anuncios y promociones"
+        style={{
+          backgroundColor: '#09090B',
+          color: '#FFFFFF',
+          fontSize: '0.75rem',
+          fontWeight: 600,
+          letterSpacing: '0.06em',
+          padding: '0.5rem 1rem',
+          textAlign: 'center',
+          borderBottom: '1px solid #1F1F23',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.85rem',
+          textTransform: 'uppercase'
+        }}
+      >
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+          <Truck size={13} style={{ color: '#D4AF37' }} />
+          ENVÍOS GRATIS EN COLOMBIA POR COMPRAS &gt; $200.000 COP
+        </span>
+        <span style={{ color: '#3F3F46' }}>|</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#D4AF37' }}>
-          <Sparkles size={12} /> CAMBIOS FÁCILES Y DEVOLUCIONES SIN COSTO
+          <Sparkles size={13} />
+          CAMBIOS FÁCILES &amp; DEVOLUCIONES GRATIS
         </span>
       </div>
 
       {/* 2. MAIN HEADER */}
-      <header style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        backgroundColor: '#FFFFFF',
-        borderBottom: '1px solid #E4E4E7',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-      }}>
-        <div className="jm-container" style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          height: '76px'
-        }}>
+      <header
+        role="banner"
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          backgroundColor: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderBottom: '1px solid #E4E4E7',
+          boxShadow: isScrolled
+            ? '0 4px 20px -2px rgba(0,0,0,0.08)'
+            : '0 1px 3px rgba(0,0,0,0.02)',
+          transition: 'box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+      >
+        <div
+          className="jm-container"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            height: '72px',
+            position: 'relative'
+          }}
+        >
           {/* Mobile Menu Hamburger */}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', padding: '0.5rem' }}
-            aria-label="Abrir menú"
-            className="mobile-only-btn"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0.5rem',
+              borderRadius: '6px',
+              transition: 'background-color 0.15s'
+            }}
+            aria-label="Abrir menú de navegación"
+            className="mobile-only-btn header-icon-touch"
           >
             <Menu size={24} color="#09090B" />
           </button>
 
           {/* BRAND LOGO */}
-          <Link to="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            <span style={{
-              fontFamily: "'Outfit', sans-serif",
-              fontSize: '1.45rem',
-              fontWeight: 800,
-              letterSpacing: '0.14em',
-              color: '#09090B',
-              lineHeight: 1.1
-            }}>
-              J&M FASHION STORE
+          <Link
+            to="/"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              textDecoration: 'none',
+              userSelect: 'none'
+            }}
+            aria-label="J&M Fashion Store - Ir a Inicio"
+          >
+            <span
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: '1.4rem',
+                fontWeight: 900,
+                letterSpacing: '0.16em',
+                color: '#09090B',
+                lineHeight: 1,
+                marginBottom: '2px'
+              }}
+            >
+              J&amp;M FASHION STORE
             </span>
-            <span style={{
-              fontSize: '0.62rem',
-              fontWeight: 600,
-              letterSpacing: '0.28em',
-              color: '#71717A',
-              textTransform: 'uppercase'
-            }}>
-              MASCULINO • COLOMBIA
+            <span
+              style={{
+                fontSize: '0.58rem',
+                fontWeight: 700,
+                letterSpacing: '0.32em',
+                color: '#71717A',
+                textTransform: 'uppercase'
+              }}
+            >
+              MODA MASCULINA • COLOMBIA
             </span>
           </Link>
 
           {/* DESKTOP NAVIGATION MENU */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '1.4rem' }} className="desktop-nav">
-            <Link to="/linea/urbana" style={{ ...navLinkStyle, color: '#2563EB', fontWeight: 800 }}>🏙️ URBANO</Link>
-            <Link to="/linea/elegante" style={{ ...navLinkStyle, color: '#09090B', fontWeight: 800 }}>👔 ELEGANTE</Link>
-            <Link to="/linea/casual" style={{ ...navLinkStyle, color: '#D4AF37', fontWeight: 800 }}>✨ SMART CASUAL</Link>
-            <span style={{ color: '#E4E4E7' }}>|</span>
-            <Link to="/ropa" style={navLinkStyle}>ROPA</Link>
-            <Link to="/calzado" style={navLinkStyle}>CALZADO</Link>
-            <Link to="/accesorios" style={navLinkStyle}>ACCESORIOS</Link>
-            <Link to="/ofertas" style={{ ...navLinkStyle, color: '#E11D48', fontWeight: 700 }}>OFERTAS</Link>
+          <nav
+            aria-label="Navegación principal"
+            style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}
+            className="desktop-nav"
+          >
+            <Link
+              to="/linea/urbana"
+              style={getNavLinkStyle(isActivePath('/linea/urbana'), 'style')}
+            >
+              URBANO
+            </Link>
+            <Link
+              to="/linea/elegante"
+              style={getNavLinkStyle(isActivePath('/linea/elegante'), 'style')}
+            >
+              ELEGANTE
+            </Link>
+            <Link
+              to="/linea/casual"
+              style={getNavLinkStyle(isActivePath('/linea/casual'), 'style')}
+            >
+              SMART CASUAL
+            </Link>
+            <span style={{ color: '#E4E4E7', fontWeight: 300, margin: '0 0.15rem' }}>|</span>
+            <Link
+              to="/ropa"
+              style={getNavLinkStyle(isActivePath('/ropa'), 'category')}
+            >
+              ROPA
+            </Link>
+            <Link
+              to="/calzado"
+              style={getNavLinkStyle(isActivePath('/calzado'), 'category')}
+            >
+              CALZADO
+            </Link>
+            <Link
+              to="/accesorios"
+              style={getNavLinkStyle(isActivePath('/accesorios'), 'category')}
+            >
+              ACCESORIOS
+            </Link>
+            <Link
+              to="/ofertas"
+              style={getNavLinkStyle(isActivePath('/ofertas'), 'sale')}
+            >
+              OFERTAS
+            </Link>
           </nav>
 
           {/* ICONS ACTION BAR */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {/* Search Trigger */}
             <button
               onClick={() => setSearchOpen(true)}
               style={iconBtnStyle}
               title="Buscar productos"
+              aria-label="Buscar en la tienda"
+              className="header-action-btn"
             >
-              <Search size={21} />
+              <Search size={20} strokeWidth={2.2} />
             </button>
 
             {/* Account Link */}
-            <Link to="/cuenta" style={iconBtnStyle} title="Mi cuenta">
-              <User size={21} />
+            <Link
+              to="/cuenta"
+              style={iconBtnStyle}
+              title="Mi cuenta"
+              aria-label="Ir a mi cuenta"
+              className="header-action-btn"
+            >
+              <User size={20} strokeWidth={2.2} />
             </Link>
 
             {/* Wishlist Link */}
-            <Link to="/cuenta/favoritos" style={{ ...iconBtnStyle, position: 'relative' }} title="Favoritos">
-              <Heart size={21} />
+            <Link
+              to="/cuenta/favoritos"
+              style={{ ...iconBtnStyle, position: 'relative' }}
+              title="Lista de Deseos"
+              aria-label={`Ver lista de deseos, ${wishlist.length} artículos`}
+              className="header-action-btn"
+            >
+              <Heart size={20} strokeWidth={2.2} />
               {wishlist.length > 0 && (
-                <span style={badgeStyle}>{wishlist.length}</span>
+                <span style={badgeStyle} aria-hidden="true">
+                  {wishlist.length}
+                </span>
               )}
             </Link>
 
@@ -170,10 +286,14 @@ export const Header = () => {
               onClick={() => setCartOpen(true)}
               style={{ ...iconBtnStyle, position: 'relative' }}
               title="Carrito de compras"
+              aria-label={`Abrir carrito, ${cartCount} productos`}
+              className="header-action-btn"
             >
-              <ShoppingBag size={21} />
+              <ShoppingBag size={20} strokeWidth={2.2} />
               {cartCount > 0 && (
-                <span style={badgeStyle}>{cartCount}</span>
+                <span style={badgeStyle} aria-hidden="true">
+                  {cartCount}
+                </span>
               )}
             </button>
           </div>
@@ -524,6 +644,31 @@ export const Header = () => {
       `}</style>
     </>
   );
+};
+
+const getNavLinkStyle = (isActive, type = 'category') => {
+  let color = isActive ? '#09090B' : '#27272A';
+  let fontWeight = isActive ? 700 : 500;
+  
+  if (type === 'style') {
+    color = isActive ? '#09090B' : '#52525B';
+    fontWeight = isActive ? 700 : 500;
+  } else if (type === 'sale') {
+    color = isActive ? '#BE123C' : '#E11D48';
+    fontWeight = 700;
+  }
+
+  return {
+    fontSize: '0.80rem',
+    fontWeight,
+    letterSpacing: '0.08em',
+    color,
+    textTransform: 'uppercase',
+    textDecoration: 'none',
+    padding: '0.4rem 0',
+    borderBottom: isActive ? '2px solid #09090B' : '2px solid transparent',
+    transition: 'all 0.15s ease'
+  };
 };
 
 const navLinkStyle = {

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, Edit, Trash2, Eye, RefreshCw, Sparkles } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, Eye, RefreshCw, Sparkles, AlertTriangle } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { formatCOP } from '../../data/mockData';
+import SafeProductImage from '../../components/Common/SafeImage';
+import { hasValidProductImage } from '../../utils/productUtils';
 
 export const AdminProductsPage = () => {
   const navigate = useNavigate();
@@ -151,9 +153,18 @@ export const AdminProductsPage = () => {
                   {/* Product Meta */}
                   <td style={tdProduct}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <img src={prod.images?.[0]} alt="" style={{ width: '48px', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />
+                      <div style={{ width: '48px', height: '60px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
+                        <SafeProductImage product={prod} imageIndex={0} alt={prod.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
                       <div>
-                        <div style={{ fontWeight: 800, color: '#09090B' }}>{prod.name}</div>
+                        <div style={{ fontWeight: 800, color: '#09090B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {prod.name}
+                          {!hasValidProductImage(prod) && (
+                            <span style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }} title="Este producto no posee una imagen válida cargada">
+                              <AlertTriangle size={10} /> Sin imagen válida
+                            </span>
+                          )}
+                        </div>
                         <div style={{ fontSize: '0.75rem', color: '#71717A' }}>SKU: {prod.slug}</div>
                         <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
                           {prod.isNew && <span style={miniBadge('#09090B', '#FFF')}>NUEVO</span>}

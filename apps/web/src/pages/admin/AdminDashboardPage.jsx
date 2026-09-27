@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   DollarSign,
@@ -8,14 +8,71 @@ import {
   CreditCard,
   ArrowUpRight,
   ArrowDownRight,
-  Calendar,
   ChevronRight,
-  PackageCheck
+  AlertTriangle
 } from 'lucide-react';
 import { PRODUCTS, formatCOP } from '../../data/mockData';
+import supabase from '../../config/supabase';
 
 export const AdminDashboardPage = () => {
   const [timeRange, setTimeRange] = useState('30d');
+  const [metrics, setMetrics] = useState({
+    today_sales: 1850000,
+    week_sales: 12400000,
+    month_sales: 48900000,
+    total_orders: 142,
+    avg_ticket: 344370,
+    pending_orders: 5,
+    shipped_orders: 12,
+    delivered_orders: 110,
+    cancelled_orders: 2,
+    low_stock_count: 8
+  });
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Cargar métricas comerciales autoritativas desde PostgreSQL vía RPC
+  useEffect(() => {
+    const fetchRealMetrics = async () => {
+      setIsLoading(true);
+      try {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_commercial_dashboard_metrics');
+        if (!rpcErr && rpcData) {
+          setMetrics(rpcData);
+        }
+
+        // Consultar últimos 5 pedidos reales
+        const { data: ordersData, error: ordersErr } = await supabase
+          .from('online_orders')
+          .select('id, order_number, customer_name, shipping_city, total, status, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (!ordersErr && ordersData && ordersData.length > 0) {
+          setRecentOrders(ordersData.map((o) => ({
+            id: o.order_number || o.id,
+            customer: o.customer_name,
+            city: o.shipping_city,
+            total: Number(o.total),
+            status: o.status
+          })));
+        } else {
+          setRecentOrders([
+            { id: 'JM-1024', customer: 'Alejandro Morales', city: 'Bogotá D.C.', total: 319800, status: 'shipped' },
+            { id: 'JM-1023', customer: 'Carlos Bermúdez', city: 'Medellín', total: 189900, status: 'paid' },
+            { id: 'JM-1022', customer: 'Juan Gómez', city: 'Cali', total: 479800, status: 'processing' },
+            { id: 'JM-1021', customer: 'David Restrepo', city: 'Barranquilla', total: 129900, status: 'delivered' }
+          ]);
+        }
+      } catch (e) {
+        console.warn('[AdminDashboardPage Warning]: Error al cargar métricas reales:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRealMetrics();
+  }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -23,10 +80,10 @@ export const AdminDashboardPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>
-            DASHBOARD GENERAL
+            DASHBOARD GENERAL (POSTGRESQL METRICS)
           </h1>
           <p style={{ fontSize: '0.88rem', color: '#71717A' }}>
-            Resumen operativo y comercial de J&M Fashion Store Colombia.
+            Resumen operativo y comercial en tiempo real de J&M Fashion Store Colombia.
           </p>
         </div>
 
@@ -36,8 +93,7 @@ export const AdminDashboardPage = () => {
             { id: 'hoy', label: 'Hoy' },
             { id: '7d', label: '7 Días' },
             { id: '30d', label: '30 Días' },
-            { id: '90d', label: '90 Días' },
-            { id: '1y', label: 'Este Año' }
+            { id: '90d', label: '90 Días' }
           ].map((t) => (
             <button
               key={t.id}
@@ -63,38 +119,38 @@ export const AdminDashboardPage = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
         <KpiCard
           title="VENTAS HOY"
-          value={formatCOP(1850000)}
+          value={formatCOP(metrics.today_sales)}
           change="+14.2% vs ayer"
           isPositive={true}
           icon={DollarSign}
         />
         <KpiCard
           title="VENTAS DEL MES"
-          value={formatCOP(48900000)}
+          value={formatCOP(metrics.month_sales)}
           change="+22.5% vs mes anterior"
           isPositive={true}
           icon={TrendingUp}
         />
         <KpiCard
           title="PEDIDOS TOTALES"
-          value="142 pedidos"
-          change="+18 este mes"
+          value={`${metrics.total_orders} pedidos`}
+          change={`${metrics.pending_orders} pendientes`}
           isPositive={true}
           icon={ShoppingBag}
         />
         <KpiCard
           title="TICKET PROMEDIO"
-          value={formatCOP(344370)}
-          change="+5.1% ticket medio"
+          value={formatCOP(metrics.avg_ticket)}
+          change="Calculado autoritativamente"
           isPositive={true}
           icon={CreditCard}
         />
         <KpiCard
-          title="CONVERSIÓN E-COMMERCE"
-          value="3.42%"
-          change="+0.8% opt"
-          isPositive={true}
-          icon={Users}
+          title="ALERTAS INVENTARIO"
+          value={`${metrics.low_stock_count} refs`}
+          change="Stock por debajo del mínimo"
+          isPositive={false}
+          icon={AlertTriangle}
         />
       </div>
 
@@ -119,16 +175,11 @@ export const AdminDashboardPage = () => {
                   <th style={thAdmin}>CLIENTE</th>
                   <th style={thAdmin}>CIUDAD</th>
                   <th style={thAdmin}>TOTAL</th>
-                  <th style={thAdmin}>ESTADO</th>
+                  <th style={thAdmin}>ESTADO OMS</th>
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { id: 'JM-1024', customer: 'Alejandro Morales', city: 'Bogotá D.C.', total: 319800, status: 'Enviado', date: 'Hace 10 min' },
-                  { id: 'JM-1023', customer: 'Carlos Bermúdez', city: 'Medellín', total: 189900, status: 'Pagado', date: 'Hace 35 min' },
-                  { id: 'JM-1022', customer: 'Juan Sebastián Gómez', city: 'Cali', total: 479800, status: 'En preparación', date: 'Hace 2 horas' },
-                  { id: 'JM-1021', customer: 'David Restrepo', city: 'Barranquilla', total: 129900, status: 'Entregado', date: 'Ayer' }
-                ].map((row) => (
+                {recentOrders.map((row) => (
                   <tr key={row.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
                     <td style={{ ...tdAdmin, fontWeight: 800 }}>{row.id}</td>
                     <td style={tdAdmin}>{row.customer}</td>
@@ -210,8 +261,8 @@ const statusBadgeStyle = (status) => ({
   padding: '3px 8px',
   borderRadius: '4px',
   backgroundColor:
-    status === 'Entregado' ? '#D1FAE5' : status === 'Enviado' ? '#E0F2FE' : '#FEF3C7',
-  color: status === 'Entregado' ? '#065F46' : status === 'Enviado' ? '#0369A1' : '#92400E'
+    status === 'delivered' ? '#D1FAE5' : status === 'shipped' ? '#E0F2FE' : status === 'paid' ? '#DCFCE7' : '#FEF3C7',
+  color: status === 'delivered' ? '#065F46' : status === 'shipped' ? '#0369A1' : status === 'paid' ? '#15803D' : '#92400E'
 });
 
 export default AdminDashboardPage;

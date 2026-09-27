@@ -15,6 +15,7 @@ const CheckoutPage = lazy(() => import('../pages/CheckoutPage.jsx'));
 const OrderConfirmationPage = lazy(() => import('../pages/OrderConfirmationPage.jsx'));
 const AccountPage = lazy(() => import('../pages/AccountPage.jsx'));
 const WishlistPage = lazy(() => import('../pages/WishlistPage.jsx'));
+const InfoPage = lazy(() => import('../pages/InfoPage.jsx'));
 
 // Lazy loading Admin Pages (Phase 3 & Phase 4)
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage.jsx'));
@@ -27,6 +28,7 @@ const AdminDiscountsPage = lazy(() => import('../pages/admin/AdminDiscountsPage.
 const AdminReviewsPage = lazy(() => import('../pages/admin/AdminReviewsPage.jsx'));
 const AdminAnalyticsPage = lazy(() => import('../pages/admin/AdminAnalyticsPage.jsx'));
 const AdminCollectionsPage = lazy(() => import('../pages/admin/AdminCollectionsPage.jsx'));
+const AdminEditorialImagesPage = lazy(() => import('../pages/admin/AdminEditorialImagesPage.jsx'));
 
 // Admin / POS auth pages
 const Login = lazy(() => import('../pages/Login.jsx'));
@@ -86,7 +88,16 @@ export const AppRoutes = () => {
           <Route path="/colecciones" element={<CatalogPage />} />
           <Route path="/buscar" element={<CatalogPage />} />
           <Route path="/producto/:slug" element={<ProductDetailPage />} />
-          <Route path="/guia-de-tallas" element={<CatalogPage />} />
+          <Route path="/guia-de-tallas" element={<InfoPage />} />
+          <Route path="/envios" element={<InfoPage />} />
+          <Route path="/cambios-y-devoluciones" element={<InfoPage />} />
+          <Route path="/politica-de-cambios" element={<InfoPage />} />
+          <Route path="/preguntas-frecuentes" element={<InfoPage />} />
+          <Route path="/contacto" element={<InfoPage />} />
+          <Route path="/nosotros" element={<InfoPage />} />
+          <Route path="/tiendas" element={<InfoPage />} />
+          <Route path="/terminos" element={<InfoPage />} />
+          <Route path="/privacidad" element={<InfoPage />} />
           <Route path="/carrito" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/checkout/confirmacion" element={<OrderConfirmationPage />} />
@@ -97,8 +108,8 @@ export const AppRoutes = () => {
           <Route path="/cuenta/direcciones" element={<AccountPage />} />
         </Route>
 
-        {/* ADMIN DASHBOARD ROUTES (PHASE 3 & PHASE 4) */}
-        <Route element={<AdminLayout />}>
+        {/* ADMIN DASHBOARD ROUTES (PHASE 4 AUTHGUARD PROTECTED) */}
+        <Route element={<AuthGuard allowedRoles={['admin', 'super_admin']}><AdminLayout /></AuthGuard>}>
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/productos" element={<AdminProductsPage />} />
@@ -107,6 +118,7 @@ export const AppRoutes = () => {
           <Route path="/admin/pedidos" element={<AdminOrdersPage />} />
           <Route path="/admin/clientes" element={<AdminCustomersPage />} />
           <Route path="/admin/colecciones" element={<AdminCollectionsPage />} />
+          <Route path="/admin/imagenes" element={<AdminEditorialImagesPage />} />
           <Route path="/admin/descuentos" element={<AdminDiscountsPage />} />
           <Route path="/admin/reviews" element={<AdminReviewsPage />} />
           <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />

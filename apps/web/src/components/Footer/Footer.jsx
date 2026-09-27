@@ -4,42 +4,53 @@ import { Instagram, Facebook, MapPin, Phone, Mail, ShieldCheck, Truck, RefreshCw
 
 export const Footer = () => {
   return (
-    <footer style={{ backgroundColor: '#09090B', color: '#FFFFFF', paddingTop: '4rem', paddingBottom: '2rem', borderTop: '1px solid #1F1F23' }}>
+    <footer style={{ backgroundColor: '#09090B', color: '#FFFFFF', paddingTop: '4rem', paddingBottom: '2.5rem', borderTop: '1px solid #1F1F23' }}>
       <div className="jm-container">
+        
+        {/* BRAND IDENTITY HEADER */}
+        <div style={{ marginBottom: '3.5rem', borderBottom: '1px solid #1F1F23', paddingBottom: '2.5rem' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '0.08em', color: '#FFFFFF', textTransform: 'uppercase' }}>
+            J&M <span style={{ color: '#D4AF37', fontWeight: 400 }}>FASHION STORE</span>
+          </div>
+          <p style={{ fontSize: '0.85rem', color: '#A1A1AA', marginTop: '0.4rem', fontWeight: 400, letterSpacing: '0.02em' }}>
+            Estilo masculino para cada momento.
+          </p>
+        </div>
+
         {/* BRAND PROPOSITION BADGES */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: '2rem',
           paddingBottom: '3.5rem',
-          borderBottom: '1px solid #27272A',
+          borderBottom: '1px solid #1F1F23',
           marginBottom: '3.5rem'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Truck size={32} color="#D4AF37" />
+            <Truck size={28} color="#D4AF37" />
             <div>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Envíos Nacionales</div>
+              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#FFFFFF' }}>Envíos Nacionales</div>
               <div style={{ fontSize: '0.78rem', color: '#A1A1AA' }}>Gratis desde $200.000 a toda Colombia</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <RefreshCw size={32} color="#D4AF37" />
+            <RefreshCw size={28} color="#D4AF37" />
             <div>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Cambios sin Complicaciones</div>
+              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#FFFFFF' }}>Cambios sin Complicaciones</div>
               <div style={{ fontSize: '0.78rem', color: '#A1A1AA' }}>Hasta 30 días para solicitar tu cambio</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <ShieldCheck size={32} color="#D4AF37" />
+            <ShieldCheck size={28} color="#D4AF37" />
             <div>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Calidad 100% Colombiana</div>
+              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#FFFFFF' }}>Calidad 100% Colombiana</div>
               <div style={{ fontSize: '0.78rem', color: '#A1A1AA' }}>Textiles premium y confección impecable</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <CreditCard size={32} color="#D4AF37" />
+            <CreditCard size={28} color="#D4AF37" />
             <div>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Pagos Seguros</div>
+              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#FFFFFF' }}>Pagos Seguros</div>
               <div style={{ fontSize: '0.78rem', color: '#A1A1AA' }}>PSE, Tarjetas, Nequi, Bancolombia</div>
             </div>
           </div>
@@ -48,90 +59,78 @@ export const Footer = () => {
         {/* FOOTER NAVIGATION COLUMNS */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: '2.5rem',
           marginBottom: '3.5rem'
         }}>
-          {/* Brand Info */}
-          <div>
-            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.3rem', fontWeight: 800, letterSpacing: '0.12em', display: 'block', marginBottom: '0.8rem' }}>
-              J&M FASHION STORE
-            </span>
-            <p style={{ fontSize: '0.85rem', color: '#A1A1AA', lineHeight: 1.6, marginBottom: '1.2rem' }}>
-              Marca líder de moda masculina en Colombia. Diseñamos prendas sofisticadas, modernas y atemporales para hombres que valoran su estilo.
-            </p>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <a href="https://instagram.com" target="_blank" rel="noreferrer" style={socialIconStyle}>
-                <Instagram size={18} />
-              </a>
-              <a href="https://facebook.com" target="_blank" rel="noreferrer" style={socialIconStyle}>
-                <Facebook size={18} />
-              </a>
-            </div>
-          </div>
-
-          {/* Shop Links */}
+          {/* Column 1: COMPRAR */}
           <div>
             <h4 style={columnTitleStyle}>COMPRAR</h4>
             <ul style={ulStyle}>
+              <li><Link to="/ropa" style={linkStyle}>Ropa</Link></li>
+              <li><Link to="/calzado" style={linkStyle}>Calzado</Link></li>
+              <li><Link to="/accesorios" style={linkStyle}>Accesorios</Link></li>
+              <li><Link to="/ofertas" style={{ ...linkStyle, color: '#E11D48', fontWeight: 700 }}>Ofertas</Link></li>
               <li><Link to="/nuevo" style={linkStyle}>Novedades</Link></li>
-              <li><Link to="/ropa/camisetas" style={linkStyle}>Camisetas</Link></li>
-              <li><Link to="/ropa/camisas" style={linkStyle}>Camisas Oxford</Link></li>
-              <li><Link to="/ropa/polos" style={linkStyle}>Polos Mercerizados</Link></li>
-              <li><Link to="/ropa/jeans" style={linkStyle}>Jeans Selvedge</Link></li>
-              <li><Link to="/ropa/pantalones" style={linkStyle}>Pantalones Chino</Link></li>
-              <li><Link to="/calzado" style={linkStyle}>Calzado en Cuero</Link></li>
-              <li><Link to="/ofertas" style={{ ...linkStyle, color: '#E11D48' }}>Ofertas Especiales</Link></li>
             </ul>
           </div>
 
-          {/* Help Links */}
+          {/* Column 2: AYUDA */}
           <div>
-            <h4 style={columnTitleStyle}>AYUDA & SOPORTE</h4>
+            <h4 style={columnTitleStyle}>AYUDA</h4>
             <ul style={ulStyle}>
-              <li><Link to="/guia-de-tallas" style={linkStyle}>Guía de Tallas</Link></li>
-              <li><Link to="/cambios-y-devoluciones" style={linkStyle}>Política de Cambios</Link></li>
-              <li><Link to="/contacto" style={linkStyle}>Centro de Contacto</Link></li>
-              <li><Link to="/nosotros" style={linkStyle}>Sobre J&M Store</Link></li>
-              <li><a href="#tienda-fisica" style={linkStyle}>Tiendas Físicas</a></li>
+              <li><Link to="/guia-de-tallas" style={linkStyle}>Guía de tallas</Link></li>
+              <li><Link to="/envios" style={linkStyle}>Envíos</Link></li>
+              <li><Link to="/cambios-y-devoluciones" style={linkStyle}>Cambios y devoluciones</Link></li>
+              <li><Link to="/preguntas-frecuentes" style={linkStyle}>Preguntas frecuentes</Link></li>
+              <li><Link to="/contacto" style={linkStyle}>Contacto</Link></li>
             </ul>
           </div>
 
-          {/* Store Info & Newsletter */}
+          {/* Column 3: J&M */}
           <div>
-            <h4 style={columnTitleStyle}>ATENCIÓN AL CLIENTE</h4>
-            <div style={{ fontSize: '0.85rem', color: '#A1A1AA', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MapPin size={16} color="#D4AF37" /> Bogotá & Medellín, Colombia
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Phone size={16} color="#D4AF37" /> +57 (601) 300 0000
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Mail size={16} color="#D4AF37" /> contacto@jmfashion.co
-              </div>
-            </div>
+            <h4 style={columnTitleStyle}>J&M</h4>
+            <ul style={ulStyle}>
+              <li><Link to="/nosotros" style={linkStyle}>Sobre nosotros</Link></li>
+              <li><Link to="/tiendas" style={linkStyle}>Tiendas</Link></li>
+              <li><a href="https://instagram.com" target="_blank" rel="noreferrer" style={linkStyle}>Instagram</a></li>
+              <li><a href="https://wa.me/573000000000" target="_blank" rel="noreferrer" style={linkStyle}>WhatsApp</a></li>
+            </ul>
+          </div>
+
+          {/* Column 4: LEGAL */}
+          <div>
+            <h4 style={columnTitleStyle}>LEGAL</h4>
+            <ul style={ulStyle}>
+              <li><Link to="/terminos" style={linkStyle}>Términos y condiciones</Link></li>
+              <li><Link to="/privacidad" style={linkStyle}>Política de privacidad</Link></li>
+              <li><Link to="/politica-de-cambios" style={linkStyle}>Política de cambios</Link></li>
+            </ul>
           </div>
         </div>
 
-        {/* COPYRIGHT */}
+        {/* LÍNEA DIVISORIA SUTIL Y PARTE INFERIOR DEL FOOTER */}
         <div style={{
           borderTop: '1px solid #1F1F23',
           paddingTop: '2rem',
           display: 'flex',
-          flexWrap: 'wrap',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
           gap: '1rem',
-          fontSize: '0.78rem',
+          fontSize: '0.80rem',
           color: '#71717A'
         }}>
           <div>
-            © {new Date().getFullYear()} J&M FASHION STORE. Todos los derechos reservados. Colombia.
+            © 2026 J&M Fashion Store. Todos los derechos reservados.
           </div>
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
-            <Link to="/terminos" style={{ color: '#71717A' }}>Términos y Condiciones</Link>
-            <Link to="/privacidad" style={{ color: '#71717A' }}>Política de Privacidad</Link>
+
+          <div style={{ display: 'flex', gap: '1.25rem' }}>
+            <Link to="/terminos" style={{ color: '#71717A', transition: 'color 0.15s' }}>Términos y condiciones</Link>
+            <span>|</span>
+            <Link to="/privacidad" style={{ color: '#71717A', transition: 'color 0.15s' }}>Privacidad</Link>
+            <span>|</span>
+            <Link to="/politica-de-cambios" style={{ color: '#71717A', transition: 'color 0.15s' }}>Cambios y devoluciones</Link>
           </div>
         </div>
       </div>

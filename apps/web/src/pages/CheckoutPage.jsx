@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, Truck, CreditCard, ShieldCheck, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Lock, Truck, CreditCard, ShieldCheck, CheckCircle2, ChevronRight, Check } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { formatCOP } from '../data/mockData';
+import { analyticsService } from '../services/analytics';
 
 const DEPARTMENTS = [
   'Cundinamarca (Bogotá D.C.)',
@@ -25,6 +26,15 @@ export const CheckoutPage = () => {
   const { items, userProfile, getTotals, createOrder } = useECommerceStore();
   const totals = getTotals();
 
+  // Generar o mantener una Idempotency Key única por cada intento de checkout
+  const [idempotencyKey] = useState(() => `checkout-${Date.now()}-${Math.floor(Math.random() * 1000000)}`);
+
+  useEffect(() => {
+    if (items.length > 0) {
+      analyticsService.beginCheckout(items, totals.total);
+    }
+  }, [items, totals.total]);
+
   // Form States
   const [formData, setFormData] = useState({
     firstName: userProfile?.name?.split(' ')[0] || 'Alejandro',
@@ -38,45 +48,63 @@ export const CheckoutPage = () => {
     notes: 'Dejar con el vigilante en portería'
   });
 
-  const [shippingMethod, setShippingMethod] = useState('estandar'); // 'estandar' | 'expreso'
-  const [paymentMethod, setPaymentMethod] = useState('credit_card'); // 'credit_card' | 'pse' | 'nequi' | 'contraentrega'
+  const [shippingMethod, setShippingMethod] = useState('estandar');
+  const [paymentMethod, setPaymentMethod] = useState('credit_card');
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handlePlaceOrder = (e) => {
+  const handlePlaceOrder = async (e) => {
     e.preventDefault();
+    if (isProcessing) return;
 
-    const orderData = {
-      customerName: `${formData.firstName} ${formData.lastName}`,
-      email: formData.email,
-      phone: formData.phone,
-      shippingAddress: `${formData.address}, ${formData.neighborhood}, ${formData.city}, ${formData.department}`,
-      shippingNotes: formData.notes,
-      shippingMethod: shippingMethod === 'expreso' ? 'Envío Expreso 24h' : 'Envío Estándar Nacional',
-      paymentMethod:
-        paymentMethod === 'credit_card'
-          ? 'Tarjeta de Crédito / Débito'
-          : paymentMethod === 'pse'
-          ? 'PSE Débito Bancario'
-          : paymentMethod === 'nequi'
-          ? 'Nequi / Bancolombia'
-          : 'Pago Contraentrega en Efectivo',
-      total: totals.total,
-      items: items.map((i) => ({
-        name: i.name,
-        size: i.size,
-        color: i.color,
-        price: i.price,
-        quantity: i.quantity,
-        image: i.image
-      }))
-    };
+    setIsProcessing(true);
+    setErrorMessage(null);
 
-    const orderId = createOrder(orderData);
-    navigate(`/checkout/confirmacion?orderId=${orderId}`);
+    try {
+      const orderData = {
+        idempotencyKey,
+        customerName: `${formData.firstName} ${formData.lastName}`,
+        email: formData.email,
+        phone: formData.phone,
+        department: formData.department,
+        city: formData.city,
+        shippingAddress: `${formData.address}, ${formData.neighborhood}, ${formData.city}, ${formData.department}`,
+        neighborhood: formData.neighborhood,
+        shippingNotes: formData.notes,
+        shippingMethod: shippingMethod === 'expreso' ? 'Envío Expreso 24h' : 'Envío Estándar Nacional',
+        paymentMethod:
+          paymentMethod === 'credit_card'
+            ? 'Tarjeta de Crédito / Débito'
+            : paymentMethod === 'pse'
+            ? 'PSE Débito Bancario'
+            : paymentMethod === 'nequi'
+            ? 'Nequi / Bancolombia'
+            : 'Pago Contraentrega en Efectivo',
+        items: items.map((i) => ({
+          variantId: i.variantId || 'b1000000-0000-0000-0000-000000000001',
+          name: i.name,
+          size: i.size,
+          color: i.color,
+          price: i.price,
+          quantity: i.quantity,
+          image: i.image
+        }))
+      };
+
+      const orderId = await createOrder(orderData);
+      navigate(`/checkout/confirmacion?orderId=${orderId}`);
+    } catch (err) {
+      console.error('[Checkout Error]:', err);
+      setErrorMessage(err.message || 'No pudimos procesar la orden en este momento. Por favor verifica el stock de tus prendas.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (items.length === 0) {
@@ -92,19 +120,44 @@ export const CheckoutPage = () => {
     <div style={{ backgroundColor: '#FAFAFA', padding: '2.5rem 0 5rem 0', minHeight: '90vh' }}>
       <div className="jm-container">
         {/* CHECKOUT HEADER */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '1.25rem' }}>
-          <div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#71717A', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              PROCESO DE PAGO SEGURO
-            </span>
-            <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', marginTop: '0.2rem' }}>
-              CHECKOUT J&M FASHION STORE
-            </h1>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#71717A', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                PROCESO DE PAGO SEGURO
+              </span>
+              <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', marginTop: '0.2rem' }}>
+                CHECKOUT J&M FASHION STORE
+              </h1>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 700, color: '#10B981' }}>
+              <Lock size={16} /> Encriptación SSL de 256 bits
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 700, color: '#10B981' }}>
-            <Lock size={16} /> Encriptación SSL de 256 bits
+
+          {/* CHECKOUT STEP PROGRESS BAR */}
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', backgroundColor: '#FFFFFF', padding: '0.75rem 1.25rem', borderRadius: '8px', border: '1px solid #E4E4E7', fontSize: '0.82rem', fontWeight: 700 }}>
+            <span style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Check size={14} /> 1. Carrito</span>
+            <span style={{ color: '#A1A1AA' }}>→</span>
+            <span style={{ color: '#09090B', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><strong>2. Datos & Envío</strong></span>
+            <span style={{ color: '#A1A1AA' }}>→</span>
+            <span style={{ color: '#71717A' }}>3. Pago Seguro Wompi</span>
           </div>
         </div>
+
+        {errorMessage && (
+          <div style={{
+            backgroundColor: '#FEF2F2',
+            color: '#991B1B',
+            padding: '1rem 1.5rem',
+            borderRadius: '8px',
+            marginBottom: '2rem',
+            border: '1px solid #FCA5A5',
+            fontWeight: 600
+          }}>
+            {errorMessage}
+          </div>
+        )}
 
         <form onSubmit={handlePlaceOrder} style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: '3rem' }} className="checkout-page-layout">
           {/* LEFT FORM COLUMN */}
@@ -288,6 +341,7 @@ export const CheckoutPage = () => {
 
               <button
                 type="submit"
+                disabled={isProcessing}
                 style={{
                   width: '100%',
                   backgroundColor: '#09090B',
@@ -301,10 +355,12 @@ export const CheckoutPage = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '0.5rem'
+                  gap: '0.5rem',
+                  opacity: isProcessing ? 0.7 : 1,
+                  cursor: isProcessing ? 'not-allowed' : 'pointer'
                 }}
               >
-                CONFIRMAR Y PAGAR <ChevronRight size={18} />
+                {isProcessing ? 'PROCESANDO CON SUPABASE...' : 'CONFIRMAR Y PAGAR'} <ChevronRight size={18} />
               </button>
 
               <div style={{ marginTop: '1.25rem', fontSize: '0.75rem', color: '#71717A', textAlign: 'center', lineHeight: 1.5 }}>

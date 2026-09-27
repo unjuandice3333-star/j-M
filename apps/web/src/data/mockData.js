@@ -3,50 +3,49 @@
 export const CATEGORIES = [
   { id: 'camisetas', name: 'Camisetas', slug: 'camisetas', count: 18, image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=800' },
   { id: 'camisas', name: 'Camisas', slug: 'camisas', count: 24, image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&q=80&w=800' },
-  { id: 'polos', name: 'Polos', slug: 'polos', count: 12, image: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?auto=format&fit=crop&q=80&w=800' },
-  { id: 'jeans', name: 'Jeans', slug: 'jeans', count: 16, image: 'https://images.unsplash.com/photo-1542272604-780c96856592?auto=format&fit=crop&q=80&w=800' },
+  { id: 'polos', name: 'Polos', slug: 'polos', count: 12, image: 'https://images.unsplash.com/photo-1626557981101-aae6f84aa6ff?auto=format&fit=crop&q=80&w=800' },
+  { id: 'jeans', name: 'Jeans', slug: 'jeans', count: 16, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=800' },
   { id: 'pantalones', name: 'Pantalones', slug: 'pantalones', count: 14, image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&q=80&w=800' },
   { id: 'bermudas', name: 'Bermudas', slug: 'bermudas', count: 10, image: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?auto=format&fit=crop&q=80&w=800' },
   { id: 'chaquetas', name: 'Chaquetas', slug: 'chaquetas', count: 15, image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&q=80&w=800' },
-  { id: 'calzado', name: 'Calzado', slug: 'calzado', count: 11, image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=800' },
   { id: 'accesorios', name: 'Accesorios', slug: 'accesorios', count: 9, image: 'https://images.unsplash.com/photo-1624222247344-550fb60583dc?auto=format&fit=crop&q=80&w=800' }
 ];
 
 export const OCCASIONS = [
-  { id: 'trabajo', name: 'Trabajo & Oficina', subtitle: 'Elegancia ejecutiva sin perder confort', image: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&q=80&w=800' },
-  { id: 'cita', name: 'Cita & Salidas', subtitle: 'Impacta con elegancia sutil', image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=800' },
-  { id: 'casual', name: 'Casual Urbano', subtitle: 'Versatilidad para el día a día', image: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=800' },
-  { id: 'fiesta', name: 'Noche & Eventos', subtitle: 'Diseños contemporáneos de noche', image: 'https://images.unsplash.com/photo-1534030347209-467a5b0ad3e6?auto=format&fit=crop&q=80&w=800' },
-  { id: 'fin-de-semana', name: 'Fin de Semana', subtitle: 'Frescura, relax y estilo sobrio', image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&q=80&w=800' },
-  { id: 'streetwear', name: 'Streetwear Minimal', subtitle: 'Cortes relaxed y oversize con carácter', image: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&q=80&w=800' }
+  { id: 'trabajo', name: 'TRABAJO & OFICINA', subtitle: 'Presencia sin perder comodidad.', image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=800' },
+  { id: 'cita', name: 'CITA & SALIDAS', subtitle: 'Tu mejor versión empieza aquí.', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800' },
+  { id: 'casual', name: 'CASUAL URBANO', subtitle: 'Estilo para todos los días.', image: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=800' },
+  { id: 'fiesta', name: 'NOCHE & EVENTOS', subtitle: 'Destaca cuando importa.', image: 'https://images.unsplash.com/photo-1534030347209-467a5b0ad3e6?auto=format&fit=crop&q=80&w=800' },
+  { id: 'fin-de-semana', name: 'FIN DE SEMANA', subtitle: 'Comodidad con actitud.', image: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?auto=format&fit=crop&q=80&w=800' },
+  { id: 'streetwear', name: 'STREETWEAR', subtitle: 'Actitud que se lleva puesta.', image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&q=80&w=800' }
 ];
 
 export const STYLE_LINES = [
   {
     id: 'urbana',
-    name: 'Línea Urbana',
+    name: 'URBANA',
     slug: 'urbana',
-    tagline: 'Streetwear Moderno & Relajado',
-    description: 'Cortes oversize, siluetas relaxed, camisetas heavyweight y actitud urbana contemporánea.',
-    image: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&q=80&w=1000',
-    badge: 'ESTILO RELAJADO'
+    tagline: 'Actitud, comodidad y carácter.',
+    description: 'Denim, oversize y esenciales para un estilo urbano contemporáneo.',
+    image: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=1000',
+    badge: 'ESTILO URBANO'
   },
   {
     id: 'elegante',
-    name: 'Línea Elegante',
+    name: 'ELEGANTE',
     slug: 'elegante',
-    tagline: 'Ejecutivo & Algodón-Seda Premium',
-    description: 'Polos mercerizados con seda, camisas Oxford de alta puntada, pantalones drill y zapatos de vestir en cuero.',
-    image: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&q=80&w=1000',
+    tagline: 'Presencia para cada ocasión.',
+    description: 'Prendas refinadas para un estilo elegante y sofisticado.',
+    image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=1000',
     badge: 'OFICINA & FORMAL'
   },
   {
     id: 'casual',
-    name: 'Línea Smart Casual',
+    name: 'SMART CASUAL',
     slug: 'casual',
-    tagline: 'Versatilidad Elegante & Mezclilla',
-    description: 'Mezcla perfecta entre elegancia y frescura: jeans selvedge de mezclilla, mocasines y chaquetas impecables.',
-    image: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=1000',
+    tagline: 'Equilibrio entre estilo y comodidad.',
+    description: 'Looks versátiles que combinan elegancia y frescura.',
+    image: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&q=80&w=1000',
     badge: 'CASUAL ELEGANTE'
   }
 ];
@@ -133,7 +132,7 @@ export const PRODUCTS = [
     name: 'Polo Piqué Mercerizado Silk-Blend',
     slug: 'polo-pique-mercerizado-silk-blend',
     category: 'polos',
-    styleLine: 'elegante',
+    styleLine: 'casual',
     price: 169900,
     originalPrice: 199900,
     discountPercent: 15,
@@ -155,7 +154,7 @@ export const PRODUCTS = [
       'https://images.unsplash.com/photo-1581655353564-df123a1eb820?auto=format&fit=crop&q=80&w=1000',
       'https://images.unsplash.com/photo-1625910513413-09477028448f?auto=format&fit=crop&q=80&w=1000'
     ],
-    description: 'Polo ejecutivo confeccionado en mezcla de algodón peruano con fibra tipo seda. Brillo sutil, elasticidad natural y tacto ultrafino ideal para la oficina contemporánea.',
+    description: 'Polo ejecutivo confeccionado en mezcla de algodón peruano con fibra tipo seda. Brillo sutil, elasticidad natural y tacto ultrafino ideal para la oficina contemporánea o salidas smart casual.',
     details: [
       '85% Algodón Piqué Mercerizado, 15% Fibras de Seda & Elastano',
       'Cuello de tejido rectilíneo anti-arrugas',

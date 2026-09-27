@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
 import { Button, Input } from '@jm/ui';
 import styles from './Login.module.css';
@@ -7,27 +7,32 @@ import styles from './Login.module.css';
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading, error } = useAuthStore();
+  const [fullName, setFullName] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const { login, signUp, isLoading, error, profile } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const fromPath = location.state?.from?.pathname || '/admin/dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) return;
     try {
-      await login(email, password);
-      navigate('/pos');
+      if (isRegistering) {
+        await signUp(email, password, fullName);
+        alert('Cuenta creada exitosamente. Si tu correo requiere verificación, por favor revisa tu bandeja de entrada.');
+      } else {
+        await login(email, password);
+        const currentProfile = useAuthStore.getState().profile;
+        if (currentProfile?.role === 'admin' || currentProfile?.role === 'super_admin') {
+          navigate(fromPath);
+        } else {
+          navigate('/cuenta');
+        }
+      }
     } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const setDemoCredentials = (role) => {
-    if (role === 'cashier') {
-      setEmail('cajero@jmfashion.com');
-      setPassword('cajero123');
-    } else if (role === 'admin') {
-      setEmail('admin@jmfashion.com');
-      setPassword('admin123');
+      console.error('[Login Exception]:', err);
     }
   };
 
@@ -36,12 +41,24 @@ export const Login = () => {
       <div className={styles.loginCard}>
         <div className={styles.header}>
           <span className={styles.logo}>J&M</span>
-          <span className={styles.tagline}>FASHION RETAIL ERP</span>
+          <span className={styles.tagline}>FASHION STORE • ACCESO SISTEMA</span>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
           {error && <div className={styles.errorBanner}>{error}</div>}
-          
+
+          {isRegistering && (
+            <Input
+              label="Nombre Completo"
+              type="text"
+              placeholder="Ej. Juan Pérez"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              id="login-fullname"
+            />
+          )}
+
           <Input
             label="Correo Electrónico"
             type="email"
@@ -63,20 +80,19 @@ export const Login = () => {
           />
 
           <Button type="submit" variant="primary" isLoading={isLoading} className={styles.submitBtn}>
-            Iniciar Sesión
+            {isRegistering ? 'Crear Cuenta' : 'Iniciar Sesión'}
           </Button>
         </form>
 
-        <div className={styles.demoSection}>
-          <p className={styles.demoTitle}>Prueba de Roles Demo:</p>
-          <div className={styles.demoButtons}>
-            <Button size="sm" variant="outline" onClick={() => setDemoCredentials('cashier')}>
-              Cargar Cajero
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setDemoCredentials('admin')}>
-              Cargar Admin
-            </Button>
-          </div>
+        <div style={{ marginTop: '1.25rem', textAlign: 'center', fontSize: '0.85rem', color: '#71717A' }}>
+          {isRegistering ? '¿Ya tienes una cuenta? ' : '¿Necesitas registrarte? '}
+          <button
+            type="button"
+            onClick={() => setIsRegistering(!isRegistering)}
+            style={{ border: 'none', background: 'none', fontWeight: 700, color: '#2563EB', cursor: 'pointer' }}
+          >
+            {isRegistering ? 'Inicia sesión' : 'Crear cuenta'}
+          </button>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore.js';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -11,20 +12,27 @@ import {
   Star,
   BarChart3,
   Settings,
+  Image,
   ArrowLeft,
   Bell,
   Search,
-  UserCheck,
-  ChevronDown
+  LogOut
 } from 'lucide-react';
 
 export const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, profile, logout } = useAuthStore();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   const navItems = [
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Productos', path: '/admin/productos', icon: ShoppingBag },
+    { label: 'Imágenes Home', path: '/admin/imagenes', icon: Image },
     { label: 'Inventario', path: '/admin/inventario', icon: Boxes },
     { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList, badge: '3' },
     { label: 'Clientes', path: '/admin/clientes', icon: Users },
@@ -34,6 +42,10 @@ export const AdminLayout = () => {
     { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
     { label: 'Configuración', path: '/admin/configuracion', icon: Settings }
   ];
+
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Administrador';
+  const displayRole = profile?.role === 'super_admin' ? 'Super Administrador' : 'Administrador';
+  const avatarInitials = displayName.substring(0, 2).toUpperCase();
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F4F4F5', fontFamily: 'var(--font-sans)' }}>
@@ -97,8 +109,8 @@ export const AdminLayout = () => {
           })}
         </nav>
 
-        {/* BACK TO SHOP LINK */}
-        <div style={{ padding: '1rem', borderTop: '1px solid #1F1F23' }}>
+        {/* BACK TO SHOP & LOGOUT */}
+        <div style={{ padding: '1rem', borderTop: '1px solid #1F1F23', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <Link
             to="/"
             style={{
@@ -116,6 +128,25 @@ export const AdminLayout = () => {
           >
             <ArrowLeft size={16} /> Volver a Tienda Pública
           </Link>
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              color: '#F43F5E',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              padding: '0.6rem 0.8rem',
+              borderRadius: '6px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              width: '100%'
+            }}
+          >
+            <LogOut size={16} /> Cerrar Sesión
+          </button>
         </div>
       </aside>
 
@@ -153,11 +184,11 @@ export const AdminLayout = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderLeft: '1px solid #E4E4E7', paddingLeft: '1.5rem' }}>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#09090B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem' }}>
-                AD
+                {avatarInitials}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#09090B' }}>Admin J&M</span>
-                <span style={{ fontSize: '0.72rem', color: '#71717A' }}>Super Administrador</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#09090B' }}>{displayName}</span>
+                <span style={{ fontSize: '0.72rem', color: '#71717A' }}>{displayRole}</span>
               </div>
             </div>
           </div>

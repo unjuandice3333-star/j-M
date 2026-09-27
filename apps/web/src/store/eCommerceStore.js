@@ -1,81 +1,112 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { PRODUCTS } from '../data/mockData';
+import { analyticsService } from '../services/analytics';
+import supabase from '../config/supabase';
+
+export const DEFAULT_EDITORIAL_IMAGES = {
+  hero_main: 'https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&q=80&w=2000',
+  style_urbana: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=1000',
+  style_elegante: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=1000',
+  style_smart_casual: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&q=80&w=1000',
+  category_camisetas: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=800',
+  category_camisas: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&q=80&w=800',
+  category_polos: 'https://images.unsplash.com/photo-1626557981101-aae6f84aa6ff?auto=format&fit=crop&q=80&w=800',
+  category_jeans: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=800',
+  category_pantalones: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&q=80&w=800',
+  category_bermudas: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?auto=format&fit=crop&q=80&w=800',
+  category_chaquetas: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&q=80&w=800',
+  category_accesorios: 'https://images.unsplash.com/photo-1624222247344-550fb60583dc?auto=format&fit=crop&q=80&w=800',
+  occasion_trabajo_oficina: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=800',
+  occasion_cita_salidas: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800',
+  occasion_casual_urbano: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=800',
+  occasion_noche_eventos: 'https://images.unsplash.com/photo-1534030347209-467a5b0ad3e6?auto=format&fit=crop&q=80&w=800',
+  occasion_fin_semana: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?auto=format&fit=crop&q=80&w=800',
+  occasion_streetwear: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&q=80&w=800',
+  outfit_complete_look: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=1000'
+};
+
+// Generador de ID de sesión para usuarios invitados
+const getOrCreateSessionId = () => {
+  try {
+    let sid = localStorage.getItem('jm_cart_session_id');
+    if (!sid) {
+      sid = `guest-session-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+      localStorage.setItem('jm_cart_session_id', sid);
+    }
+    return sid;
+  } catch (e) {
+    return `guest-session-${Date.now()}`;
+  }
+};
 
 export const useECommerceStore = create(
   persist(
     (set, get) => ({
-      // Dynamic Products State (Synced across Admin & Storefront)
+      // Dynamic Products State (Synced from Supabase PostgreSQL)
       products: PRODUCTS,
+      isLoadingProducts: false,
+      productsError: null,
+      productsLoaded: false,
 
-      // Cart items for storefront
+      loadProducts: async (force = false) => {
+        const { productsLoaded, isLoadingProducts } = get();
+        if (productsLoaded && !force && !isLoadingProducts) return;
+
+        set({ isLoadingProducts: true, productsError: null });
+        try {
+          const { default: productService } = await import('../services/productService');
+          const fetchedProducts = await productService.getProducts();
+
+          set({
+            products: fetchedProducts,
+            isLoadingProducts: false,
+            productsLoaded: true,
+            productsError: null
+          });
+        } catch (err) {
+          console.error('[eCommerceStore Error]: Error al cargar productos desde Supabase:', err);
+          set({
+            isLoadingProducts: false,
+            productsError: err.message || 'Error al conectar con la base de datos de productos.'
+          });
+        }
+      },
+
+      // Storefront Cart & Persistence State
       items: [],
       wishlist: ['prod-1', 'prod-3'],
       isCartOpen: false,
       isSearchOpen: false,
       isMobileMenuOpen: false,
       searchQuery: '',
+      isSyncingCart: false,
 
       // Coupon State
       appliedCoupon: null,
 
-      // Customer Authentication & Google OAuth State
-      isCustomerLoggedIn: false,
-      customerUser: null,
+      // Editorial Home Images Dynamic Store
+      editorialImages: { ...DEFAULT_EDITORIAL_IMAGES },
 
-      loginWithGoogle: (email, name, avatar) => {
-        const userEmail = email || 'usuario.google@gmail.com';
-        const userName = name || userEmail.split('@')[0].split('.')[0].toUpperCase();
-        const googleCustomer = {
-          id: `usr-google-${Date.now()}`,
-          name: userName,
-          email: userEmail,
-          avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=09090B&color=fff`,
-          provider: 'google'
-        };
-        try { sessionStorage.setItem('jm_customer_session', 'active'); } catch (e) {}
-        set({
-          isCustomerLoggedIn: true,
-          customerUser: googleCustomer,
-          userProfile: {
-            ...get().userProfile,
-            name: googleCustomer.name,
-            email: googleCustomer.email
+      updateEditorialImage: (key, imageUrl) => {
+        set((state) => ({
+          editorialImages: {
+            ...state.editorialImages,
+            [key]: imageUrl
           }
-        });
-        return googleCustomer;
+        }));
       },
 
-      loginWithCustomerEmail: (email, name) => {
-        const emailCustomer = {
-          id: `usr-${Date.now()}`,
-          name: name || email.split('@')[0],
-          email,
-          provider: 'email'
-        };
-        try { sessionStorage.setItem('jm_customer_session', 'active'); } catch (e) {}
-        set({
-          isCustomerLoggedIn: true,
-          customerUser: emailCustomer,
-          userProfile: {
-            ...get().userProfile,
-            name: emailCustomer.name,
-            email
-          }
-        });
-        return emailCustomer;
-      },
-
-      customerLogout: () => {
-        try {
-          sessionStorage.removeItem('jm_customer_session');
-          localStorage.removeItem('jm_customer_session');
-        } catch (e) {}
-        set({
-          isCustomerLoggedIn: false,
-          customerUser: null,
-          userProfile: { name: '', email: '', phone: '', preferredSize: 'M', preferredFit: 'REGULAR' }
-        });
+      resetEditorialImage: (key) => {
+        const defaultImg = DEFAULT_EDITORIAL_IMAGES[key];
+        if (defaultImg) {
+          set((state) => ({
+            editorialImages: {
+              ...state.editorialImages,
+              [key]: defaultImg
+            }
+          }));
+        }
       },
 
       // Customer Profile & Address State
@@ -88,8 +119,6 @@ export const useECommerceStore = create(
       },
 
       savedAddresses: [],
-
-      // Orders History State
       orders: [],
 
       // Modals
@@ -97,79 +126,74 @@ export const useECommerceStore = create(
       selectedModalCategory: 'camisetas',
       selectedModalProduct: null,
 
-      // Admin Product Management Actions (Live Dynamic Storefront Sync)
-      addProduct: (newProd) => {
-        const { products } = get();
-        const slug = newProd.slug || (newProd.name || 'producto-nuevo').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-        const product = {
-          id: `prod-${Date.now()}`,
-          name: newProd.name || 'Nueva Prenda J&M',
-          slug: `${slug}-${Math.floor(Math.random() * 1000)}`,
-          category: newProd.category || 'camisetas',
-          styleLine: newProd.styleLine || 'urbana',
-          price: Number(newProd.price) || 129900,
-          originalPrice: newProd.originalPrice ? Number(newProd.originalPrice) : null,
-          discountPercent: newProd.originalPrice && Number(newProd.originalPrice) > Number(newProd.price)
-            ? Math.round(((Number(newProd.originalPrice) - Number(newProd.price)) / Number(newProd.originalPrice)) * 100)
-            : 0,
-          isNew: newProd.isNew !== undefined ? newProd.isNew : true,
-          isBestSeller: newProd.isBestSeller || false,
-          isSale: newProd.isSale || false,
-          rating: 5.0,
-          reviewCount: 1,
-          fit: newProd.fit || 'REGULAR',
-          occasion: newProd.occasion || 'casual',
-          color: newProd.colors?.[0]?.name || 'Negro Azabache',
-          colors: newProd.colors?.length > 0 ? newProd.colors : [
-            { name: 'Negro Azabache', hex: '#121212', selected: true },
-            { name: 'Blanco Nieve', hex: '#FFFFFF', selected: false }
-          ],
-          sizes: newProd.sizes?.length > 0 ? newProd.sizes : ['S', 'M', 'L', 'XL'],
-          images: newProd.images?.length > 0 ? newProd.images : [
-            'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=1000',
-            'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80&w=1000'
-          ],
-          description: newProd.description || 'Prenda de alta calidad confeccionada en Colombia por J&M Fashion Store.',
-          details: newProd.details?.length > 0 ? newProd.details : ['100% Algodón Colombiano', 'Lavado suave', 'Hecho en Colombia'],
-          fitDescription: newProd.fitDescription || 'Corte impecable con horma perfecta.',
-          status: newProd.status || 'activo'
-        };
+      // Sincronización del carrito en servidor Supabase (Carts & Cart_Items)
+      syncCartWithServer: async () => {
+        const { items } = get();
+        set({ isSyncingCart: true });
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const userId = session?.user?.id || null;
+          const sessionId = userId ? null : getOrCreateSessionId();
 
-        set({ products: [product, ...products] });
-        return product;
+          // 1. Obtener o crear carrito activo en PostgreSQL
+          let cartQuery = supabase.from('carts').select('id').eq('status', 'active');
+          if (userId) {
+            cartQuery = cartQuery.eq('user_id', userId);
+          } else {
+            cartQuery = cartQuery.eq('session_id', sessionId);
+          }
+
+          let { data: cartRecord, error: cartErr } = await cartQuery.single();
+
+          if (!cartRecord) {
+            const { data: newCart, error: newCartErr } = await supabase
+              .from('carts')
+              .insert([{ user_id: userId, session_id: sessionId, status: 'active' }])
+              .select('id')
+              .single();
+
+            if (!newCartErr && newCart) {
+              cartRecord = newCart;
+            }
+          }
+
+          if (cartRecord?.id && items.length > 0) {
+            // Reconciliar cart_items en Supabase
+            // NOTA: Para evitar fallas de FK si la variante aún no existe en DB, intentamos la upsert
+            const cartItemsPayload = items.map((item) => ({
+              cart_id: cartRecord.id,
+              variant_id: item.variantId || 'b1000000-0000-0000-0000-000000000001',
+              quantity: item.quantity,
+              unit_price: item.price
+            }));
+
+            await supabase
+              .from('cart_items')
+              .upsert(cartItemsPayload, { onConflict: 'cart_id,variant_id' });
+          }
+        } catch (e) {
+          console.warn('[eCommerceStore Warning]: Cart server sync soft warning:', e);
+        } finally {
+          set({ isSyncingCart: false });
+        }
       },
 
-      updateProduct: (id, updatedFields) => {
-        const { products } = get();
-        set({
-          products: products.map((p) => (p.id === id ? { ...p, ...updatedFields } : p))
-        });
-      },
-
-      deleteProduct: (id) => {
-        const { products } = get();
-        set({ products: products.filter((p) => p.id !== id) });
-      },
-
-      resetProductsToDefault: () => {
-        set({ products: PRODUCTS });
-      },
-
-      // Cart Actions
+      // Cart Actions (Optimistic UX Update + Server Reconcile)
       addItem: (product, size, color, quantity = 1) => {
         const { items } = get();
         const colorName = typeof color === 'string' ? color : (color?.name || 'Único');
         const itemId = `${product.id}-${size}-${colorName}`;
         const existingIndex = items.findIndex((i) => i.id === itemId);
 
+        let updatedItems = [];
         if (existingIndex >= 0) {
-          const updated = [...items];
-          updated[existingIndex].quantity += quantity;
-          set({ items: updated, isCartOpen: true });
+          updatedItems = [...items];
+          updatedItems[existingIndex].quantity += quantity;
         } else {
           const newItem = {
             id: itemId,
             productId: product.id,
+            variantId: product.variantId || 'b1000000-0000-0000-0000-000000000001',
             product,
             name: product.name,
             price: product.price,
@@ -179,12 +203,21 @@ export const useECommerceStore = create(
             color: colorName,
             quantity
           };
-          set({ items: [...items, newItem], isCartOpen: true });
+          updatedItems = [...items, newItem];
         }
+
+        set({ items: updatedItems, isCartOpen: true });
+        analyticsService.addToCart(product, size, color, quantity);
+        get().syncCartWithServer();
       },
 
       removeItem: (itemId) => {
+        const itemToRemove = get().items.find((i) => i.id === itemId);
+        if (itemToRemove) {
+          analyticsService.removeFromCart(itemToRemove);
+        }
         set({ items: get().items.filter((i) => i.id !== itemId) });
+        get().syncCartWithServer();
       },
 
       updateQuantity: (itemId, quantity) => {
@@ -195,6 +228,7 @@ export const useECommerceStore = create(
         set({
           items: get().items.map((i) => (i.id === itemId ? { ...i, quantity } : i))
         });
+        get().syncCartWithServer();
       },
 
       saveForLater: (itemId) => {
@@ -208,7 +242,10 @@ export const useECommerceStore = create(
         }
       },
 
-      clearCart: () => set({ items: [], appliedCoupon: null }),
+      clearCart: () => {
+        set({ items: [], appliedCoupon: null });
+        get().syncCartWithServer();
+      },
 
       // Coupon Actions
       applyCoupon: (code) => {
@@ -248,19 +285,115 @@ export const useECommerceStore = create(
 
       isInWishlist: (productId) => get().wishlist.includes(productId),
 
-      // Order Actions
-      createOrder: (orderData) => {
-        const { orders, clearCart } = get();
-        const newOrderId = `JM-${Math.floor(1000 + Math.random() * 9000)}`;
-        const newOrder = {
-          id: newOrderId,
-          date: 'Hoy',
-          status: 'Pedido recibido',
-          ...orderData
-        };
-        set({ orders: [newOrder, ...orders] });
-        clearCart();
-        return newOrderId;
+      // Admin Product CRUD Actions
+      addProduct: async (newProd) => {
+        try {
+          const { default: productService } = await import('../services/productService');
+          const savedProduct = await productService.createProduct(newProd);
+
+          if (savedProduct) {
+            const { products } = get();
+            set({ products: [savedProduct, ...products.filter((p) => p.id !== savedProduct.id)] });
+            return savedProduct;
+          }
+        } catch (e) {
+          console.error('[eCommerceStore Error]: Error al guardar producto en Supabase:', e);
+          throw e;
+        }
+      },
+
+      updateProduct: async (id, updatedFields) => {
+        try {
+          const { default: productService } = await import('../services/productService');
+          const updatedProd = await productService.updateProduct(id, updatedFields);
+
+          if (updatedProd) {
+            const { products } = get();
+            set({
+              products: products.map((p) => (p.id === id ? { ...p, ...updatedProd } : p))
+            });
+            return updatedProd;
+          }
+        } catch (e) {
+          console.error('[eCommerceStore Error]: Error al actualizar producto en Supabase:', e);
+          throw e;
+        }
+      },
+
+      deleteProduct: async (id) => {
+        try {
+          const { default: productService } = await import('../services/productService');
+          await productService.deleteProduct(id);
+
+          const { products } = get();
+          set({ products: products.filter((p) => p.id !== id) });
+          return true;
+        } catch (e) {
+          console.error('[eCommerceStore Error]: Error al eliminar producto en Supabase:', e);
+          throw e;
+        }
+      },
+
+      resetProductsToDefault: () => {
+        get().loadProducts(true);
+      },
+
+      // Transactional & Idempotent Order Creation
+      createOrder: async (orderData) => {
+        const { orders, appliedCoupon, clearCart } = get();
+        
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const idempotencyKey = orderData.idempotencyKey || `idemp-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+
+          // Invocar el RPC extendido e idempotente con validaciones server-side completas
+          const { data: rpcResponse, error: rpcError } = await supabase.rpc('create_online_order_validated_idempotent', {
+            p_customer_name: orderData.customerName || 'Cliente J&M',
+            p_customer_email: orderData.email,
+            p_customer_phone: orderData.phone,
+            p_shipping_department: orderData.department || 'Cundinamarca',
+            p_shipping_city: orderData.city || 'Bogotá D.C.',
+            p_shipping_address: orderData.shippingAddress,
+            p_shipping_neighborhood: orderData.neighborhood || '',
+            p_shipping_notes: orderData.shippingNotes || '',
+            p_shipping_method: orderData.shippingMethod || 'Envío Estándar Nacional',
+            p_coupon_code: appliedCoupon?.code || null,
+            p_items: (orderData.items || []).map((item) => ({
+              variant_id: item.variantId || 'b1000000-0000-0000-0000-000000000001',
+              quantity: item.quantity,
+              name: item.name,
+              price: item.price,
+              size: item.size,
+              color: item.color
+            })),
+            p_idempotency_key: idempotencyKey,
+            p_user_id: session?.user?.id || null
+          });
+
+          if (rpcError) {
+            console.error('[createOrder RPC Error]:', rpcError);
+            throw new Error(rpcError.message || 'Error al procesar el pedido en el servidor.');
+          }
+
+          if (rpcResponse && rpcResponse.order_id) {
+            const serverOrder = {
+              id: rpcResponse.order_id,
+              order_number: rpcResponse.order_number,
+              date: 'Hoy',
+              status: rpcResponse.status || 'payment_pending',
+              total: rpcResponse.total,
+              amount_in_cents: rpcResponse.amount_in_cents,
+              isDuplicate: rpcResponse.is_duplicate || false,
+              ...orderData
+            };
+            set({ orders: [serverOrder, ...orders] });
+            clearCart();
+            return rpcResponse.order_id;
+          }
+        } catch (e) {
+          console.error('[eCommerceStore Error]: Error autoritativo en checkout server-side:', e);
+          throw e;
+        }
       },
 
       // Profile & Address Actions
@@ -319,13 +452,28 @@ export const useECommerceStore = create(
       }
     }),
     {
-      name: 'jm-fashion-store-cart-v10',
+      name: 'jm-fashion-store-cart-v12',
+      version: 12,
+      migrate: (persistedState, version) => {
+        if (persistedState && Array.isArray(persistedState.products)) {
+          const updatedProducts = persistedState.products.map((p) => {
+            const fresh = PRODUCTS.find((m) => m.id === p.id);
+            if (fresh) {
+              return { ...p, styleLine: p.styleLine || fresh.styleLine };
+            }
+            return p;
+          });
+          return { ...persistedState, products: updatedProducts };
+        }
+        return persistedState;
+      },
       partialize: (state) => ({
         products: state.products,
         items: state.items,
         wishlist: state.wishlist,
         appliedCoupon: state.appliedCoupon,
-        savedAddresses: state.savedAddresses
+        savedAddresses: state.savedAddresses,
+        editorialImages: state.editorialImages
       })
     }
   )

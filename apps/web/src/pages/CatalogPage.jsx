@@ -4,18 +4,19 @@ import { Filter, SlidersHorizontal, X, ChevronDown, Check } from 'lucide-react';
 import { CATEGORIES, OCCASIONS } from '../data/mockData';
 import ProductCard from '../components/Product/ProductCard';
 import { useECommerceStore } from '../store/eCommerceStore';
+import { normalizeStyleLine } from '../utils/productUtils';
 
 export const CatalogPage = () => {
   const { category: urlCategory, styleLine: urlStyleLine } = useParams();
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  const { products } = useECommerceStore();
+  const { products, isLoadingProducts, productsError } = useECommerceStore();
 
   const querySearch = searchParams.get('q') || '';
   const queryOccasion = searchParams.get('ocasion') || '';
 
-  // Filter States
-  const [selectedStyleLine, setSelectedStyleLine] = useState(urlStyleLine || 'todas');
+  // Filter States - Normalized canonical styleLine ('urbana' | 'elegante' | 'casual' | 'todas')
+  const [selectedStyleLine, setSelectedStyleLine] = useState(() => normalizeStyleLine(urlStyleLine));
   const [selectedCategory, setSelectedCategory] = useState(urlCategory || 'todas');
   const [selectedFit, setSelectedFit] = useState('todos');
   const [selectedSize, setSelectedSize] = useState('todas');
@@ -34,7 +35,7 @@ export const CatalogPage = () => {
     const path = location.pathname;
 
     if (urlStyleLine) {
-      setSelectedStyleLine(urlStyleLine);
+      setSelectedStyleLine(normalizeStyleLine(urlStyleLine));
       setSelectedCategory('todas');
       setOnlyNew(false);
       setOnlyBestSeller(false);
@@ -90,9 +91,10 @@ export const CatalogPage = () => {
   // Dynamic Page Title
   const pageTitle = useMemo(() => {
     if (querySearch) return `BÚSQUEDA: "${querySearch}"`;
-    if (selectedStyleLine === 'urbana') return '🏙️ LÍNEA URBANA — STREETWEAR RELAJADO';
-    if (selectedStyleLine === 'elegante') return '👔 LÍNEA ELEGANTE — FORMAL & OFICINA';
-    if (selectedStyleLine === 'casual') return '✨ LÍNEA SMART CASUAL — ELEGANCIA & MEZCLILLA';
+    const normalized = normalizeStyleLine(selectedStyleLine);
+    if (normalized === 'urbana') return 'LÍNEA URBANA — STREETWEAR RELAJADO';
+    if (normalized === 'elegante') return 'LÍNEA ELEGANTE — FORMAL & OFICINA';
+    if (normalized === 'casual') return 'LÍNEA SMART CASUAL — ELEGANCIA & MEZCLILLA';
     const path = location.pathname;
     if (path === '/nuevo') return 'NOVEDADES Y NUEVA COLECCIÓN';
     if (path === '/mas-vendidos') return 'LOS MÁS VENDIDOS J&M';
@@ -107,7 +109,7 @@ export const CatalogPage = () => {
     return 'CATÁLOGO DE MODA MASCULINA';
   }, [location.pathname, selectedCategory, selectedStyleLine, querySearch]);
 
-  // Filter and Sort Logic
+  // Filter and Sort Logic (Robust Normalization & Strict Intersection AND)
   const filteredProducts = useMemo(() => {
     const activeProducts = products.filter((p) => p.status !== 'borrador' && p.status !== 'archivado');
 
@@ -116,9 +118,13 @@ export const CatalogPage = () => {
       if (querySearch && !p.name.toLowerCase().includes(querySearch.toLowerCase()) && !p.category?.toLowerCase().includes(querySearch.toLowerCase())) {
         return false;
       }
-      // Style Line Filter
-      if (selectedStyleLine !== 'todas' && p.styleLine !== selectedStyleLine) {
-        return false;
+      // Robust Style Line Filter using normalizeStyleLine
+      const targetStyleLine = normalizeStyleLine(selectedStyleLine);
+      if (targetStyleLine !== 'todas') {
+        const prodStyleLine = normalizeStyleLine(p.styleLine);
+        if (prodStyleLine !== targetStyleLine) {
+          return false;
+        }
       }
       // Section filters (Nuevo, Mas vendidos, Ofertas)
       if (onlyNew && !p.isNew) return false;
@@ -167,6 +173,8 @@ export const CatalogPage = () => {
     setMaxPrice(400000);
   };
 
+  const canonicalStyleLine = normalizeStyleLine(selectedStyleLine);
+
   return (
     <div style={{ backgroundColor: '#FFFFFF', minHeight: '80vh', padding: '2.5rem 0 5rem 0' }}>
       <div className="jm-container">
@@ -204,33 +212,33 @@ export const CatalogPage = () => {
               </button>
             </div>
 
-            {/* Línea de Estilo Multimarca */}
+            {/* Línea de Estilo */}
             <div>
               <h4 style={filterSectionTitle}>LÍNEA DE ESTILO</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <button
                   onClick={() => setSelectedStyleLine('todas')}
-                  style={filterOptionBtn(selectedStyleLine === 'todas')}
+                  style={filterOptionBtn(canonicalStyleLine === 'todas')}
                 >
                   Todas las líneas
                 </button>
                 <button
                   onClick={() => setSelectedStyleLine('urbana')}
-                  style={filterOptionBtn(selectedStyleLine === 'urbana')}
+                  style={filterOptionBtn(canonicalStyleLine === 'urbana')}
                 >
-                  🏙️ Línea Urbana
+                  Línea Urbana
                 </button>
                 <button
                   onClick={() => setSelectedStyleLine('elegante')}
-                  style={filterOptionBtn(selectedStyleLine === 'elegante')}
+                  style={filterOptionBtn(canonicalStyleLine === 'elegante')}
                 >
-                  👔 Línea Elegante
+                  Línea Elegante
                 </button>
                 <button
                   onClick={() => setSelectedStyleLine('casual')}
-                  style={filterOptionBtn(selectedStyleLine === 'casual')}
+                  style={filterOptionBtn(canonicalStyleLine === 'casual')}
                 >
-                  ✨ Línea Smart Casual
+                  Línea Smart Casual
                 </button>
               </div>
             </div>
@@ -245,15 +253,28 @@ export const CatalogPage = () => {
                 >
                   Todas las categorías
                 </button>
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.slug)}
-                    style={filterOptionBtn(selectedCategory === cat.slug)}
-                  >
-                    {cat.name} ({products.filter((p) => p.category === cat.slug && p.status !== 'borrador').length})
-                  </button>
-                ))}
+                {CATEGORIES.map((cat) => {
+                  const countInContext = products.filter((p) => 
+                    p.category === cat.slug && 
+                    p.status !== 'borrador' && 
+                    (canonicalStyleLine === 'todas' || normalizeStyleLine(p.styleLine) === canonicalStyleLine)
+                  ).length;
+
+                  // Hides categories with 0 items when a specific styleLine is active
+                  if (canonicalStyleLine !== 'todas' && countInContext === 0) {
+                    return null;
+                  }
+
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.slug)}
+                      style={filterOptionBtn(selectedCategory === cat.slug)}
+                    >
+                      {cat.name} ({countInContext})
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -429,11 +450,7 @@ export const CatalogPage = () => {
                 </button>
               </div>
             ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                gap: '1.5rem'
-              }}>
+              <div className="catalog-products-responsive-grid">
                 {filteredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -501,13 +518,33 @@ export const CatalogPage = () => {
         </div>
       )}
 
-      {/* Embedded Breakpoint CSS */}
+      {/* Embedded Breakpoint CSS for Responsive Grid: 4 col desktop, 3 tablet, 2 mobile */}
       <style>{`
+        .catalog-products-responsive-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 1.25rem;
+        }
+
+        @media (max-width: 1200px) {
+          .catalog-products-responsive-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+
         @media (max-width: 900px) {
           .catalog-grid-layout { grid-template-columns: 1fr !important; }
           .desktop-filters { display: none !important; }
           .desktop-only { display: none !important; }
         }
+
+        @media (max-width: 640px) {
+          .catalog-products-responsive-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+          }
+        }
+
         @media (min-width: 901px) {
           .mobile-filter-btn { display: none !important; }
         }

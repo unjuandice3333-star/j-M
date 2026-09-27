@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Sparkles, Check, Upload } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Sparkles, Check, Upload, AlertTriangle, ArrowLeftRight, Star } from 'lucide-react';
 import { CATEGORIES } from '../../data/mockData';
 import { useECommerceStore } from '../../store/eCommerceStore';
+import SafeProductImage from '../../components/Common/SafeImage';
+import { hasValidProductImage } from '../../utils/productUtils';
 
 export const AdminProductFormPage = () => {
   const navigate = useNavigate();
@@ -211,15 +213,15 @@ export const AdminProductFormPage = () => {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
           <div>
-            <label style={labelStyle}>Línea de Estilo (Multimarca) *</label>
+            <label style={labelStyle}>Línea de Estilo *</label>
             <select
               value={formData.styleLine}
               onChange={(e) => setFormData({ ...formData, styleLine: e.target.value })}
               style={{ ...inputStyle, border: '1.5px solid #2563EB', fontWeight: 700 }}
             >
-              <option value="urbana">🏙️ Línea Urbana (Relajado / Streetwear)</option>
-              <option value="elegante">👔 Línea Elegante (Oficina / Algodón-Seda / Drill)</option>
-              <option value="casual">✨ Línea Smart Casual (Denim / Mocasines)</option>
+              <option value="urbana">Línea Urbana (Relajado / Streetwear)</option>
+              <option value="elegante">Línea Elegante (Oficina / Algodón-Seda / Drill)</option>
+              <option value="casual">Línea Smart Casual (Denim / Mocasines)</option>
             </select>
           </div>
 
@@ -321,35 +323,66 @@ export const AdminProductFormPage = () => {
 
       {/* 3. IMÁGENES & COLORES */}
       <div style={{ backgroundColor: '#FFFFFF', padding: '1.75rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
-        <h3 style={sectionTitle}>3. FOTOGRAFÍAS DE PRODUCTO & COLORES</h3>
+        <h3 style={sectionTitle}>3. FOTOGRAFÍAS DE PRODUCTO & COLORES (ADMINISTRABLE)</h3>
+
+        {/* Warning Banner if product has no valid images */}
+        {!hasValidProductImage(formData) && (
+          <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#991B1B' }}>
+            <AlertTriangle size={20} />
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.88rem' }}>Este producto no tiene una imagen válida asignada.</div>
+              <div style={{ fontSize: '0.8rem' }}>Sube una foto desde tu computador o ingresa una URL válida para que la prenda se muestre correctamente en la tienda pública.</div>
+            </div>
+          </div>
+        )}
 
         {/* Subida Multi-Imagen de Fotografías */}
         <div style={{ marginBottom: '1.5rem' }}>
-          <label style={labelStyle}>Galería Fotográfica de la Prenda (Ilimitada)</label>
+          <label style={labelStyle}>Galería Fotográfica de la Prenda (La primera foto es la Imagen Principal)</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
             {formData.images?.map((imgUrl, idx) => (
-              <div key={idx} style={{ position: 'relative', width: '100px', height: '120px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #E4E4E7', backgroundColor: '#F4F4F5' }}>
-                <img src={imgUrl} alt={`Foto ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div key={idx} style={{ position: 'relative', width: '110px', height: '135px', borderRadius: '8px', overflow: 'hidden', border: idx === 0 ? '2px solid #09090B' : '1px solid #E4E4E7', backgroundColor: '#F4F4F5' }}>
+                <SafeProductImage src={imgUrl} alt={`Foto ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                
+                {/* Remove button */}
                 <button
                   type="button"
                   onClick={() => {
                     const newImgs = formData.images.filter((_, i) => i !== idx);
                     setFormData({ ...formData, images: newImgs, imageUrl1: newImgs[0] || '', imageUrl2: newImgs[1] || '' });
                   }}
-                  style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(9, 9, 11, 0.8)', color: '#FFF', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(225, 29, 72, 0.9)', color: '#FFF', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   title="Eliminar foto"
                 >
                   <Trash2 size={11} />
                 </button>
-                <span style={{ position: 'absolute', bottom: 4, left: 4, backgroundColor: 'rgba(9,9,11,0.7)', color: '#FFF', fontSize: '0.65rem', fontWeight: 800, padding: '1px 5px', borderRadius: '3px' }}>
-                  #{idx + 1}
+
+                {/* Make Primary Image Button */}
+                {idx > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const reordered = [imgUrl, ...formData.images.filter((_, i) => i !== idx)];
+                      setFormData({ ...formData, images: reordered, imageUrl1: reordered[0], imageUrl2: reordered[1] || '' });
+                    }}
+                    style={{ position: 'absolute', top: 4, left: 4, backgroundColor: 'rgba(9, 9, 11, 0.8)', color: '#FFF', border: 'none', borderRadius: '4px', padding: '2px 5px', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer' }}
+                    title="Establecer como imagen principal"
+                  >
+                    Hacer Principal
+                  </button>
+                )}
+
+                {/* Index / Primary Badge */}
+                <span style={{ position: 'absolute', bottom: 4, left: 4, backgroundColor: idx === 0 ? '#09090B' : 'rgba(9,9,11,0.75)', color: idx === 0 ? '#D4AF37' : '#FFF', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '3px' }}>
+                  {idx === 0 ? 'PRINCIPAL' : `#${idx + 1}`}
                 </span>
               </div>
             ))}
 
-            <label style={{ width: '100px', height: '120px', border: '2px dashed #D4D4D8', borderRadius: '8px', backgroundColor: '#FAFAFA', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0.5rem' }}>
-              <Plus size={20} color="#71717A" />
-              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#09090B', marginTop: '0.3rem' }}>Agregar Fotos</span>
+            <label style={{ width: '110px', height: '135px', border: '2px dashed #D4D4D8', borderRadius: '8px', backgroundColor: '#FAFAFA', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0.5rem' }}>
+              <Plus size={22} color="#71717A" />
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#09090B', marginTop: '0.3rem' }}>Subir Imagen</span>
+              <span style={{ fontSize: '0.62rem', color: '#A1A1AA' }}>JPG, PNG, WEBP</span>
               <input
                 type="file"
                 accept="image/*"

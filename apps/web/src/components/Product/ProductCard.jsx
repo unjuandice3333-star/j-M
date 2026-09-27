@@ -4,14 +4,17 @@ import { Heart, Star, ShoppingBag, Eye } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { formatCOP } from '../../data/mockData';
 
+import SafeProductImage from '../Common/SafeImage';
+import { getProductImage } from '../../utils/productUtils';
+
 export const ProductCard = ({ product }) => {
   const { toggleWishlist, isInWishlist, addItem } = useECommerceStore();
   const [isHovered, setIsHovered] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
   const inWishlist = isInWishlist(product.id);
 
-  const mainImage = product.images[0];
-  const secondImage = product.images[1] || product.images[0];
+  const mainImage = getProductImage(product, 0);
+  const secondImage = getProductImage(product, 1);
 
   const handleQuickAdd = (e, size) => {
     e.preventDefault();
@@ -26,6 +29,7 @@ export const ProductCard = ({ product }) => {
       style={{
         display: 'flex',
         flexDirection: 'column',
+        height: '100%',
         position: 'relative',
         backgroundColor: '#FFFFFF',
         borderRadius: '8px',
@@ -37,26 +41,24 @@ export const ProductCard = ({ product }) => {
       {/* BADGES & WISHLIST OVERLAY */}
       <div style={{
         position: 'absolute',
-        top: '12px',
-        left: '12px',
-        right: '12px',
+        top: '10px',
+        left: '10px',
+        right: '10px',
         zIndex: 10,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         pointerEvents: 'none'
       }}>
-        {/* Badges Column */}
+        {/* Badges Column — Máximo 2 badges simultáneamente (Prioridad: NUEVO > MÁS VENDIDO > OFERTA) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {product.isNew && (
-            <span style={badgeStyle('#09090B', '#FFFFFF')}>NUEVO</span>
-          )}
-          {product.isBestSeller && (
-            <span style={badgeStyle('#D4AF37', '#09090B')}>MÁS VENDIDO</span>
-          )}
-          {product.isSale && product.discountPercent > 0 && (
-            <span style={badgeStyle('#E11D48', '#FFFFFF')}>-{product.discountPercent}%</span>
-          )}
+          {(() => {
+            const activeBadges = [];
+            if (product.isNew) activeBadges.push(<span key="new" style={badgeStyle('#09090B', '#FFFFFF')}>NUEVO</span>);
+            if (product.isBestSeller && activeBadges.length < 2) activeBadges.push(<span key="best" style={badgeStyle('#D4AF37', '#09090B')}>MÁS VENDIDO</span>);
+            if (product.isSale && product.discountPercent > 0 && activeBadges.length < 2) activeBadges.push(<span key="sale" style={badgeStyle('#E11D48', '#FFFFFF')}>-{product.discountPercent}%</span>);
+            return activeBadges;
+          })()}
         </div>
 
         {/* Wishlist Button */}
@@ -68,36 +70,38 @@ export const ProductCard = ({ product }) => {
           }}
           style={{
             pointerEvents: 'auto',
-            width: '36px',
-            height: '36px',
+            width: '34px',
+            height: '34px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backgroundColor: 'rgba(255, 255, 255, 0.92)',
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             border: 'none',
             cursor: 'pointer',
-            transition: 'transform 0.15s'
+            transition: 'transform 0.18s ease, background-color 0.18s ease'
           }}
           title={inWishlist ? 'Quitar de favoritos' : 'Guardar en favoritos'}
         >
-          <Heart size={18} fill={inWishlist ? '#E11D48' : 'none'} color={inWishlist ? '#E11D48' : '#09090B'} />
+          <Heart size={17} fill={inWishlist ? '#E11D48' : 'none'} color={inWishlist ? '#E11D48' : '#09090B'} />
         </button>
       </div>
 
-      {/* IMAGE CONTAINER WITH HOVER FLIP */}
-      <Link to={`/producto/${product.slug}`} style={{ display: 'block', position: 'relative', overflow: 'hidden', aspectRatio: '3/4' }}>
-        <img
+      {/* IMAGE CONTAINER WITH HOVER FLIP & SAFE IMAGE */}
+      <Link to={`/producto/${product.slug}`} style={{ display: 'block', position: 'relative', overflow: 'hidden', aspectRatio: '4/5', backgroundColor: '#F4F4F5' }}>
+        <SafeProductImage
           src={isHovered ? secondImage : mainImage}
+          product={product}
+          imageIndex={isHovered ? 1 : 0}
           alt={product.name}
           style={{
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s',
-            transform: isHovered ? 'scale(1.04)' : 'scale(1)'
+            transition: 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s',
+            transform: isHovered ? 'scale(1.03)' : 'scale(1)'
           }}
         />
 
@@ -126,36 +130,39 @@ export const ProductCard = ({ product }) => {
           bottom: 0,
           left: 0,
           right: 0,
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backgroundColor: 'rgba(255, 255, 255, 0.98)',
           backdropFilter: 'blur(6px)',
           padding: '8px 10px',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
           gap: '6px',
           transform: isHovered ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           borderTop: '1px solid #E4E4E7'
         }}>
-          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#71717A', marginRight: '4px' }}>AGREGAR:</span>
-          {product.sizes.map((sz) => (
-            <button
-              key={sz}
-              onClick={(e) => handleQuickAdd(e, sz)}
-              style={{
-                padding: '4px 8px',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                border: '1px solid #D4D4D8',
-                borderRadius: '4px',
-                backgroundColor: '#FFFFFF',
-                color: '#09090B',
-                transition: 'background 0.15s, color 0.15s'
-              }}
-            >
-              {sz}
-            </button>
-          ))}
+          <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#09090B', letterSpacing: '0.05em' }}>SELECCIONAR TALLA:</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
+            {product.sizes.map((sz) => (
+              <button
+                key={sz}
+                onClick={(e) => handleQuickAdd(e, sz)}
+                style={{
+                  padding: '4px 7px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  border: '1px solid #D4D4D8',
+                  borderRadius: '4px',
+                  backgroundColor: '#FFFFFF',
+                  color: '#09090B',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, color 0.15s'
+                }}
+              >
+                {sz}
+              </button>
+            ))}
+          </div>
         </div>
       </Link>
 
