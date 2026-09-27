@@ -61,15 +61,11 @@ export const AdminInventoryPage = () => {
         });
         setInventoryItems(formatted);
       } else {
-        // Fallback demostrativo si la tabla se encuentra sin datos
-        setInventoryItems([
-          { id: 'inv-1', variantId: 'b1000000-0000-0000-0000-000000000001', name: 'Camiseta Heavyweight Oversize — Negro / S', sku: 'TS-OV-001-BLK-S', location: 'Bodega Online', total: 15, reserved: 2, available: 13, min: 5, status: 'ok' },
-          { id: 'inv-2', variantId: 'b1000000-0000-0000-0000-000000000002', name: 'Camiseta Heavyweight Oversize — Negro / M', sku: 'TS-OV-001-BLK-M', location: 'Bodega Online', total: 4, reserved: 1, available: 3, min: 5, status: 'low' },
-          { id: 'inv-3', variantId: 'b1000000-0000-0000-0000-000000000003', name: 'Camisa Oxford Premium — Blanco / L', sku: 'SH-OX-002-WHT-L', location: 'Bodega Online', total: 0, reserved: 0, available: 0, min: 5, status: 'out' }
-        ]);
+        setInventoryItems([]);
       }
     } catch (e) {
       console.error('[AdminInventoryPage Error]: Error al cargar inventario real:', e);
+      setInventoryItems([]);
     } finally {
       setIsLoading(false);
     }
@@ -175,6 +171,10 @@ export const AdminInventoryPage = () => {
         {isLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#71717A' }}>
             Cargando inventario real desde Supabase PostgreSQL...
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
+            No hay registros ni movimientos de inventario.
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>

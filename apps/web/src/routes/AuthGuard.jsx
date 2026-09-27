@@ -31,8 +31,9 @@ export const AuthGuard = ({ children, allowedRoles }) => {
   }
 
   if (!isLoggedIn) {
-    // Redirigir a login guardando la ruta previa
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Si la ruta solicitada es administrativa, redirigir a /admin/login
+    const targetLogin = location.pathname.startsWith('/admin') ? '/admin/login' : '/login';
+    return <Navigate to={targetLogin} state={{ from: location }} replace />;
   }
 
   const userRole = profile?.role || 'customer';

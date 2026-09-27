@@ -30,6 +30,8 @@ const AdminAnalyticsPage = lazy(() => import('../pages/admin/AdminAnalyticsPage.
 const AdminCollectionsPage = lazy(() => import('../pages/admin/AdminCollectionsPage.jsx'));
 const AdminEditorialImagesPage = lazy(() => import('../pages/admin/AdminEditorialImagesPage.jsx'));
 
+const AdminLogin = lazy(() => import('../pages/admin/AdminLogin.jsx'));
+
 // Admin / POS auth pages
 const Login = lazy(() => import('../pages/Login.jsx'));
 const POS = lazy(() => import('../pages/POS.jsx'));
@@ -126,6 +128,7 @@ export const AppRoutes = () => {
         </Route>
 
         {/* AUTH & POS ROUTES */}
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/login" element={<Login />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/pos" element={<POS />} />
