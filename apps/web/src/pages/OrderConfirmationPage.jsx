@@ -15,8 +15,8 @@ export const OrderConfirmationPage = () => {
   const [timelineEvents, setTimelineEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const orderId = searchParams.get('orderId') || 'JM-1024';
-  const fallbackOrder = orders.find((o) => o.id === orderId || o.order_number === orderId) || orders[0];
+  const orderId = searchParams.get('orderId') || null;
+  const fallbackOrder = orders.find((o) => o.id === orderId || o.order_number === orderId) || null;
 
   useEffect(() => {
     const fetchRealOrderDetails = async () => {
@@ -93,6 +93,45 @@ export const OrderConfirmationPage = () => {
       activeOrder._analyticsTracked = true;
     }
   }, [activeOrder]);
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: '5rem 0', textAlign: 'center', color: '#71717A' }}>
+        Cargando detalles de tu pedido desde PostgreSQL...
+      </div>
+    );
+  }
+
+  if (!activeOrder) {
+    return (
+      <div style={{ backgroundColor: '#FFFFFF', padding: '5rem 0', minHeight: '75vh', textAlign: 'center' }}>
+        <div className="jm-container" style={{ maxWidth: '500px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', marginBottom: '0.8rem' }}>
+            PEDIDO NO ENCONTRADO
+          </h2>
+          <p style={{ fontSize: '0.9rem', color: '#71717A', marginBottom: '2rem', lineHeight: 1.6 }}>
+            No pudimos ubicar un pedido válido con el identificador proporcionado o no dispones de permisos para consultarlo.
+          </p>
+          <Link
+            to="/ropa"
+            style={{
+              display: 'inline-block',
+              backgroundColor: '#09090B',
+              color: '#FFFFFF',
+              padding: '0.85rem 1.8rem',
+              borderRadius: '6px',
+              fontWeight: 800,
+              fontSize: '0.85rem',
+              textTransform: 'uppercase',
+              textDecoration: 'none'
+            }}
+          >
+            VOLVER A LA TIENDA
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const isPendingPayment = activeOrder.status === 'pending' || activeOrder.status === 'payment_pending';
 

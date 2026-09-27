@@ -79,11 +79,11 @@ export const AdminOrdersPage = () => {
         }));
         setDbOrders(normalized);
       } else {
-        setDbOrders(orders);
+        setDbOrders([]);
       }
     } catch (e) {
-      console.warn('[AdminOrdersPage Warning]: Fallback a órdenes locales:', e);
-      setDbOrders(orders);
+      console.warn('[AdminOrdersPage Warning]: Error al consultar PostgreSQL:', e);
+      setDbOrders([]);
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +93,7 @@ export const AdminOrdersPage = () => {
     fetchDbOrders();
   }, []);
 
-  const displayOrders = dbOrders.length > 0 ? dbOrders : orders;
+  const displayOrders = dbOrders;
 
   const filteredOrders = displayOrders.filter((ord) => {
     if (selectedStatusTab !== 'todos' && ord.status.toLowerCase() !== selectedStatusTab) {
@@ -212,6 +212,10 @@ export const AdminOrdersPage = () => {
           <div style={{ padding: '3rem', textAlign: 'center', color: '#71717A' }}>
             Cargando órdenes reales desde Supabase PostgreSQL...
           </div>
+        ) : filteredOrders.length === 0 ? (
+          <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
+            No hay pedidos registrados en la base de datos.
+          </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
             <thead>
@@ -231,7 +235,7 @@ export const AdminOrdersPage = () => {
                   <td style={{ ...tdOrder, fontWeight: 900 }}>{ord.id}</td>
                   <td style={{ ...tdOrder, color: '#71717A' }}>{ord.date}</td>
                   <td style={tdOrder}>
-                    <div style={{ fontWeight: 700 }}>{ord.customerName || 'Alejandro Morales'}</div>
+                    <div style={{ fontWeight: 700 }}>{ord.customerName || 'Cliente J&M'}</div>
                     <div style={{ fontSize: '0.75rem', color: '#71717A' }}>{ord.shippingAddress || 'Bogotá D.C.'}</div>
                   </td>
                   <td style={{ ...tdOrder, fontSize: '0.78rem', color: '#27272A' }}>

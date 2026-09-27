@@ -37,15 +37,15 @@ export const CheckoutPage = () => {
 
   // Form States
   const [formData, setFormData] = useState({
-    firstName: userProfile?.name?.split(' ')[0] || 'Alejandro',
-    lastName: userProfile?.name?.split(' ')[1] || 'Morales',
-    email: userProfile?.email || 'alejo.morales@gmail.com',
-    phone: userProfile?.phone || '3104567890',
+    firstName: userProfile?.name?.split(' ')[0] || '',
+    lastName: userProfile?.name?.split(' ')[1] || '',
+    email: userProfile?.email || '',
+    phone: userProfile?.phone || '',
     department: 'Cundinamarca (Bogotá D.C.)',
-    city: 'Bogotá D.C.',
-    address: 'Calle 93B # 11A - 28, Apt 402',
-    neighborhood: 'El Chicó',
-    notes: 'Dejar con el vigilante en portería'
+    city: '',
+    address: '',
+    neighborhood: '',
+    notes: ''
   });
 
   const [shippingMethod, setShippingMethod] = useState('estandar');

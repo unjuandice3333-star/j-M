@@ -57,12 +57,7 @@ export const AdminDashboardPage = () => {
             status: o.status
           })));
         } else {
-          setRecentOrders([
-            { id: 'JM-1024', customer: 'Alejandro Morales', city: 'Bogotá D.C.', total: 319800, status: 'shipped' },
-            { id: 'JM-1023', customer: 'Carlos Bermúdez', city: 'Medellín', total: 189900, status: 'paid' },
-            { id: 'JM-1022', customer: 'Juan Gómez', city: 'Cali', total: 479800, status: 'processing' },
-            { id: 'JM-1021', customer: 'David Restrepo', city: 'Barranquilla', total: 129900, status: 'delivered' }
-          ]);
+          setRecentOrders([]);
         }
       } catch (e) {
         console.warn('[AdminDashboardPage Warning]: Error al cargar métricas reales:', e);

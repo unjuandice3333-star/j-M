@@ -1,17 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Search, Star, ShoppingBag, Eye, Sparkles } from 'lucide-react';
 import { formatCOP } from '../../data/mockData';
+import supabase from '../../config/supabase';
 
 export const AdminCustomersPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [tierFilter, setTierFilter] = useState('todos');
+  const [dbCustomers, setDbCustomers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const customers = [
-    { id: 'c-1', name: 'Alejandro Morales', email: 'alejo.morales@gmail.com', phone: '+57 310 456 7890', city: 'Bogotá D.C.', ordersCount: 5, totalSpent: 1489000, avgTicket: 297800, lastPurchase: 'Hace 2 días', preferredSizes: 'M / Jean 32', tier: 'VIP' },
-    { id: 'c-2', name: 'Carlos Bermúdez', email: 'carlos.bermudez@outlook.com', phone: '+57 300 123 4567', city: 'Medellín', ordersCount: 3, totalSpent: 890000, avgTicket: 296600, lastPurchase: 'Hace 1 semana', preferredSizes: 'L / Jean 34', tier: 'VIP' },
-    { id: 'c-3', name: 'Juan Sebastián Gómez', email: 'jsgomez@hotmail.com', phone: '+57 315 987 6543', city: 'Cali', ordersCount: 2, totalSpent: 479800, avgTicket: 239900, lastPurchase: 'Hace 2 semanas', preferredSizes: 'S / Jean 30', tier: 'Regular' },
-    { id: 'c-4', name: 'David Restrepo', email: 'david.restrepo@gmail.com', phone: '+57 318 555 4433', city: 'Barranquilla', ordersCount: 1, totalSpent: 129900, avgTicket: 129900, lastPurchase: 'Ayer', preferredSizes: 'M / Jean 32', tier: 'Nuevo' }
-  ];
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          setDbCustomers(data.map((p) => ({
+            id: p.id,
+            name: p.full_name || 'Cliente Registrar',
+            email: p.email || 'Email no especificado',
+            phone: p.phone || 'No registrado',
+            city: 'Colombia',
+            ordersCount: 0,
+            totalSpent: 0,
+            avgTicket: 0,
+            lastPurchase: new Date(p.created_at).toLocaleDateString('es-CO'),
+            preferredSizes: 'M',
+            tier: p.role === 'admin' ? 'VIP' : 'Regular'
+          })));
+        } else {
+          setDbCustomers([]);
+        }
+      } catch (e) {
+        setDbCustomers([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
+
+  const customers = dbCustomers;
 
   const filteredCustomers = customers.filter((c) => {
     if (tierFilter !== 'todos' && c.tier.toLowerCase() !== tierFilter) return false;
@@ -82,7 +116,16 @@ export const AdminCustomersPage = () => {
 
       {/* CUSTOMERS TABLE */}
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+        {isLoading ? (
+          <div style={{ padding: '3rem', textAlign: 'center', color: '#71717A' }}>
+            Cargando base de clientes desde Supabase PostgreSQL...
+          </div>
+        ) : filteredCustomers.length === 0 ? (
+          <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
+            No hay clientes registrados en la plataforma.
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
           <thead>
             <tr style={{ backgroundColor: '#FAFAFA', borderBottom: '1px solid #E4E4E7', textAlign: 'left' }}>
               <th style={thCustomer}>CLIENTE</th>
@@ -120,6 +163,7 @@ export const AdminCustomersPage = () => {
             ))}
           </tbody>
         </table>
+        )}
       </div>
     </div>
   );
