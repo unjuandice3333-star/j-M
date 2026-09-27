@@ -6,7 +6,7 @@ import ProductCard from '../components/Product/ProductCard';
 import { useECommerceStore } from '../store/eCommerceStore';
 
 export const CatalogPage = () => {
-  const { category: urlCategory } = useParams();
+  const { category: urlCategory, styleLine: urlStyleLine } = useParams();
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const { products } = useECommerceStore();
@@ -15,6 +15,7 @@ export const CatalogPage = () => {
   const queryOccasion = searchParams.get('ocasion') || '';
 
   // Filter States
+  const [selectedStyleLine, setSelectedStyleLine] = useState(urlStyleLine || 'todas');
   const [selectedCategory, setSelectedCategory] = useState(urlCategory || 'todas');
   const [selectedFit, setSelectedFit] = useState('todos');
   const [selectedSize, setSelectedSize] = useState('todas');
@@ -32,37 +33,50 @@ export const CatalogPage = () => {
   useEffect(() => {
     const path = location.pathname;
 
-    if (path === '/nuevo') {
+    if (urlStyleLine) {
+      setSelectedStyleLine(urlStyleLine);
+      setSelectedCategory('todas');
+      setOnlyNew(false);
+      setOnlyBestSeller(false);
+      setOnlySale(false);
+    } else if (path === '/nuevo') {
+      setSelectedStyleLine('todas');
       setSelectedCategory('todas');
       setOnlyNew(true);
       setOnlyBestSeller(false);
       setOnlySale(false);
     } else if (path === '/mas-vendidos') {
+      setSelectedStyleLine('todas');
       setSelectedCategory('todas');
       setOnlyNew(false);
       setOnlyBestSeller(true);
       setOnlySale(false);
     } else if (path === '/ofertas') {
+      setSelectedStyleLine('todas');
       setSelectedCategory('todas');
       setOnlyNew(false);
       setOnlyBestSeller(false);
       setOnlySale(true);
     } else if (path === '/calzado') {
+      setSelectedStyleLine('todas');
       setSelectedCategory('calzado');
       setOnlyNew(false);
       setOnlyBestSeller(false);
       setOnlySale(false);
     } else if (path === '/accesorios') {
+      setSelectedStyleLine('todas');
       setSelectedCategory('accesorios');
       setOnlyNew(false);
       setOnlyBestSeller(false);
       setOnlySale(false);
     } else if (urlCategory) {
+      setSelectedStyleLine('todas');
       setSelectedCategory(urlCategory);
       setOnlyNew(false);
       setOnlyBestSeller(false);
       setOnlySale(false);
     } else {
+      setSelectedStyleLine('todas');
       setSelectedCategory('todas');
       setOnlyNew(false);
       setOnlyBestSeller(false);
@@ -71,11 +85,14 @@ export const CatalogPage = () => {
 
     setSelectedOccasion(queryOccasion || 'todas');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [location.pathname, urlCategory, queryOccasion]);
+  }, [location.pathname, urlCategory, urlStyleLine, queryOccasion]);
 
   // Dynamic Page Title
   const pageTitle = useMemo(() => {
     if (querySearch) return `BÚSQUEDA: "${querySearch}"`;
+    if (selectedStyleLine === 'urbana') return '🏙️ LÍNEA URBANA — STREETWEAR RELAJADO';
+    if (selectedStyleLine === 'elegante') return '👔 LÍNEA ELEGANTE — FORMAL & OFICINA';
+    if (selectedStyleLine === 'casual') return '✨ LÍNEA SMART CASUAL — ELEGANCIA & MEZCLILLA';
     const path = location.pathname;
     if (path === '/nuevo') return 'NOVEDADES Y NUEVA COLECCIÓN';
     if (path === '/mas-vendidos') return 'LOS MÁS VENDIDOS J&M';
@@ -88,7 +105,7 @@ export const CatalogPage = () => {
       return catObj ? catObj.name.toUpperCase() : selectedCategory.toUpperCase();
     }
     return 'CATÁLOGO DE MODA MASCULINA';
-  }, [location.pathname, selectedCategory, querySearch]);
+  }, [location.pathname, selectedCategory, selectedStyleLine, querySearch]);
 
   // Filter and Sort Logic
   const filteredProducts = useMemo(() => {
@@ -97,6 +114,10 @@ export const CatalogPage = () => {
     return activeProducts.filter((p) => {
       // Search query
       if (querySearch && !p.name.toLowerCase().includes(querySearch.toLowerCase()) && !p.category?.toLowerCase().includes(querySearch.toLowerCase())) {
+        return false;
+      }
+      // Style Line Filter
+      if (selectedStyleLine !== 'todas' && p.styleLine !== selectedStyleLine) {
         return false;
       }
       // Section filters (Nuevo, Mas vendidos, Ofertas)
@@ -133,7 +154,7 @@ export const CatalogPage = () => {
       if (sortBy === 'nuevos') return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
       return 0;
     });
-  }, [products, selectedCategory, selectedFit, selectedSize, selectedOccasion, onlyNew, onlyBestSeller, onlySale, maxPrice, sortBy, querySearch]);
+  }, [products, selectedStyleLine, selectedCategory, selectedFit, selectedSize, selectedOccasion, onlyNew, onlyBestSeller, onlySale, maxPrice, sortBy, querySearch]);
 
   const clearAllFilters = () => {
     setSelectedCategory('todas');
@@ -181,6 +202,37 @@ export const CatalogPage = () => {
               <button onClick={clearAllFilters} style={{ fontSize: '0.78rem', color: '#E11D48', fontWeight: 700 }}>
                 Limpiar
               </button>
+            </div>
+
+            {/* Línea de Estilo Multimarca */}
+            <div>
+              <h4 style={filterSectionTitle}>LÍNEA DE ESTILO</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <button
+                  onClick={() => setSelectedStyleLine('todas')}
+                  style={filterOptionBtn(selectedStyleLine === 'todas')}
+                >
+                  Todas las líneas
+                </button>
+                <button
+                  onClick={() => setSelectedStyleLine('urbana')}
+                  style={filterOptionBtn(selectedStyleLine === 'urbana')}
+                >
+                  🏙️ Línea Urbana
+                </button>
+                <button
+                  onClick={() => setSelectedStyleLine('elegante')}
+                  style={filterOptionBtn(selectedStyleLine === 'elegante')}
+                >
+                  👔 Línea Elegante
+                </button>
+                <button
+                  onClick={() => setSelectedStyleLine('casual')}
+                  style={filterOptionBtn(selectedStyleLine === 'casual')}
+                >
+                  ✨ Línea Smart Casual
+                </button>
+              </div>
             </div>
 
             {/* Categorías */}

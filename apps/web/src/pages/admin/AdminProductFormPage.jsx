@@ -16,6 +16,7 @@ export const AdminProductFormPage = () => {
   const [formData, setFormData] = useState({
     name: 'Camiseta Premium J&M Colombia',
     category: 'camisetas',
+    styleLine: 'urbana',
     price: 129900,
     originalPrice: 159900,
     cost: 45000,
@@ -45,6 +46,7 @@ export const AdminProductFormPage = () => {
       setFormData({
         name: existingProduct.name || '',
         category: existingProduct.category || 'camisetas',
+        styleLine: existingProduct.styleLine || 'urbana',
         price: existingProduct.price || 0,
         originalPrice: existingProduct.originalPrice || '',
         cost: existingProduct.cost || 0,
@@ -102,6 +104,7 @@ export const AdminProductFormPage = () => {
       updateProduct(existingProduct.id, {
         name: formData.name,
         category: formData.category,
+        styleLine: formData.styleLine,
         price: Number(formData.price),
         originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
         cost: Number(formData.cost),
@@ -122,6 +125,7 @@ export const AdminProductFormPage = () => {
       createdProduct = addProduct({
         name: formData.name,
         category: formData.category,
+        styleLine: formData.styleLine,
         price: Number(formData.price),
         originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
         cost: Number(formData.cost),
@@ -205,7 +209,20 @@ export const AdminProductFormPage = () => {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <label style={labelStyle}>Línea de Estilo (Multimarca) *</label>
+            <select
+              value={formData.styleLine}
+              onChange={(e) => setFormData({ ...formData, styleLine: e.target.value })}
+              style={{ ...inputStyle, border: '1.5px solid #2563EB', fontWeight: 700 }}
+            >
+              <option value="urbana">🏙️ Línea Urbana (Relajado / Streetwear)</option>
+              <option value="elegante">👔 Línea Elegante (Oficina / Algodón-Seda / Drill)</option>
+              <option value="casual">✨ Línea Smart Casual (Denim / Mocasines)</option>
+            </select>
+          </div>
+
           <div>
             <label style={labelStyle}>Categoría *</label>
             <select

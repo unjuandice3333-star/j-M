@@ -106,6 +106,7 @@ export const useECommerceStore = create(
           name: newProd.name || 'Nueva Prenda J&M',
           slug: `${slug}-${Math.floor(Math.random() * 1000)}`,
           category: newProd.category || 'camisetas',
+          styleLine: newProd.styleLine || 'urbana',
           price: Number(newProd.price) || 129900,
           originalPrice: newProd.originalPrice ? Number(newProd.originalPrice) : null,
           discountPercent: newProd.originalPrice && Number(newProd.originalPrice) > Number(newProd.price)

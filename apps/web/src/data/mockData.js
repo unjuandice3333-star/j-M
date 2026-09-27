@@ -21,12 +21,43 @@ export const OCCASIONS = [
   { id: 'streetwear', name: 'Streetwear Minimal', subtitle: 'Cortes relaxed y oversize con carácter', image: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&q=80&w=800' }
 ];
 
+export const STYLE_LINES = [
+  {
+    id: 'urbana',
+    name: 'Línea Urbana',
+    slug: 'urbana',
+    tagline: 'Streetwear Moderno & Relajado',
+    description: 'Cortes oversize, siluetas relaxed, camisetas heavyweight y actitud urbana contemporánea.',
+    image: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&q=80&w=1000',
+    badge: 'ESTILO RELAJADO'
+  },
+  {
+    id: 'elegante',
+    name: 'Línea Elegante',
+    slug: 'elegante',
+    tagline: 'Ejecutivo & Algodón-Seda Premium',
+    description: 'Polos mercerizados con seda, camisas Oxford de alta puntada, pantalones drill y zapatos de vestir en cuero.',
+    image: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&q=80&w=1000',
+    badge: 'OFICINA & FORMAL'
+  },
+  {
+    id: 'casual',
+    name: 'Línea Smart Casual',
+    slug: 'casual',
+    tagline: 'Versatilidad Elegante & Mezclilla',
+    description: 'Mezcla perfecta entre elegancia y frescura: jeans selvedge de mezclilla, mocasines y chaquetas impecables.',
+    image: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=1000',
+    badge: 'CASUAL ELEGANTE'
+  }
+];
+
 export const PRODUCTS = [
   {
     id: 'prod-1',
     name: 'Camiseta Heavyweight Oversize Essential',
     slug: 'camiseta-heavyweight-oversize-essential',
     category: 'camisetas',
+    styleLine: 'urbana',
     price: 129900,
     originalPrice: 159900,
     discountPercent: 18,
@@ -65,6 +96,7 @@ export const PRODUCTS = [
     name: 'Camisa Oxford Premium Manga Larga',
     slug: 'camisa-oxford-premium-manga-larga',
     category: 'camisas',
+    styleLine: 'elegante',
     price: 189900,
     originalPrice: null,
     discountPercent: 0,
@@ -98,19 +130,20 @@ export const PRODUCTS = [
   },
   {
     id: 'prod-3',
-    name: 'Polo Piqué Mercerizado Classic',
-    slug: 'polo-pique-mercerizado-classic',
+    name: 'Polo Piqué Mercerizado Silk-Blend',
+    slug: 'polo-pique-mercerizado-silk-blend',
     category: 'polos',
-    price: 149900,
-    originalPrice: 179900,
-    discountPercent: 16,
-    isNew: false,
+    styleLine: 'elegante',
+    price: 169900,
+    originalPrice: 199900,
+    discountPercent: 15,
+    isNew: true,
     isBestSeller: true,
     isSale: true,
     rating: 4.9,
     reviewCount: 41,
     fit: 'REGULAR',
-    occasion: 'casual',
+    occasion: 'trabajo',
     color: 'Negro Mate',
     colors: [
       { name: 'Negro Mate', hex: '#181818', selected: true },
@@ -122,28 +155,29 @@ export const PRODUCTS = [
       'https://images.unsplash.com/photo-1581655353564-df123a1eb820?auto=format&fit=crop&q=80&w=1000',
       'https://images.unsplash.com/photo-1625910513413-09477028448f?auto=format&fit=crop&q=80&w=1000'
     ],
-    description: 'Polo premium en algodón piqué mercerizado de brillo sutil y máxima ligereza. Ideal para climas cálidos y templados de Colombia.',
+    description: 'Polo ejecutivo confeccionado en mezcla de algodón peruano con fibra tipo seda. Brillo sutil, elasticidad natural y tacto ultrafino ideal para la oficina contemporánea.',
     details: [
-      '95% Algodón Piqué Mercerizado, 5% Elastano',
-      'Cuello y puños en tejido rectilíneo resistente',
-      'Pequeta de dos botones tono a tono',
-      'Bordado discreto J&M en el pecho'
+      '85% Algodón Piqué Mercerizado, 15% Fibras de Seda & Elastano',
+      'Cuello de tejido rectilíneo anti-arrugas',
+      'Ajuste impecable para combinar con sacos o pantalones drill',
+      'Tejido termo-regulador ultra suave'
     ],
     fitDescription: 'Corte Regular impecable que ofrece espacio cómodo en torso y cintura.'
   },
   {
     id: 'prod-4',
-    name: 'Jean Selvedge Slim Fit Dark Vintage',
-    slug: 'jean-selvedge-slim-fit-dark-vintage',
+    name: 'Jean Selvedge Mezclilla Denim Dark Vintage',
+    slug: 'jean-selvedge-mezclilla-denim-dark-vintage',
     category: 'jeans',
+    styleLine: 'casual',
     price: 239900,
     originalPrice: null,
     discountPercent: 0,
     isNew: true,
-    isBestSeller: false,
+    isBestSeller: true,
     isSale: false,
-    rating: 4.7,
-    reviewCount: 19,
+    rating: 4.8,
+    reviewCount: 29,
     fit: 'SLIM',
     occasion: 'casual',
     color: 'Índigo Oscuro',
@@ -157,20 +191,21 @@ export const PRODUCTS = [
       'https://images.unsplash.com/photo-1542272604-780c96856592?auto=format&fit=crop&q=80&w=1000',
       'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=1000'
     ],
-    description: 'Denim de 13oz con acabado selvage premium. Lavado sustentable procesado en Colombia con matices vintage profundos.',
+    description: 'Jean de mezclilla selvedge de 13oz. El balance Smart Casual perfecto: comodidad relajada con corte pulido que proyecta elegancia desenfadada.',
     details: [
-      '98% Algodón Denim de 13oz, 2% Spandex para flexibilidad',
-      'Remaches y botón metálico reforzado',
-      'Bolsillos profundos para smartphone',
-      'Cierre YKK original heavy-duty'
+      '98% Mezclilla Denim de 13oz, 2% Spandex para flexibilidad superior',
+      'Remaches y botón metálico grabado J&M',
+      'Ribete selvedge rojo visible en dobladillo',
+      'Cierre YKK original de alta resistencia'
     ],
-    fitDescription: 'Ajuste Slim desde la cadera hasta el tobillo con apertura de bota perfecta para tenis o botas.'
+    fitDescription: 'Ajuste Slim desde la cadera hasta el tobillo con apertura de bota perfecta para tenis o mocasines.'
   },
   {
     id: 'prod-5',
-    name: 'Pantalón Chino Tailored Stretch',
-    slug: 'pantalon-chino-tailored-stretch',
+    name: 'Pantalón Drill Tailored Stretch Oficina',
+    slug: 'pantalon-drill-tailored-stretch-oficina',
     category: 'pantalones',
+    styleLine: 'elegante',
     price: 209900,
     originalPrice: 249900,
     discountPercent: 16,
@@ -192,10 +227,10 @@ export const PRODUCTS = [
       'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&q=80&w=1000',
       'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?auto=format&fit=crop&q=80&w=1000'
     ],
-    description: 'El pantalón híbrido definitivo: la apariencia de un sastre formal con la libertad de movimiento de un jogger stretch.',
+    description: 'Pantalón tipo drill ejecutivo confeccionado en sarga de algodón stretch. Apariencia elegante para oficina con máxima soltura al sentarse.',
     details: [
-      'Sarga de algodón esmerilado supersuave',
-      'Pretina elástica interna secreta para máximo confort al sentarse',
+      'Drill de algodón esmerilado supersuave (97% Algodón, 3% Elastano)',
+      'Pretina elástica interna secreta para confort en jornadas largas',
       'Bolsillo de seguridad oculto con cremallera',
       'Puntadas invisibles en el dobladillo'
     ],
@@ -203,9 +238,10 @@ export const PRODUCTS = [
   },
   {
     id: 'prod-6',
-    name: 'Chaqueta Denim Trucker Heritage',
-    slug: 'chaqueta-denim-trucker-heritage',
+    name: 'Chaqueta Bomber Streetwear Urban Heritage',
+    slug: 'chaqueta-bomber-streetwear-urban-heritage',
     category: 'chaquetas',
+    styleLine: 'urbana',
     price: 299900,
     originalPrice: 349900,
     discountPercent: 14,
@@ -215,65 +251,102 @@ export const PRODUCTS = [
     rating: 5.0,
     reviewCount: 29,
     fit: 'REGULAR',
-    occasion: 'fin-de-semana',
-    color: 'Blue Raw Vintage',
+    occasion: 'streetwear',
+    color: 'Negro Mineral',
     colors: [
-      { name: 'Blue Raw Vintage', hex: '#2C4263', selected: true },
-      { name: 'Negro Mineral', hex: '#1F1F1F', selected: false }
+      { name: 'Negro Mineral', hex: '#1F1F1F', selected: true },
+      { name: 'Verde Olivo', hex: '#2C4263', selected: false }
     ],
     sizes: ['S', 'M', 'L', 'XL'],
     images: [
       'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&q=80&w=1000',
       'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?auto=format&fit=crop&q=80&w=1000'
     ],
-    description: 'Un clásico atemporal reinventado por J&M. Silueta de chamarra marinera en mezclilla rígida de gran gramaje con botones de latón envejecido.',
+    description: 'Chaqueta bomber de silueta urbana relajada. Acabado semi-impermeable, bolsillos funcionales y actitud streetwear sobria.',
     details: [
-      '100% Algodón Denim Rígido 14oz',
-      'Bolsillos laterales oblicuos y bolsillos superiores con solapa',
-      'Ajustadores laterales en pretina',
-      'Forro interno suave en bolsillos'
+      'Tejido técnico de poliéster de alta densidad resistente al agua',
+      'Puños y pretina rectilíneos reforzados',
+      'Bolsillo táctico en manga izquierda con cierre metálico',
+      'Forro interno térmico liviano'
     ],
-    fitDescription: 'Corte Regular estructurado que permite llevar capas internas como camisetas o sacos.'
+    fitDescription: 'Corte Regular estructurado que permite llevar capas internas como camisetas oversize o sacos.'
   },
   {
     id: 'prod-7',
-    name: 'Tenis Minimalist Leather Sneaker White',
-    slug: 'tenis-minimalist-leather-sneaker-white',
+    name: 'Zapatos Oxford Formal Dress Leather',
+    slug: 'zapatos-oxford-formal-dress-leather',
     category: 'calzado',
-    price: 329900,
+    styleLine: 'elegante',
+    price: 349900,
     originalPrice: null,
     discountPercent: 0,
     isNew: true,
     isBestSeller: true,
     isSale: false,
     rating: 4.9,
-    reviewCount: 88,
+    reviewCount: 42,
     fit: 'REGULAR',
-    occasion: 'casual',
-    color: 'Blanco Impecable',
+    occasion: 'trabajo',
+    color: 'Café Tabaco',
     colors: [
-      { name: 'Blanco Impecable', hex: '#FDFDFD', selected: true },
-      { name: 'Negro Cuero', hex: '#111111', selected: false }
+      { name: 'Café Tabaco', hex: '#4A2E1A', selected: true },
+      { name: 'Negro Azabache', hex: '#111111', selected: false }
     ],
     sizes: ['38', '39', '40', '41', '42', '43'],
     images: [
       'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=1000',
       'https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&q=80&w=1000'
     ],
-    description: 'Tenis de diseño escandinavo confeccionados en cuero vacuno vacchetta de primera selección con suela cosedera ultra durable.',
+    description: 'Zapato de vestir tipo Oxford en 100% cuero vacuno natural. Puntera limpia, acentuación de pátina hecha a mano y suela elegante para trajes o pantalones drill.',
     details: [
-      'Capellada 100% Cuero Vacuno Natural',
-      'Forro interior de cuero respirable anti-olor',
-      'Suela de goma vulcanizada antiderrapante',
-      'Plantilla anatómica de memoria de forma (Memory Foam)'
+      '100% Cuero Vacuno Grano Entero con pátina artesanal',
+      'Construcción de suela en curo y goma anti-deslizante',
+      'Plantilla acolchada en cuero de res de alta absorción',
+      'Cordones de algodón encerado'
     ],
-    fitDescription: 'Talla exacta colombiana. Si estás entre dos tallas de calzado, te recomendamos elegir la superior.'
+    fitDescription: 'Horma clásica elegante de calce cómodo. Elige tu talla estándar de calzado.'
   },
   {
     id: 'prod-8',
+    name: 'Mocasines Smart Casual Loafers Leather',
+    slug: 'mocasines-smart-casual-loafers-leather',
+    category: 'calzado',
+    styleLine: 'casual',
+    price: 319900,
+    originalPrice: 359900,
+    discountPercent: 11,
+    isNew: true,
+    isBestSeller: true,
+    isSale: true,
+    rating: 4.8,
+    reviewCount: 31,
+    fit: 'REGULAR',
+    occasion: 'casual',
+    color: 'Miel Gamuza',
+    colors: [
+      { name: 'Miel Gamuza', hex: '#B8860B', selected: true },
+      { name: 'Azul Marino Gamuza', hex: '#1E293B', selected: false }
+    ],
+    sizes: ['38', '39', '40', '41', '42', '43'],
+    images: [
+      'https://images.unsplash.com/photo-1560769629-975ec94e6a86?auto=format&fit=crop&q=80&w=1000',
+      'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=1000'
+    ],
+    description: 'Mocasines estilo Penny Loafer en gamuza de cuero suave. Diseñados para combinar con jeans de mezclilla o bermudas proyectando elegancia sin esfuerzo.',
+    details: [
+      'Capellada 100% Gamuza de Cuero Vacuno suave',
+      'Construcción mocasín flexible sin forro rígido',
+      'Suela de goma liviana con tacos de agarre',
+      'Plantilla interna acolchada en cuero'
+    ],
+    fitDescription: 'Calce suave y amoldable. Si usas media talla, te recomendamos bajar a la talla inferior.'
+  },
+  {
+    id: 'prod-9',
     name: 'Bermuda Chino Comfort Walk Short',
     slug: 'bermuda-chino-comfort-walk-short',
     category: 'bermudas',
+    styleLine: 'urbana',
     price: 139900,
     originalPrice: 169900,
     discountPercent: 17,

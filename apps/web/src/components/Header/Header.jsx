@@ -130,13 +130,14 @@ export const Header = () => {
           </Link>
 
           {/* DESKTOP NAVIGATION MENU */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '1.8rem' }} className="desktop-nav">
-            <Link to="/nuevo" style={navLinkStyle}>NUEVO</Link>
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '1.4rem' }} className="desktop-nav">
+            <Link to="/linea/urbana" style={{ ...navLinkStyle, color: '#2563EB', fontWeight: 800 }}>🏙️ URBANO</Link>
+            <Link to="/linea/elegante" style={{ ...navLinkStyle, color: '#09090B', fontWeight: 800 }}>👔 ELEGANTE</Link>
+            <Link to="/linea/casual" style={{ ...navLinkStyle, color: '#D4AF37', fontWeight: 800 }}>✨ SMART CASUAL</Link>
+            <span style={{ color: '#E4E4E7' }}>|</span>
             <Link to="/ropa" style={navLinkStyle}>ROPA</Link>
             <Link to="/calzado" style={navLinkStyle}>CALZADO</Link>
             <Link to="/accesorios" style={navLinkStyle}>ACCESORIOS</Link>
-            <Link to="/colecciones" style={navLinkStyle}>COLECCIONES</Link>
-            <Link to="/mas-vendidos" style={{ ...navLinkStyle, color: '#09090B', fontWeight: 700 }}>MÁS VENDIDOS</Link>
             <Link to="/ofertas" style={{ ...navLinkStyle, color: '#E11D48', fontWeight: 700 }}>OFERTAS</Link>
           </nav>
 

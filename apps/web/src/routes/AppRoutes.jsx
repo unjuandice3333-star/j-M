@@ -76,6 +76,7 @@ export const AppRoutes = () => {
         <Route element={<PublicLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/nuevo" element={<CatalogPage />} />
+          <Route path="/linea/:styleLine" element={<CatalogPage />} />
           <Route path="/ropa" element={<CatalogPage />} />
           <Route path="/ropa/:category" element={<CatalogPage />} />
           <Route path="/calzado" element={<CatalogPage />} />

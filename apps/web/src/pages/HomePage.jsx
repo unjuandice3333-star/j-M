@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Sparkles, ShieldCheck, Truck, RotateCcw, MapPin, Mail, ChevronRight, Check } from 'lucide-react';
-import { CATEGORIES, OCCASIONS } from '../data/mockData';
+import { CATEGORIES, OCCASIONS, STYLE_LINES } from '../data/mockData';
 import ProductCard from '../components/Product/ProductCard';
 import CompleteTheLook from '../components/Product/CompleteTheLook';
 import { useECommerceStore } from '../store/eCommerceStore';
@@ -72,7 +72,7 @@ export const HomePage = () => {
               marginBottom: '1.25rem',
               textTransform: 'uppercase'
             }}>
-              <Sparkles size={14} /> COLECCIÓN MASCULINA 2026
+              <Sparkles size={14} /> TIENDA MULTIMARCA MASCULINA
             </span>
 
             <h1 style={{
@@ -84,7 +84,7 @@ export const HomePage = () => {
               marginBottom: '1.2rem',
               textTransform: 'uppercase'
             }}>
-              TU ESTILO.<br />TU ESENCIA.
+              3 ESTILOS.<br />UNA SOLA FIRMA.
             </h1>
 
             <p style={{
@@ -94,7 +94,7 @@ export const HomePage = () => {
               marginBottom: '2rem',
               fontWeight: 400
             }}>
-              Descubre prendas de ingeniería textil superior diseñadas exclusivamente para el hombre moderno en Colombia.
+              Explora nuestras 3 líneas exclusivas: <strong>Urbana</strong> (Streetwear), <strong>Elegante</strong> (Oficina & Seda) y <strong>Smart Casual</strong> (Denim de Mezclilla).
             </p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
@@ -115,26 +115,114 @@ export const HomePage = () => {
                   transition: 'transform 0.15s, background 0.15s'
                 }}
               >
-                COMPRAR AHORA <ArrowRight size={18} />
-              </button>
-
-              <button
-                onClick={openFitGuide}
-                style={{
-                  backgroundColor: 'transparent',
-                  color: '#FFFFFF',
-                  border: '1px solid rgba(255,255,255,0.4)',
-                  padding: '1.1rem 1.8rem',
-                  borderRadius: '6px',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase'
-                }}
-              >
-                ¿CÓMO ES EL FIT?
+                EXPLORAR TIENDA <ArrowRight size={18} />
               </button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. LAS 3 LÍNEAS DE ESTILO MULTIMARCA */}
+      <section style={{ padding: '4.5rem 0', backgroundColor: '#09090B', color: '#FFFFFF' }}>
+        <div className="jm-container">
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', color: '#D4AF37', textTransform: 'uppercase' }}>
+              CONCEPTO MULTIMARCA J&M
+            </span>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 900, textTransform: 'uppercase', marginTop: '0.3rem', letterSpacing: '0.04em' }}>
+              EXPLORA SEGÚN TU ESTILO
+            </h2>
+            <p style={{ fontSize: '0.95rem', color: '#A1A1AA', maxWidth: '600px', margin: '0.5rem auto 0 auto' }}>
+              Selecciona el concepto que define tu día a día y descubre prendas de ingeniería textil superior.
+            </p>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '1.75rem'
+          }}>
+            {STYLE_LINES.map((line) => (
+              <div
+                key={line.id}
+                onClick={() => navigate(`/linea/${line.slug}`)}
+                style={{
+                  position: 'relative',
+                  height: '420px',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  border: '1px solid #27272A',
+                  transition: 'transform 0.3s, border-color 0.3s'
+                }}
+                className="hover-card-zoom"
+              >
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundImage: `url("${line.image}")`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  transition: 'transform 0.5s'
+                }} />
+
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(to top, rgba(9,9,11,0.95) 0%, rgba(9,9,11,0.4) 60%, transparent 100%)'
+                }} />
+
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  padding: '2rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                  color: '#FFFFFF'
+                }}>
+                  <span style={{
+                    alignSelf: 'flex-start',
+                    backgroundColor: '#D4AF37',
+                    color: '#09090B',
+                    fontSize: '0.68rem',
+                    fontWeight: 900,
+                    letterSpacing: '0.12em',
+                    padding: '4px 10px',
+                    borderRadius: '4px',
+                    marginBottom: '0.8rem',
+                    textTransform: 'uppercase'
+                  }}>
+                    {line.badge}
+                  </span>
+
+                  <h3 style={{ fontSize: '1.75rem', fontWeight: 900, textTransform: 'uppercase', marginBottom: '0.2rem' }}>
+                    {line.name}
+                  </h3>
+
+                  <p style={{ fontSize: '0.88rem', color: '#E4E4E7', fontWeight: 600, marginBottom: '0.5rem' }}>
+                    {line.tagline}
+                  </p>
+
+                  <p style={{ fontSize: '0.8rem', color: '#A1A1AA', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                    {line.description}
+                  </p>
+
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
+                    color: '#FFFFFF',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase'
+                  }}>
+                    VER COLECCIÓN <ArrowRight size={16} color="#D4AF37" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
