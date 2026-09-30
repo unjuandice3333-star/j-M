@@ -30,6 +30,8 @@ export const ProductDetailPage = () => {
   const navigate = useNavigate();
   const {
     products,
+    loadProducts,
+    productsLoaded,
     addItem,
     toggleWishlist,
     isInWishlist,
@@ -38,7 +40,13 @@ export const ProductDetailPage = () => {
     openSizeRecommender
   } = useECommerceStore();
 
-  const product = products.find((p) => p.slug === slug) || products[0];
+  useEffect(() => {
+    if (!productsLoaded && loadProducts) {
+      loadProducts();
+    }
+  }, [productsLoaded, loadProducts]);
+
+  const product = products.find((p) => p.slug === slug || p.reference?.toLowerCase() === slug?.toLowerCase() || p.id === slug) || products[0];
   const inWishlist = isInWishlist(product?.id);
 
   // Local Component States

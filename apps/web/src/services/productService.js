@@ -19,31 +19,73 @@ export const normalizeProductFromDB = (dbProd) => {
 
   const images = variantImages.length > 0 ? variantImages : (dbProd.images || []);
 
+  // Mapeo defensivo para parsear atributos desde SKU si los joins de sizes/colors están protegidos por RLS
+  const parseSkuInfo = (sku) => {
+    if (!sku || typeof sku !== 'string') return { size: null, color: null };
+    const parts = sku.split('-');
+    const size = parts[parts.length - 2] || null;
+    const colorCode = parts[parts.length - 1] || null;
+    const colorNames = {
+      'BEI': 'Beige Lino',
+      'BLA': 'Blanco Crudo',
+      'GRI': 'Gris Oxford',
+      'NEG': 'Negro Premium'
+    };
+    return {
+      size: size && ['S', 'M', 'L', 'XL', 'XXL', '30', '32', '34'].includes(size.toUpperCase()) ? size.toUpperCase() : null,
+      color: colorCode ? (colorNames[colorCode.toUpperCase()] || colorCode) : null
+    };
+  };
+
   // Extraer tallas
   const variantSizes = Array.isArray(dbProd.variants)
-    ? Array.from(new Set(dbProd.variants.map((v) => v.sizes?.code).filter(Boolean)))
+    ? Array.from(new Set(dbProd.variants.map((v) => v.sizes?.code || parseSkuInfo(v.sku).size).filter(Boolean)))
     : [];
   const sizes = variantSizes.length > 0 ? variantSizes : ['S', 'M', 'L', 'XL'];
 
   // Extraer colores
   const variantColors = Array.isArray(dbProd.variants)
     ? dbProd.variants
-        .map((v) => v.colors ? { name: v.colors.name, hex: v.colors.hex_code } : null)
+        .map((v) => {
+          if (v.colors?.name) return { name: v.colors.name, hex: v.colors.hex_code || '#121212' };
+          const parsed = parseSkuInfo(v.sku);
+          if (parsed.color) {
+            const hex = parsed.color.includes('Beige') ? '#E2D3C4' : parsed.color.includes('Blanco') ? '#F9F6EE' : parsed.color.includes('Gris') ? '#353839' : '#000000';
+            return { name: parsed.color, hex };
+          }
+          return null;
+        })
         .filter(Boolean)
     : [];
   const colors = variantColors.length > 0
     ? Array.from(new Map(variantColors.map((c) => [c.name, c])).values())
-    : [{ name: 'Negro Azabache', hex: '#121212', selected: true }];
+    : [{ name: 'Negro Premium', hex: '#000000', selected: true }];
 
   const styleLineSlug = dbProd.style_lines?.slug
     ? normalizeStyleLine(dbProd.style_lines.slug)
     : 'urbana';
 
+  const rawVariants = Array.isArray(dbProd.variants)
+    ? dbProd.variants.map((v) => {
+        const parsed = parseSkuInfo(v.sku);
+        return {
+          id: v.id,
+          sku: v.sku,
+          priceOverride: v.price_override,
+          imageUrl: v.image_url,
+          size: v.sizes?.code || parsed.size,
+          color: v.colors?.name || parsed.color
+        };
+      })
+    : [];
+
+  const canonicalSlug = dbProd.slug || (dbProd.name ? dbProd.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : null) || dbProd.reference?.toLowerCase() || dbProd.id;
+
   return {
     id: dbProd.id,
     reference: dbProd.reference || dbProd.slug,
     name: dbProd.name || 'Prenda J&M',
-    slug: dbProd.reference?.toLowerCase() || dbProd.slug || dbProd.id,
+    slug: canonicalSlug,
     category: dbProd.categories?.name?.toLowerCase() || dbProd.category || 'camisetas',
     categoryName: dbProd.categories?.name || 'Camisetas',
     brand: dbProd.brands?.name || 'J&M Fashion',
@@ -58,9 +100,10 @@ export const normalizeProductFromDB = (dbProd) => {
     reviewCount: Number(dbProd.review_count || 12),
     fit: dbProd.fit || 'REGULAR',
     occasion: dbProd.occasion || 'casual',
-    color: colors[0]?.name || 'Negro Azabache',
+    color: colors[0]?.name || 'Negro Premium',
     colors,
     sizes,
+    rawVariants,
     images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=1000'],
     description: dbProd.description || 'Prenda masculina de diseño exclusivo de la firma J&M Fashion Store.',
     details: dbProd.details || ['100% Algodón Colombiano', 'Confección Nacional Premium'],
@@ -85,7 +128,6 @@ export const productService = {
           deleted_at,
           categories(id, name),
           brands(id, name),
-          style_lines(id, slug, name, tagline, description),
           variants(
             id,
             sku,
@@ -222,7 +264,7 @@ export const productService = {
         .limit(1)
         .single();
 
-      const brandId = brandRecord?.id || 'b1000000-0000-0000-0000-000000000001';
+      const brandId = brandRecord?.id || 'a1000000-0000-0000-0000-000000000001';
 
       const reference = productData.slug || (productData.name || 'prenda-nueva').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 

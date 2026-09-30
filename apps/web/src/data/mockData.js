@@ -67,12 +67,12 @@ export const PRODUCTS = [
     reviewCount: 34,
     fit: 'OVERSIZE',
     occasion: 'streetwear',
-    color: 'Negro Azabache',
+    color: 'Negro Premium',
     colors: [
-      { name: 'Negro Azabache', hex: '#121212', selected: true },
-      { name: 'Blanco Nieve', hex: '#FFFFFF', selected: false },
-      { name: 'Gris Grafito', hex: '#383838', selected: false },
-      { name: 'Beige Arena', hex: '#D7C4B7', selected: false }
+      { name: 'Negro Premium', hex: '#000000', selected: true },
+      { name: 'Blanco Crudo', hex: '#F9F6EE', selected: false },
+      { name: 'Gris Oxford', hex: '#353839', selected: false },
+      { name: 'Beige Lino', hex: '#E2D3C4', selected: false }
     ],
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
     images: [

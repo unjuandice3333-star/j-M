@@ -158,18 +158,24 @@ export const useECommerceStore = create(
           }
 
           if (cartRecord?.id && items.length > 0) {
-            // Reconciliar cart_items en Supabase
-            // NOTA: Para evitar fallas de FK si la variante aún no existe en DB, intentamos la upsert
-            const cartItemsPayload = items.map((item) => ({
-              cart_id: cartRecord.id,
-              variant_id: item.variantId || 'b1000000-0000-0000-0000-000000000001',
-              quantity: item.quantity,
-              unit_price: item.price
-            }));
+            // Reconciliar cart_items en Supabase únicamente con variant_id UUID real
+            const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            const BRANCH_ID = 'b1000000-0000-0000-0000-000000000001';
 
-            await supabase
-              .from('cart_items')
-              .upsert(cartItemsPayload, { onConflict: 'cart_id,variant_id' });
+            const cartItemsPayload = items
+              .filter((item) => item.variantId && UUID_REGEX.test(item.variantId) && item.variantId !== BRANCH_ID)
+              .map((item) => ({
+                cart_id: cartRecord.id,
+                variant_id: item.variantId,
+                quantity: item.quantity,
+                unit_price: item.price
+              }));
+
+            if (cartItemsPayload.length > 0) {
+              await supabase
+                .from('cart_items')
+                .upsert(cartItemsPayload, { onConflict: 'cart_id,variant_id' });
+            }
           }
         } catch (e) {
           console.warn('[eCommerceStore Warning]: Cart server sync soft warning:', e);
@@ -182,6 +188,46 @@ export const useECommerceStore = create(
       addItem: (product, size, color, quantity = 1) => {
         const { items } = get();
         const colorName = typeof color === 'string' ? color : (color?.name || 'Único');
+
+        // Resolver la variante real de PostgreSQL de forma autoritativa
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const BRANCH_ID = 'b1000000-0000-0000-0000-000000000001';
+
+        let resolvedVariantId = null;
+        if (product.variantId && UUID_REGEX.test(product.variantId) && product.variantId !== BRANCH_ID) {
+          resolvedVariantId = product.variantId;
+        }
+
+        if (!resolvedVariantId && Array.isArray(product.rawVariants) && product.rawVariants.length > 0) {
+          const normSize = String(size || '').trim().toUpperCase();
+          const normColor = String(colorName || '').trim().toLowerCase();
+
+          // 1. Coincidencia por talla y color
+          let matched = product.rawVariants.find((v) => {
+            const vSize = String(v.size || '').trim().toUpperCase();
+            const vColor = String(v.color || '').trim().toLowerCase();
+            return vSize === normSize && (vColor === normColor || vColor.includes(normColor) || normColor.includes(vColor));
+          });
+
+          // 2. Coincidencia defensiva por código de SKU si se requiere (ej: BEI para Beige Lino)
+          if (!matched) {
+            const colorCode = normColor.includes('beige') ? 'BEI' : normColor.includes('blanc') ? 'BLA' : normColor.includes('gris') ? 'GRI' : normColor.includes('negr') ? 'NEG' : '';
+            matched = product.rawVariants.find((v) => {
+              const vSize = String(v.size || '').trim().toUpperCase();
+              return vSize === normSize && Boolean(colorCode && v.sku?.includes(colorCode));
+            });
+          }
+
+          // 3. Fallback a coincidencia de talla
+          if (!matched) {
+            matched = product.rawVariants.find((v) => String(v.size || '').trim().toUpperCase() === normSize);
+          }
+
+          if (matched?.id && UUID_REGEX.test(matched.id) && matched.id !== BRANCH_ID) {
+            resolvedVariantId = matched.id;
+          }
+        }
+
         const itemId = `${product.id}-${size}-${colorName}`;
         const existingIndex = items.findIndex((i) => i.id === itemId);
 
@@ -189,11 +235,14 @@ export const useECommerceStore = create(
         if (existingIndex >= 0) {
           updatedItems = [...items];
           updatedItems[existingIndex].quantity += quantity;
+          if (resolvedVariantId) {
+            updatedItems[existingIndex].variantId = resolvedVariantId;
+          }
         } else {
           const newItem = {
             id: itemId,
             productId: product.id,
-            variantId: product.variantId || 'b1000000-0000-0000-0000-000000000001',
+            variantId: resolvedVariantId,
             product,
             name: product.name,
             price: product.price,
@@ -358,14 +407,23 @@ export const useECommerceStore = create(
             p_shipping_notes: orderData.shippingNotes || '',
             p_shipping_method: orderData.shippingMethod || 'Envío Estándar Nacional',
             p_coupon_code: appliedCoupon?.code || null,
-            p_items: (orderData.items || []).map((item) => ({
-              variant_id: item.variantId || 'b1000000-0000-0000-0000-000000000001',
-              quantity: item.quantity,
-              name: item.name,
-              price: item.price,
-              size: item.size,
-              color: item.color
-            })),
+            p_items: (orderData.items || []).map((item) => {
+              const cleanVariantId = item.variantId;
+              const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+              const BRANCH_ID = 'b1000000-0000-0000-0000-000000000001';
+
+              if (!cleanVariantId || !UUID_REGEX.test(cleanVariantId) || cleanVariantId === BRANCH_ID) {
+                throw new Error(`La prenda "${item.name}" (Talla: ${item.size || 'M'}) no tiene una variante válida de catálogo. Por favor retírala del carrito y vuelve a seleccionarla.`);
+              }
+              return {
+                variant_id: cleanVariantId,
+                quantity: item.quantity,
+                name: item.name,
+                price: item.price,
+                size: item.size,
+                color: item.color
+              };
+            }),
             p_idempotency_key: idempotencyKey,
             p_user_id: session?.user?.id || null
           });
@@ -452,20 +510,23 @@ export const useECommerceStore = create(
       }
     }),
     {
-      name: 'jm-fashion-store-cart-v12',
-      version: 12,
+      name: 'jm-fashion-store-cart-v13',
+      version: 13,
       migrate: (persistedState, version) => {
-        if (persistedState && Array.isArray(persistedState.products)) {
-          const updatedProducts = persistedState.products.map((p) => {
-            const fresh = PRODUCTS.find((m) => m.id === p.id);
-            if (fresh) {
-              return { ...p, styleLine: p.styleLine || fresh.styleLine };
-            }
-            return p;
-          });
-          return { ...persistedState, products: updatedProducts };
-        }
-        return persistedState;
+        if (!persistedState) return persistedState;
+
+        // Descartar ítems corruptos de versiones previas con fallback b100... o sin variantId válido
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const BRANCH_ID = 'b1000000-0000-0000-0000-000000000001';
+
+        const cleanItems = Array.isArray(persistedState.items)
+          ? persistedState.items.filter((item) => item.variantId && UUID_REGEX.test(item.variantId) && item.variantId !== BRANCH_ID)
+          : [];
+
+        return {
+          ...persistedState,
+          items: cleanItems
+        };
       },
       partialize: (state) => ({
         products: state.products,
