@@ -17,7 +17,7 @@ import {
 import styles from './DashboardLayout.module.css';
 
 export const DashboardLayout = () => {
-  const { user, logout } = useAuthStore();
+  const { user, profile, logout } = useAuthStore();
   const { isOffline } = useSyncStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +34,8 @@ export const DashboardLayout = () => {
     { label: 'Clientes', path: '/customers', icon: <Users size={20} />, roles: ['super_admin', 'admin', 'supervisor', 'cashier'] },
   ];
 
-  const allowedNavItems = navItems.filter(item => item.roles.includes(user?.role));
+  const currentRole = profile?.role || user?.role;
+  const allowedNavItems = navItems.filter(item => item.roles.includes(currentRole));
 
   return (
     <div className={styles.layout}>
@@ -90,8 +91,8 @@ export const DashboardLayout = () => {
           <div className={styles.headerRight}>
             <div className={styles.userInfo}>
               <span className={styles.userName}>{user?.first_name} {user?.last_name}</span>
-              <Badge variant={user?.role === 'super_admin' ? 'destructive' : 'primary'}>
-                {user?.role.toUpperCase()}
+              <Badge variant={currentRole === 'super_admin' ? 'destructive' : 'primary'}>
+                {(currentRole || 'USUARIO').toUpperCase()}
               </Badge>
             </div>
           </div>

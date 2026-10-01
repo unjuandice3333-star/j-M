@@ -132,6 +132,26 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Login con Google OAuth
+  loginWithGoogle: async (redirectTo) => {
+    set({ isLoading: true, error: null });
+    try {
+      const targetRedirect = redirectTo || `${window.location.origin}/admin`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: targetRedirect
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      set({ error: err.message, isLoading: false });
+      throw err;
+    }
+  },
+
   // Login real con email / contraseña
   login: async (email, password) => {
     set({ isLoading: true, error: null });

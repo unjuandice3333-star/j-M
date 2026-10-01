@@ -36,10 +36,19 @@ export const AuthGuard = ({ children, allowedRoles }) => {
     return <Navigate to={targetLogin} state={{ from: location }} replace />;
   }
 
-  const userRole = profile?.role || 'customer';
+  const userRole = profile?.role;
 
-  if (allowedRoles && !allowedRoles.includes(userRole)) {
-    // Si la sesión existe pero el rol no está autorizado para esta sección
+  if (allowedRoles && (!userRole || !allowedRoles.includes(userRole))) {
+    // Si la sesión existe pero no tiene el rol autorizado para la sección administrativa
+    if (location.pathname.startsWith('/admin')) {
+      return (
+        <Navigate
+          to="/admin/login"
+          state={{ error: 'Tu cuenta no tiene permisos administrativos.' }}
+          replace
+        />
+      );
+    }
     return <Navigate to="/unauthorized" replace />;
   }
 
