@@ -161,15 +161,17 @@ export const wompiService = {
       }
     };
 
-    // Telemetría segura de diagnóstico (NO expone valores secretos ni firmas completas)
-    console.log('[Wompi Widget Config]:', {
-      currency: checkoutOptions.currency,
-      amountInCents: checkoutOptions.amountInCents,
-      reference: checkoutOptions.reference,
-      signaturePresent: Boolean(checkoutOptions.signature?.integrity),
-      signatureLength: checkoutOptions.signature?.integrity?.length || 0,
-      publicKeyPresent: Boolean(checkoutOptions.publicKey)
-    });
+    // Validación defensiva de paridad estricta entre la firma autoritativa y las opciones del Widget
+    const signatureInputsMatch = Boolean(
+      signatureData?.reference === checkoutOptions.reference &&
+      signatureData?.amount_in_cents === checkoutOptions.amountInCents &&
+      (signatureData?.currency || 'COP') === checkoutOptions.currency
+    );
+
+    if (!signatureInputsMatch) {
+      console.error('[Wompi Service Error]: Discrepancia en los parámetros de la firma de integridad.');
+      throw new Error('Discrepancia en los datos de pago para Wompi. Por favor intenta nuevamente.');
+    }
 
     const CheckoutClass = getWompiWidgetClass();
 

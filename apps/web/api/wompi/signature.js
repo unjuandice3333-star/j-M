@@ -66,7 +66,8 @@ export default async function handler(req, res) {
 
     // 2. Generar Firma de Integridad SHA-256 Oficial de Wompi
     // Fórmula oficial: SHA-256(reference + amount_in_cents + currency + integrity_secret)
-    const concatenatedString = `${orderReference}${amountInCents}${currency}${integritySecret}`;
+    const cleanSecret = integritySecret ? integritySecret.trim().replace(/^["']|["']$/g, '') : '';
+    const concatenatedString = `${orderReference}${amountInCents}${currency}${cleanSecret}`;
     const signature = crypto.createHash('sha256').update(concatenatedString, 'utf8').digest('hex');
 
     return res.status(200).json({
