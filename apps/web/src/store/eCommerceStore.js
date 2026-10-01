@@ -141,16 +141,24 @@ export const useECommerceStore = create(
             cartQuery = cartQuery.eq('user_id', userId);
           } else {
             cartQuery = cartQuery.eq('session_id', sessionId);
+            if (sessionId) {
+              cartQuery = cartQuery.setHeader('x-session-id', sessionId);
+            }
           }
 
-          let { data: cartRecord, error: cartErr } = await cartQuery.single();
+          let { data: cartRecord, error: cartErr } = await cartQuery.maybeSingle();
 
           if (!cartRecord) {
-            const { data: newCart, error: newCartErr } = await supabase
+            let insertQuery = supabase
               .from('carts')
               .insert([{ user_id: userId, session_id: sessionId, status: 'active' }])
-              .select('id')
-              .single();
+              .select('id');
+
+            if (sessionId) {
+              insertQuery = insertQuery.setHeader('x-session-id', sessionId);
+            }
+
+            const { data: newCart, error: newCartErr } = await insertQuery.single();
 
             if (!newCartErr && newCart) {
               cartRecord = newCart;
@@ -172,9 +180,15 @@ export const useECommerceStore = create(
               }));
 
             if (cartItemsPayload.length > 0) {
-              await supabase
+              let itemsQuery = supabase
                 .from('cart_items')
                 .upsert(cartItemsPayload, { onConflict: 'cart_id,variant_id' });
+
+              if (sessionId) {
+                itemsQuery = itemsQuery.setHeader('x-session-id', sessionId);
+              }
+
+              await itemsQuery;
             }
           }
         } catch (e) {

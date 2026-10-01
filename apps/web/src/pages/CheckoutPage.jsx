@@ -4,6 +4,7 @@ import { Lock, Truck, CreditCard, ShieldCheck, CheckCircle2, ChevronRight, Check
 import { useECommerceStore } from '../store/eCommerceStore';
 import { formatCOP } from '../data/mockData';
 import { analyticsService } from '../services/analytics';
+import { wompiService } from '../services/wompi';
 
 const DEPARTMENTS = [
   'Cundinamarca (Bogotá D.C.)',
@@ -67,6 +68,16 @@ export const CheckoutPage = () => {
     setErrorMessage(null);
 
     try {
+      // Validación previa estricta de variantes reales antes de llamar a la RPC
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const BRANCH_ID = 'b1000000-0000-0000-0000-000000000001';
+
+      for (const item of items) {
+        if (!item.variantId || !UUID_REGEX.test(item.variantId) || item.variantId === BRANCH_ID) {
+          throw new Error(`La prenda "${item.name}" (Talla: ${item.size || 'Única'}) no tiene una variante válida del catálogo. Por favor retírala del carrito y vuelve a seleccionarla.`);
+        }
+      }
+
       const orderData = {
         idempotencyKey,
         customerName: `${formData.firstName} ${formData.lastName}`,
@@ -87,7 +98,7 @@ export const CheckoutPage = () => {
             ? 'Nequi / Bancolombia'
             : 'Pago Contraentrega en Efectivo',
         items: items.map((i) => ({
-          variantId: i.variantId || 'b1000000-0000-0000-0000-000000000001',
+          variantId: i.variantId,
           name: i.name,
           size: i.size,
           color: i.color,
@@ -97,8 +108,28 @@ export const CheckoutPage = () => {
         }))
       };
 
-      const orderId = await createOrder(orderData);
-      navigate(`/checkout/confirmacion?orderId=${orderId}`);
+      const orderResult = await createOrder(orderData);
+      const orderId = typeof orderResult === 'object' ? orderResult?.id : orderResult;
+
+      // Si el método de pago es Wompi (Tarjeta, PSE, Nequi), abrir Widget Oficial con Firma Server-Side
+      if (paymentMethod !== 'contraentrega') {
+        const orderNumber = `JM-ORD-${orderId}`;
+        const totalAmount = totals.total;
+
+        await wompiService.openWompiWidget({
+          orderNumber,
+          orderId,
+          totalAmount,
+          amountInCents: Math.round(totalAmount * 100),
+          customerEmail: formData.email,
+          customerName: `${formData.firstName} ${formData.lastName}`,
+          customerPhone: formData.phone,
+          redirectUrl: `${window.location.origin}/checkout/confirmacion?orderId=${orderId}`
+        });
+      } else {
+        // Pago contraentrega navega directo a la página de confirmación
+        navigate(`/checkout/confirmacion?orderId=${orderId}`);
+      }
     } catch (err) {
       console.error('[Checkout Error]:', err);
       setErrorMessage(err.message || 'No pudimos procesar la orden en este momento. Por favor verifica el stock de tus prendas.');

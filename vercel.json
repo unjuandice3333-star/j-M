@@ -1,8 +1,10 @@
 {
   "buildCommand": "pnpm --filter @jm/web build",
   "outputDirectory": "apps/web/dist",
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/index.html" }
+  "rewrites": [
+    {
+      "source": "/((?!api|src|@fs|@vite|@react-refresh|@|node_modules|assets).*)",
+      "destination": "/index.html"
+    }
   ]
 }

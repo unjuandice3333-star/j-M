@@ -32,9 +32,8 @@ const AdminEditorialImagesPage = lazy(() => import('../pages/admin/AdminEditoria
 
 const AdminLogin = lazy(() => import('../pages/admin/AdminLogin.jsx'));
 
-// Admin / POS auth pages
+// Auth pages
 const Login = lazy(() => import('../pages/Login.jsx'));
-const POS = lazy(() => import('../pages/POS.jsx'));
 const Unauthorized = lazy(() => import('../pages/Unauthorized.jsx'));
 
 // Spinner placeholder for Suspense boundaries
@@ -131,7 +130,6 @@ export const AppRoutes = () => {
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/login" element={<Login />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-        <Route path="/pos" element={<POS />} />
 
         {/* Catch-all route */}
         <Route path="*" element={<Navigate to="/" replace />} />

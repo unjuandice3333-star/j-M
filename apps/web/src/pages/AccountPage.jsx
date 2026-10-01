@@ -88,8 +88,8 @@ export const AccountPage = () => {
                   textTransform: 'uppercase',
                   padding: '2px 8px',
                   borderRadius: '999px',
-                  backgroundColor: profile?.role === 'admin' ? '#D4AF37' : '#E4E4E7',
-                  color: profile?.role === 'admin' ? '#FFFFFF' : '#09090B'
+                  backgroundColor: (profile?.role === 'admin' || profile?.role === 'super_admin') ? '#D4AF37' : '#E4E4E7',
+                  color: (profile?.role === 'admin' || profile?.role === 'super_admin') ? '#FFFFFF' : '#09090B'
                 }}>
                   Rol: {profile?.role || 'customer'}
                 </span>

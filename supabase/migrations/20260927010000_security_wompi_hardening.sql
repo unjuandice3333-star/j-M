@@ -146,7 +146,7 @@ BEGIN
     v_shipping_cost := 15000.00;
   END IF;
 
-  v_total := MAX(0, (v_calculated_subtotal - v_discount)) + v_shipping_cost;
+  v_total := GREATEST(0::numeric, (v_calculated_subtotal - v_discount)) + v_shipping_cost;
 
   -- Crear Encabezado de Orden en online_orders
   INSERT INTO online_orders (

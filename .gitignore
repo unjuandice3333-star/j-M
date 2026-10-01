@@ -57,3 +57,6 @@ ios/App/build
 ios/App/Pods
 android/app/build
 android/app/src/main/assets/public
+
+.vercel
+.env*

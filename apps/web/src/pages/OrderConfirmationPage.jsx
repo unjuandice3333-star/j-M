@@ -39,7 +39,7 @@ export const OrderConfirmationPage = () => {
             )
           `)
           .or(`id.eq.${orderId.includes('-') && orderId.length === 36 ? orderId : '00000000-0000-0000-0000-000000000000'},order_number.eq.${orderId}`)
-          .single();
+          .maybeSingle();
 
         if (!oErr && oData) {
           const normOrder = {
