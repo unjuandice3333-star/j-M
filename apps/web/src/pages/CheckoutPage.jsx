@@ -110,10 +110,12 @@ export const CheckoutPage = () => {
 
       const orderResult = await createOrder(orderData);
       const orderId = typeof orderResult === 'object' ? orderResult?.id : orderResult;
+      const orderNumber = typeof orderResult === 'object' && (orderResult?.order_number || orderResult?.orderNumber)
+        ? (orderResult.order_number || orderResult.orderNumber)
+        : null;
 
       // Si el método de pago es Wompi (Tarjeta, PSE, Nequi), abrir Widget Oficial con Firma Server-Side
       if (paymentMethod !== 'contraentrega') {
-        const orderNumber = `JM-ORD-${orderId}`;
         const totalAmount = totals.total;
 
         await wompiService.openWompiWidget({

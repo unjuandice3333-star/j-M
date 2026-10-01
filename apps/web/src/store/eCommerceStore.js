@@ -460,7 +460,14 @@ export const useECommerceStore = create(
             };
             set({ orders: [serverOrder, ...orders] });
             clearCart();
-            return rpcResponse.order_id;
+            return {
+              id: rpcResponse.order_id,
+              order_id: rpcResponse.order_id,
+              order_number: rpcResponse.order_number,
+              orderNumber: rpcResponse.order_number,
+              total: rpcResponse.total,
+              amount_in_cents: rpcResponse.amount_in_cents
+            };
           }
         } catch (e) {
           console.error('[eCommerceStore Error]: Error autoritativo en checkout server-side:', e);

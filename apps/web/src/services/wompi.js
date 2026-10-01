@@ -129,12 +129,17 @@ export const wompiService = {
       signatureData = await wompiService.fetchServerIntegritySignature(orderNumber, orderId);
     } catch (err) {
       console.error('[Wompi Service Error]: No se pudo obtener la firma de integridad server-side:', err);
+      throw new Error('No se pudo generar la firma de seguridad para el pago en Wompi. Por favor intenta nuevamente.');
     }
 
-    const finalAmountInCents = signatureData?.amount_in_cents || amountInCents || Math.round(totalAmount * 100);
-    const finalReference = signatureData?.reference || orderNumber || `JM-ORD-${orderId}`;
-    const publicKey = signatureData?.publicKey || WOMPI_CONFIG.publicKey;
-    const integritySignature = signatureData?.signature || null;
+    if (!signatureData || !signatureData.signature) {
+      throw new Error('La firma de seguridad de Wompi no fue recibida del servidor.');
+    }
+
+    const finalAmountInCents = signatureData.amount_in_cents || amountInCents || Math.round(totalAmount * 100);
+    const finalReference = signatureData.reference || orderNumber || `JM-ORD-${orderId}`;
+    const publicKey = signatureData.publicKey || WOMPI_CONFIG.publicKey;
+    const integritySignature = signatureData.signature;
 
     const defaultRedirectUrl = redirectUrl || `${window.location.origin}/checkout/confirmacion?orderId=${orderId}&ref=${finalReference}`;
 
@@ -144,7 +149,9 @@ export const wompiService = {
       amountInCents: finalAmountInCents,
       reference: finalReference,
       publicKey: publicKey,
-      signature: integritySignature ? { integrity: integritySignature } : undefined,
+      signature: {
+        integrity: integritySignature
+      },
       redirectUrl: defaultRedirectUrl,
       customerData: {
         email: customerEmail,
@@ -153,6 +160,16 @@ export const wompiService = {
         phoneNumberPrefix: '+57'
       }
     };
+
+    // Telemetría segura de diagnóstico (NO expone valores secretos ni firmas completas)
+    console.log('[Wompi Widget Config]:', {
+      currency: checkoutOptions.currency,
+      amountInCents: checkoutOptions.amountInCents,
+      reference: checkoutOptions.reference,
+      signaturePresent: Boolean(checkoutOptions.signature?.integrity),
+      signatureLength: checkoutOptions.signature?.integrity?.length || 0,
+      publicKeyPresent: Boolean(checkoutOptions.publicKey)
+    });
 
     const CheckoutClass = getWompiWidgetClass();
 

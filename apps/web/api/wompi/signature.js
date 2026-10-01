@@ -39,9 +39,18 @@ export default async function handler(req, res) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     let orderQuery = supabase.from('online_orders').select('id, order_number, total');
     
-    if (reference) {
-      orderQuery = orderQuery.eq('order_number', reference);
-    } else {
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (order_id && UUID_REGEX.test(order_id)) {
+      orderQuery = orderQuery.eq('id', order_id);
+    } else if (reference) {
+      if (UUID_REGEX.test(reference)) {
+        orderQuery = orderQuery.eq('id', reference);
+      } else if (reference.startsWith('JM-ORD-') && UUID_REGEX.test(reference.slice(7))) {
+        orderQuery = orderQuery.eq('id', reference.slice(7));
+      } else {
+        orderQuery = orderQuery.eq('order_number', reference);
+      }
+    } else if (order_id) {
       orderQuery = orderQuery.eq('id', order_id);
     }
 
