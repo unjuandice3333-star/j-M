@@ -186,7 +186,7 @@ export const wompiService = {
       });
     } else {
       console.error('[Wompi Service Error]: WidgetCheckout no está disponible en window.');
-      window.location.href = defaultRedirectUrl;
+      throw new Error('No se pudo inicializar la pasarela de pagos de Wompi. Por favor intenta nuevamente.');
     }
   }
 };

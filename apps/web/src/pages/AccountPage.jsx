@@ -1,8 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  Package,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  RotateCcw,
+  ExternalLink,
+  ShoppingBag,
+  User,
+  LogOut,
+  ChevronRight
+} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { formatCOP } from '../data/mockData';
 import supabase from '../config/supabase';
 
 export const AccountPage = () => {
+  const navigate = useNavigate();
   const { isLoggedIn, user, profile, login, signUp, logout, isLoading, error } = useAuthStore();
 
   const [inputEmail, setInputEmail] = useState('');
@@ -10,6 +25,46 @@ export const AccountPage = () => {
   const [inputName, setInputName] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [formError, setFormError] = useState(null);
+
+  // Orders State for Authenticated Customer
+  const [userOrders, setUserOrders] = useState([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [ordersError, setOrdersError] = useState(null);
+
+  // Cargar pedidos del usuario autenticado respetando RLS
+  useEffect(() => {
+    if (!isLoggedIn || !user) return;
+
+    const fetchUserOrders = async () => {
+      setIsLoadingOrders(true);
+      setOrdersError(null);
+      try {
+        const { data, error: err } = await supabase
+          .from('online_orders')
+          .select(`
+            id,
+            order_number,
+            total,
+            status,
+            created_at,
+            online_order_items (
+              id, product_name, size, color, unit_price, quantity, total
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (err) throw err;
+        setUserOrders(data || []);
+      } catch (e) {
+        console.error('[AccountPage Error]: Error al cargar pedidos del usuario:', e);
+        setOrdersError(e.message || 'No pudimos cargar tus pedidos en este momento.');
+      } finally {
+        setIsLoadingOrders(false);
+      }
+    };
+
+    fetchUserOrders();
+  }, [isLoggedIn, user]);
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -49,82 +104,389 @@ export const AccountPage = () => {
     }
   };
 
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'paid':
+        return {
+          label: 'Compra completada',
+          bg: '#ECFDF5',
+          text: '#065F46',
+          border: '#A7F3D0',
+          icon: <CheckCircle2 size={14} color="#10B981" />
+        };
+      case 'payment_pending':
+      case 'pending':
+        return {
+          label: 'Pago pendiente',
+          bg: '#FFFBEB',
+          text: '#92400E',
+          border: '#FDE68A',
+          icon: <Clock size={14} color="#D97706" />
+        };
+      case 'cancelled':
+        return {
+          label: 'Cancelado',
+          bg: '#FEF2F2',
+          text: '#991B1B',
+          border: '#FECACA',
+          icon: <XCircle size={14} color="#EF4444" />
+        };
+      case 'declined':
+        return {
+          label: 'Rechazado',
+          bg: '#FEF2F2',
+          text: '#991B1B',
+          border: '#FECACA',
+          icon: <XCircle size={14} color="#EF4444" />
+        };
+      case 'voided':
+        return {
+          label: 'Cancelado / Anulado',
+          bg: '#F4F4F5',
+          text: '#52525B',
+          border: '#E4E4E7',
+          icon: <XCircle size={14} color="#71717A" />
+        };
+      default:
+        return {
+          label: status,
+          bg: '#F4F4F5',
+          text: '#52525B',
+          border: '#E4E4E7',
+          icon: <Package size={14} color="#71717A" />
+        };
+    }
+  };
+
+  // VISTA DE USUARIO AUTENTICADO
   if (isLoggedIn && user) {
     return (
-      <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
-        <div className="jm-container" style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <div style={{ backgroundColor: '#FAFAFA', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
+        <div className="jm-container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+
+          {/* PROFILE HEADER CARD */}
           <div style={{
-            border: '1px solid #E4E4E7',
-            borderRadius: '24px',
-            padding: '2.5rem 2rem',
             backgroundColor: '#FFFFFF',
-            boxShadow: '0 12px 36px rgba(0,0,0,0.06)'
+            border: '1px solid #E4E4E7',
+            borderRadius: '16px',
+            padding: '2rem',
+            marginBottom: '2.5rem',
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '1.5rem',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #F4F4F5', paddingBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
               <div style={{
-                width: '56px',
-                height: '56px',
+                width: '64px',
+                height: '64px',
                 borderRadius: '50%',
                 backgroundColor: '#09090B',
                 color: '#FFFFFF',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.4rem',
+                fontSize: '1.6rem',
                 fontWeight: 800
               }}>
                 {(profile?.full_name || user.email)?.[0]?.toUpperCase()}
               </div>
               <div>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#09090B' }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: 0 }}>
                   {profile?.full_name || 'Cliente J&M'}
-                </h2>
-                <p style={{ fontSize: '0.88rem', color: '#71717A' }}>{user.email}</p>
-                <span style={{
-                  display: 'inline-block',
-                  marginTop: '0.35rem',
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                  backgroundColor: (profile?.role === 'admin' || profile?.role === 'super_admin') ? '#D4AF37' : '#E4E4E7',
-                  color: (profile?.role === 'admin' || profile?.role === 'super_admin') ? '#FFFFFF' : '#09090B'
-                }}>
-                  Rol: {profile?.role || 'customer'}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-              <div style={{ padding: '1rem', backgroundColor: '#FAFAFA', borderRadius: '12px', border: '1px solid #E4E4E7' }}>
-                <span style={{ fontSize: '0.8rem', color: '#71717A', display: 'block' }}>ID de Usuario</span>
-                <strong style={{ fontSize: '0.85rem', color: '#09090B', wordBreak: 'break-all' }}>{user.id}</strong>
+                </h1>
+                <p style={{ fontSize: '0.9rem', color: '#71717A', margin: '0.2rem 0' }}>{user.email}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem' }}>
+                  <span style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    backgroundColor: (profile?.role === 'admin' || profile?.role === 'super_admin') ? '#D4AF37' : '#E4E4E7',
+                    color: (profile?.role === 'admin' || profile?.role === 'super_admin') ? '#FFFFFF' : '#09090B'
+                  }}>
+                    Rol: {profile?.role || 'customer'}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: '#A1A1AA' }}>
+                    • ID: {user.id.slice(0, 8)}...
+                  </span>
+                </div>
               </div>
             </div>
 
             <button
               onClick={logout}
               style={{
-                width: '100%',
-                backgroundColor: '#E11D48',
-                color: '#FFFFFF',
-                padding: '0.88rem',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E4E4E7',
+                color: '#E11D48',
+                padding: '0.75rem 1.25rem',
                 borderRadius: '8px',
                 fontWeight: 700,
-                fontSize: '0.88rem',
-                border: 'none',
-                cursor: 'pointer'
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                transition: 'background 0.2s'
               }}
             >
-              Cerrar Sesión
+              <LogOut size={16} /> Cerrar Sesión
             </button>
+          </div>
+
+          {/* SECCIÓN "MIS PEDIDOS" */}
+          <div style={{ marginBottom: '2.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Package size={22} color="#09090B" />
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: 0 }}>
+                  Mis Pedidos
+                </h2>
+                <span style={{
+                  backgroundColor: '#09090B',
+                  color: '#FFFFFF',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  padding: '2px 8px',
+                  borderRadius: '999px'
+                }}>
+                  {userOrders.length}
+                </span>
+              </div>
+
+              <Link
+                to="/ropa"
+                style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  color: '#09090B',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}
+              >
+                Comprar prendas <ChevronRight size={16} />
+              </Link>
+            </div>
+
+            {isLoadingOrders ? (
+              <div style={{ backgroundColor: '#FFFFFF', padding: '3rem', borderRadius: '12px', border: '1px solid #E4E4E7', textAlign: 'center', color: '#71717A' }}>
+                Cargando tu historial de pedidos autoritativo...
+              </div>
+            ) : ordersError ? (
+              <div style={{ backgroundColor: '#FEF2F2', padding: '1.5rem', borderRadius: '12px', border: '1px solid #FECACA', color: '#991B1B' }}>
+                {ordersError}
+              </div>
+            ) : userOrders.length === 0 ? (
+              <div style={{
+                backgroundColor: '#FFFFFF',
+                padding: '4rem 2rem',
+                borderRadius: '16px',
+                border: '1px solid #E4E4E7',
+                textAlign: 'center'
+              }}>
+                <ShoppingBag size={48} color="#D4D4D8" style={{ margin: '0 auto 1rem auto' }} />
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#09090B', marginBottom: '0.5rem' }}>
+                  AÚN NO TIENES PEDIDOS
+                </h3>
+                <p style={{ fontSize: '0.9rem', color: '#71717A', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem auto' }}>
+                  Explora las prendas exclusivas de J&M Fashion Store y realiza tu primera compra segura.
+                </p>
+                <Link
+                  to="/ropa"
+                  style={{
+                    display: 'inline-block',
+                    backgroundColor: '#09090B',
+                    color: '#FFFFFF',
+                    padding: '0.85rem 1.8rem',
+                    borderRadius: '6px',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                    textDecoration: 'none'
+                  }}
+                >
+                  VER CATÁLOGO DE MODA
+                </Link>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {userOrders.map((ord) => {
+                  const badge = getStatusBadge(ord.status);
+                  const formattedDate = new Date(ord.created_at).toLocaleDateString('es-CO', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+
+                  return (
+                    <div
+                      key={ord.id}
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E4E4E7',
+                        borderRadius: '12px',
+                        padding: '1.5rem',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '1rem',
+                        borderBottom: '1px solid #F4F4F5',
+                        paddingBottom: '1rem',
+                        marginBottom: '1rem'
+                      }}>
+                        <div>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#71717A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            PEDIDO #{ord.order_number || ord.id}
+                          </span>
+                          <div style={{ fontSize: '0.82rem', color: '#A1A1AA', marginTop: '0.15rem' }}>
+                            {formattedDate}
+                          </div>
+                        </div>
+
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          backgroundColor: badge.bg,
+                          color: badge.text,
+                          border: `1px solid ${badge.border}`,
+                          padding: '0.35rem 0.75rem',
+                          borderRadius: '999px',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          textTransform: 'uppercase'
+                        }}>
+                          {badge.icon}
+                          {badge.label}
+                        </div>
+                      </div>
+
+                      {/* PRODUCT ITEMS IN THIS ORDER */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                        {ord.online_order_items?.map((item) => (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.88rem' }}>
+                            <div>
+                              <strong style={{ color: '#09090B' }}>{item.product_name}</strong>
+                              <span style={{ color: '#71717A', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                                (Talla: {item.size || 'M'} • Color: {item.color || 'Único'} • Cant: {item.quantity})
+                              </span>
+                            </div>
+                            <div style={{ fontWeight: 700, color: '#09090B' }}>
+                              {formatCOP(Number(item.unit_price) * item.quantity)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* FOOTER TOTAL & ACTIONS */}
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '1rem',
+                        borderTop: '1px solid #F4F4F5',
+                        paddingTop: '1rem'
+                      }}>
+                        <div>
+                          <span style={{ fontSize: '0.72rem', color: '#71717A', fontWeight: 800, textTransform: 'uppercase', display: 'block' }}>
+                            TOTAL DE LA ORDEN
+                          </span>
+                          <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#09090B' }}>
+                            {formatCOP(Number(ord.total))}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                          {(ord.status === 'cancelled' || ord.status === 'declined') && (
+                            <button
+                              onClick={() => navigate('/checkout')}
+                              style={{
+                                backgroundColor: '#09090B',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                padding: '0.6rem 1.1rem',
+                                borderRadius: '6px',
+                                fontSize: '0.8rem',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <RotateCcw size={14} /> Reintentar
+                            </button>
+                          )}
+
+                          {ord.status === 'payment_pending' && (
+                            <button
+                              onClick={() => navigate(`/checkout/confirmacion?orderId=${ord.id}`)}
+                              style={{
+                                backgroundColor: '#D97706',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                padding: '0.6rem 1.1rem',
+                                borderRadius: '6px',
+                                fontSize: '0.8rem',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Clock size={14} /> Continuar Pago
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => navigate(`/checkout/confirmacion?orderId=${ord.id}`)}
+                            style={{
+                              backgroundColor: '#FFFFFF',
+                              color: '#09090B',
+                              border: '1px solid #E4E4E7',
+                              padding: '0.6rem 1.1rem',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <ExternalLink size={14} /> Ver Detalle
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
+  // VISTA PARA USUARIOS NO AUTENTICADOS (FORMULARIO DE LOGIN / REGISTRO)
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
       <div className="jm-container">

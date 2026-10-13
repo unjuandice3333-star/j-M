@@ -81,6 +81,7 @@ export const useECommerceStore = create(
       isMobileMenuOpen: false,
       searchQuery: '',
       isSyncingCart: false,
+      activeCheckoutOrderId: null,
 
       // Coupon State
       appliedCoupon: null,
@@ -306,8 +307,30 @@ export const useECommerceStore = create(
       },
 
       clearCart: () => {
-        set({ items: [], appliedCoupon: null });
+        set({ items: [], appliedCoupon: null, activeCheckoutOrderId: null });
         get().syncCartWithServer();
+      },
+
+      // Valida que la orden confirmada como pagada corresponda a este checkout antes de vaciar el carrito
+      finalizePaidOrder: (orderIdentifier) => {
+        const { activeCheckoutOrderId, clearCart, orders } = get();
+        if (!orderIdentifier) return false;
+
+        const currentOrder = orders.find(
+          (o) => o.id === orderIdentifier || o.order_number === orderIdentifier
+        );
+        const isCurrentSessionOrder =
+          Boolean(activeCheckoutOrderId) &&
+          (activeCheckoutOrderId === orderIdentifier ||
+            currentOrder?.id === activeCheckoutOrderId ||
+            currentOrder?.order_number === activeCheckoutOrderId);
+
+        if (isCurrentSessionOrder) {
+          clearCart();
+          set({ activeCheckoutOrderId: null });
+          return true;
+        }
+        return false;
       },
 
       // Coupon Actions
@@ -404,7 +427,7 @@ export const useECommerceStore = create(
       // Transactional & Idempotent Order Creation
       createOrder: async (orderData) => {
         const { orders, appliedCoupon, clearCart } = get();
-        
+
         try {
           const { data: { session } } = await supabase.auth.getSession();
           const idempotencyKey = orderData.idempotencyKey || `idemp-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
@@ -458,8 +481,12 @@ export const useECommerceStore = create(
               isDuplicate: rpcResponse.is_duplicate || false,
               ...orderData
             };
-            set({ orders: [serverOrder, ...orders] });
-            clearCart();
+            set({
+              orders: [serverOrder, ...orders.filter((o) => o.id !== serverOrder.id)],
+              activeCheckoutOrderId: rpcResponse.order_id
+            });
+            // NOTA: NO vaciar el carrito aquí. El carrito se vacía únicamente cuando
+            // la orden es confirmada como 'paid' por la pasarela de pagos.
             return {
               id: rpcResponse.order_id,
               order_id: rpcResponse.order_id,
@@ -555,7 +582,8 @@ export const useECommerceStore = create(
         wishlist: state.wishlist,
         appliedCoupon: state.appliedCoupon,
         savedAddresses: state.savedAddresses,
-        editorialImages: state.editorialImages
+        editorialImages: state.editorialImages,
+        activeCheckoutOrderId: state.activeCheckoutOrderId
       })
     }
   )
