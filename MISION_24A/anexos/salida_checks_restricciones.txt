@@ -1,0 +1,46 @@
+C1 debe FALLAR: imagen con color no declarado en el producto (beige)
+L25: ERROR:  insert or update on table "product_images" violates foreign key constraint "product_images_product_id_color_id_fkey"
+DETAIL:  Key (product_id, color_id)=(00000000-0000-4000-8000-000000000401, 00000000-0000-4000-8000-000000000303) is not present in table "product_colors".
+C2 debe FALLAR: variante con color no declarado
+L27: ERROR:  insert or update on table "variants" violates foreign key constraint "variants_product_id_color_id_fkey"
+DETAIL:  Key (product_id, color_id)=(00000000-0000-4000-8000-000000000401, 00000000-0000-4000-8000-000000000303) is not present in table "product_colors".
+C3 debe FALLAR: variante duplicada producto+color+talla
+L29: ERROR:  duplicate key value violates unique constraint "variants_product_id_color_id_size_id_key"
+DETAIL:  Key (product_id, color_id, size_id)=(00000000-0000-4000-8000-000000000401, 00000000-0000-4000-8000-000000000301, 00000000-0000-4000-8000-000000000201) already ex
+C4 debe FALLAR: reservado > stock
+L31: ERROR:  new row for relation "inventories" violates check constraint "inventories_check"
+DETAIL:  Failing row contains (dc00d7f6-5cb8-4b52-beb9-e7ec15deda9d, 00000000-0000-4000-8000-000000000001, 00000000-0000-4000-8000-000000000501, 1, 2, 2, null, 2026-11-06
+C5 debe FALLAR: total inconsistente
+L34: ERROR:  new row for relation "online_orders" violates check constraint "online_orders_check1"
+DETAIL:  Failing row contains (c5d45094-3e3a-42a8-bf6c-2a0f43ca3b89, JM-001000, f4fc4019-6705-42d5-b15d-e09113be0f4a, k0, null, 00000000-0000-4000-8000-000000000001, A, a
+C6 OK: pedido consistente con número secuencial
+ order_number 
+--------------
+ JM-001001
+(1 row)
+C7 debe FALLAR: línea con total inconsistente
+L40: ERROR:  new row for relation "online_order_items" violates check constraint "online_order_items_check"
+DETAIL:  Failing row contains (a9117bc7-0fe5-41a0-ae77-b58d9cccfda8, 10c71000-00a1-4ada-b172-a0ca44be818c, 00000000-0000-4000-8000-000000000401, 00000000-0000-4000-8000-0
+C8 debe FALLAR: segundo pago APPROVED para el mismo pedido
+L43: ERROR:  duplicate key value violates unique constraint "uq_payment_one_approved"
+DETAIL:  Key (order_id)=(10c71000-00a1-4ada-b172-a0ca44be818c) already exists.
+C9 debe FALLAR: movimiento con aritmética inconsistente
+L46: ERROR:  new row for relation "inventory_movements" violates check constraint "inventory_movements_check"
+DETAIL:  Failing row contains (00281650-29b8-4278-8d01-4d524cd4e2b1, dc00d7f6-5cb8-4b52-beb9-e7ec15deda9d, 00000000-0000-4000-8000-000000000501, 00000000-0000-4000-8000-0
+C10 debe FALLAR: cupón en minúsculas
+L48: ERROR:  new row for relation "coupons" violates check constraint "coupons_code_check"
+DETAIL:  Failing row contains (a9174ade-b6cd-497d-89ee-815b1b249688, jm10off, percent, 10, 0, null, null, 0, t, null, null, 2026-11-06 04:54:23.167857+00, 2026-11-06 04:5
+C11 vistas: disponibilidad y galería por color
+              variant_id              |              product_id              |               color_id               |               size_id                | available 
+--------------------------------------+--------------------------------------+--------------------------------------+--------------------------------------+-----------
+ 00000000-0000-4000-8000-000000000501 | 00000000-0000-4000-8000-000000000401 | 00000000-0000-4000-8000-000000000301 | 00000000-0000-4000-8000-000000000201 |         1
+(1 row)
+ color  |      external_url      
+--------+------------------------
+ negro  | https://x/negro-1.jpg
+ blanco | https://x/blanco-1.jpg
+        | https://x/general.jpg
+(3 rows)
+C12 debe FALLAR: segundo producto activo sin published_at
+L53: ERROR:  new row for relation "products" violates check constraint "products_check1"
+DETAIL:  Failing row contains (b7ead37f-7ddb-46f9-a7b0-6c0d36520551, R2, r2, R2, null, {}, REGULAR, null, 00000000-0000-4000-8000-000000000101, null, null, 1000, null, nu

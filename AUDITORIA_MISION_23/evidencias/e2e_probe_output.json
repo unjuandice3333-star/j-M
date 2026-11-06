@@ -1,0 +1,49 @@
+{
+  "noenv": {
+    "rootHTMLLength": 0,
+    "errors": [
+      "[Supabase Config Error]: Las variables de entorno VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY son obligatorias y deben estar configuradas."
+    ]
+  },
+  "routes": {
+    "/": {
+      "url": "http://localhost:4173/",
+      "title": "J&M Fashion Store | Moda Masculina · Colombia",
+      "h1": "VISTE TU ESTILO.VIVE TU ESENCIA."
+    },
+    "/ropa": {
+      "url": "http://localhost:4173/ropa",
+      "title": "J&M Fashion Store | Moda Masculina · Colombia",
+      "h1": "CATÁLOGO DE MODA MASCULINA"
+    },
+    "/producto/x-no-existe": {
+      "url": "http://localhost:4173/producto/x-no-existe",
+      "title": "J&M Fashion Store | Moda Masculina · Colombia",
+      "h1": "Camiseta Heavyweight Oversize Essential"
+    },
+    "/carrito": {
+      "url": "http://localhost:4173/carrito",
+      "title": "J&M Fashion Store | Moda Masculina · Colombia",
+      "h1": "CARRITO DE COMPRAS (0)"
+    },
+    "/checkout": {
+      "url": "http://localhost:4173/checkout",
+      "title": "J&M Fashion Store | Moda Masculina · Colombia",
+      "h1": null
+    },
+    "/admin": {
+      "url": "http://localhost:4173/admin/login",
+      "title": "J&M Fashion Store | Moda Masculina · Colombia",
+      "h1": "J&M ADMIN PANEL"
+    },
+    "/cuenta": {
+      "url": "http://localhost:4173/cuenta",
+      "title": "J&M Fashion Store | Moda Masculina · Colombia",
+      "h1": null
+    }
+  },
+  "catalogLinks": 18,
+  "firstProductHref": "/producto/camiseta-heavyweight-oversize-essential",
+  "pageErrors": [],
+  "mobileHorizontalOverflow": false
+}

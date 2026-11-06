@@ -1,0 +1,33 @@
+psql:/home/user/unjuandice3333-star/j-m/supabase/tests/database/95_concurrency.test.sql:35: NOTICE:  Stock insuficiente: Polo Piqué Edición Limitada (talla M, Beige): disponibles 0, solicitadas 1
+HINT:  JM_OUT_OF_STOCK
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/95_concurrency.test.sql .. 
+1..12
+ok 1 - precondición: 1 unidad disponible
+OK
+OK
+SET
+SET
+BEGIN
+ok 2 - A crea su pedido dentro de una transacción abierta (bloquea la fila de inventario)
+ok 3 - B envía su pedido en paralelo
+ok 4 - B queda en espera del bloqueo de A (no lee un stock obsoleto)
+COMMIT
+ok 5 - B continúa al confirmar A
+ok 6 - B recibe "Stock insuficiente" tras el commit de A
+ok 7 - existe un solo pedido (el de A)
+ok 8 - stock 1, reservada 1: sin sobreventa
+RESET
+RESET
+BEGIN
+ok 9 - A procesa el evento (transacción abierta)
+1
+COMMIT
+ok 10 - B, con el mismo evento en paralelo, obtiene "duplicate"
+ok 11 - pedido pagado una sola vez con un solo movimiento de venta
+ok 12 - stock final 0, sin negativos
+OK
+OK
+ok
+All tests successful.
+Files=1, Tests=12,  3 wallclock secs ( 0.02 usr  0.00 sys +  0.02 cusr  0.00 csys =  0.04 CPU)
+Result: PASS

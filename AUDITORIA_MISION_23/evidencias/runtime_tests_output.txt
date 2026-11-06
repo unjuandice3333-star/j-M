@@ -1,0 +1,221 @@
+--- Seed: producto + variante + inventario
+--- T1: checkout como anon con precio manipulado (price=1) en el payload
+                                                                                                                                          t1                                                                                                                                           
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"total": 200000.00, "status": "payment_pending", "currency": "COP", "discount": 0.00, "order_id": "3cb5db88-ada6-4c70-9d8e-e6604676f423", "subtotal": 200000.00, "is_duplicate": false, "order_number": "JM-ORD-1793939096-983", "shipping_cost": 0.00, "amount_in_cents": 20000000}
+(1 row)
+
+     order_number      | subtotal  |   total   | item_unit_price | item_total 
+-----------------------+-----------+-----------+-----------------+------------
+ JM-ORD-1793939096-983 | 200000.00 | 200000.00 |            1.00 |       2.00
+(1 row)
+
+--- T2: anon puede asignar el pedido a un user_id arbitrario (p_user_id)
+psql:/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/runtime_tests.sql:20: ERROR:  insert or update on table "online_orders" violates foreign key constraint "online_orders_user_id_fkey"
+DETAIL:  Key (user_id)=(99999999-9999-4999-8999-999999999999) is not present in table "users".
+CONTEXT:  SQL statement "INSERT INTO public.online_orders (
+    order_number,
+    user_id,
+    idempotency_key,
+    customer_name,
+    customer_email,
+    customer_phone,
+    shipping_department,
+    shipping_city,
+    shipping_address,
+    shipping_neighborhood,
+    shipping_notes,
+    shipping_method,
+    shipping_cost,
+    subtotal,
+    discount,
+    total,
+    coupon_code,
+    status
+  ) VALUES (
+    v_order_number,
+    p_user_id,
+    p_idempotency_key,
+    p_customer_name,
+    p_customer_email,
+    p_customer_phone,
+    p_shipping_department,
+    p_shipping_city,
+    p_shipping_address,
+    p_shipping_neighborhood,
+    p_shipping_notes,
+    p_shipping_method,
+    v_shipping_cost,
+    v_calculated_subtotal,
+    v_discount,
+    v_total,
+    p_coupon_code,
+    'payment_pending'
+  ) RETURNING id"
+PL/pgSQL function create_online_order_validated_idempotent(character varying,character varying,character varying,character varying,character varying,character varying,character varying,text,character varying,character varying,jsonb,character varying,uuid) line 141 at SQL statement
+ order_number | user_id 
+--------------+---------
+(0 rows)
+
+--- T3: cupón invalido/inexistente no falla, se ignora silenciosamente
+ t3_discount 
+-------------
+ 0.00
+(1 row)
+
+--- T4: webhook marca pedido como paid (UPDATE como service_role) -> trigger de inventario
+psql:/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/runtime_tests.sql:32: ERROR:  record "v_order" has no field "branch_id"
+CONTEXT:  SQL statement "SELECT id, stock                FROM public.inventories
+    WHERE variant_id = v_item.variant_id 
+      AND branch_id = v_order.branch_id
+    FOR UPDATE"
+PL/pgSQL function process_online_order_inventory(uuid) line 36 at SQL statement
+SQL statement "SELECT public.process_online_order_inventory(NEW.id)"
+PL/pgSQL function trg_fn_auto_inventory_on_paid() line 5 at PERFORM
+ stock 
+-------
+     3
+(1 row)
+
+--- T5: update_order_status_oms (cualquier llamada) — literal packed no existe en enum
+              set_config              
+--------------------------------------
+ aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+(1 row)
+
+psql:/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/runtime_tests.sql:40: ERROR:  Pedido no encontrado.
+CONTEXT:  PL/pgSQL function update_order_status_oms(uuid,online_order_status,text) line 17 at RAISE
+--- T6: estado preparing usado por el admin UI no existe en el enum
+psql:/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/runtime_tests.sql:43: ERROR:  invalid input value for enum online_order_status: "preparing"
+LINE 1: ...ROM online_orders WHERE idempotency_key='idem-2'),'preparing...
+                                                             ^
+--- T7: RPC get_order_status usado por OrderConfirmationPage
+psql:/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/runtime_tests.sql:46: ERROR:  function get_order_status(unknown, unknown) does not exist
+LINE 1: SELECT get_order_status(NULL,'x');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+--- T8: columnas usadas por admin productService (style_line_id, slug)
+ column_name 
+-------------
+(0 rows)
+
+ column_name 
+-------------
+(0 rows)
+
+--- T9: anon lee online_orders (pagina de confirmacion invitado)
+ set_config 
+------------
+ 
+(1 row)
+
+ anon_visible_orders 
+---------------------
+                   0
+(1 row)
+
+--- T10: cualquier usuario autenticado (cliente) ve TODAS las ordenes y payment_transactions
+              set_config              |  set_config   
+--------------------------------------+---------------
+ cccccccc-cccc-4ccc-8ccc-cccccccccccc | authenticated
+(1 row)
+
+ customer_visible_orders 
+-------------------------
+                       2
+(1 row)
+
+--- T11: anon puede insertar ordenes directamente sin RPC (order_public_insert WITH CHECK TRUE)
+ set_config | set_config 
+------------+------------
+            | 
+(1 row)
+
+ order_number | status | total 
+--------------+--------+-------
+ FAKE-1       | paid   |  0.00
+(1 row)
+
+              set_config              
+--------------------------------------
+ aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+(1 row)
+
+--- T5b: update_order_status_oms sobre pedido existente
+psql:/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/runtime_tests2.sql:3: ERROR:  invalid input value for enum online_order_status: "packed"
+LINE 1: ...celled' AND v_old_status IN ('paid', 'processing', 'packed')
+                                                              ^
+QUERY:  p_new_status = 'cancelled' AND v_old_status IN ('paid', 'processing', 'packed')
+CONTEXT:  PL/pgSQL function update_order_status_oms(uuid,online_order_status,text) line 30 at IF
+psql:/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/runtime_tests2.sql:4: ERROR:  invalid input value for enum online_order_status: "packed"
+LINE 1: ...celled' AND v_old_status IN ('paid', 'processing', 'packed')
+                                                              ^
+QUERY:  p_new_status = 'cancelled' AND v_old_status IN ('paid', 'processing', 'packed')
+CONTEXT:  PL/pgSQL function update_order_status_oms(uuid,online_order_status,text) line 30 at IF
+--- T12: total del pedido vs suma de items (consistencia)
+     order_number      | subtotal  | items_sum 
+-----------------------+-----------+-----------
+ JM-ORD-1793939096-961 | 100000.00 | 129900.00
+ JM-ORD-1793939096-983 | 200000.00 |      2.00
+(2 rows)
+
+--- T13: anon puede leer inventarios/coupons
+ set_config 
+------------
+ 
+(1 row)
+
+ inv 
+-----
+   1
+(1 row)
+
+  code   
+---------
+ JM10OFF
+(1 row)
+
+QUERY:  SELECT COALESCE(SUM(total), 0)                      FROM public.online_orders
+  WHERE status IN ('paid', 'processing', 'packed', 'shipped', 'delivered')
+    AND created_at >= date_trunc('day', NOW())
+CONTEXT:  PL/pgSQL function get_commercial_dashboard_metrics() line 20 at SQL statement
+--- T14: cliente autenticado: items de pedido (sin politica SELECT) y payment_transactions
+              set_config              |  set_config   
+--------------------------------------+---------------
+ cccccccc-cccc-4ccc-8ccc-cccccccccccc | authenticated
+(1 row)
+
+ customer_visible_items 
+------------------------
+                      0
+(1 row)
+
+ customer_visible_payment_tx 
+-----------------------------
+                           1
+(1 row)
+
+ customer_email 
+----------------
+ c@x.co
+ c@x.co
+(2 rows)
+
+--- T15: cliente intenta escalar su rol en profiles
+ERROR:  new row violates row-level security policy for table "profiles"
+   role   
+----------
+ customer
+(1 row)
+
+--- T16: cliente autenticado modifica payment_transactions
+              set_config              |  set_config   
+--------------------------------------+---------------
+ cccccccc-cccc-4ccc-8ccc-cccccccccccc | authenticated
+(1 row)
+
+ transaction_reference |  status  
+-----------------------+----------
+ REF-X                 | APPROVED
+(1 row)
+

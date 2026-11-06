@@ -1,0 +1,10 @@
+typname|string_agg
+gender_type|Masculino,Femenino,Unisex,Infantil
+online_order_status|pending,payment_pending,paid,processing,shipped,delivered,cancelled,refunded
+online_payment_status|PENDING,APPROVED,DECLINED,VOIDED,ERROR
+payment_method_type|Efectivo,Tarjeta,Transferencia,Puntos,Mixto
+sale_status_type|COMPLETED,REFUNDED,VOID
+shift_status|OPEN,CLOSED
+transfer_status_type|PENDING,SHIPPED,RECEIVED,CANCELLED
+user_role|super_admin,admin,supervisor,cashier,warehouse
+(8 rows)

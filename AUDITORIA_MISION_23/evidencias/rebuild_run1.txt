@@ -1,0 +1,18 @@
+== 20260508000000_init_schema.sql rc=0
+== 20260508010000_security_hardening.sql rc=0
+== 20260927000000_ecommerce_expansion.sql rc=0
+== 20260927010000_security_wompi_hardening.sql rc=0
+== 20260927030000_auth_profiles_rls.sql rc=0
+== 20260927040000_carts_server_side.sql rc=0
+== 20260927050000_production_hardening_audit.sql rc=0
+== 20260927060000_oms_inventory_movements_refunds.sql rc=0
+== 20260927070000_phase8_analytics_tracking_metrics.sql rc=0
+== 20260927080000_admin_authorized_email_role.sql rc=0
+== 20260927090000_strict_customer_role_on_signup.sql rc=0
+== 20260929000000_cleanup_pos_architecture.sql rc=3
+psql:20260929000000_cleanup_pos_architecture.sql:28: ERROR:  cannot drop table sale_items because other objects depend on it
+== 20260929010000_fix_payment_inventory_atomicity.sql rc=0
+== 20260930010000_fix_sizes_colors_rls_and_order_branch.sql rc=3
+psql:20260930010000_fix_sizes_colors_rls_and_order_branch.sql:50: ERROR:  column "branch_id" of relation "online_orders" does not exist
+== 20261001000000_restore_is_admin_execute_grant.sql rc=0
+== 20261001010000_cleanup_legacy_has_permission_policies.sql rc=0

@@ -1,0 +1,8 @@
+WARN: auth.email.enable_signup is deprecated and will be removed in v4, use auth.email.enabled instead.
+Target: local stack (127.0.0.1:54322)
+psql:/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24c/run1/supabase/tests_adapted_m24c/95_concurrency.test.sql:36: NOTICE:  Stock insuficiente: Polo Piqué Edición Limitada (talla M, Beige): disponibles 0, solicitadas 1
+HINT:  JM_OUT_OF_STOCK
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24c/run1/supabase/tests_adapted_m24c/95_concurrency.test.sql .. ok
+All tests successful.
+Files=1, Tests=12,  3 wallclock secs ( 0.02 usr  0.01 sys +  0.01 cusr  0.00 csys =  0.04 CPU)
+Result: PASS

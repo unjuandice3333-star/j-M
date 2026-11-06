@@ -1,0 +1,92 @@
+WARN: auth.email.enable_signup is deprecated and will be removed in v4, use auth.email.enabled instead.
+v16.5: Pulling from supabase/postgrest
+15.19.0.016: Pulling from supabase/postgres
+2.8.1: Pulling from supabase/kong
+v2.197.0: Pulling from supabase/gotrue
+Retrying after 4s: public.ecr.aws/supabase/postgrest:v16.5
+v1.88.0: Pulling from supabase/storage-api
+Retrying after 4s: public.ecr.aws/supabase/postgres:15.19.0.016
+Retrying after 4s: public.ecr.aws/supabase/storage-api:v1.88.0
+Retrying after 4s: public.ecr.aws/supabase/gotrue:v2.197.0
+Retrying after 4s: public.ecr.aws/supabase/kong:2.8.1
+v16.5: Pulling from supabase/postgrest
+Retrying after 8s: public.ecr.aws/supabase/postgrest:v16.5
+15.19.0.016: Pulling from supabase/postgres
+v1.88.0: Pulling from supabase/storage-api
+2.8.1: Pulling from supabase/kong
+Error response from daemon: error from registry: Data limit exceeded
+Retrying after 8s: public.ecr.aws/supabase/gotrue:v2.197.0
+Retrying after 8s: public.ecr.aws/supabase/postgres:15.19.0.016
+Retrying after 8s: public.ecr.aws/supabase/kong:2.8.1
+Retrying after 8s: public.ecr.aws/supabase/storage-api:v1.88.0
+2.8.1: Pulling from supabase/kong
+v16.5: Pulling from supabase/postgrest
+v2.197.0: Pulling from supabase/gotrue
+15.19.0.016: Pulling from supabase/postgres
+v1.88.0: Pulling from supabase/storage-api
+v16.5: Pulling from supabase/postgrest
+2.8.1: Pulling from supabase/kong
+15.19.0.016: Pulling from supabase/postgres
+Retrying after 4s: ghcr.io/supabase/postgrest:v16.5
+Retrying after 4s: ghcr.io/supabase/kong:2.8.1
+Retrying after 4s: ghcr.io/supabase/postgres:15.19.0.016
+v2.197.0: Pulling from supabase/gotrue
+v1.88.0: Pulling from supabase/storage-api
+Retrying after 4s: ghcr.io/supabase/gotrue:v2.197.0
+Retrying after 4s: ghcr.io/supabase/storage-api:v1.88.0
+v16.5: Pulling from supabase/postgrest
+15.19.0.016: Pulling from supabase/postgres
+2.8.1: Pulling from supabase/kong
+Retrying after 8s: ghcr.io/supabase/postgrest:v16.5
+Retrying after 8s: ghcr.io/supabase/postgres:15.19.0.016
+v1.88.0: Pulling from supabase/storage-api
+v2.197.0: Pulling from supabase/gotrue
+Retrying after 8s: ghcr.io/supabase/kong:2.8.1
+Retrying after 8s: ghcr.io/supabase/gotrue:v2.197.0
+Retrying after 8s: ghcr.io/supabase/storage-api:v1.88.0
+v16.5: Pulling from supabase/postgrest
+15.19.0.016: Pulling from supabase/postgres
+2.8.1: Pulling from supabase/kong
+v2.197.0: Pulling from supabase/gotrue
+v1.88.0: Pulling from supabase/storage-api
+v16.5: Pulling from postgrest/postgrest
+2.8.1: Pulling from library/kong
+15.19.0.016: Pulling from supabase/postgres
+v2.197.0: Pulling from supabase/gotrue
+Digest: sha256:1347d7552b88f17832912c06afbf7c43209af6eeeb60834b04aae12c9bd9d5cc
+Status: Downloaded newer image for postgrest/postgrest:v16.5
+docker.io/postgrest/postgrest:v16.5
+v1.88.0: Pulling from supabase/storage-api
+Digest: sha256:1b53405d8680a09d6f44494b7990bf7da2ea43f84a258c59717d4539abf09f6d
+Status: Downloaded newer image for kong:2.8.1
+docker.io/library/kong:2.8.1
+Digest: sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b
+Status: Downloaded newer image for supabase/gotrue:v2.197.0
+docker.io/supabase/gotrue:v2.197.0
+Digest: sha256:dd4a100612635a8eb0d64387ddc38769fb30eb3ddd9b411d0fe3121e1cb223b3
+Status: Downloaded newer image for supabase/storage-api:v1.88.0
+docker.io/supabase/storage-api:v1.88.0
+Digest: sha256:d70612c2e5d240926ca7c10384912da6e348108dfbf82c6ceb1abded7c3efb12
+Status: Downloaded newer image for supabase/postgres:15.19.0.016
+docker.io/supabase/postgres:15.19.0.016
+Starting database...
+Initialising schema...
+v2.151.3: Pulling from supabase/realtime
+Retrying after 4s: public.ecr.aws/supabase/realtime:v2.151.3
+v2.151.3: Pulling from supabase/realtime
+Retrying after 8s: public.ecr.aws/supabase/realtime:v2.151.3
+v2.151.3: Pulling from supabase/realtime
+v2.151.3: Pulling from supabase/realtime
+Retrying after 4s: ghcr.io/supabase/realtime:v2.151.3
+v2.151.3: Pulling from supabase/realtime
+Retrying after 8s: ghcr.io/supabase/realtime:v2.151.3
+v2.151.3: Pulling from supabase/realtime
+v2.151.3: Pulling from supabase/realtime
+Digest: sha256:dac44c958d0776144f0046ff0c0f8d51e0ff4f8a86c4a5e25287dd2f79fffa1e
+Status: Downloaded newer image for supabase/realtime:v2.151.3
+docker.io/supabase/realtime:v2.151.3
+Seeding globals from roles.sql...
+Applying migration 20261106120000_baseline_ecommerce.sql...
+Seeding data from supabase/seeds/00_qa_users.sql...
+Seeding data from supabase/seeds/10_qa_catalog.sql...
+Seeding data from supabase/seeds/20_qa_orders.sql...

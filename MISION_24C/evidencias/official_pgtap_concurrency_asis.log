@@ -1,0 +1,18 @@
+WARN: auth.email.enable_signup is deprecated and will be removed in v4, use auth.email.enabled instead.
+Target: local stack (127.0.0.1:54322)
+psql:/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24c/run1/supabase/tests/database/95_concurrency.test.sql:15: ERROR:  function dblink_connect(unknown, text) does not exist
+LINE 1: SELECT dblink_connect('a', (SELECT c FROM t_conn));
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24c/run1/supabase/tests/database/95_concurrency.test.sql .. 
+Dubious, test returned 3 (wstat 768, 0x300)
+Failed 11/12 subtests 
+
+Test Summary Report
+-------------------
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24c/run1/supabase/tests/database/95_concurrency.test.sql (Wstat: 768 (exited 3) Tests: 1 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: Bad plan.  You planned 12 tests but ran 1.
+Files=1, Tests=1,  0 wallclock secs ( 0.02 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.03 CPU)
+Result: FAIL
+error running container: exit 1

@@ -1,0 +1,4 @@
+  migración: 20261106120000_baseline_ecommerce.sql
+  seed: 00_qa_users.sql
+  seed: 10_qa_catalog.sql
+  seed: 20_qa_orders.sql

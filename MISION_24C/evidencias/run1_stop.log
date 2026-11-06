@@ -1,0 +1,2 @@
+WARN: auth.email.enable_signup is deprecated and will be removed in v4, use auth.email.enabled instead.
+{"project_id_filter":"jm-fashion-store","backup":false,"message":"Stopped supabase local development setup."}

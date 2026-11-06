@@ -1,0 +1,37 @@
+proname|pg_get_function_identity_arguments|case|coalesce
+adjust_inventory_stock|p_variant_id uuid, p_quantity_change integer, p_movement_type character varying, p_reason text, p_branch_id uuid|DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+create_online_order_validated|p_customer_name character varying, p_customer_email character varying, p_customer_phone character varying, p_shipping_department character varying, p_shipping_city character varying, p_shipping_address character varying, p_shipping_neighborhood character varying, p_shipping_notes text, p_shipping_method character varying, p_coupon_code character varying, p_items jsonb|DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+create_online_order_validated_idempotent|p_customer_name character varying, p_customer_email character varying, p_customer_phone character varying, p_shipping_department character varying, p_shipping_city character varying, p_shipping_address character varying, p_shipping_neighborhood character varying, p_shipping_notes text, p_shipping_method character varying, p_coupon_code character varying, p_items jsonb, p_idempotency_key character varying, p_user_id uuid|DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+create_sale_atomic|p_branch_id uuid, p_employee_id uuid, p_customer_id uuid, p_shift_id uuid, p_invoice_number character varying, p_subtotal numeric, p_discount numeric, p_tax numeric, p_total numeric, p_payment_method payment_method_type, p_items jsonb|DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+current_employee_branch||DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+current_employee_role||DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+deduct_inventory_on_sale||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+deduct_inventory_on_sale_secured||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+get_available_stock|p_variant_id uuid|DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+get_commercial_dashboard_metrics||DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+handle_new_user_profile||DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+has_permission|p_permission character varying|DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+is_admin|p_user_id uuid|DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+process_audit_log||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+process_audit_log_hardened||DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+process_online_order_inventory|p_order_id uuid|DEFINER|postgres=X/postgres service_role=X/postgres
+refresh_analytics_views||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+restore_online_order_inventory|p_order_id uuid|DEFINER|postgres=X/postgres service_role=X/postgres
+trg_fn_auto_inventory_on_paid||DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+update_modified_column||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+update_order_status|p_order_id uuid, p_new_status online_order_status, p_notes text|DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+update_order_status_oms|p_order_id uuid, p_new_status online_order_status, p_notes text|DEFINER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+uuid_generate_v1||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+uuid_generate_v1mc||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+uuid_generate_v3|namespace uuid, name text|INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+uuid_generate_v4||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+uuid_generate_v5|namespace uuid, name text|INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+uuid_nil||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+uuid_ns_dns||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+uuid_ns_oid||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+uuid_ns_url||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+uuid_ns_x500||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+validate_sale_shift_active||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+validate_shift_closing||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+validate_shift_opening||INVOKER|=X/postgres postgres=X/postgres anon=X/postgres authenticated=X/postgres service_role=X/postgres
+(35 rows)

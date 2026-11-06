@@ -1,0 +1,61 @@
+tablename|policyname|cmd|array_to_string|coalesce|coalesce
+audit_logs|audit_select_policy|SELECT|authenticated|(current_employee_role() = ANY (ARRAY['super_admin'::user_role, 'admin'::user_role]))|
+branches|branch_select_policy|SELECT|authenticated|((id = current_employee_branch()) OR (current_employee_role() = ANY (ARRAY['super_admin'::user_role, 'admin'::user_role])))|
+brands|brands_admin_write|ALL|authenticated|is_admin(auth.uid())|is_admin(auth.uid())
+brands|brands_public_read|SELECT|public|true|
+cart_items|cart_items_owner_all|ALL|public|(EXISTS ( SELECT 1
+   FROM carts
+  WHERE ((carts.id = cart_items.cart_id) AND (((auth.uid() IS NOT NULL) AND (carts.user_id = auth.uid())) OR ((auth.uid() IS NULL) AND (carts.session_id = ((current_setting('request.headers'::text, true))::json ->> 'x-session-id'::text)))))))|
+carts|cart_owner_insert|INSERT|public||(((auth.uid() IS NOT NULL) AND (user_id = auth.uid())) OR ((auth.uid() IS NULL) AND (session_id IS NOT NULL)))
+carts|cart_owner_read|SELECT|public|(((auth.uid() IS NOT NULL) AND (user_id = auth.uid())) OR ((auth.uid() IS NULL) AND (session_id = ((current_setting('request.headers'::text, true))::json ->> 'x-session-id'::text))))|
+carts|cart_owner_update|UPDATE|public|(((auth.uid() IS NOT NULL) AND (user_id = auth.uid())) OR ((auth.uid() IS NULL) AND (session_id = ((current_setting('request.headers'::text, true))::json ->> 'x-session-id'::text))))|
+categories|categories_admin_write|ALL|authenticated|is_admin(auth.uid())|is_admin(auth.uid())
+categories|categories_public_read|SELECT|public|true|
+coupons|coupon_public_read|SELECT|public|(is_active = true)|
+customer_addresses|customer_addresses_owner_all|ALL|authenticated|(user_id = auth.uid())|(user_id = auth.uid())
+customers|customer_read_policy|SELECT|authenticated|(deleted_at IS NULL)|
+customers|customers_admin_write|ALL|authenticated|is_admin(auth.uid())|is_admin(auth.uid())
+employees|employee_all_policy|ALL|authenticated|((current_employee_role() = ANY (ARRAY['super_admin'::user_role, 'admin'::user_role])) OR (id = auth.uid()))|
+inventories|inventories_admin_write|ALL|authenticated|is_admin(auth.uid())|is_admin(auth.uid())
+inventories|inventories_public_read|SELECT|public|true|
+inventories|inventory_select_policy|SELECT|authenticated|((branch_id = current_employee_branch()) OR (current_employee_role() = ANY (ARRAY['super_admin'::user_role, 'admin'::user_role])))|
+inventory_movements|inventory_movements_admin_all|ALL|authenticated|is_admin(auth.uid())|is_admin(auth.uid())
+online_order_items|order_item_public_insert|INSERT|public||true
+online_orders|order_public_insert|INSERT|public||true
+online_orders|order_restricted_read|SELECT|public|(((customer_email)::text = ((current_setting('request.jwt.claims'::text, true))::json ->> 'email'::text)) OR (auth.role() = 'authenticated'::text))|
+order_events|order_events_read|SELECT|public|(is_admin(auth.uid()) OR (EXISTS ( SELECT 1
+   FROM online_orders
+  WHERE ((online_orders.id = order_events.order_id) AND (online_orders.user_id = auth.uid())))))|
+order_refunds|order_refunds_admin_write|ALL|authenticated|is_admin(auth.uid())|is_admin(auth.uid())
+order_refunds|order_refunds_read|SELECT|public|(is_admin(auth.uid()) OR (EXISTS ( SELECT 1
+   FROM online_orders
+  WHERE ((online_orders.id = order_refunds.order_id) AND (online_orders.user_id = auth.uid())))))|
+payment_transactions|payment_transactions_admin_policy|ALL|public|(auth.role() = 'authenticated'::text)|
+product_reviews|review_public_read|SELECT|public|((status)::text = 'approved'::text)|
+products|products_admin_delete|DELETE|authenticated|is_admin(auth.uid())|
+products|products_admin_insert|INSERT|authenticated||is_admin(auth.uid())
+products|products_admin_update|UPDATE|authenticated|is_admin(auth.uid())|is_admin(auth.uid())
+products|products_public_read|SELECT|public|(deleted_at IS NULL)|
+profiles|profiles_admin_update_policy|UPDATE|authenticated|is_admin(auth.uid())|is_admin(auth.uid())
+profiles|profiles_read_policy|SELECT|authenticated|((id = auth.uid()) OR is_admin(auth.uid()))|
+profiles|profiles_update_own_policy|UPDATE|authenticated|(id = auth.uid())|((id = auth.uid()) AND (role = ( SELECT profiles_1.role
+   FROM profiles profiles_1
+  WHERE (profiles_1.id = auth.uid()))))
+sale_items|items_insert_policy|INSERT|authenticated||(EXISTS ( SELECT 1
+   FROM sales
+  WHERE ((sales.id = sale_items.sale_id) AND (sales.branch_id = current_employee_branch()))))
+sale_items|items_select_policy|SELECT|authenticated|(EXISTS ( SELECT 1
+   FROM sales
+  WHERE ((sales.id = sale_items.sale_id) AND ((sales.branch_id = current_employee_branch()) OR (current_employee_role() = ANY (ARRAY['super_admin'::user_role, 'admin'::user_role]))))))|
+sales|sales_insert_policy|INSERT|authenticated||((branch_id = current_employee_branch()) AND has_permission('pos:sale'::character varying))
+sales|sales_select_policy|SELECT|authenticated|((branch_id = current_employee_branch()) OR (current_employee_role() = ANY (ARRAY['super_admin'::user_role, 'admin'::user_role])))|
+shifts|shift_insert_policy|INSERT|authenticated||((branch_id = current_employee_branch()) AND has_permission('shifts:open'::character varying))
+shifts|shift_select_policy|SELECT|authenticated|((branch_id = current_employee_branch()) OR (current_employee_role() = ANY (ARRAY['super_admin'::user_role, 'admin'::user_role])))|
+shifts|shift_update_policy|UPDATE|authenticated|((branch_id = current_employee_branch()) AND has_permission('shifts:close'::character varying))|
+style_lines|style_lines_admin_write|ALL|authenticated|is_admin(auth.uid())|is_admin(auth.uid())
+style_lines|style_lines_public_read|SELECT|public|true|
+transfers|transfer_select_policy|SELECT|authenticated|((source_branch_id = current_employee_branch()) OR (target_branch_id = current_employee_branch()) OR (current_employee_role() = ANY (ARRAY['super_admin'::user_role, 'admin'::user_role])))|
+variants|variant_read_policy|SELECT|authenticated|(deleted_at IS NULL)|
+variants|variants_admin_write|ALL|authenticated|is_admin(auth.uid())|is_admin(auth.uid())
+variants|variants_public_read|SELECT|public|(deleted_at IS NULL)|
+(47 rows)
