@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { Filter, SlidersHorizontal, X, ChevronDown, Check } from 'lucide-react';
-import { CATEGORIES, OCCASIONS } from '../data/mockData';
+import { OCCASIONS } from '../data/mockData';
 import ProductCard from '../components/Product/ProductCard';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { normalizeStyleLine } from '../utils/productUtils';
@@ -11,6 +11,10 @@ export const CatalogPage = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const { products, isLoadingProducts, productsError } = useECommerceStore();
+  // M27: categorías de los productos reales de la BD (slug y nombre), no de una lista fija.
+  const CATEGORIES = useMemo(() => [...new Map(products.filter((p) => p.category)
+    .map((p) => [p.category, { id: p.category, slug: p.category, name: p.categoryName }])).values()]
+    .sort((a, b) => a.name.localeCompare(b.name, 'es')), [products]);
 
   const querySearch = searchParams.get('q') || '';
   const queryOccasion = searchParams.get('ocasion') || '';
@@ -107,11 +111,11 @@ export const CatalogPage = () => {
       return catObj ? catObj.name.toUpperCase() : selectedCategory.toUpperCase();
     }
     return 'CATÁLOGO DE MODA MASCULINA';
-  }, [location.pathname, selectedCategory, selectedStyleLine, querySearch]);
+  }, [location.pathname, selectedCategory, selectedStyleLine, querySearch, CATEGORIES]);
 
   // Filter and Sort Logic (Robust Normalization & Strict Intersection AND)
   const filteredProducts = useMemo(() => {
-    const activeProducts = products.filter((p) => p.status !== 'borrador' && p.status !== 'archivado');
+    const activeProducts = products.filter((p) => p.status === 'active');
 
     return activeProducts.filter((p) => {
       // Search query
@@ -144,7 +148,7 @@ export const CatalogPage = () => {
         return false;
       }
       // Occasion Filter
-      if (selectedOccasion !== 'todas' && p.occasion !== selectedOccasion) {
+      if (selectedOccasion !== 'todas' && !(p.occasions ?? []).includes(selectedOccasion)) {
         return false;
       }
       // Max Price Filter
@@ -426,7 +430,11 @@ export const CatalogPage = () => {
             </div>
 
             {/* PRODUCT GRID */}
-            {filteredProducts.length === 0 ? (
+            {isLoadingProducts && products.length === 0 ? (
+              <div role="status" style={{ textAlign: 'center', padding: '4rem 1rem', color: '#71717A' }}>Cargando productos…</div>
+            ) : productsError && products.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#991B1B', fontWeight: 600 }}>El catálogo no está disponible en este momento.</div>
+            ) : filteredProducts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '4rem 1rem', border: '1px dashed #D4D4D8', borderRadius: '12px' }}>
                 <Filter size={40} color="#A1A1AA" style={{ margin: '0 auto 1rem auto' }} />
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#09090B', marginBottom: '0.4rem' }}>

@@ -1,562 +1,224 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import {
-  CheckCircle2,
-  Clock,
-  XCircle,
-  AlertCircle,
-  MessageCircle,
-  Printer,
-  ArrowRight,
-  RotateCcw,
-  ShieldAlert
-} from 'lucide-react';
+// =============================================================================
+// Confirmación y seguimiento de pedido — estado REAL desde la BD (get_order_public: número + token público).
+// M27: el pedido solo se muestra como pagado cuando la BD lo marca 'paid' (lo hace el webhook verificado de Wompi);
+// volver del widget no paga nada. Mientras el pago está pendiente se consulta la BD periódicamente.
+// =============================================================================
+import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { CheckCircle2, Clock, XCircle, Truck, Package, CreditCard, AlertTriangle } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { formatCOP } from '../data/mockData';
 import { analyticsService } from '../services/analytics';
-import supabase from '../config/supabase';
+import { orderService } from '../services/orderService';
+import { wompiService } from '../services/wompi';
+
+const POLL_MS = 5000;
+const POLL_MAX = 36; // ~3 minutos
+
+const STEPS = [
+  { key: 'payment_pending', title: 'Pedido recibido', icon: Clock },
+  { key: 'paid', title: 'Pago confirmado', icon: CreditCard },
+  { key: 'processing', title: 'En preparación', icon: Package },
+  { key: 'shipped', title: 'Enviado', icon: Truck },
+  { key: 'delivered', title: 'Entregado', icon: CheckCircle2 },
+];
+const ORDER_FLOW = STEPS.map((s) => s.key);
 
 export const OrderConfirmationPage = () => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { orders, clearCart, finalizePaidOrder } = useECommerceStore();
+  const orderNumber = searchParams.get('order');
+  const token = searchParams.get('token');
+  const payError = searchParams.get('pago') === 'error';
+  const { orders, finalizePaidOrder } = useECommerceStore();
 
-  const [dbOrder, setDbOrder] = useState(null);
-  const [timelineEvents, setTimelineEvents] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [order, setOrder] = useState(null);
+  const [state, setState] = useState('loading'); // loading | ready | notfound | error
+  const [polls, setPolls] = useState(0);
+  const [actionError, setActionError] = useState(null);
+  const [busy, setBusy] = useState(false);
 
-  const hasClearedCartRef = useRef(false);
-  const hasTrackedAnalyticsRef = useRef(false);
-
-  const orderId = searchParams.get('orderId') || null;
-  const fallbackOrder = orders.find((o) => o.id === orderId || o.order_number === orderId) || null;
-
-  // 1. Cargar detalles del pedido desde PostgreSQL
-  useEffect(() => {
-    if (!orderId) {
-      setIsLoading(false);
-      return;
+  const fetchOrder = useCallback(async () => {
+    if (!orderNumber || !token) { setState('notfound'); return null; }
+    try {
+      const data = await orderService.getPublicOrder(orderNumber, token);
+      if (!data) { setState('notfound'); return null; }
+      setOrder(data); setState('ready');
+      return data;
+    } catch {
+      setState('error');
+      return null;
     }
+  }, [orderNumber, token]);
 
-    const fetchRealOrderDetails = async () => {
-      setIsLoading(true);
-      try {
-        const { data: oData, error: oErr } = await supabase
-          .from('online_orders')
-          .select(`
-            id,
-            order_number,
-            customer_name,
-            customer_email,
-            shipping_address,
-            shipping_city,
-            total,
-            status,
-            created_at,
-            online_order_items (
-              id, product_name, size, color, unit_price, quantity, total
-            )
-          `)
-          .or(`id.eq.${orderId.includes('-') && orderId.length === 36 ? orderId : '00000000-0000-0000-0000-000000000000'},order_number.eq.${orderId}`)
-          .maybeSingle();
+  useEffect(() => { fetchOrder(); }, [fetchOrder]);
 
-        if (!oErr && oData) {
-          const normOrder = {
-            id: oData.order_number || oData.id,
-            rawId: oData.id,
-            email: oData.customer_email,
-            customerName: oData.customer_name,
-            shippingAddress: `${oData.shipping_address}, ${oData.shipping_city}`,
-            paymentMethod: 'Wompi / Online',
-            total: Number(oData.total),
-            status: oData.status,
-            items: (oData.online_order_items || []).map((i) => ({
-              name: i.product_name,
-              size: i.size,
-              color: i.color,
-              price: Number(i.unit_price),
-              quantity: i.quantity,
-              image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=300'
-            }))
-          };
-          setDbOrder(normOrder);
-
-          // Cargar timeline de eventos reales en order_events
-          const { data: eData } = await supabase
-            .from('order_events')
-            .select('event_type, previous_status, new_status, created_at')
-            .eq('order_id', oData.id)
-            .order('created_at', { ascending: true });
-
-          if (eData) {
-            setTimelineEvents(eData);
-          }
-        } else {
-          // Si no pudo leer directamente por RLS (usuario invitado o sin token), intentar RPC segura
-          const { data: rpcData, error: rpcErr } = await supabase.rpc('get_order_status', {
-            p_order_id: orderId.includes('-') && orderId.length === 36 ? orderId : null,
-            p_order_number: orderId
-          });
-
-          const rpcRecord = Array.isArray(rpcData) ? rpcData[0] : rpcData;
-          if (!rpcErr && rpcRecord) {
-            setDbOrder({
-              id: rpcRecord.order_number || rpcRecord.id,
-              rawId: rpcRecord.id,
-              email: rpcRecord.customer_email,
-              customerName: rpcRecord.customer_name,
-              shippingAddress: fallbackOrder?.shippingAddress || 'Dirección registrada',
-              paymentMethod: 'Wompi / Online',
-              total: Number(rpcRecord.total),
-              status: rpcRecord.status,
-              items: fallbackOrder?.items || []
-            });
-          } else {
-            setDbOrder(fallbackOrder);
-          }
-        }
-      } catch (e) {
-        setDbOrder(fallbackOrder);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchRealOrderDetails();
-  }, [orderId]);
-
-  const activeOrder = dbOrder || fallbackOrder;
-  const orderStatus = activeOrder?.status || 'unknown';
-
-  const isPaid = orderStatus === 'paid';
-  const isContraentrega = Boolean((activeOrder?.paymentMethod || '').toLowerCase().includes('contraentrega'));
-  const isPendingPayment = orderStatus === 'payment_pending' || orderStatus === 'pending';
-  const isFailed = ['cancelled', 'declined', 'voided', 'error'].includes(orderStatus);
-
-  // 2. POLLING CONTROLADO: Detectar cambio payment_pending → paid / cancelled / declined / voided
-  // Si la orden es Contraentrega, no requiere polling contra Wompi.
+  // Consulta periódica mientras el pago está pendiente (el webhook actualiza la BD)
   useEffect(() => {
-    if (!orderId || !isPendingPayment || isContraentrega) return;
+    if (order?.status !== 'payment_pending' || polls >= POLL_MAX) return undefined;
+    const t = setTimeout(async () => { await fetchOrder(); setPolls((n) => n + 1); }, POLL_MS);
+    return () => clearTimeout(t);
+  }, [order?.status, polls, fetchOrder]);
 
-    let attempts = 0;
-    const maxAttempts = 30; // 30 intentos * 3s = 90s máximo
-
-    const intervalId = setInterval(async () => {
-      attempts += 1;
-      if (attempts > maxAttempts) {
-        clearInterval(intervalId);
-        return;
-      }
-
-      try {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('get_order_status', {
-          p_order_id: orderId.includes('-') && orderId.length === 36 ? orderId : null,
-          p_order_number: orderId
-        });
-
-        const rpcRecord = Array.isArray(rpcData) ? rpcData[0] : rpcData;
-        if (!rpcErr && rpcRecord && rpcRecord.status) {
-          if (rpcRecord.status !== activeOrder?.status) {
-            setDbOrder((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                status: rpcRecord.status
-              };
-            });
-
-            // Si llegó a estado terminal, detener polling
-            if (['paid', 'cancelled', 'declined', 'voided'].includes(rpcRecord.status)) {
-              clearInterval(intervalId);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('[Polling Wompi Status Error]:', err);
-      }
-    }, 3000);
-
-    return () => clearInterval(intervalId);
-  }, [orderId, isPendingPayment, isContraentrega, activeOrder?.status]);
-
-  // 3. VACIAR CARRITO Y REGISTRAR ANALYTICS ÚNICAMENTE CUANDO EL ESTADO SEA 'paid' O CONTRAENTREGA CONFIRMADO
-  // Invariante de seguridad: Solo vacía el carrito si la orden corresponde a la sesión activa actual (finalizePaidOrder)
+  // Vaciar el carrito solo cuando la BD confirma el pago del pedido de este checkout
+  const local = orders.find((o) => o.order_number === orderNumber);
   useEffect(() => {
-    if (activeOrder && (isPaid || isContraentrega)) {
-      if (!hasClearedCartRef.current) {
-        hasClearedCartRef.current = true;
-        if (typeof finalizePaidOrder === 'function') {
-          finalizePaidOrder(activeOrder.rawId || activeOrder.id);
-        } else {
-          clearCart();
-        }
-      }
-
-      // Prevenir duplicación en analytics ante recargas (F5) o visitas posteriores
-      if (!hasTrackedAnalyticsRef.current) {
-        hasTrackedAnalyticsRef.current = true;
-        const trackedKey = `jm_purchase_tracked_${activeOrder.rawId || activeOrder.id}`;
-        try {
-          if (!sessionStorage.getItem(trackedKey)) {
-            sessionStorage.setItem(trackedKey, '1');
-            analyticsService.purchase(activeOrder);
-          }
-        } catch (e) {
-          analyticsService.purchase(activeOrder);
-        }
-      }
+    if (order?.status === 'paid' && local) {
+      if (finalizePaidOrder(local.id)) analyticsService.purchase({ ...order, id: order.order_number });
     }
-  }, [activeOrder, isPaid, isContraentrega, finalizePaidOrder, clearCart]);
+  }, [order?.status, local, finalizePaidOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (isLoading) {
+  const retryPayment = async () => {
+    if (!local) { setActionError('Para reintentar el pago desde otro dispositivo, inicia sesión y abre el pedido en tu cuenta.'); return; }
+    setBusy(true); setActionError(null);
+    try {
+      await wompiService.openWompiWidget({ order: local, customer: { email: order.customer_email, name: order.customer_name, phone: '' } });
+    } catch (e) {
+      setActionError(e.message);
+    } finally { setBusy(false); }
+  };
+
+  const cancelOrder = async () => {
+    if (!local) return;
+    if (!window.confirm('¿Cancelar este pedido? Se liberarán los productos reservados.')) return;
+    setBusy(true); setActionError(null);
+    try { await orderService.cancelOrder(local.id, local.public_token, 'Cancelado por el cliente desde la confirmación'); await fetchOrder(); }
+    catch (e) { setActionError(e.message); }
+    finally { setBusy(false); }
+  };
+
+  if (state === 'loading') {
+    return <div className="jm-container" style={{ padding: '5rem 0', textAlign: 'center' }} role="status">Consultando tu pedido…</div>;
+  }
+  if (state !== 'ready') {
     return (
-      <div style={{ padding: '5rem 0', textAlign: 'center', color: '#71717A' }}>
-        Verificando estado del pedido en PostgreSQL...
+      <div className="jm-container" style={{ padding: '4rem 0', maxWidth: '720px' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem' }}>
+          {state === 'error' ? 'No pudimos consultar el pedido' : 'Pedido no encontrado'}
+        </h1>
+        <p style={{ color: '#71717A', marginBottom: '1.5rem' }}>
+          {state === 'error' ? 'Revisa tu conexión e inténtalo de nuevo.' : 'El enlace no es válido. Si tienes cuenta, encuentra tus pedidos en "Mi cuenta".'}
+        </p>
+        {orders.length > 0 && (
+          <div>
+            <h2 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.5rem' }}>Pedidos hechos en este navegador</h2>
+            <ul>
+              {orders.map((o) => (
+                <li key={o.id} style={{ marginBottom: '0.4rem' }}>
+                  <Link to={`/checkout/confirmacion?order=${encodeURIComponent(o.order_number)}&token=${encodeURIComponent(o.public_token)}`} style={{ textDecoration: 'underline', fontWeight: 700 }}>
+                    {o.order_number}
+                  </Link>{' '}· {formatCOP(o.total)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <Link to="/cuenta/pedidos" style={{ textDecoration: 'underline', fontWeight: 700 }}>Ir a mis pedidos</Link>
       </div>
     );
   }
 
-  if (!activeOrder) {
-    return (
-      <div style={{ backgroundColor: '#FFFFFF', padding: '5rem 0', minHeight: '75vh', textAlign: 'center' }}>
-        <div className="jm-container" style={{ maxWidth: '500px', margin: '0 auto' }}>
-          <ShieldAlert size={56} color="#DC2626" style={{ margin: '0 auto 1.5rem auto' }} />
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', marginBottom: '0.8rem' }}>
-            PEDIDO NO ENCONTRADO
-          </h2>
-          <p style={{ fontSize: '0.9rem', color: '#71717A', marginBottom: '2rem', lineHeight: 1.6 }}>
-            No pudimos ubicar un pedido válido con el identificador proporcionado o no dispones de permisos para consultarlo.
-          </p>
-          <Link
-            to="/ropa"
-            style={{
-              display: 'inline-block',
-              backgroundColor: '#09090B',
-              color: '#FFFFFF',
-              padding: '0.85rem 1.8rem',
-              borderRadius: '6px',
-              fontWeight: 800,
-              fontSize: '0.85rem',
-              textTransform: 'uppercase',
-              textDecoration: 'none'
-            }}
-          >
-            VOLVER A LA TIENDA
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const whatsappMessage = `Hola J&M Fashion Store, acabo de consultar mi pedido #${activeOrder.id} con estado ${activeOrder.status}.`;
-  const whatsappUrl = `https://wa.me/573000000000?text=${encodeURIComponent(whatsappMessage)}`;
+  const st = order.status;
+  const isPaidFlow = ['paid', 'processing', 'shipped', 'delivered'].includes(st);
+  const isPending = st === 'payment_pending';
+  const isClosed = ['cancelled', 'expired', 'refunded'].includes(st);
+  const expiresAt = order.payment_expires_at ? new Date(order.payment_expires_at) : null;
+  const reached = new Set((order.timeline ?? []).map((t) => t.to_status));
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
       <div className="jm-container" style={{ maxWidth: '820px' }}>
-        {/* STATUS BANNER SEGÚN EL ESTADO AUTORITATIVO REAL */}
-        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-          {isPaid && (
-            <>
-              <CheckCircle2 size={64} color="#10B981" style={{ margin: '0 auto 1rem auto' }} />
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', color: '#10B981', textTransform: 'uppercase' }}>
-                ¡COMPRA REALIZADA CON ÉXITO!
-              </span>
-              <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0 0.5rem 0' }}>
-                ¡GRACIAS POR TU PEDIDO! #{activeOrder.id}
-              </h1>
-              <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
-                {`Hemos enviado la confirmación y recibo detallado al correo ${activeOrder.email || 'tu correo registrado'}.`}
-              </p>
-            </>
-          )}
-
-          {isContraentrega && !isPaid && (
-            <>
-              <CheckCircle2 size={64} color="#10B981" style={{ margin: '0 auto 1rem auto' }} />
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', color: '#10B981', textTransform: 'uppercase' }}>
-                ¡PEDIDO CONTRAENTREGA CONFIRMADO!
-              </span>
-              <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0 0.5rem 0' }}>
-                ¡PEDIDO EN PREPARACIÓN! #{activeOrder.id}
-              </h1>
-              <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
-                {`Tu orden ha sido registrada con éxito para despacho. Pagas en efectivo o datáfono al recibir tu paquete en ${activeOrder.shippingAddress || 'tu dirección registrada'}.`}
-              </p>
-            </>
-          )}
-
-          {isPendingPayment && !isContraentrega && (
-            <>
-              <Clock size={64} color="#D97706" style={{ margin: '0 auto 1rem auto' }} />
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', color: '#D97706', textTransform: 'uppercase' }}>
-                ESTAMOS ESPERANDO CONFIRMACIÓN DEL PAGO
-              </span>
-              <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0 0.5rem 0' }}>
-                PEDIDO REGISTRADO #{activeOrder.id}
-              </h1>
-              <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
-                Tu pedido se encuentra en espera de confirmación de pago por Wompi. Verificando automáticamente...
-              </p>
-            </>
-          )}
-
-          {isFailed && (
-            <>
-              <XCircle size={64} color="#EF4444" style={{ margin: '0 auto 1rem auto' }} />
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', color: '#EF4444', textTransform: 'uppercase' }}>
-                {orderStatus === 'declined' ? 'PAGO RECHAZADO' : orderStatus === 'voided' ? 'TRANSACCIÓN ANULADA' : 'PAGO CANCELADO / NO APROBADO'}
-              </span>
-              <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0 0.5rem 0' }}>
-                PAGO NO COMPLETADO #{activeOrder.id}
-              </h1>
-              <div style={{
-                backgroundColor: '#FEF2F2',
-                border: '1px solid #FCA5A5',
-                padding: '1.25rem',
-                borderRadius: '8px',
-                maxWidth: '650px',
-                margin: '1rem auto 0 auto',
-                color: '#991B1B',
-                fontSize: '0.92rem',
-                lineHeight: 1.5
-              }}>
-                <p style={{ fontWeight: 700, marginBottom: '0.35rem' }}>
-                  El pago no fue aprobado por la pasarela de pagos o fue cancelado.
-                </p>
-                <p style={{ margin: 0, color: '#7F1D1D', fontSize: '0.86rem' }}>
-                  Tus prendas continúan seguras en tu carrito de compras para que puedas reintentar el pago con otra tarjeta, Nequi o PSE.
-                </p>
-              </div>
-            </>
-          )}
-
-          {!isPaid && !isPendingPayment && !isFailed && (
-            <>
-              <AlertCircle size={64} color="#6B7280" style={{ margin: '0 auto 1rem auto' }} />
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', color: '#6B7280', textTransform: 'uppercase' }}>
-                ESTADO DEL PEDIDO: {orderStatus.toUpperCase()}
-              </span>
-              <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0 0.5rem 0' }}>
-                PEDIDO #{activeOrder.id}
-              </h1>
-              <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
-                El estado de tu pedido es: <strong>{orderStatus}</strong>.
-              </p>
-            </>
-          )}
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }} role="status" aria-live="polite">
+          {isPaidFlow && <CheckCircle2 size={60} color="#10B981" style={{ margin: '0 auto 1rem auto' }} />}
+          {isPending && <Clock size={60} color="#D97706" style={{ margin: '0 auto 1rem auto' }} />}
+          {isClosed && <XCircle size={60} color="#E11D48" style={{ margin: '0 auto 1rem auto' }} />}
+          <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase',
+            color: isPaidFlow ? '#10B981' : isPending ? '#D97706' : '#E11D48' }}>
+            {order.status_label}
+          </span>
+          <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0' }}>
+            {isPaidFlow ? '¡Gracias por tu compra!' : isPending ? 'Pedido registrado' : 'Pedido cerrado'} · {order.order_number}
+          </h1>
+          <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
+            {isPaidFlow && `Confirmamos el pago. Te avisaremos a ${order.customer_email} cuando despachemos tu pedido.`}
+            {isPending && (payError
+              ? 'Tu pedido quedó registrado y los productos están reservados, pero no se pudo abrir el pago. Puedes reintentarlo.'
+              : polls >= POLL_MAX
+                ? 'Aún no recibimos la confirmación del pago. Si ya pagaste, la confirmación puede tardar unos minutos: recarga esta página.'
+                : 'Esperando la confirmación del pago de Wompi… esta página se actualiza sola.')}
+            {st === 'expired' && 'El tiempo para pagar este pedido terminó y la reserva se liberó.'}
+            {st === 'cancelled' && 'Este pedido fue cancelado.'}
+            {st === 'refunded' && 'Este pedido fue reembolsado.'}
+          </p>
+          {isPending && expiresAt && <p style={{ fontSize: '0.82rem', color: '#71717A' }}>Reserva válida hasta {expiresAt.toLocaleString('es-CO')}.</p>}
         </div>
 
-        {/* ORDER TIMELINE TRACKING (ONLY FOR PAID OR PENDING) */}
-        {!isFailed && (
-          <div style={{ backgroundColor: '#FAFAFA', border: '1px solid #E4E4E7', padding: '2rem', borderRadius: '12px', marginBottom: '2.5rem' }}>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '1.5rem', color: '#09090B' }}>
-              SEGUIMIENTO EN TIEMPO REAL DEL PEDIDO (TIMELINE EN POSTGRESQL)
-            </h3>
+        {actionError && <div role="alert" style={{ backgroundColor: '#FEF2F2', color: '#B91C1C', padding: '0.8rem 1rem', borderRadius: '8px', marginBottom: '1.5rem', fontWeight: 600 }}>{actionError}</div>}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', textAlign: 'center', position: 'relative' }}>
-              {[
-                { statusKey: 'payment_pending', title: 'Pedido Recibido', active: true, done: true },
-                { statusKey: 'paid', title: 'Pago Confirmado', active: isPaid || ['preparing', 'shipped', 'delivered'].includes(activeOrder.status), done: isPaid || ['preparing', 'shipped', 'delivered'].includes(activeOrder.status) },
-                { statusKey: 'preparing', title: 'En Preparación', active: ['preparing', 'shipped', 'delivered'].includes(activeOrder.status), done: ['shipped', 'delivered'].includes(activeOrder.status) },
-                { statusKey: 'shipped', title: 'Enviado', active: ['shipped', 'delivered'].includes(activeOrder.status), done: activeOrder.status === 'delivered' },
-                { statusKey: 'delivered', title: 'Entregado', active: activeOrder.status === 'delivered', done: activeOrder.status === 'delivered' }
-              ].map((step, idx) => (
-                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    backgroundColor: step.done ? '#10B981' : step.active ? '#09090B' : '#E4E4E7',
-                    color: step.active || step.done ? '#FFFFFF' : '#71717A',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: '0.8rem',
-                    zIndex: 2
-                  }}>
-                    {step.done ? '✓' : idx + 1}
-                  </div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: step.active ? 800 : 500, color: step.active ? '#09090B' : '#71717A' }}>
-                    {step.title}
-                  </span>
-                </div>
-              ))}
-            </div>
+        {isPending && (
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
+            <button onClick={retryPayment} disabled={busy} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.85rem 1.4rem', borderRadius: '6px', fontWeight: 800 }}>
+              {busy ? 'Procesando…' : 'Pagar ahora'}
+            </button>
+            {local && (
+              <button onClick={cancelOrder} disabled={busy} style={{ border: '1px solid #D4D4D8', padding: '0.85rem 1.4rem', borderRadius: '6px', fontWeight: 700 }}>
+                Cancelar pedido
+              </button>
+            )}
           </div>
         )}
 
-        {/* ORDER SUMMARY DETAILS */}
-        <div style={{ border: '1px solid #E4E4E7', borderRadius: '12px', padding: '2rem', marginBottom: '2.5rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#09090B', textTransform: 'uppercase', marginBottom: '1.25rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '0.75rem' }}>
-            RESUMEN DE ARTÍCULOS
-          </h3>
+        {!isClosed && (
+          <ol aria-label="Estado del pedido" style={{ display: 'flex', justifyContent: 'space-between', listStyle: 'none', padding: 0, margin: '0 0 2.5rem 0', gap: '0.5rem' }}>
+            {STEPS.map((s) => {
+              const done = reached.has(s.key) || ORDER_FLOW.indexOf(st) >= ORDER_FLOW.indexOf(s.key);
+              const Icon = s.icon;
+              return (
+                <li key={s.key} style={{ flex: 1, textAlign: 'center', color: done ? '#09090B' : '#A1A1AA', fontSize: '0.75rem', fontWeight: 700 }}>
+                  <Icon size={22} style={{ margin: '0 auto 0.3rem auto' }} color={done ? '#10B981' : '#D4D4D8'} />
+                  {s.title}
+                </li>
+              );
+            })}
+          </ol>
+        )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            {activeOrder.items?.map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: '1rem', alignItems: 'center', borderBottom: '1px solid #F4F4F5', paddingBottom: '1rem' }}>
-                <img src={item.image} alt="" style={{ width: '55px', height: '70px', objectFit: 'cover', borderRadius: '6px' }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#09090B' }}>{item.name}</div>
-                  <div style={{ fontSize: '0.78rem', color: '#71717A' }}>Talla: {item.size} • Color: {item.color} • Cantidad: {item.quantity}</div>
-                </div>
-                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#09090B' }}>
-                  {formatCOP(item.price * item.quantity)}
-                </div>
-              </div>
-            ))}
+        {order.tracking?.tracking_number && (
+          <div style={{ backgroundColor: '#F0FDF4', padding: '1rem 1.25rem', borderRadius: '8px', marginBottom: '2rem', fontSize: '0.9rem' }}>
+            <strong>Guía de envío:</strong> {order.tracking.carrier} · {order.tracking.tracking_number}
+            {order.tracking.tracking_url && <> · <a href={order.tracking.tracking_url} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>Rastrear</a></>}
           </div>
+        )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', fontSize: '0.88rem', color: '#27272A', backgroundColor: '#FAFAFA', padding: '1.25rem', borderRadius: '8px' }}>
-            <div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#71717A', display: 'block' }}>DIRECCIÓN DE ENTREGA</span>
-              <p style={{ fontWeight: 600, marginTop: '0.2rem' }}>{activeOrder.shippingAddress || 'Dirección registrada en Colombia'}</p>
+        <section style={{ border: '1px solid #E4E4E7', borderRadius: '10px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '1rem', textTransform: 'uppercase' }}>Productos</h2>
+          {(order.items ?? []).map((it, i) => (
+            <div key={`${it.sku}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.5rem 0', borderBottom: '1px solid #F4F4F5', fontSize: '0.88rem' }}>
+              <span>{it.product_name} · Talla {it.size_code} · {it.color_name} × {it.quantity}</span>
+              <strong>{formatCOP(it.line_total)}</strong>
             </div>
-            <div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#71717A', display: 'block' }}>ESTADO DE LA ORDEN</span>
-              <p style={{
-                fontWeight: 800,
-                marginTop: '0.2rem',
-                color: isPaid ? '#10B981' : isPendingPayment ? '#D97706' : isFailed ? '#EF4444' : '#71717A',
-                textTransform: 'uppercase'
-              }}>
-                {orderStatus === 'paid' ? 'PAGADO / CONFIRMADO' : orderStatus === 'payment_pending' ? 'PAGO PENDIENTE' : orderStatus}
-              </p>
-              <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#09090B', marginTop: '0.4rem' }}>
-                TOTAL: {formatCOP(activeOrder.total)}
-              </div>
-            </div>
+          ))}
+          <div style={{ display: 'grid', gap: '0.35rem', marginTop: '1rem', fontSize: '0.9rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal</span><span>{formatCOP(order.subtotal)}</span></div>
+            {Number(order.discount_total) > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10B981' }}><span>Descuento{order.coupon_code ? ` (${order.coupon_code})` : ''}</span><span>-{formatCOP(order.discount_total)}</span></div>}
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Envío</span><span>{Number(order.shipping_cost) === 0 ? 'GRATIS' : formatCOP(order.shipping_cost)}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1.1rem' }}><span>Total</span><span>{formatCOP(order.total)}</span></div>
           </div>
-        </div>
+        </section>
 
-        {/* ACTION BUTTONS */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center' }}>
-          {isFailed ? (
-            <>
-              <button
-                onClick={() => navigate('/checkout')}
-                style={{
-                  backgroundColor: '#09090B',
-                  color: '#FFFFFF',
-                  padding: '0.9rem 1.8rem',
-                  borderRadius: '6px',
-                  fontWeight: 800,
-                  fontSize: '0.88rem',
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  cursor: 'pointer',
-                  border: 'none'
-                }}
-              >
-                <RotateCcw size={16} /> REINTENTAR PAGO
-              </button>
+        <section style={{ border: '1px solid #E4E4E7', borderRadius: '10px', padding: '1.5rem', marginBottom: '2rem', fontSize: '0.9rem' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.75rem', textTransform: 'uppercase' }}>Envío</h2>
+          <div>{order.customer_name}</div>
+          <div>{order.shipping?.address}{order.shipping?.neighborhood ? `, ${order.shipping.neighborhood}` : ''}</div>
+          <div>{order.shipping?.city}, {order.shipping?.department}</div>
+        </section>
 
-              <button
-                onClick={() => navigate('/ropa')}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  border: '1px solid #E4E4E7',
-                  color: '#09090B',
-                  padding: '0.9rem 1.6rem',
-                  borderRadius: '6px',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  cursor: 'pointer'
-                }}
-              >
-                VOLVER A LA TIENDA
-              </button>
-
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  backgroundColor: '#25D366',
-                  color: '#FFFFFF',
-                  padding: '0.9rem 1.6rem',
-                  borderRadius: '6px',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  textDecoration: 'none'
-                }}
-              >
-                <MessageCircle size={18} /> ASISTENCIA POR WHATSAPP
-              </a>
-            </>
-          ) : (
-            <>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  backgroundColor: '#25D366',
-                  color: '#FFFFFF',
-                  padding: '0.9rem 1.6rem',
-                  borderRadius: '6px',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  textDecoration: 'none'
-                }}
-              >
-                <MessageCircle size={18} /> CONFIRMAR POR WHATSAPP
-              </a>
-
-              <button
-                onClick={() => window.print()}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  border: '1px solid #E4E4E7',
-                  color: '#09090B',
-                  padding: '0.9rem 1.6rem',
-                  borderRadius: '6px',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  cursor: 'pointer'
-                }}
-              >
-                <Printer size={18} /> IMPRIMIR RECIBO
-              </button>
-
-              <button
-                onClick={() => navigate('/ropa')}
-                style={{
-                  backgroundColor: '#09090B',
-                  color: '#FFFFFF',
-                  padding: '0.9rem 1.8rem',
-                  borderRadius: '6px',
-                  fontWeight: 800,
-                  fontSize: '0.88rem',
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  cursor: 'pointer',
-                  border: 'none'
-                }}
-              >
-                SEGUIR COMPRANDO <ArrowRight size={16} />
-              </button>
-            </>
-          )}
+        {isPending && !local && (
+          <p style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: '#71717A', fontSize: '0.85rem' }}>
+            <AlertTriangle size={16} /> Este pedido se creó en otro navegador: para pagarlo o cancelarlo, ábrelo desde ese navegador o desde tu cuenta.
+          </p>
+        )}
+        <div style={{ textAlign: 'center' }}>
+          <Link to="/ropa" style={{ textDecoration: 'underline', fontWeight: 700 }}>Seguir comprando</Link>
         </div>
       </div>
     </div>

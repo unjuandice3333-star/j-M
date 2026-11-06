@@ -1,0 +1,24 @@
+const { chromium } = require('playwright');
+(async () => {
+  const B = 'http://127.0.0.1:3000'; const browser = await chromium.launch(); const p = await browser.newPage(); const log = [];
+  p.on('pageerror', (e) => log.push('[pageerror] ' + e.message.slice(0, 200)));
+  p.on('console', (m) => { if (m.type() === 'error' && !/TUNNEL|Failed to load resource: net/.test(m.text())) log.push('[error] ' + m.text().slice(0, 200)); });
+  await p.goto(B + '/producto/camiseta-heavyweight-oversize', { waitUntil: 'networkidle' });
+  console.log('h1:', await p.locator('h1').first().innerText());
+  const sizes = await p.locator('#size-selector-container button[aria-label^="Talla"]').evaluateAll((els) => els.map((e) => `${e.innerText}${e.disabled ? '(agotada)' : ''}`));
+  console.log('tallas color 1:', sizes.join(' '));
+  await p.getByRole('button', { name: 'AGREGAR AL CARRITO', exact: true }).first().click();
+  console.log('sin talla →', await p.locator('text=Por favor selecciona una talla').count() ? 'pide talla ✔' : 'NO pide talla');
+  await p.locator('#size-selector-container button[aria-label^="Talla"]:not([disabled])').first().click();
+  for (let i = 0; i < 2; i++) await p.locator('button[aria-label="Aumentar cantidad"]').click();
+  await p.getByRole('button', { name: 'AGREGAR AL CARRITO', exact: true }).first().click();
+  await p.waitForTimeout(500);
+  const ls = await p.evaluate(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{}').state?.items ?? []);
+  console.log('carrito:', ls.map((i) => `${i.name}|${i.size}|${i.color}|x${i.quantity}|${i.price}|${i.variantId.slice(0, 8)}`));
+  await p.goto(B + '/producto/no-existe', { waitUntil: 'networkidle' });
+  console.log('slug inexistente:', await p.locator('h1').first().innerText());
+  await p.goto(B + '/producto/bermuda-cargo', { waitUntil: 'networkidle' });
+  console.log('producto borrador:', await p.locator('h1').first().innerText());
+  console.log(log.slice(0, 6).join('\n'));
+  await browser.close();
+})();

@@ -16,10 +16,16 @@ export const ProductCard = ({ product }) => {
   const mainImage = getProductImage(product, 0);
   const secondImage = getProductImage(product, 1);
 
+  const [quickMsg, setQuickMsg] = useState(null);
+  // Agregado rápido con el color principal: solo tallas con stock real en ese color.
+  const mainColor = product.colors?.[0]?.name;
+  const availableFor = (size) => product.rawVariants?.find((v) => v.size === size && v.color === mainColor)?.available ?? 0;
+
   const handleQuickAdd = (e, size) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem(product, size, product.colors[0], 1);
+    const r = addItem(product, size, mainColor, 1);
+    setQuickMsg(r.ok ? null : r.message);
   };
 
   return (
@@ -147,7 +153,11 @@ export const ProductCard = ({ product }) => {
               <button
                 key={sz}
                 onClick={(e) => handleQuickAdd(e, sz)}
+                disabled={availableFor(sz) <= 0}
+                aria-label={availableFor(sz) <= 0 ? `Talla ${sz} agotada` : `Agregar talla ${sz} al carrito`}
                 style={{
+                  opacity: availableFor(sz) <= 0 ? 0.4 : 1,
+                  textDecoration: availableFor(sz) <= 0 ? 'line-through' : 'none',
                   padding: '4px 7px',
                   fontSize: '0.72rem',
                   fontWeight: 800,
@@ -163,6 +173,8 @@ export const ProductCard = ({ product }) => {
               </button>
             ))}
           </div>
+          {quickMsg && <span role="alert" style={{ fontSize: '0.68rem', color: '#E11D48', fontWeight: 700 }}>{quickMsg}</span>}
+          {!product.inStock && <span style={{ fontSize: '0.7rem', color: '#E11D48', fontWeight: 800 }}>AGOTADO</span>}
         </div>
       </Link>
 

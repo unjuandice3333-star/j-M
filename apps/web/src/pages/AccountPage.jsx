@@ -15,6 +15,8 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { formatCOP } from '../data/mockData';
 import supabase from '../config/supabase';
+import { orderService } from '../services/orderService';
+import { useECommerceStore } from '../store/eCommerceStore';
 
 export const AccountPage = () => {
   const navigate = useNavigate();
@@ -30,6 +32,19 @@ export const AccountPage = () => {
   const [userOrders, setUserOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [ordersError, setOrdersError] = useState(null);
+  const rememberOrder = useECommerceStore((st) => st.rememberOrder);
+  const [resetInfo, setResetInfo] = useState(null);
+  const trackUrl = (o) => `/checkout/confirmacion?order=${encodeURIComponent(o.order_number)}&token=${encodeURIComponent(o.public_token)}`;
+  const openOrder = (o) => { rememberOrder(o); navigate(trackUrl(o)); };
+
+  const handleForgotPassword = async () => {
+    setFormError(null); setResetInfo(null);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(inputEmail.trim())) { setFormError('Escribe tu correo para enviarte el enlace de recuperación.'); return; }
+    const { error: err } = await supabase.auth.resetPasswordForEmail(inputEmail.trim(), { redirectTo: `${window.location.origin}/cuenta/restablecer` });
+    // Mismo mensaje exista o no la cuenta (no revela qué correos están registrados)
+    if (err && !/rate limit/i.test(err.message)) setFormError('No pudimos enviar el correo. Inténtalo de nuevo en unos minutos.');
+    else setResetInfo('Si el correo está registrado, te enviamos un enlace para crear una nueva contraseña.');
+  };
 
   // Cargar pedidos del usuario autenticado respetando RLS
   useEffect(() => {
@@ -39,21 +54,7 @@ export const AccountPage = () => {
       setIsLoadingOrders(true);
       setOrdersError(null);
       try {
-        const { data, error: err } = await supabase
-          .from('online_orders')
-          .select(`
-            id,
-            order_number,
-            total,
-            status,
-            created_at,
-            online_order_items (
-              id, product_name, size, color, unit_price, quantity, total
-            )
-          `)
-          .order('created_at', { ascending: false });
-
-        if (err) throw err;
+        const data = await orderService.getMyOrders();
         setUserOrders(data || []);
       } catch (e) {
         console.error('[AccountPage Error]: Error al cargar pedidos del usuario:', e);
@@ -131,6 +132,16 @@ export const AccountPage = () => {
           border: '#FECACA',
           icon: <XCircle size={14} color="#EF4444" />
         };
+      case 'processing':
+        return { label: 'En preparación', bg: '#EFF6FF', text: '#1E40AF', border: '#BFDBFE', icon: <Package size={14} color="#2563EB" /> };
+      case 'shipped':
+        return { label: 'Enviado', bg: '#EFF6FF', text: '#1E40AF', border: '#BFDBFE', icon: <Package size={14} color="#2563EB" /> };
+      case 'delivered':
+        return { label: 'Entregado', bg: '#ECFDF5', text: '#065F46', border: '#A7F3D0', icon: <CheckCircle2 size={14} color="#10B981" /> };
+      case 'expired':
+        return { label: 'Pago vencido', bg: '#F4F4F5', text: '#3F3F46', border: '#E4E4E7', icon: <XCircle size={14} color="#71717A" /> };
+      case 'refunded':
+        return { label: 'Reembolsado', bg: '#F4F4F5', text: '#3F3F46', border: '#E4E4E7', icon: <RotateCcw size={14} color="#71717A" /> };
       case 'declined':
         return {
           label: 'Rechazado',
@@ -377,15 +388,15 @@ export const AccountPage = () => {
                       {/* PRODUCT ITEMS IN THIS ORDER */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
                         {ord.online_order_items?.map((item) => (
-                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.88rem' }}>
+                          <div key={`${item.product_name}-${item.size_code}-${item.color_name}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.88rem' }}>
                             <div>
                               <strong style={{ color: '#09090B' }}>{item.product_name}</strong>
                               <span style={{ color: '#71717A', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
-                                (Talla: {item.size || 'M'} • Color: {item.color || 'Único'} • Cant: {item.quantity})
+                                (Talla: {item.size_code} • Color: {item.color_name} • Cant: {item.quantity})
                               </span>
                             </div>
                             <div style={{ fontWeight: 700, color: '#09090B' }}>
-                              {formatCOP(Number(item.unit_price) * item.quantity)}
+                              {formatCOP(Number(item.line_total))}
                             </div>
                           </div>
                         ))}
@@ -411,9 +422,9 @@ export const AccountPage = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
-                          {(ord.status === 'cancelled' || ord.status === 'declined') && (
+                          {['cancelled', 'expired'].includes(ord.status) && (
                             <button
-                              onClick={() => navigate('/checkout')}
+                              onClick={() => navigate('/ropa')}
                               style={{
                                 backgroundColor: '#09090B',
                                 color: '#FFFFFF',
@@ -429,13 +440,13 @@ export const AccountPage = () => {
                                 cursor: 'pointer'
                               }}
                             >
-                              <RotateCcw size={14} /> Reintentar
+                              <RotateCcw size={14} /> Volver a la tienda
                             </button>
                           )}
 
                           {ord.status === 'payment_pending' && (
                             <button
-                              onClick={() => navigate(`/checkout/confirmacion?orderId=${ord.id}`)}
+                              onClick={() => openOrder(ord)}
                               style={{
                                 backgroundColor: '#D97706',
                                 color: '#FFFFFF',
@@ -456,7 +467,7 @@ export const AccountPage = () => {
                           )}
 
                           <button
-                            onClick={() => navigate(`/checkout/confirmacion?orderId=${ord.id}`)}
+                            onClick={() => openOrder(ord)}
                             style={{
                               backgroundColor: '#FFFFFF',
                               color: '#09090B',
@@ -583,8 +594,14 @@ export const AccountPage = () => {
                 opacity: isLoading ? 0.7 : 1
               }}
             >
-              {isLoading ? 'Cargando...' : isRegisterMode ? 'Crear cuenta con Supabase' : 'Iniciar sesión'}
+              {isLoading ? 'Cargando...' : isRegisterMode ? 'Crear cuenta' : 'Iniciar sesión'}
             </button>
+            {!isRegisterMode && (
+              <button type="button" onClick={handleForgotPassword} style={{ fontSize: '0.8rem', textDecoration: 'underline', color: '#52525B', alignSelf: 'center' }}>
+                ¿Olvidaste tu contraseña?
+              </button>
+            )}
+            {resetInfo && <div role="status" style={{ fontSize: '0.8rem', color: '#065F46', fontWeight: 600 }}>{resetInfo}</div>}
           </form>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.5rem 0' }}>

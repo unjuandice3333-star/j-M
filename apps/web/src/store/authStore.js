@@ -6,6 +6,19 @@ import supabase from '../config/supabase';
  * Sources of truth: Supabase Auth + PostgreSQL `profiles` table.
  * No mock users, no stored passwords.
  */
+/** Mensajes de Supabase Auth en español (sin revelar si un correo existe). */
+export function authMessage(err) {
+  const m = String(err?.message || '');
+  if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
+  if (/email not confirmed/i.test(m)) return 'Confirma tu correo antes de iniciar sesión (revisa tu bandeja de entrada).';
+  if (/user already registered|already been registered/i.test(m)) return 'Ya existe una cuenta con ese correo. Inicia sesión o recupera tu contraseña.';
+  if (/password should be at least|weak password/i.test(m)) return 'La contraseña es demasiado débil: usa al menos 8 caracteres.';
+  if (/rate limit|too many/i.test(m)) return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
+  if (/unable to validate email|invalid email/i.test(m)) return 'El correo no es válido.';
+  if (/fetch|network/i.test(m)) return 'No hay conexión. Revisa tu internet e inténtalo de nuevo.';
+  return 'No se pudo completar la operación. Inténtalo de nuevo.';
+}
+
 export const useAuthStore = create((set, get) => ({
   user: null,
   session: null,
@@ -127,8 +140,9 @@ export const useAuthStore = create((set, get) => ({
       }
       return data;
     } catch (err) {
-      set({ error: err.message, isLoading: false });
-      throw err;
+      const msg = authMessage(err);
+      set({ error: msg, isLoading: false });
+      throw Object.assign(new Error(msg), { cause: err });
     }
   },
 
@@ -178,8 +192,9 @@ export const useAuthStore = create((set, get) => ({
 
       return data;
     } catch (err) {
-      set({ error: err.message, isLoading: false });
-      throw err;
+      const msg = authMessage(err);
+      set({ error: msg, isLoading: false });
+      throw Object.assign(new Error(msg), { cause: err });
     }
   },
 

@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
-import { PRODUCTS } from '../data/mockData';
 import ProductCard from '../components/Product/ProductCard';
 
 export const WishlistPage = () => {

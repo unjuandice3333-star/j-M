@@ -181,203 +181,36 @@ serve(async (req: Request) => {
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const wompiTxId = transaction.id;
-    const transactionRef = transaction.reference;
-    const wompiStatus = transaction.status; // 'APPROVED', 'DECLINED', 'VOIDED', 'ERROR'
-    const amountInCents = transaction.amount_in_cents;
-    const paymentMethodType = transaction.payment_method_type || 'CARD';
-    const currency = transaction.currency || 'COP';
-
-    // 5. BUSCAR ORDEN EN online_orders
-    const { data: orderRecord, error: orderErr } = await supabase
-      .from('online_orders')
-      .select('id, order_number, status, total')
-      .eq('order_number', transactionRef)
-      .maybeSingle();
-
-    if (orderErr) {
-      console.error('[Wompi Edge Webhook Error]: Error al consultar online_orders:', orderErr.message);
-      return new Response(JSON.stringify({ error: 'Error al consultar la orden en la base de datos.' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // M27: misma lógica que /api/wompi/webhook: la BD aplica el evento de forma transaccional e idempotente
+    // (antes: escrituras sueltas sobre columnas que no existen en el esquema M24).
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: outcome, error: rpcErr } = await supabase.rpc('apply_payment_event', {
+      p_event: payload,
+      p_event_checksum: signature.checksum,
+    });
+    if (rpcErr) {
+      console.error('[Wompi Edge Webhook Error]: apply_payment_event falló:', rpcErr.message);
+      return new Response(JSON.stringify({ error: 'Error al registrar el evento de pago.' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    if (!orderRecord) {
-      console.warn(`[Wompi Edge Webhook Warning]: No existe orden vinculada a la referencia ${transactionRef}.`);
-      return new Response(JSON.stringify({ error: `Orden no encontrada para la referencia ${transactionRef}.` }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const result = outcome?.result;
+    const detail = outcome?.detail;
+    if (result === 'rejected') {
+      const code = detail === 'amount_or_currency_mismatch' ? 422
+        : detail === 'unknown_reference' ? 404
+        : ['transaction_id_mismatch', 'transaction_id_reused'].includes(detail) ? 409 : 400;
+      return new Response(JSON.stringify({ success: false, result, detail }), {
+        status: code, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    // 6. PARIDAD FINANCIERA ESTRICTA (MONTO Y MONEDA)
-    if (wompiStatus === 'APPROVED') {
-      const expectedAmountInCents = Math.round(Number(orderRecord.total) * 100);
-      const incomingAmountInCents = Number(amountInCents);
-
-      if (incomingAmountInCents !== expectedAmountInCents) {
-        console.error(`[Wompi Edge Webhook Fraud Alert]: Discrepancia de monto para orden ${transactionRef}. Esperado: ${expectedAmountInCents}, Recibido: ${incomingAmountInCents}`);
-        return new Response(JSON.stringify({ error: 'Discrepancia financiera entre el monto pagado y el total de la orden.' }), {
-          status: 422,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      if (currency !== 'COP') {
-        console.error(`[Wompi Edge Webhook Fraud Alert]: Moneda inválida: ${currency}`);
-        return new Response(JSON.stringify({ error: 'Moneda de pago inválida para la tienda J&M.' }), {
-          status: 422,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    // 7. CONSULTAR payment_transactions PARA IDEMPOTENCIA Y PROTECCIÓN CRUZADA (SEC-03)
-    const { data: existingTx, error: existingTxErr } = await supabase
-      .from('payment_transactions')
-      .select('id, order_id, status, wompi_transaction_id, transaction_reference, amount_in_cents, currency')
-      .or(`wompi_transaction_id.eq.${wompiTxId},transaction_reference.eq.${transactionRef}`)
-      .maybeSingle();
-
-    if (existingTxErr) {
-      console.error('[Wompi Edge Webhook Error]: Error al verificar transacciones de pago:', existingTxErr.message);
-      return new Response(JSON.stringify({ error: 'Error al consultar transacciones de pago en la base de datos.' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Protección anti-secuestro de transacción: el wompiTxId no puede reutilizarse con otra referencia
-    if (existingTx) {
-      if (existingTx.wompi_transaction_id === wompiTxId && existingTx.transaction_reference !== transactionRef) {
-        console.error(`[Wompi Edge Webhook Security Error]: La transacción ${wompiTxId} ya está asociada a la referencia '${existingTx.transaction_reference}', no a '${transactionRef}'.`);
-        return new Response(JSON.stringify({ error: 'Conflicto: la transacción de Wompi ya fue asignada a una referencia distinta.' }), {
-          status: 409,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      if (existingTx.order_id && existingTx.order_id !== orderRecord.id) {
-        console.error(`[Wompi Edge Webhook Security Error]: La transacción ${wompiTxId} pertenece a otra orden en la base de datos.`);
-        return new Response(JSON.stringify({ error: 'Conflicto: la transacción pertenece a otro pedido.' }), {
-          status: 409,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      if (existingTx.transaction_reference === transactionRef && existingTx.status === 'APPROVED' && existingTx.wompi_transaction_id && existingTx.wompi_transaction_id !== wompiTxId) {
-        console.error(`[Wompi Edge Webhook Security Error]: La orden ${transactionRef} ya cuenta con una transacción aprobada distinta (${existingTx.wompi_transaction_id}).`);
-        return new Response(JSON.stringify({ error: 'Conflicto: la orden ya cuenta con una transacción aprobada distinta.' }), {
-          status: 409,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    // 8. DETERMINAR ESTADO OBJETIVO DE LA ORDEN
-    let targetOrderStatus = orderRecord.status;
-    if (wompiStatus === 'APPROVED') {
-      targetOrderStatus = 'paid';
-    } else if (['DECLINED', 'ERROR', 'VOIDED'].includes(wompiStatus)) {
-      if (orderRecord.status !== 'paid') {
-        targetOrderStatus = 'cancelled';
-      }
-    }
-
-    // 9. IDEMPOTENCIA COMPLETA (SEC-03):
-    // Solo responder 200 sin mutaciones si TANTO la orden como la transacción ya están en su estado final
-    const isOrderInTargetState = orderRecord.status === targetOrderStatus;
-    const isTxInTargetState = Boolean(existingTx && (existingTx.status === wompiStatus || (wompiStatus === 'APPROVED' && existingTx.status === 'APPROVED')));
-
-    if (isOrderInTargetState && isTxInTargetState) {
-      console.log(`[Wompi Edge Webhook Idempotencia]: Transacción ${wompiTxId} y orden ${transactionRef} ya están en estado final '${targetOrderStatus}'. Sin mutaciones.`);
-      return new Response(JSON.stringify({
-        success: true,
-        message: 'Transacción ya procesada previamente (Idempotente)',
-        status: existingTx.status,
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // 10. RECONCILIACIÓN DE ESTADOS PARCIALES:
-    // A. Si la orden aún no está en el estado objetivo, actualizarla
-    if (!isOrderInTargetState) {
-      const { error: updateErr } = await supabase
-        .from('online_orders')
-        .update({ status: targetOrderStatus, updated_at: new Date().toISOString() })
-        .eq('id', orderRecord.id);
-
-      if (updateErr) {
-        console.error('[Wompi Edge Webhook Error]: Fallo al actualizar online_orders:', updateErr.message);
-        return new Response(JSON.stringify({ error: 'Error al actualizar el estado del pedido en la base de datos.' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      const { error: eventErr } = await supabase.from('order_events').insert({
-        order_id: orderRecord.id,
-        event_type: 'PAYMENT_STATUS_UPDATE',
-        previous_status: orderRecord.status,
-        new_status: targetOrderStatus,
-        metadata: {
-          wompi_transaction_id: wompiTxId,
-          wompi_status: wompiStatus,
-          payment_method_type: paymentMethodType,
-          amount_in_cents: amountInCents,
-        },
-      });
-
-      if (eventErr) {
-        console.warn('[Wompi Edge Webhook Warning]: No se pudo registrar order_event:', eventErr.message);
-      }
-    }
-
-    // B. Si payment_transactions no existe o no tiene el estado actual, registrar/actualizar
-    if (!isTxInTargetState) {
-      const { error: txErr } = await supabase
-        .from('payment_transactions')
-        .upsert({
-          order_id: orderRecord.id,
-          transaction_reference: transactionRef,
-          wompi_transaction_id: wompiTxId,
-          provider: 'Wompi',
-          amount_in_cents: amountInCents,
-          currency,
-          payment_method_type: paymentMethodType,
-          status: wompiStatus,
-          raw_response: payload,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'transaction_reference' });
-
-      if (txErr) {
-        console.error('[Wompi Edge Webhook Error]: Fallo al registrar payment_transaction:', txErr.message);
-        return new Response(JSON.stringify({ error: 'Error al registrar la transacción de pago.' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    console.log(`[Wompi Edge Webhook Success]: Transacción ${wompiTxId} procesada para orden ${transactionRef} (Orden: ${targetOrderStatus}, Tx: ${wompiStatus})`);
-
-    return new Response(JSON.stringify({
-      success: true,
-      transaction_id: wompiTxId,
-      reference: transactionRef,
-      status: wompiStatus,
-      order_status: targetOrderStatus,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify({ success: true, result, detail: detail ?? null, reference: transaction.reference,
+      status: transaction.status, order_status: outcome?.order_status ?? null }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
     console.error('[Wompi Edge Webhook Exception]:', err.message || err);
-    return new Response(JSON.stringify({ error: err.message || 'Error procesando el webhook de Wompi.' }), {
+    return new Response(JSON.stringify({ error: 'Error procesando el webhook de Wompi.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

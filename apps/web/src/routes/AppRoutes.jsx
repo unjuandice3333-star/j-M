@@ -14,6 +14,7 @@ const CartPage = lazy(() => import('../pages/CartPage.jsx'));
 const CheckoutPage = lazy(() => import('../pages/CheckoutPage.jsx'));
 const OrderConfirmationPage = lazy(() => import('../pages/OrderConfirmationPage.jsx'));
 const AccountPage = lazy(() => import('../pages/AccountPage.jsx'));
+const ResetPasswordPage = lazy(() => import('../pages/ResetPasswordPage.jsx'));
 const WishlistPage = lazy(() => import('../pages/WishlistPage.jsx'));
 const InfoPage = lazy(() => import('../pages/InfoPage.jsx'));
 
@@ -107,6 +108,7 @@ export const AppRoutes = () => {
           <Route path="/cuenta/favoritos" element={<WishlistPage />} />
           <Route path="/cuenta/datos" element={<AccountPage />} />
           <Route path="/cuenta/direcciones" element={<AccountPage />} />
+          <Route path="/cuenta/restablecer" element={<ResetPasswordPage />} />
         </Route>
 
         {/* ADMIN DASHBOARD ROUTES (PHASE 4 AUTHGUARD PROTECTED) */}

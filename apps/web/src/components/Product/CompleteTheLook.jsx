@@ -1,25 +1,47 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ShoppingBag, Sparkles, ArrowRight } from 'lucide-react';
-import { LOOKS, formatCOP } from '../../data/mockData';
+import { formatCOP } from '../../data/mockData';
+import supabase from '../../config/supabase';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import SafeProductImage from '../Common/SafeImage';
 
-export const CompleteTheLook = ({ lookId = 'look-1' }) => {
+// M27: el look sale de la BD (collections kind = 'look' + collection_products). Sin look publicado, no se muestra
+// nada (antes: un look simulado con productos inexistentes y un descuento por paquete que la tienda no aplica).
+export const CompleteTheLook = ({ lookSlug = null }) => {
   const { products, editorialImages, addItem } = useECommerceStore();
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [look, setLook] = useState(null);
+  const [notice, setNotice] = useState(null);
 
   const getEditorialImg = (key, fallback) => (editorialImages && editorialImages[key]) ? editorialImages[key] : fallback;
 
-  const look = LOOKS.find((l) => l.id === lookId) || LOOKS[0];
-  const lookProducts = (products || []).filter((p) => look.products.includes(p.id));
+  useEffect(() => {
+    let alive = true;
+    let q = supabase.from('collections').select('slug, name, subtitle, image_url, collection_products ( product_id, position )')
+      .eq('kind', 'look').eq('is_active', true).order('sort_order').limit(1);
+    if (lookSlug) q = q.eq('slug', lookSlug);
+    q.then(({ data }) => { if (alive) setLook(data?.[0] ?? null); });
+    return () => { alive = false; };
+  }, [lookSlug]);
+
+  const lookProducts = look
+    ? [...look.collection_products].sort((a, b) => a.position - b.position)
+        .map((cp) => (products || []).find((p) => p.id === cp.product_id)).filter(Boolean)
+    : [];
+  if (!look || lookProducts.length === 0) return null;
+  const totalPrice = lookProducts.reduce((n, p) => n + p.price, 0);
 
   const handleBuyLook = () => {
-    lookProducts.forEach((p) => {
-      addItem(p, p.sizes[0], p.colors[0], 1);
-    });
+    const failed = [];
+    for (const p of lookProducts) {
+      const v = p.rawVariants.find((x) => x.available > 0);
+      if (!v || !addItem(p, v.size, v.color, 1).ok) failed.push(p.name);
+    }
+    setNotice(failed.length ? `No se pudieron agregar: ${failed.join(', ')} (sin stock).` : 'Look agregado al carrito. Revisa tallas y colores en el carrito.');
   };
 
-  const coverImage = getEditorialImg('outfit_complete_look', look.image);
+  const coverImage = look.image_url || getEditorialImg('outfit_complete_look', null);
+  look.title = look.name;
 
   // Helper for numbering 01, 02, 03 and labels
   const getProductCategoryLabel = (category, index) => {
@@ -196,26 +218,10 @@ export const CompleteTheLook = ({ lookId = 'look-1' }) => {
                 </span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
                   <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#09090B', letterSpacing: '-0.02em' }}>
-                    {formatCOP(look.bundleDiscountPrice)}
-                  </span>
-                  <span style={{ fontSize: '0.88rem', color: '#A1A1AA', textDecoration: 'line-through' }}>
-                    {formatCOP(look.totalPrice)}
+                    {formatCOP(totalPrice)}
                   </span>
                 </div>
               </div>
-
-              {/* Tag de Ahorro y Descuento % */}
-              <span style={{
-                backgroundColor: '#D4AF37',
-                color: '#09090B',
-                fontSize: '0.75rem',
-                fontWeight: 800,
-                padding: '4px 10px',
-                borderRadius: '4px',
-                letterSpacing: '0.04em'
-              }}>
-                Ahorras {formatCOP(look.savings)} · 10% OFF
-              </span>
             </div>
 
             {/* 7. CTA PRINCIPAL */}
@@ -251,7 +257,7 @@ export const CompleteTheLook = ({ lookId = 'look-1' }) => {
 
             {/* Microtexto informativo debajo del CTA */}
             <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#71717A', fontWeight: 600 }}>
-              Incluye {lookProducts.length} productos · Ahorra {formatCOP(look.savings)}
+              Incluye {lookProducts.length} productos{notice ? ` · ${notice}` : ''}
             </div>
           </div>
 

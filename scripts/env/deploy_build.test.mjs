@@ -7,11 +7,10 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const WEB = path.join(ROOT, 'apps/web');
-const VITE = path.join(WEB, 'node_modules/vite/bin/vite.js');
 const SB = '.supa' + 'base.co';
 const j = (...p) => p.join('');
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -23,13 +22,22 @@ const QA_VITE = { VITE_APP_ENV: 'qa', VITE_SUPABASE_URL: `https://${QA_REF}${SB}
 const PREVIEW = { VERCEL: '1', VERCEL_ENV: 'preview', VERCEL_TARGET_ENV: 'preview', VERCEL_GIT_COMMIT_REF: BRANCH };
 const PRODUCTION = { VERCEL: '1', VERCEL_ENV: 'production', VERCEL_TARGET_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'main' };
 
+// Build REAL de Vite con la configuración de apps/web, pero con un envDir vacío: el resultado no depende de archivos
+// .env* locales del desarrollador (Vite siempre lee apps/web/.env.local); las variables llegan solo por el proceso.
+const BUILD_SCRIPT = `
+  const [vitePath, root, outDir, envDir] = process.argv.slice(1);
+  const { build } = await import(vitePath);
+  await build({ root, configFile: root + '/vite.config.js', envDir, logLevel: 'error', build: { outDir, emptyOutDir: true } });
+`;
 function viteBuild(env) {
   const out = mkdtempSync(path.join(tmpdir(), 'jm-deploy-build-'));
-  const r = spawnSync(process.execPath, [VITE, 'build', '--outDir', out, '--emptyOutDir', '--logLevel', 'error'],
+  const envDir = mkdtempSync(path.join(tmpdir(), 'jm-deploy-envdir-'));
+  const vitePath = pathToFileURL(path.join(WEB, 'node_modules/vite/dist/node/index.js')).href;
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', BUILD_SCRIPT, vitePath, WEB, out, envDir],
     { cwd: WEB, encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env } });
   const files = existsSync(path.join(out, 'assets')) ? readdirSync(path.join(out, 'assets')).filter((f) => f.endsWith('.js')) : [];
   const bundle = files.map((f) => readFileSync(path.join(out, 'assets', f), 'utf8')).join('\n');
-  rmSync(out, { recursive: true, force: true });
+  rmSync(out, { recursive: true, force: true }); rmSync(envDir, { recursive: true, force: true });
   return { status: r.status, text: `${r.stdout}${r.stderr}`, built: files.length > 0, bundle };
 }
 const rejected = (r, re) => {

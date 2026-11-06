@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Trash2, Bookmark, ArrowRight, Truck, Sparkles, Plus, Minus, Tag, Check, X } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
@@ -14,18 +14,38 @@ export const CartPage = () => {
     appliedCoupon,
     applyCoupon,
     removeCoupon,
-    getTotals
+    getTotals,
+    refreshQuote,
+    quote,
+    cartNotice,
+    dismissCartNotice,
+    loadProducts
   } = useECommerceStore();
+  const [qtyError, setQtyError] = useState(null);
+  const [quoteError, setQuoteError] = useState(null);
+
+  // Catálogo actual (reconcilia precios y stock del carrito) y cotización de la BD
+  useEffect(() => { loadProducts(); }, [loadProducts]);
+  const itemsKey = items.map((i) => `${i.variantId}x${i.quantity}`).join(',');
+  useEffect(() => {
+    if (!items.length) return;
+    setQuoteError(null);
+    refreshQuote().catch((e) => setQuoteError(e.message));
+  }, [itemsKey, appliedCoupon?.code]); // eslint-disable-line react-hooks/exhaustive-deps
+  const outOfStock = (quote?.lines ?? []).filter((l) => !l.in_stock);
 
   const [couponInput, setCouponInput] = useState('');
   const [couponFeedback, setCouponFeedback] = useState(null);
 
   const totals = getTotals();
 
-  const handleApplyCoupon = (e) => {
+  const [applying, setApplying] = useState(false);
+  const handleApplyCoupon = async (e) => {
     e.preventDefault();
     if (couponInput.trim()) {
-      const res = applyCoupon(couponInput);
+      setApplying(true);
+      const res = await applyCoupon(couponInput);
+      setApplying(false);
       setCouponFeedback(res);
       if (res.success) setCouponInput('');
     }
@@ -34,6 +54,12 @@ export const CartPage = () => {
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '80vh' }}>
       <div className="jm-container">
+        {cartNotice && (
+          <div role="alert" style={{ backgroundColor: '#FFFBEB', color: '#92400E', padding: '0.8rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+            <span>{cartNotice}</span>
+            <button onClick={dismissCartNotice} style={{ textDecoration: 'underline', color: '#92400E', fontWeight: 700 }}>Entendido</button>
+          </div>
+        )}
         {/* BREADCRUMB */}
         <div style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '1.5rem' }}>
           <Link to="/" style={{ color: '#71717A' }}>Inicio</Link>
@@ -82,7 +108,7 @@ export const CartPage = () => {
                 border: '1px solid #E4E4E7',
                 marginBottom: '2rem'
               }}>
-                {totals.hasFreeShipping ? (
+                {!totals.freeShippingThreshold && !totals.hasFreeShipping ? null : totals.hasFreeShipping ? (
                   <div style={{ color: '#10B981', fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Truck size={20} /> ¡Felicidades! Tu orden aplica para <strong>ENVÍO GRATIS</strong> en Colombia.
                   </div>
@@ -93,7 +119,7 @@ export const CartPage = () => {
                     </div>
                     <div style={{ width: '100%', height: '8px', backgroundColor: '#E4E4E7', borderRadius: '999px', overflow: 'hidden' }}>
                       <div style={{
-                        width: `${Math.min(100, (totals.subtotal / totals.freeShippingThreshold) * 100)}%`,
+                        width: `${totals.freeShippingThreshold ? Math.min(100, (totals.subtotal / totals.freeShippingThreshold) * 100) : 0}%`,
                         height: '100%',
                         backgroundColor: '#09090B',
                         transition: 'width 0.3s'
@@ -126,27 +152,29 @@ export const CartPage = () => {
                     />
 
                     <div>
-                      <Link to={`/producto/${item.product.slug}`} style={{ textDecoration: 'none' }}>
+                      <Link to={`/producto/${item.slug}`} style={{ textDecoration: 'none' }}>
                         <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#09090B', marginBottom: '0.3rem' }}>
                           {item.name}
                         </h3>
                       </Link>
                       <div style={{ fontSize: '0.82rem', color: '#71717A', marginBottom: '0.8rem' }}>
-                        Talla: <strong style={{ color: '#09090B' }}>{item.size}</strong> • Color: <strong style={{ color: '#09090B' }}>{item.color}</strong> • Fit: <strong>{item.product.fit}</strong>
+                        Talla: <strong style={{ color: '#09090B' }}>{item.size}</strong> • Color: <strong style={{ color: '#09090B' }}>{item.color}</strong>
                       </div>
 
                       <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
                         {/* Quantity Counter */}
                         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E4E4E7', borderRadius: '4px' }}>
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            onClick={() => { updateQuantity(item.id, item.quantity - 1); setQtyError(null); }}
+                            aria-label={`Disminuir cantidad de ${item.name}`}
                             style={{ padding: '0.35rem 0.6rem', color: '#09090B' }}
                           >
                             <Minus size={14} />
                           </button>
                           <span style={{ fontSize: '0.9rem', fontWeight: 800, padding: '0 0.6rem' }}>{item.quantity}</span>
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            onClick={() => { const r = updateQuantity(item.id, item.quantity + 1); setQtyError(r.ok ? null : r.message); }}
+                            aria-label={`Aumentar cantidad de ${item.name}`}
                             style={{ padding: '0.35rem 0.6rem', color: '#09090B' }}
                           >
                             <Plus size={14} />
@@ -207,15 +235,16 @@ export const CartPage = () => {
                   {appliedCoupon ? (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#E0F2FE', color: '#0369A1', padding: '0.6rem 0.9rem', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <Tag size={16} /> CUPÓN: {appliedCoupon.code} ({appliedCoupon.percent}% OFF)
+                        <Tag size={16} /> CUPÓN: {appliedCoupon.code}{appliedCoupon.freeShipping ? ' (envío gratis)' : ''}
                       </div>
-                      <button onClick={removeCoupon} style={{ color: '#0369A1' }}><X size={16} /></button>
+                      <button onClick={removeCoupon} style={{ color: '#0369A1' }} aria-label="Quitar cupón"><X size={16} /></button>
                     </div>
                   ) : (
                     <form onSubmit={handleApplyCoupon} style={{ display: 'flex', gap: '0.5rem' }}>
                       <input
                         type="text"
-                        placeholder="Ej: JM10OFF"
+                        placeholder="Código del cupón"
+                        aria-label="Código del cupón"
                         value={couponInput}
                         onChange={(e) => setCouponInput(e.target.value)}
                         style={{
@@ -230,6 +259,7 @@ export const CartPage = () => {
                       />
                       <button
                         type="submit"
+                        disabled={applying}
                         style={{
                           backgroundColor: '#09090B',
                           color: '#FFFFFF',
@@ -250,9 +280,6 @@ export const CartPage = () => {
                     </div>
                   )}
 
-                  <span style={{ fontSize: '0.72rem', color: '#71717A', marginTop: '0.4rem', display: 'block' }}>
-                    Prueba <strong>JM10OFF</strong> para 10% de descuento.
-                  </span>
                 </div>
 
                 {/* Subtotals breakdown */}
@@ -279,13 +306,21 @@ export const CartPage = () => {
 
                 {/* Final Total */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1.75rem' }}>
-                  <span style={{ fontSize: '1rem', fontWeight: 800, color: '#09090B' }}>TOTAL ESTIMADO</span>
+                  <span style={{ fontSize: '1rem', fontWeight: 800, color: '#09090B' }}>{totals.isEstimate ? 'TOTAL ESTIMADO' : 'TOTAL'}</span>
                   <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#09090B' }}>
                     {formatCOP(totals.total)}
                   </span>
                 </div>
 
+                {(qtyError || quoteError || outOfStock.length > 0) && (
+                  <div role="alert" style={{ backgroundColor: '#FEF2F2', color: '#B91C1C', padding: '0.7rem 0.9rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, marginBottom: '1rem' }}>
+                    {qtyError && <div>{qtyError}</div>}
+                    {quoteError && <div>{quoteError}</div>}
+                    {outOfStock.map((l) => <div key={l.variant_id}>{l.product_name} ({l.size_code}, {l.color_name}): solo hay {l.available} disponible(s).</div>)}
+                  </div>
+                )}
                 <button
+                  disabled={outOfStock.length > 0}
                   onClick={() => navigate('/checkout')}
                   style={{
                     width: '100%',

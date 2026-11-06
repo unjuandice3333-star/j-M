@@ -45,7 +45,10 @@ ntests=$(grep -oE 'Tests=[0-9]+' "$OUT/03_test_db.log" | tail -1 | cut -d= -f2)
 if [[ -z "$ntests" || "$ntests" -lt "$MIN_TESTS" ]]; then echo "ERROR: se ejecutaron ${ntests:-0} pruebas pgTAP (mínimo $MIN_TESTS)"; fail=1; fi
 step "HTTP";       $SB status -o json > "$OUT/.status.json" 2>/dev/null
 NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost python3 -I "$ROOT/scripts/ci/lib/http_checks.py" "$OUT/.status.json" "$OUT/04_http_results.json" > "$OUT/04_http.log" 2>&1 || fail=1
-rm -f "$OUT/.status.json"; tail -1 "$OUT/04_http.log"
+# M27: flujo de pedido y pago de extremo a extremo (handlers reales de /api/wompi contra la BD local, sin mocks)
+step "pedido y pago (integración)"
+NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost node "$ROOT/apps/web/scripts/test-payment-flow.mjs" "$OUT/.status.json" > "$OUT/04b_payment_flow.log" 2>&1 || fail=1
+rm -f "$OUT/.status.json"; tail -1 "$OUT/04_http.log"; tail -1 "$OUT/04b_payment_flow.log"
 step "stop + reconstrucción (2)"
 sbr "$OUT/05_stop.log" stop --no-backup
 sbr "$OUT/06_start2.log" start -x "$EXCLUDE" || fail=1

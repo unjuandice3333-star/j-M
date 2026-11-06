@@ -1,199 +1,135 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Search, Star, ShoppingBag, Eye, Sparkles } from 'lucide-react';
+// =============================================================================
+// Clientes — perfiles (profiles) + compras reales (online_orders) + direcciones (customer_addresses). RLS: solo admin.
+// Las compras se cuentan solo en estados pagados (paid, processing, shipped, delivered).
+// M27: reescrito; antes mostraba 0 compras, ciudad fija y un "nivel" inventado a partir del rol.
+// =============================================================================
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, X } from 'lucide-react';
 import { formatCOP } from '../../data/mockData';
 import supabase from '../../config/supabase';
+import { STATUS_LABEL } from './AdminOrdersPage';
+
+const PAID = new Set(['paid', 'processing', 'shipped', 'delivered']);
+const ROLE_LABEL = { customer: 'Cliente', admin: 'Administrador', super_admin: 'Super administrador' };
 
 export const AdminCustomersPage = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [tierFilter, setTierFilter] = useState('todos');
-  const [dbCustomers, setDbCustomers] = useState([]);
+  const [profiles, setProfiles] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loadError, setLoadError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('customer');
+  const [selected, setSelected] = useState(null);
+  const [addresses, setAddresses] = useState([]);
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!error && data) {
-          setDbCustomers(data.map((p) => ({
-            id: p.id,
-            name: p.full_name || 'Cliente Registrar',
-            email: p.email || 'Email no especificado',
-            phone: p.phone || 'No registrado',
-            city: 'Colombia',
-            ordersCount: 0,
-            totalSpent: 0,
-            avgTicket: 0,
-            lastPurchase: new Date(p.created_at).toLocaleDateString('es-CO'),
-            preferredSizes: 'M',
-            tier: p.role === 'admin' ? 'VIP' : 'Regular'
-          })));
-        } else {
-          setDbCustomers([]);
-        }
-      } catch (e) {
-        setDbCustomers([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCustomers();
+    (async () => {
+      const [p, o] = await Promise.all([
+        supabase.from('profiles').select('id, email, full_name, phone, role, marketing_opt_in, created_at').order('created_at', { ascending: false }),
+        supabase.from('online_orders').select('id, order_number, user_id, customer_email, customer_name, total, status, created_at, shipping_city').order('created_at', { ascending: false }),
+      ]);
+      if (p.error || o.error) setLoadError('No se pudieron cargar los clientes.');
+      else { setProfiles(p.data); setOrders(o.data); }
+      setIsLoading(false);
+    })();
   }, []);
 
-  const customers = dbCustomers;
+  const customers = useMemo(() => profiles.map((p) => {
+    const mine = orders.filter((o) => o.user_id === p.id || (p.email && o.customer_email === p.email.toLowerCase()));
+    const paid = mine.filter((o) => PAID.has(o.status));
+    const spent = paid.reduce((n, o) => n + Number(o.total), 0);
+    return { ...p, orders: mine, ordersCount: paid.length, totalSpent: spent, avgTicket: paid.length ? Math.round(spent / paid.length) : 0,
+      lastPurchase: paid[0]?.created_at ?? null, city: mine[0]?.shipping_city ?? '—' };
+  }), [profiles, orders]);
 
-  const filteredCustomers = customers.filter((c) => {
-    if (tierFilter !== 'todos' && c.tier.toLowerCase() !== tierFilter) return false;
-    if (searchQuery && !c.name.toLowerCase().includes(searchQuery.toLowerCase()) && !c.email.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = customers.filter((c) => (roleFilter === 'todos' || c.role === roleFilter)
+    && (!q || [c.full_name, c.email, c.phone].some((v) => String(v ?? '').toLowerCase().includes(q))));
+
+  const open = async (c) => {
+    setSelected(c); setAddresses([]);
+    const { data } = await supabase.from('customer_addresses').select('recipient_name, phone, department, city, address_line, neighborhood, is_default').eq('user_id', c.id);
+    setAddresses(data ?? []);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>
-            CRM DE CLIENTES & SEGMENTACIÓN ({customers.length})
-          </h1>
-          <p style={{ fontSize: '0.88rem', color: '#71717A' }}>
-            Base de datos unificada de compradores, comportamiento de compra y clasificación VIP.
-          </p>
-        </div>
+      <div>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>CLIENTES ({customers.filter((c) => c.role === 'customer').length})</h1>
+        <p style={{ fontSize: '0.88rem', color: '#71717A' }}>Cuentas registradas, compras pagadas y datos de contacto.</p>
       </div>
 
-      {/* FILTER & SEARCH TOOLBAR */}
-      <div style={{
-        backgroundColor: '#FFFFFF',
-        padding: '1.25rem',
-        borderRadius: '10px',
-        border: '1px solid #E4E4E7',
-        display: 'flex',
-        justify: 'space-between',
-        alignItems: 'center',
-        gap: '1rem'
-      }}>
-        {/* Search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', width: '320px' }}>
+      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#FFF', padding: '1rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', flex: 1, minWidth: 240 }}>
           <Search size={16} color="#71717A" />
-          <input
-            type="text"
-            placeholder="Buscar cliente por nombre, email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.85rem' }}
-          />
+          <input aria-label="Buscar clientes" placeholder="Buscar por nombre, correo o teléfono" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', outline: 'none', flex: 1 }} />
         </div>
-
-        {/* Tier Filters */}
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
-          {['todos', 'vip', 'regular', 'nuevo', 'inactivo'].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTierFilter(t)}
-              style={{
-                padding: '0.4rem 0.8rem',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                borderRadius: '6px',
-                border: tierFilter === t ? '1px solid #09090B' : '1px solid #E4E4E7',
-                backgroundColor: tierFilter === t ? '#09090B' : '#FFFFFF',
-                color: tierFilter === t ? '#FFFFFF' : '#71717A',
-                cursor: 'pointer'
-              }}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        <select aria-label="Filtrar por rol" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: '6px' }}>
+          <option value="customer">Clientes</option>
+          <option value="admin">Administradores</option>
+          <option value="super_admin">Super administradores</option>
+          <option value="todos">Todos</option>
+        </select>
       </div>
+      {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{loadError}</div>}
 
-      {/* CUSTOMERS TABLE */}
-      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
-        {isLoading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#71717A' }}>
-            Cargando base de clientes desde Supabase PostgreSQL...
-          </div>
-        ) : filteredCustomers.length === 0 ? (
-          <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
-            No hay clientes registrados en la plataforma.
-          </div>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
           <thead>
             <tr style={{ backgroundColor: '#FAFAFA', borderBottom: '1px solid #E4E4E7', textAlign: 'left' }}>
-              <th style={thCustomer}>CLIENTE</th>
-              <th style={thCustomer}>CLASIFICACIÓN</th>
-              <th style={thCustomer}>PEDIDOS</th>
-              <th style={thCustomer}>TOTAL COMPRADO</th>
-              <th style={thCustomer}>TICKET MEDIO</th>
-              <th style={thCustomer}>TALLA HABITUAL</th>
-              <th style={thCustomer}>ÚLTIMA COMPRA</th>
+              {['CLIENTE', 'CONTACTO', 'COMPRAS PAGADAS', 'TOTAL', 'TICKET PROMEDIO', 'ÚLTIMA COMPRA', ''].map((h) => <th key={h} style={th}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
-            {filteredCustomers.map((cust) => (
-              <tr key={cust.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
-                <td style={tdCustomer}>
-                  <div style={{ fontWeight: 800, color: '#09090B' }}>{cust.name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#71717A' }}>{cust.email} • {cust.phone}</div>
-                </td>
-
-                <td style={tdCustomer}>
-                  <span style={tierBadgeStyle(cust.tier)}>
-                    {cust.tier === 'VIP' && <Star size={12} fill="#D4AF37" color="#D4AF37" style={{ marginRight: '3px' }} />}
-                    {cust.tier}
-                  </span>
-                </td>
-
-                <td style={{ ...tdCustomer, fontWeight: 800 }}>{cust.ordersCount} compras</td>
-                <td style={{ ...tdCustomer, fontWeight: 900, color: '#09090B', fontSize: '0.95rem' }}>
-                  {formatCOP(cust.totalSpent)}
-                </td>
-                <td style={tdCustomer}>{formatCOP(cust.avgTicket)}</td>
-                <td style={{ ...tdCustomer, fontWeight: 700, color: '#27272A' }}>{cust.preferredSizes}</td>
-                <td style={{ ...tdCustomer, color: '#71717A' }}>{cust.lastPurchase}</td>
+            {isLoading && <tr><td colSpan={7} style={td}>Cargando…</td></tr>}
+            {!isLoading && filtered.length === 0 && <tr><td colSpan={7} style={{ ...td, color: '#71717A' }}>No hay resultados.</td></tr>}
+            {filtered.map((c) => (
+              <tr key={c.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
+                <td style={td}><div style={{ fontWeight: 800 }}>{c.full_name || 'Sin nombre'}</div><div style={{ fontSize: '0.72rem', color: '#71717A' }}>{ROLE_LABEL[c.role]} · desde {new Date(c.created_at).toLocaleDateString('es-CO')}</div></td>
+                <td style={td}>{c.email}<div style={{ fontSize: '0.75rem', color: '#71717A' }}>{c.phone || 'sin teléfono'} · {c.city}</div></td>
+                <td style={{ ...td, fontWeight: 800 }}>{c.ordersCount}</td>
+                <td style={{ ...td, fontWeight: 800 }}>{formatCOP(c.totalSpent)}</td>
+                <td style={td}>{formatCOP(c.avgTicket)}</td>
+                <td style={td}>{c.lastPurchase ? new Date(c.lastPurchase).toLocaleDateString('es-CO') : '—'}</td>
+                <td style={td}><button onClick={() => open(c)} style={{ textDecoration: 'underline', fontWeight: 700 }}>Ver detalle</button></td>
               </tr>
             ))}
           </tbody>
         </table>
-        )}
       </div>
+
+      {selected && (
+        <div className="modal-overlay" onClick={() => setSelected(null)}>
+          <div role="dialog" aria-label={`Cliente ${selected.full_name || selected.email}`} onClick={(e) => e.stopPropagation()} style={{ backgroundColor: '#FFF', width: '100%', maxWidth: '640px', borderRadius: '12px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 900 }}>{selected.full_name || selected.email}</h2>
+              <button onClick={() => setSelected(null)} aria-label="Cerrar"><X size={20} /></button>
+            </div>
+            <div style={{ fontSize: '0.88rem', display: 'grid', gap: '0.3rem', marginBottom: '1rem' }}>
+              <div>{selected.email} · {selected.phone || 'sin teléfono'} · {ROLE_LABEL[selected.role]}</div>
+              <div>Acepta comunicaciones: {selected.marketing_opt_in ? 'sí' : 'no'}</div>
+              <div>Compras pagadas: <strong>{selected.ordersCount}</strong> · Total: <strong>{formatCOP(selected.totalSpent)}</strong></div>
+            </div>
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 800, margin: '1rem 0 0.4rem' }}>Pedidos</h3>
+            {selected.orders.length === 0 ? <div style={{ color: '#71717A', fontSize: '0.85rem' }}>Sin pedidos.</div> : (
+              <ul style={{ fontSize: '0.85rem', display: 'grid', gap: '0.3rem' }}>
+                {selected.orders.map((o) => <li key={o.id}>{o.order_number} · {new Date(o.created_at).toLocaleDateString('es-CO')} · {STATUS_LABEL[o.status]} · {formatCOP(Number(o.total))}</li>)}
+              </ul>
+            )}
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 800, margin: '1rem 0 0.4rem' }}>Direcciones guardadas</h3>
+            {addresses.length === 0 ? <div style={{ color: '#71717A', fontSize: '0.85rem' }}>Sin direcciones guardadas.</div> : (
+              <ul style={{ fontSize: '0.85rem', display: 'grid', gap: '0.3rem' }}>
+                {addresses.map((a, i) => <li key={i}>{a.recipient_name} · {a.address_line}{a.neighborhood ? `, ${a.neighborhood}` : ''}, {a.city} ({a.department}){a.is_default ? ' · principal' : ''}</li>)}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const thCustomer = {
-  padding: '0.85rem 1rem',
-  fontSize: '0.75rem',
-  fontWeight: 800,
-  color: '#71717A',
-  letterSpacing: '0.05em'
-};
-
-const tdCustomer = {
-  padding: '0.85rem 1rem',
-  color: '#09090B'
-};
-
-const tierBadgeStyle = (tier) => ({
-  display: 'inline-flex',
-  alignItems: 'center',
-  fontSize: '0.72rem',
-  fontWeight: 800,
-  padding: '3px 8px',
-  borderRadius: '4px',
-  backgroundColor:
-    tier === 'VIP' ? '#09090B' : tier === 'Regular' ? '#E0F2FE' : '#FAFAFA',
-  color:
-    tier === 'VIP' ? '#D4AF37' : tier === 'Regular' ? '#0369A1' : '#71717A',
-  border: tier === 'VIP' ? '1px solid #D4AF37' : '1px solid #E4E4E7'
-});
+const th = { padding: '0.85rem 1rem', fontSize: '0.75rem', fontWeight: 800, color: '#71717A', letterSpacing: '0.05em' };
+const td = { padding: '0.85rem 1rem', color: '#09090B' };
 
 export default AdminCustomersPage;

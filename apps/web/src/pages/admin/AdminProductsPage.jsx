@@ -1,20 +1,42 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, Edit, Trash2, Eye, RefreshCw, Sparkles, AlertTriangle } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
+import { productService } from '../../services/productService';
+import { adminService } from '../../services/adminService';
 import { formatCOP } from '../../data/mockData';
 import SafeProductImage from '../../components/Common/SafeImage';
 import { hasValidProductImage } from '../../utils/productUtils';
 
+const STATUS_LABEL = { todos: 'Todos', active: 'Publicado', draft: 'Borrador', archived: 'Archivado', agotado: 'Agotado' };
+
 export const AdminProductsPage = () => {
   const navigate = useNavigate();
-  const { products, deleteProduct, resetProductsToDefault } = useECommerceStore();
+  const loadStoreProducts = useECommerceStore((st) => st.loadProducts);
+  // M27: el panel lista TODOS los productos (RLS: el admin ve borradores y archivados), no el catálogo público.
+  const [products, setProducts] = useState([]);
+  const [loadError, setLoadError] = useState(null);
+  const [actionMsg, setActionMsg] = useState(null);
+  const reload = useCallback(async () => {
+    try { setProducts(await productService.getProducts({ includeInactive: true })); setLoadError(null); }
+    catch (e) { setLoadError(e.message); }
+  }, []);
+  useEffect(() => { reload(); }, [reload]);
+  const resetProductsToDefault = reload;
+  const setStatus = async (prod, status) => {
+    setActionMsg(null);
+    try {
+      await adminService.setProductStatus(prod.id, status);
+      setActionMsg({ ok: true, text: `"${prod.name}": ${STATUS_LABEL[status].toLowerCase()}.` });
+      await reload(); loadStoreProducts(true);
+    } catch (e) { setActionMsg({ ok: false, text: e.message }); }
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
 
   const filteredProducts = products.filter((p) => {
-    if (statusFilter !== 'todos' && (p.status || 'activo') !== statusFilter) {
+    if (statusFilter === 'agotado' ? !(p.status === 'active' && !p.inStock) : statusFilter !== 'todos' && p.status !== statusFilter) {
       return false;
     }
     if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase()) && !p.slug.includes(searchQuery.toLowerCase())) {
@@ -104,7 +126,7 @@ export const AdminProductsPage = () => {
 
         {/* Status Filter Tabs */}
         <div style={{ display: 'flex', gap: '0.4rem' }}>
-          {['todos', 'activo', 'borrador', 'agotado', 'archivado'].map((st) => (
+          {['todos', 'active', 'draft', 'agotado', 'archived'].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
@@ -120,11 +142,13 @@ export const AdminProductsPage = () => {
                 cursor: 'pointer'
               }}
             >
-              {st}
+              {STATUS_LABEL[st] ?? st}
             </button>
           ))}
         </div>
       </div>
+      {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{loadError}</div>}
+      {actionMsg && <div role={actionMsg.ok ? 'status' : 'alert'} style={{ color: actionMsg.ok ? '#065F46' : '#B91C1C', fontWeight: 600 }}>{actionMsg.text}</div>}
 
       {/* PRODUCTS TABLE */}
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
@@ -165,7 +189,7 @@ export const AdminProductsPage = () => {
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#71717A' }}>SKU: {prod.slug}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#71717A' }}>Ref: {prod.reference} · /{prod.slug}</div>
                         <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
                           {prod.isNew && <span style={miniBadge('#09090B', '#FFF')}>NUEVO</span>}
                           {prod.isBestSeller && <span style={miniBadge('#D4AF37', '#09090B')}>MÁS VENDIDO</span>}
@@ -200,11 +224,12 @@ export const AdminProductsPage = () => {
                       fontWeight: 800,
                       padding: '3px 8px',
                       borderRadius: '4px',
-                      backgroundColor: prod.status === 'borrador' ? '#FEF3C7' : '#D1FAE5',
-                      color: prod.status === 'borrador' ? '#92400E' : '#065F46'
+                      backgroundColor: prod.status === 'active' ? '#D1FAE5' : prod.status === 'draft' ? '#FEF3C7' : '#F4F4F5',
+                      color: prod.status === 'active' ? '#065F46' : prod.status === 'draft' ? '#92400E' : '#52525B'
                     }}>
-                      {(prod.status || 'activo').toUpperCase()}
+                      {(STATUS_LABEL[prod.status] ?? prod.status).toUpperCase()}
                     </span>
+                    <div style={{ fontSize: '0.72rem', color: prod.inStock ? '#71717A' : '#E11D48', marginTop: '0.25rem' }}>Stock disponible: {prod.stock}</div>
                   </td>
 
                   <td style={{ ...tdProduct, textAlign: 'right' }}>
@@ -215,17 +240,27 @@ export const AdminProductsPage = () => {
                       <button onClick={() => navigate(`/admin/productos/nuevo?editId=${prod.id}`)} style={actionIconBtn} title="Editar prenda">
                         <Edit size={16} />
                       </button>
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`¿Seguro que deseas eliminar la prenda "${prod.name}" de la tienda pública?`)) {
-                            deleteProduct(prod.id);
-                          }
-                        }}
-                        style={{ ...actionIconBtn, color: '#E11D48' }}
-                        title="Eliminar de la tienda"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {prod.status !== 'active' ? (
+                        <button onClick={() => setStatus(prod, 'active')} style={{ ...actionIconBtn, width: 'auto', padding: '0 0.6rem', fontSize: '0.72rem', fontWeight: 800 }} title="Publicar en la tienda">
+                          PUBLICAR
+                        </button>
+                      ) : (
+                        <button onClick={() => setStatus(prod, 'draft')} style={{ ...actionIconBtn, width: 'auto', padding: '0 0.6rem', fontSize: '0.72rem', fontWeight: 800 }} title="Retirar de la tienda (borrador)">
+                          DESPUBLICAR
+                        </button>
+                      )}
+                      {prod.status !== 'archived' && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`¿Archivar "${prod.name}"? Deja de mostrarse en la tienda; su historial de pedidos se conserva.`)) setStatus(prod, 'archived');
+                          }}
+                          style={{ ...actionIconBtn, color: '#E11D48' }}
+                          title="Archivar (no borra datos)"
+                          aria-label={`Archivar ${prod.name}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

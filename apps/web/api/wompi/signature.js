@@ -20,65 +20,52 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { reference, order_id } = req.body;
-
-    if (!reference && !order_id) {
-      return res.status(400).json({ error: 'Parámetros incompletos: se requiere reference u order_id.' });
-    }
-
+    // M27: el cliente envía el pedido (id + token público devuelto por create_order). La BD crea el intento de pago
+    // (create_payment_attempt: valida token, estado payment_pending, ventana de pago y límite de intentos) y fija la
+    // referencia (<pedido>-<n>) y el monto. El navegador nunca decide el importe ni la referencia.
     // M26-T3: solo variables de servidor, validadas; sin respaldo a VITE_* ni a la llave anon.
     const cfg = requireServerConfig(res, 'Wompi Signature', ['APP_ENV', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'WOMPI_INTEGRITY_SECRET', 'WOMPI_PUBLIC_KEY']);
     if (!cfg) return;
-    const supabaseUrl = cfg.SUPABASE_URL;
-    const supabaseServiceKey = cfg.SUPABASE_SERVICE_ROLE_KEY;
-    const integritySecret = cfg.WOMPI_INTEGRITY_SECRET;
-    const publicKey = cfg.WOMPI_PUBLIC_KEY;
 
-    // 1. Obtener la orden desde Supabase para verificar el monto real autoritativo (Preventing Total Tampering)
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    let orderQuery = supabase.from('online_orders').select('id, order_number, total');
-    
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (order_id && UUID_REGEX.test(order_id)) {
-      orderQuery = orderQuery.eq('id', order_id);
-    } else if (reference) {
-      if (UUID_REGEX.test(reference)) {
-        orderQuery = orderQuery.eq('id', reference);
-      } else if (reference.startsWith('JM-ORD-') && UUID_REGEX.test(reference.slice(7))) {
-        orderQuery = orderQuery.eq('id', reference.slice(7));
-      } else {
-        orderQuery = orderQuery.eq('order_number', reference);
-      }
-    } else if (order_id) {
-      orderQuery = orderQuery.eq('id', order_id);
+    const { order_id: orderId, public_token: publicToken } = req.body ?? {};
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID.test(String(orderId ?? '')) || !UUID.test(String(publicToken ?? ''))) {
+      return res.status(400).json({ error: 'Parámetros incompletos: se requieren order_id y public_token.' });
     }
 
-    const { data: order, error: orderError } = await orderQuery.single();
 
-    if (orderError || !order) {
-      return res.status(444).json({ error: 'La orden indicada no existe en el sistema.' });
+    const supabase = createClient(cfg.SUPABASE_URL, cfg.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: attempt, error } = await supabase.rpc('create_payment_attempt', { p_order_id: orderId, p_public_token: publicToken });
+    if (error) {
+      const known = {
+        JM_ORDER_NOT_FOUND: [404, 'No encontramos el pedido.'],
+        JM_ORDER_NOT_PAYABLE: [409, 'Este pedido ya no admite pagos.'],
+        JM_PAYMENT_WINDOW_EXPIRED: [410, 'El tiempo para pagar este pedido expiró. Crea un pedido nuevo.'],
+        JM_TOO_MANY_ATTEMPTS: [429, 'Se alcanzó el máximo de intentos de pago para este pedido.'],
+      }[error.hint];
+      if (known) return res.status(known[0]).json({ error: known[1], code: error.hint });
+      console.error('[Wompi Signature Error]: create_payment_attempt falló:', error.message);
+      return res.status(500).json({ error: 'No se pudo preparar el pago. Inténtalo de nuevo.' });
     }
 
-    const orderReference = order.order_number;
-    const amountInCents = Math.round(Number(order.total) * 100);
-    const currency = 'COP';
-
-    // 2. Generar Firma de Integridad SHA-256 Oficial de Wompi
-    // Fórmula oficial: SHA-256(reference + amount_in_cents + currency + integrity_secret)
-    const cleanSecret = integritySecret; // ya normalizado por readServerConfig
-    const concatenatedString = `${orderReference}${amountInCents}${currency}${cleanSecret}`;
-    const signature = crypto.createHash('sha256').update(concatenatedString, 'utf8').digest('hex');
+    const reference = attempt.reference;
+    const amountInCents = Number(attempt.amount_in_cents);
+    const currency = attempt.currency || 'COP';
+    // Fórmula oficial de Wompi: SHA-256(reference + amount_in_cents + currency + integrity_secret)
+    const signature = crypto.createHash('sha256').update(`${reference}${amountInCents}${currency}${cfg.WOMPI_INTEGRITY_SECRET}`, 'utf8').digest('hex');
 
     return res.status(200).json({
-      success: true,
-      reference: orderReference,
+      reference,
       amount_in_cents: amountInCents,
       currency,
       signature,
-      publicKey
+      publicKey: cfg.WOMPI_PUBLIC_KEY,
+      order_number: attempt.order_number,
+      attempt_number: attempt.attempt_number,
+      payment_expires_at: attempt.payment_expires_at,
     });
   } catch (err) {
     console.error('[Wompi Signature Exception]:', err);
-    return res.status(500).json({ error: err.message || 'Error interno al generar la firma de integridad.' });
+    return res.status(500).json({ error: 'Error interno al generar la firma de integridad.' });
   }
 }

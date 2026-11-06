@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
 import {
@@ -22,6 +22,9 @@ import {
 export const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
   const { user, profile, logout } = useAuthStore();
 
   const handleLogout = async () => {
@@ -34,7 +37,7 @@ export const AdminLayout = () => {
     { label: 'Productos', path: '/admin/productos', icon: ShoppingBag },
     { label: 'Imágenes Home', path: '/admin/imagenes', icon: Image },
     { label: 'Inventario', path: '/admin/inventario', icon: Boxes },
-    { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList, badge: '3' },
+    { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList },
     { label: 'Clientes', path: '/admin/clientes', icon: Users },
     { label: 'Colecciones', path: '/admin/colecciones', icon: FolderKanban },
     { label: 'Descuentos', path: '/admin/descuentos', icon: Tag },
@@ -49,8 +52,21 @@ export const AdminLayout = () => {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F4F4F5', fontFamily: 'var(--font-sans)' }}>
+      {/* M27: en pantallas pequeñas el menú lateral se oculta y se abre con el botón ☰ (antes ocupaba 2/3 del móvil) */}
+      <style>{`
+        @media (max-width: 900px) {
+          .jm-admin-sidebar { transform: translateX(-100%); transition: transform 0.2s; }
+          .jm-admin-sidebar.open { transform: translateX(0); }
+          .jm-admin-menu-btn { display: inline-flex !important; }
+          .jm-admin-search { display: none !important; }
+          .jm-admin-content { margin-left: 0 !important; min-width: 0; }
+          .jm-admin-main { padding: 1rem !important; }
+          .jm-admin-header { padding: 0 1rem !important; }
+        }
+      `}</style>
+      {menuOpen && <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 95 }} />}
       {/* SIDEBAR */}
-      <aside style={{
+      <aside className={`jm-admin-sidebar${menuOpen ? ' open' : ''}`} style={{
         width: '260px',
         backgroundColor: '#09090B',
         color: '#FFFFFF',
@@ -151,9 +167,9 @@ export const AdminLayout = () => {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div style={{ flex: 1, marginLeft: '260px', display: 'flex', flexDirection: 'column' }}>
+      <div className="jm-admin-content" style={{ flex: 1, marginLeft: '260px', display: 'flex', flexDirection: 'column' }}>
         {/* TOP NAVBAR */}
-        <header style={{
+        <header className="jm-admin-header" style={{
           height: '65px',
           backgroundColor: '#FFFFFF',
           borderBottom: '1px solid #E4E4E7',
@@ -166,7 +182,9 @@ export const AdminLayout = () => {
           zIndex: 90
         }}>
           {/* Global Admin Search Input */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', backgroundColor: '#FAFAFA', padding: '0.5rem 0.9rem', borderRadius: '6px', border: '1px solid #E4E4E7', width: '320px' }}>
+          <button type="button" className="jm-admin-menu-btn" aria-label="Abrir menú" aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}
+            style={{ display: 'none', border: '1px solid #E4E4E7', borderRadius: '6px', padding: '0.4rem 0.6rem', fontSize: '1.1rem', fontWeight: 800 }}>☰</button>
+          <div className="jm-admin-search" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', backgroundColor: '#FAFAFA', padding: '0.5rem 0.9rem', borderRadius: '6px', border: '1px solid #E4E4E7', width: '320px' }}>
             <Search size={16} color="#71717A" />
             <input
               type="text"
@@ -179,7 +197,6 @@ export const AdminLayout = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             <div style={{ position: 'relative' }}>
               <Bell size={20} color="#71717A" style={{ cursor: 'pointer' }} />
-              <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#E11D48', width: '8px', height: '8px', borderRadius: '50%' }} />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderLeft: '1px solid #E4E4E7', paddingLeft: '1.5rem' }}>
@@ -195,7 +212,7 @@ export const AdminLayout = () => {
         </header>
 
         {/* PAGE BODY */}
-        <main style={{ flex: 1, padding: '2rem' }}>
+        <main className="jm-admin-main" style={{ flex: 1, padding: '2rem', overflowX: 'auto' }}>
           <Outlet />
         </main>
       </div>

@@ -1,147 +1,91 @@
 import React, { useState, useEffect } from 'react';
 import { ClipboardList, Search, Eye, Truck, Check, Printer, ChevronDown, X } from 'lucide-react';
-import { useECommerceStore } from '../../store/eCommerceStore';
 import { formatCOP } from '../../data/mockData';
 import supabase from '../../config/supabase';
+import { adminService } from '../../services/adminService';
+import { orderService } from '../../services/orderService';
 
+export const STATUS_LABEL = { payment_pending: 'Pago pendiente', paid: 'Pagado', processing: 'En preparación', shipped: 'Enviado',
+  delivered: 'Entregado', cancelled: 'Cancelado', expired: 'Vencido', refunded: 'Reembolsado' };
+const TABS = ['todos', 'payment_pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'expired', 'refunded'];
+
+// M27: pedidos reales (online_orders con RLS de admin) y cambios de estado por la máquina de estados de la BD
+// (admin_transition_order): solo transiciones permitidas para 'admin', nota obligatoria donde la BD la exige y
+// transportadora + guía al marcar como enviado.
 export const AdminOrdersPage = () => {
-  const { orders } = useECommerceStore();
   const [dbOrders, setDbOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [selectedStatusTab, setSelectedStatusTab] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [transitions, setTransitions] = useState([]);
 
-  // Selected Order for Detail Modal
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [modalStatus, setModalStatus] = useState('');
+  const [modalNote, setModalNote] = useState('');
+  const [modalCarrier, setModalCarrier] = useState('');
   const [modalTracking, setModalTracking] = useState('');
+  const [modalTrackingUrl, setModalTrackingUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [modalError, setModalError] = useState(null);
+  const [notice, setNotice] = useState(null);
 
-  // Cargar órdenes reales desde Supabase PostgreSQL
   const fetchDbOrders = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('online_orders')
-        .select(`
-          id,
-          order_number,
-          customer_name,
-          customer_email,
-          customer_phone,
-          shipping_department,
-          shipping_city,
-          shipping_address,
-          shipping_neighborhood,
-          shipping_notes,
-          shipping_method,
-          shipping_cost,
-          subtotal,
-          discount,
-          total,
-          coupon_code,
-          status,
-          created_at,
-          online_order_items (
-            id,
-            product_name,
-            size,
-            color,
-            sku,
-            unit_price,
-            quantity,
-            total
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (!error && data && data.length > 0) {
-        const normalized = data.map((o) => ({
-          id: o.order_number || o.id,
-          rawId: o.id,
-          date: new Date(o.created_at).toLocaleDateString('es-CO'),
-          customerName: o.customer_name,
-          customerEmail: o.customer_email,
-          customerPhone: o.customer_phone,
-          shippingAddress: `${o.shipping_address}, ${o.shipping_city}`,
-          paymentMethod: 'Wompi / Online',
-          total: Number(o.total),
-          status: o.status,
-          items: (o.online_order_items || []).map((i) => ({
-            name: i.product_name,
-            size: i.size,
-            color: i.color,
-            price: Number(i.unit_price),
-            quantity: i.quantity,
-            image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=300'
-          }))
-        }));
-        setDbOrders(normalized);
-      } else {
-        setDbOrders([]);
-      }
-    } catch (e) {
-      console.warn('[AdminOrdersPage Warning]: Error al consultar PostgreSQL:', e);
-      setDbOrders([]);
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(true); setLoadError(null);
+    const { data, error } = await supabase.from('online_orders').select(`
+        id, order_number, customer_name, customer_email, customer_phone, customer_document,
+        shipping_department, shipping_city, shipping_address, shipping_neighborhood, shipping_notes, shipping_method_code,
+        subtotal, discount_total, shipping_cost, total, coupon_code, status, created_at, paid_at, needs_attention,
+        carrier, tracking_number, tracking_url,
+        online_order_items ( product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
+        payment_transactions ( reference, status, amount_in_cents, payment_method_type, created_at ),
+        order_events ( event_type, from_status, to_status, actor, note, created_at )`)
+      .order('created_at', { ascending: false }).limit(200);
+    if (error) { setLoadError('No se pudieron cargar los pedidos.'); setIsLoading(false); return; }
+    setDbOrders(data.map((o) => ({
+      ...o, id: o.order_number, rawId: o.id, date: new Date(o.created_at).toLocaleString('es-CO'),
+      customerName: o.customer_name, total: Number(o.total),
+      shippingAddress: `${o.shipping_address}${o.shipping_neighborhood ? `, ${o.shipping_neighborhood}` : ''}, ${o.shipping_city} (${o.shipping_department})`,
+      paymentMethod: (o.payment_transactions ?? []).length ? `Wompi · ${o.payment_transactions.map((t) => t.status).join(', ')}` : 'Wompi · sin intentos',
+    })));
+    setIsLoading(false);
   };
 
   useEffect(() => {
     fetchDbOrders();
+    orderService.getStatusCatalog().then((c) => setTransitions((c.transitions ?? []).filter((t) => t.actor === 'admin'))).catch(() => setTransitions([]));
   }, []);
 
   const displayOrders = dbOrders;
-
+  const q = searchQuery.trim().toLowerCase();
   const filteredOrders = displayOrders.filter((ord) => {
-    if (selectedStatusTab !== 'todos' && ord.status.toLowerCase() !== selectedStatusTab) {
-      return false;
-    }
-    if (searchQuery && !ord.id.toLowerCase().includes(searchQuery.toLowerCase()) && !ord.customerName?.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
+    if (selectedStatusTab !== 'todos' && ord.status !== selectedStatusTab) return false;
+    if (q && ![ord.order_number, ord.customer_name, ord.customer_email, ord.customer_phone].some((v) => String(v ?? '').toLowerCase().includes(q))) return false;
     return true;
   });
 
+  const allowedNext = (status) => transitions.filter((t) => t.from === status);
   const handleOpenModal = (ord) => {
     setSelectedOrder(ord);
-    setModalStatus(ord.status);
-    setModalTracking(ord.trackingNumber || '');
+    setModalStatus('');
+    setModalNote(''); setModalCarrier(ord.carrier || ''); setModalTracking(ord.tracking_number || ''); setModalTrackingUrl(ord.tracking_url || '');
     setModalError(null);
   };
 
   const handleSaveChanges = async () => {
-    if (!selectedOrder) return;
-    setIsSaving(true);
-    setModalError(null);
-
+    if (!selectedOrder || !modalStatus) { setModalError('Elige el nuevo estado.'); return; }
+    const t = allowedNext(selectedOrder.status).find((x) => x.to === modalStatus);
+    if (t?.requires_note && !modalNote.trim()) { setModalError('Esta transición requiere una nota (motivo).'); return; }
+    if (modalStatus === 'shipped' && (!modalCarrier.trim() || !modalTracking.trim())) { setModalError('Para marcar como enviado indica transportadora y número de guía.'); return; }
+    setIsSaving(true); setModalError(null);
     try {
-      if (selectedOrder.rawId) {
-        // Ejecutar validación de máquina de estados en PostgreSQL mediante RPC
-        const { error: rpcError } = await supabase.rpc('update_order_status', {
-          p_order_id: selectedOrder.rawId,
-          p_new_status: modalStatus,
-          p_notes: modalTracking ? `Guía: ${modalTracking}` : 'Cambio de estado administrativo'
-        });
-
-        if (rpcError) {
-          throw new Error(rpcError.message || 'La máquina de estados de PostgreSQL rechazó la transición.');
-        }
-      }
-
-      // Actualizar estado local
-      setDbOrders((prev) =>
-        prev.map((o) =>
-          o.id === selectedOrder.id ? { ...o, status: modalStatus, trackingNumber: modalTracking } : o
-        )
-      );
-
+      const tracking = modalStatus === 'shipped' ? { carrier: modalCarrier.trim(), tracking_number: modalTracking.trim(), tracking_url: modalTrackingUrl.trim() || null } : null;
+      await adminService.transitionOrder(selectedOrder.rawId, modalStatus, modalNote.trim() || null, tracking);
+      setNotice(`${selectedOrder.order_number}: ${STATUS_LABEL[selectedOrder.status]} → ${STATUS_LABEL[modalStatus]}.`);
       setSelectedOrder(null);
+      await fetchDbOrders();
     } catch (err) {
-      console.error('[AdminOrdersPage Error]:', err);
-      setModalError(err.message || 'Error al actualizar el estado en el servidor.');
+      setModalError(err.message || 'No se pudo cambiar el estado.');
     } finally {
       setIsSaving(false);
     }
@@ -152,10 +96,10 @@ export const AdminOrdersPage = () => {
       {/* HEADER */}
       <div>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>
-          GESTIÓN OPERATIVA DE PEDIDOS ({displayOrders.length})
+          PEDIDOS ({displayOrders.length})
         </h1>
         <p style={{ fontSize: '0.88rem', color: '#71717A' }}>
-          Control logístico, estados de pago y máquina de estados en PostgreSQL.
+          Pagos, preparación, despacho y entrega. Los cambios de estado siguen las reglas de la tienda.
         </p>
       </div>
 
@@ -184,7 +128,7 @@ export const AdminOrdersPage = () => {
 
         {/* Status Tabs */}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          {['todos', 'pending_payment', 'paid', 'preparing', 'shipped', 'delivered', 'cancelled'].map((st) => (
+          {TABS.map((st) => (
             <button
               key={st}
               onClick={() => setSelectedStatusTab(st)}
@@ -200,21 +144,23 @@ export const AdminOrdersPage = () => {
                 cursor: 'pointer'
               }}
             >
-              {st}
+              {st === 'todos' ? 'Todos' : STATUS_LABEL[st]} ({st === 'todos' ? displayOrders.length : displayOrders.filter((o) => o.status === st).length})
             </button>
           ))}
         </div>
       </div>
+      {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{loadError}</div>}
+      {notice && <div role="status" style={{ color: '#065F46', fontWeight: 600 }}>{notice}</div>}
 
       {/* ORDERS TABLE */}
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
         {isLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#71717A' }}>
-            Cargando órdenes reales desde Supabase PostgreSQL...
+            Cargando pedidos…
           </div>
         ) : filteredOrders.length === 0 ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
-            No hay pedidos registrados en la base de datos.
+            No hay pedidos con estos filtros.
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -235,8 +181,9 @@ export const AdminOrdersPage = () => {
                   <td style={{ ...tdOrder, fontWeight: 900 }}>{ord.id}</td>
                   <td style={{ ...tdOrder, color: '#71717A' }}>{ord.date}</td>
                   <td style={tdOrder}>
-                    <div style={{ fontWeight: 700 }}>{ord.customerName || 'Cliente J&M'}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#71717A' }}>{ord.shippingAddress || 'Bogotá D.C.'}</div>
+                    <div style={{ fontWeight: 700 }}>{ord.customerName}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#71717A' }}>{ord.customer_email} · {ord.shipping_city}</div>
+                    {ord.needs_attention && <div style={{ fontSize: '0.72rem', color: '#B91C1C', fontWeight: 800 }}>REQUIERE REVISIÓN</div>}
                   </td>
                   <td style={{ ...tdOrder, fontSize: '0.78rem', color: '#27272A' }}>
                     {ord.paymentMethod}
@@ -246,7 +193,7 @@ export const AdminOrdersPage = () => {
                   </td>
                   <td style={tdOrder}>
                     <span style={statusBadgeStyle(ord.status)}>
-                      {ord.status}
+                      {STATUS_LABEL[ord.status] ?? ord.status}
                     </span>
                   </td>
                   <td style={{ ...tdOrder, textAlign: 'right' }}>
@@ -298,69 +245,91 @@ export const AdminOrdersPage = () => {
             </div>
 
             {modalError && (
-              <div style={{ backgroundColor: '#FEF2F2', color: '#991B1B', padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', border: '1px solid #FCA5A5' }}>
+              <div role="alert" style={{ backgroundColor: '#FEF2F2', color: '#991B1B', padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', border: '1px solid #FCA5A5' }}>
                 {modalError}
               </div>
             )}
 
-            {/* Change Status Dropdown */}
-            <div style={{ backgroundColor: '#FAFAFA', padding: '1.25rem', borderRadius: '8px', border: '1px solid #E4E4E7', marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: '#09090B', marginBottom: '0.4rem' }}>
-                CAMBIAR ESTADO DE LA ORDEN (MÁQUINA DE ESTADOS EN POSTGRESQL)
-              </label>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <select
-                  value={modalStatus}
-                  onChange={(e) => setModalStatus(e.target.value)}
-                  style={{ flex: 1, padding: '0.7rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontWeight: 700, fontSize: '0.85rem' }}
-                >
-                  <option value="pending">pending</option>
-                  <option value="payment_pending">payment_pending</option>
-                  <option value="paid">paid (Pago Confirmado Wompi)</option>
-                  <option value="preparing">preparing (En Preparación)</option>
-                  <option value="shipped">shipped (Enviado)</option>
-                  <option value="delivered">delivered (Entregado)</option>
-                  <option value="cancelled">cancelled (Cancelado)</option>
-                </select>
+            <div style={{ fontSize: '0.85rem', marginBottom: '1rem', display: 'grid', gap: '0.25rem' }}>
+              <div><strong>Estado:</strong> {STATUS_LABEL[selectedOrder.status]} · <strong>Creado:</strong> {selectedOrder.date}</div>
+              <div><strong>Cliente:</strong> {selectedOrder.customer_name} · {selectedOrder.customer_email} · {selectedOrder.customer_phone}</div>
+              <div><strong>Envío:</strong> {selectedOrder.shippingAddress}{selectedOrder.shipping_notes ? ` · Nota: ${selectedOrder.shipping_notes}` : ''}</div>
+              <div><strong>Pago:</strong> {(selectedOrder.payment_transactions ?? []).map((t) => `${t.reference} ${t.status}`).join(' · ') || 'sin intentos de pago'}</div>
+              {selectedOrder.tracking_number && <div><strong>Guía:</strong> {selectedOrder.carrier} {selectedOrder.tracking_number}</div>}
+            </div>
 
-                <input
-                  type="text"
-                  placeholder="N° de Guía (Coordinadora)"
-                  value={modalTracking}
-                  onChange={(e) => setModalTracking(e.target.value)}
-                  style={{ flex: 1, padding: '0.7rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem' }}
-                />
-              </div>
+            {/* Cambio de estado (máquina de estados de la BD) */}
+            <div style={{ backgroundColor: '#FAFAFA', padding: '1.25rem', borderRadius: '8px', border: '1px solid #E4E4E7', marginBottom: '1.5rem' }}>
+              <label htmlFor="order-next-status" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: '#09090B', marginBottom: '0.4rem' }}>
+                CAMBIAR ESTADO
+              </label>
+              {allowedNext(selectedOrder.status).length === 0 ? (
+                <div style={{ fontSize: '0.85rem', color: '#71717A' }}>
+                  {selectedOrder.status === 'payment_pending' ? 'Esperando el pago de Wompi (o cancélalo con un motivo).' : 'Este estado no admite más cambios desde el panel.'}
+                </div>
+              ) : null}
+              {allowedNext(selectedOrder.status).length > 0 && (
+                <div style={{ display: 'grid', gap: '0.6rem' }}>
+                  <select id="order-next-status" value={modalStatus} onChange={(e) => setModalStatus(e.target.value)}
+                    style={{ padding: '0.7rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontWeight: 700, fontSize: '0.85rem' }}>
+                    <option value="">Selecciona…</option>
+                    {allowedNext(selectedOrder.status).map((t) => (
+                      <option key={t.to} value={t.to}>{STATUS_LABEL[t.to]}{t.requires_note ? ' (requiere motivo)' : ''}</option>
+                    ))}
+                  </select>
+                  {modalStatus === 'shipped' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                      <input aria-label="Transportadora" placeholder="Transportadora (ej. Coordinadora)" value={modalCarrier} onChange={(e) => setModalCarrier(e.target.value)} style={orderInput} />
+                      <input aria-label="Número de guía" placeholder="Número de guía" value={modalTracking} onChange={(e) => setModalTracking(e.target.value)} style={orderInput} />
+                      <input aria-label="URL de rastreo" placeholder="URL de rastreo (opcional, https://)" value={modalTrackingUrl} onChange={(e) => setModalTrackingUrl(e.target.value)} style={{ ...orderInput, gridColumn: '1 / -1' }} />
+                    </div>
+                  )}
+                  <input aria-label="Nota del cambio" placeholder="Nota o motivo (visible en el historial)" value={modalNote} onChange={(e) => setModalNote(e.target.value)} style={orderInput} />
+                </div>
+              )}
             </div>
 
             {/* Products List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              {selectedOrder.items?.map((item, idx) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+              {selectedOrder.online_order_items?.map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: '1rem', alignItems: 'center', borderBottom: '1px solid #F4F4F5', paddingBottom: '0.75rem' }}>
-                  <img src={item.image} alt="" style={{ width: '45px', height: '55px', objectFit: 'cover', borderRadius: '4px' }} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{item.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#71717A' }}>Talla: {item.size} • Color: {item.color} • Cant: {item.quantity}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{item.product_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#71717A' }}>SKU {item.sku} • Talla: {item.size_code} • Color: {item.color_name} • Cant: {item.quantity}</div>
                   </div>
-                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{formatCOP(item.price * item.quantity)}</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{formatCOP(Number(item.line_total))}</div>
                 </div>
               ))}
+              <div style={{ fontSize: '0.85rem', textAlign: 'right' }}>
+                Subtotal {formatCOP(Number(selectedOrder.subtotal))}
+                {Number(selectedOrder.discount_total) > 0 && ` · Descuento -${formatCOP(Number(selectedOrder.discount_total))}${selectedOrder.coupon_code ? ` (${selectedOrder.coupon_code})` : ''}`}
+                {` · Envío ${formatCOP(Number(selectedOrder.shipping_cost))} · `}<strong>Total {formatCOP(selectedOrder.total)}</strong>
+              </div>
             </div>
+
+            <details style={{ marginBottom: '1.25rem', fontSize: '0.8rem' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Historial del pedido</summary>
+              <ul style={{ marginTop: '0.5rem' }}>
+                {[...(selectedOrder.order_events ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((e, i) => (
+                  <li key={i}>{new Date(e.created_at).toLocaleString('es-CO')} · {e.event_type}{e.to_status ? ` → ${STATUS_LABEL[e.to_status] ?? e.to_status}` : ''} · {e.actor}{e.note ? ` · ${e.note}` : ''}</li>
+                ))}
+              </ul>
+            </details>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button
                 onClick={() => window.print()}
                 style={{ backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', padding: '0.75rem 1.2rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
               >
-                <Printer size={16} /> Imprimir Guía de Despacho
+                <Printer size={16} /> Imprimir
               </button>
 
               <button
                 onClick={handleSaveChanges}
-                disabled={isSaving}
+                disabled={isSaving || !modalStatus}
                 style={{ backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.75rem 1.5rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.85rem', opacity: isSaving ? 0.7 : 1 }}
               >
-                {isSaving ? 'GUARDANDO EN POSTGRESQL...' : 'GUARDAR CAMBIOS'}
+                {isSaving ? 'GUARDANDO…' : 'GUARDAR CAMBIOS'}
               </button>
             </div>
           </div>
@@ -369,6 +338,8 @@ export const AdminOrdersPage = () => {
     </div>
   );
 };
+
+const orderInput = { padding: '0.65rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem' };
 
 const thOrder = {
   padding: '0.85rem 1rem',

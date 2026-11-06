@@ -1,361 +1,163 @@
-// Capa Repository / Service para Productos e Inventario (Supabase PostgreSQL + Fallback local)
-// J&M FASHION STORE — Moda Masculina Colombia
-
+// =============================================================================
+// Catálogo J&M FASHION STORE — lectura del esquema M24 (Supabase PostgreSQL).
+//
+// M27: contrato único con la base de datos (supabase/migrations/20261106120000_baseline_ecommerce.sql):
+//   products · categories · style_lines · brands · product_colors→colors · product_images · variants→sizes
+//   product_occasions→occasions · v_variant_availability (stock disponible) · v_product_rating (reseñas aprobadas)
+// Sin datos simulados ni valores inventados: si la consulta falla, se lanza el error (la interfaz lo muestra).
+// Precios en pesos colombianos (bigint, sin decimales). Disponibilidad = stock − reservado (vista de la BD).
+// =============================================================================
 import supabase from '../config/supabase';
-import { PRODUCTS } from '../data/mockData';
+import { getClientConfig } from '../config/runtimeConfig.js';
 import { normalizeStyleLine } from '../utils/productUtils';
 
-/**
- * Mapea y normaliza un registro retornado por PostgreSQL (con sus Joins)
- * a la estructura canónica consumida por los componentes de React del storefront.
- */
-export const normalizeProductFromDB = (dbProd) => {
-  if (!dbProd) return null;
+export const PRODUCT_IMAGES_BUCKET = 'product-images';
 
-  // Extraer imágenes desde variantes si existen o usar fallback
-  const variantImages = Array.isArray(dbProd.variants)
-    ? dbProd.variants.map((v) => v.image_url).filter((img) => typeof img === 'string' && img.trim() !== '')
-    : [];
+const PRODUCT_SELECT = `
+  id, reference, slug, name, description, details, fit, fit_description,
+  base_price, compare_at_price, status, is_featured_new, is_bestseller, published_at, created_at,
+  categories ( id, slug, name, size_group ),
+  style_lines ( id, slug, name ),
+  brands ( id, name ),
+  product_colors ( color_id, position, is_default, colors ( id, slug, name, hex_code ) ),
+  product_images ( id, color_id, storage_path, external_url, alt_text, position ),
+  variants ( id, sku, color_id, price_override, is_active, sizes ( code, sort_order ) ),
+  product_occasions ( occasions ( slug, name ) )
+`;
 
-  const images = variantImages.length > 0 ? variantImages : (dbProd.images || []);
+/** URL pública de una imagen: externa (https) o del bucket público de Storage. */
+export function imageUrl(img) {
+  if (!img) return null;
+  if (img.external_url) return img.external_url;
+  if (img.storage_path) return `${getClientConfig().supabase.url}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/${img.storage_path}`;
+  return null;
+}
 
-  // Mapeo defensivo para parsear atributos desde SKU si los joins de sizes/colors están protegidos por RLS
-  const parseSkuInfo = (sku) => {
-    if (!sku || typeof sku !== 'string') return { size: null, color: null };
-    const parts = sku.split('-');
-    const size = parts[parts.length - 2] || null;
-    const colorCode = parts[parts.length - 1] || null;
-    const colorNames = {
-      'BEI': 'Beige Lino',
-      'BLA': 'Blanco Crudo',
-      'GRI': 'Gris Oxford',
-      'NEG': 'Negro Premium'
-    };
-    return {
-      size: size && ['S', 'M', 'L', 'XL', 'XXL', '30', '32', '34'].includes(size.toUpperCase()) ? size.toUpperCase() : null,
-      color: colorCode ? (colorNames[colorCode.toUpperCase()] || colorCode) : null
-    };
-  };
+/** Convierte una fila de la BD (con sus relaciones) a la estructura que consumen los componentes. */
+export function normalizeProduct(db, availability = new Map(), ratings = new Map()) {
+  const colorList = [...(db.product_colors ?? [])]
+    .sort((a, b) => (b.is_default - a.is_default) || a.position - b.position)
+    .filter((pc) => pc.colors)
+    .map((pc) => ({ id: pc.color_id, slug: pc.colors.slug, name: pc.colors.name, hex: pc.colors.hex_code, isDefault: pc.is_default }));
+  const colorById = new Map(colorList.map((c) => [c.id, c]));
 
-  // Extraer tallas
-  const variantSizes = Array.isArray(dbProd.variants)
-    ? Array.from(new Set(dbProd.variants.map((v) => v.sizes?.code || parseSkuInfo(v.sku).size).filter(Boolean)))
-    : [];
-  const sizes = variantSizes.length > 0 ? variantSizes : ['S', 'M', 'L', 'XL'];
+  const imgs = [...(db.product_images ?? [])].sort((a, b) => a.position - b.position);
+  const imagesByColor = {};
+  for (const c of colorList) imagesByColor[c.name] = imgs.filter((i) => i.color_id === c.id).map(imageUrl).filter(Boolean);
+  const general = imgs.filter((i) => !i.color_id).map(imageUrl).filter(Boolean);
+  const defaultColor = colorList[0];
+  const images = [...(defaultColor ? imagesByColor[defaultColor.name] : []), ...general,
+    ...colorList.slice(1).flatMap((c) => imagesByColor[c.name])].filter((v, i, a) => a.indexOf(v) === i);
 
-  // Extraer colores
-  const variantColors = Array.isArray(dbProd.variants)
-    ? dbProd.variants
-        .map((v) => {
-          if (v.colors?.name) return { name: v.colors.name, hex: v.colors.hex_code || '#121212' };
-          const parsed = parseSkuInfo(v.sku);
-          if (parsed.color) {
-            const hex = parsed.color.includes('Beige') ? '#E2D3C4' : parsed.color.includes('Blanco') ? '#F9F6EE' : parsed.color.includes('Gris') ? '#353839' : '#000000';
-            return { name: parsed.color, hex };
-          }
-          return null;
-        })
-        .filter(Boolean)
-    : [];
-  const colors = variantColors.length > 0
-    ? Array.from(new Map(variantColors.map((c) => [c.name, c])).values())
-    : [{ name: 'Negro Premium', hex: '#000000', selected: true }];
+  const price = Number(db.base_price);
+  const variants = (db.variants ?? []).filter((v) => v.is_active).map((v) => ({
+    id: v.id,
+    sku: v.sku,
+    size: v.sizes?.code ?? null,
+    sizeOrder: v.sizes?.sort_order ?? 0,
+    colorId: v.color_id,
+    color: colorById.get(v.color_id)?.name ?? null,
+    price: v.price_override ? Number(v.price_override) : price,
+    available: availability.get(v.id) ?? 0,
+  })).sort((a, b) => a.sizeOrder - b.sizeOrder);
 
-  const styleLineSlug = dbProd.style_lines?.slug
-    ? normalizeStyleLine(dbProd.style_lines.slug)
-    : 'urbana';
-
-  const rawVariants = Array.isArray(dbProd.variants)
-    ? dbProd.variants.map((v) => {
-        const parsed = parseSkuInfo(v.sku);
-        return {
-          id: v.id,
-          sku: v.sku,
-          priceOverride: v.price_override,
-          imageUrl: v.image_url,
-          size: v.sizes?.code || parsed.size,
-          color: v.colors?.name || parsed.color
-        };
-      })
-    : [];
-
-  const canonicalSlug = dbProd.slug || (dbProd.name ? dbProd.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : null) || dbProd.reference?.toLowerCase() || dbProd.id;
+  const sizes = [...new Map(variants.map((v) => [v.size, v.sizeOrder])).entries()]
+    .sort((a, b) => a[1] - b[1]).map(([s]) => s).filter(Boolean);
+  const stock = variants.reduce((n, v) => n + v.available, 0);
+  const original = db.compare_at_price ? Number(db.compare_at_price) : null;
+  const rating = ratings.get(db.id);
+  const occasions = (db.product_occasions ?? []).map((po) => po.occasions?.slug).filter(Boolean);
 
   return {
-    id: dbProd.id,
-    reference: dbProd.reference || dbProd.slug,
-    name: dbProd.name || 'Prenda J&M',
-    slug: canonicalSlug,
-    category: dbProd.categories?.name?.toLowerCase() || dbProd.category || 'camisetas',
-    categoryName: dbProd.categories?.name || 'Camisetas',
-    brand: dbProd.brands?.name || 'J&M Fashion',
-    styleLine: styleLineSlug,
-    price: Number(dbProd.base_price || dbProd.price || 129900),
-    originalPrice: dbProd.original_price ? Number(dbProd.original_price) : null,
-    discountPercent: dbProd.discount_percent || 0,
-    isNew: dbProd.is_new !== undefined ? dbProd.is_new : true,
-    isBestSeller: dbProd.is_bestseller !== undefined ? dbProd.is_bestseller : false,
-    isSale: dbProd.is_sale !== undefined ? dbProd.is_sale : false,
-    rating: Number(dbProd.rating || 4.9),
-    reviewCount: Number(dbProd.review_count || 12),
-    fit: dbProd.fit || 'REGULAR',
-    occasion: dbProd.occasion || 'casual',
-    color: colors[0]?.name || 'Negro Premium',
-    colors,
+    id: db.id,
+    reference: db.reference,
+    slug: db.slug,
+    name: db.name,
+    category: db.categories?.slug ?? null,
+    categoryName: db.categories?.name ?? null,
+    sizeGroup: db.categories?.size_group ?? null,
+    brand: db.brands?.name ?? null,
+    styleLine: db.style_lines?.slug ? normalizeStyleLine(db.style_lines.slug) : null,
+    styleLineName: db.style_lines?.name ?? null,
+    price,
+    originalPrice: original,
+    discountPercent: original ? Math.round((1 - price / original) * 100) : 0,
+    isNew: Boolean(db.is_featured_new),
+    isBestSeller: Boolean(db.is_bestseller),
+    isSale: Boolean(original),
+    rating: rating ? Number(rating.rating) : null,
+    reviewCount: rating ? Number(rating.review_count) : 0,
+    fit: db.fit,
+    occasion: occasions[0] ?? null,
+    occasions,
+    color: defaultColor?.name ?? null,
+    colors: colorList,
     sizes,
-    rawVariants,
-    images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=1000'],
-    description: dbProd.description || 'Prenda masculina de diseño exclusivo de la firma J&M Fashion Store.',
-    details: dbProd.details || ['100% Algodón Colombiano', 'Confección Nacional Premium'],
-    fitDescription: dbProd.fit_description || 'Horma anatómica de caída impecable.',
-    status: dbProd.status || (dbProd.deleted_at ? 'archivado' : 'activo')
+    rawVariants: variants,
+    images,
+    imagesByColor,
+    description: db.description ?? '',
+    details: db.details ?? [],
+    fitDescription: db.fit_description ?? '',
+    status: db.status,
+    publishedAt: db.published_at,
+    stock,
+    inStock: stock > 0,
   };
-};
+}
+
+/** Error de catálogo con el mensaje técnico de la BD (la interfaz muestra un texto propio). */
+export class CatalogError extends Error {
+  constructor(message, cause) { super(message); this.name = 'CatalogError'; this.cause = cause; }
+}
+
+async function loadAvailabilityAndRatings(productIds) {
+  if (productIds.length === 0) return { availability: new Map(), ratings: new Map() };
+  const [av, rt] = await Promise.all([
+    supabase.from('v_variant_availability').select('variant_id, available').in('product_id', productIds),
+    supabase.from('v_product_rating').select('product_id, rating, review_count').in('product_id', productIds),
+  ]);
+  if (av.error) throw new CatalogError('No se pudo consultar la disponibilidad', av.error);
+  if (rt.error) throw new CatalogError('No se pudieron consultar las valoraciones', rt.error);
+  return {
+    availability: new Map(av.data.map((r) => [r.variant_id, Number(r.available)])),
+    ratings: new Map(rt.data.map((r) => [r.product_id, r])),
+  };
+}
 
 export const productService = {
-  // 1. Obtener todos los productos activos de la base de datos PostgreSQL
-  getProducts: async () => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          id,
-          reference,
-          name,
-          description,
-          base_price,
-          base_cost,
-          deleted_at,
-          categories(id, name),
-          brands(id, name),
-          variants(
-            id,
-            sku,
-            price_override,
-            image_url,
-            sizes(code),
-            colors(name, hex_code)
-          )
-        `)
-        .is('deleted_at', null);
-
-      if (error) {
-        console.error('[ProductService Exception]: Error al consultar Supabase:', error.message);
-        throw error;
-      }
-
-      // Si la consulta fue exitosa pero retorne 0 registros en DB, retornar array vacío autentico
-      if (!data || data.length === 0) {
-        console.warn('[ProductService Warning]: La tabla products en Supabase respondió exitosamente con 0 registros.');
-        return [];
-      }
-
-      return data.map(normalizeProductFromDB);
-    } catch (e) {
-      console.warn('[ProductService Fallback]: Ocurrió una falla de red/conexion a Supabase. Activando fallback de emergencia local.', e);
-      // Fallback de emergencia solo si ocurre un error real de red/desconexión
-      return PRODUCTS;
-    }
+  /** Productos visibles para el usuario actual (anon: solo `active`; admin: todos, por RLS). */
+  async getProducts({ includeInactive = false } = {}) {
+    let q = supabase.from('products').select(PRODUCT_SELECT).order('published_at', { ascending: false, nullsFirst: false });
+    if (!includeInactive) q = q.eq('status', 'active');
+    const { data, error } = await q;
+    if (error) throw new CatalogError('No se pudo cargar el catálogo', error);
+    const { availability, ratings } = await loadAvailabilityAndRatings(data.map((p) => p.id));
+    return data.map((p) => normalizeProduct(p, availability, ratings));
   },
 
-  // 2. Obtener producto por ID
-  getProductById: async (id) => {
-    const products = await productService.getProducts();
-    return products.find((p) => p.id === id) || null;
+  /** Un producto activo por slug (null si no existe o no está publicado). */
+  async getProductBySlug(slug) {
+    const { data, error } = await supabase.from('products').select(PRODUCT_SELECT).eq('slug', slug).eq('status', 'active').maybeSingle();
+    if (error) throw new CatalogError('No se pudo cargar el producto', error);
+    if (!data) return null;
+    const { availability, ratings } = await loadAvailabilityAndRatings([data.id]);
+    return normalizeProduct(data, availability, ratings);
   },
 
-  // 3. Obtener detalle de producto por Slug o Referencia
-  getProductBySlug: async (slug) => {
-    const products = await productService.getProducts();
-    const found = products.find((p) => p.slug === slug || p.reference === slug || p.id === slug);
-    return found || products[0] || PRODUCTS[0];
+  /** Catálogos de referencia para filtros y para el formulario de administración. */
+  async getReferenceData() {
+    const [cat, sl, oc, col, sz, br] = await Promise.all([
+      supabase.from('categories').select('id, slug, name, size_group, sort_order').eq('is_active', true).order('sort_order'),
+      supabase.from('style_lines').select('id, slug, name, tagline').eq('is_active', true).order('sort_order'),
+      supabase.from('occasions').select('id, slug, name').eq('is_active', true).order('sort_order'),
+      supabase.from('colors').select('id, slug, name, hex_code').order('sort_order'),
+      supabase.from('sizes').select('id, size_group, code, name, sort_order').order('sort_order'),
+      supabase.from('brands').select('id, name').order('name'),
+    ]);
+    for (const r of [cat, sl, oc, col, sz, br]) if (r.error) throw new CatalogError('No se pudieron cargar los datos de referencia', r.error);
+    return { categories: cat.data, styleLines: sl.data, occasions: oc.data, colors: col.data, sizes: sz.data, brands: br.data };
   },
-
-  // 4. Obtener productos filtrados por Línea de Estilo
-  getProductsByStyleLine: async (styleLineSlug) => {
-    const products = await productService.getProducts();
-    const canonical = normalizeStyleLine(styleLineSlug);
-    if (canonical === 'todas') return products;
-    return products.filter((p) => normalizeStyleLine(p.styleLine) === canonical);
-  },
-
-  // 5. Obtener productos filtrados por Categoría
-  getProductsByCategory: async (categorySlug) => {
-    const products = await productService.getProducts();
-    if (!categorySlug || categorySlug === 'todas') return products;
-    return products.filter((p) => p.category === categorySlug.toLowerCase());
-  },
-
-  // 6. Búsqueda y Filtrado Multi-Criterio (Intersección AND)
-  searchProducts: async (filters = {}) => {
-    const products = await productService.getProducts();
-    return products.filter((p) => {
-      if (p.status === 'borrador' || p.status === 'archivado') return false;
-      if (filters.styleLine && filters.styleLine !== 'todas') {
-        if (normalizeStyleLine(p.styleLine) !== normalizeStyleLine(filters.styleLine)) return false;
-      }
-      if (filters.category && filters.category !== 'todas') {
-        if (p.category !== filters.category.toLowerCase()) return false;
-      }
-      if (filters.fit && filters.fit !== 'todos') {
-        if (p.fit !== filters.fit) return false;
-      }
-      if (filters.size && filters.size !== 'todas') {
-        if (!p.sizes?.includes(filters.size)) return false;
-      }
-      if (filters.maxPrice && p.price > filters.maxPrice) {
-        return false;
-      }
-      return true;
-    });
-  },
-
-  // 7. Obtener lista de categorías reales desde PostgreSQL
-  getCategories: async () => {
-    try {
-      const { data, error } = await supabase.from('categories').select('id, name');
-      if (error || !data) return [];
-      return data;
-    } catch (e) {
-      console.error('[ProductService Error]: Error al obtener categorías de PostgreSQL:', e);
-      return [];
-    }
-  },
-
-  // 8. Obtener lista de marcas reales desde PostgreSQL
-  getBrands: async () => {
-    try {
-      const { data, error } = await supabase.from('brands').select('id, name');
-      if (error || !data) return [];
-      return data;
-    } catch (e) {
-      console.error('[ProductService Error]: Error al obtener marcas de PostgreSQL:', e);
-      return [];
-    }
-  },
-
-  // 9. Crear un nuevo producto en Supabase PostgreSQL (CRUD Real)
-  createProduct: async (productData) => {
-    try {
-      // Resolver style_line_id
-      const styleCanonical = normalizeStyleLine(productData.styleLine || 'urbana');
-      const { data: styleLineRecord } = await supabase
-        .from('style_lines')
-        .select('id')
-        .eq('slug', styleCanonical)
-        .single();
-      
-      const styleLineId = styleLineRecord?.id || 's1000000-0000-0000-0000-000000000001';
-
-      // Resolver category_id por nombre/slug
-      const { data: categoryRecord } = await supabase
-        .from('categories')
-        .select('id')
-        .ilike('name', `%${productData.category || 'camisetas'}%`)
-        .limit(1)
-        .single();
-
-      const categoryId = categoryRecord?.id || 'c1000000-0000-0000-0000-000000000001';
-
-      // Resolver brand_id
-      const { data: brandRecord } = await supabase
-        .from('brands')
-        .select('id')
-        .limit(1)
-        .single();
-
-      const brandId = brandRecord?.id || 'a1000000-0000-0000-0000-000000000001';
-
-      const reference = productData.slug || (productData.name || 'prenda-nueva').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-
-      // Insertar producto máster
-      const { data: newProd, error: insertError } = await supabase
-        .from('products')
-        .insert([{
-          reference: `${reference}-${Math.floor(Math.random() * 1000)}`,
-          name: productData.name,
-          description: productData.description || '',
-          category_id: categoryId,
-          brand_id: brandId,
-          style_line_id: styleLineId,
-          base_price: Number(productData.price) || 129900,
-          base_cost: Number(productData.cost) || 45000
-        }])
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('[ProductService Error]: Error al crear producto en Supabase:', insertError);
-        throw insertError;
-      }
-
-      // Re-consultar producto creado normalizado
-      return await productService.getProductById(newProd.id);
-    } catch (e) {
-      console.error('[ProductService Exception]: Falla al crear producto en PostgreSQL:', e);
-      throw e;
-    }
-  },
-
-  // 10. Actualizar producto existente en Supabase PostgreSQL
-  updateProduct: async (id, updatedFields) => {
-    try {
-      const updateData = {};
-
-      if (updatedFields.name) updateData.name = updatedFields.name;
-      if (updatedFields.description) updateData.description = updatedFields.description;
-      if (updatedFields.price) updateData.base_price = Number(updatedFields.price);
-      if (updatedFields.cost) updateData.base_cost = Number(updatedFields.cost);
-      updateData.updated_at = new Date().toISOString();
-
-      if (updatedFields.styleLine) {
-        const styleCanonical = normalizeStyleLine(updatedFields.styleLine);
-        const { data: styleRecord } = await supabase
-          .from('style_lines')
-          .select('id')
-          .eq('slug', styleCanonical)
-          .single();
-        if (styleRecord) updateData.style_line_id = styleRecord.id;
-      }
-
-      const { data, error } = await supabase
-        .from('products')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('[ProductService Error]: Error al actualizar producto en Supabase:', error);
-        throw error;
-      }
-
-      return await productService.getProductById(id);
-    } catch (e) {
-      console.error('[ProductService Exception]: Falla al actualizar producto en PostgreSQL:', e);
-      throw e;
-    }
-  },
-
-  // 11. Eliminar producto de Supabase PostgreSQL (Soft Delete seguro para preservar pedidos e historial)
-  deleteProduct: async (id) => {
-    try {
-      const { error } = await supabase
-        .from('products')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
-
-      if (error) {
-        console.error('[ProductService Error]: Error al eliminar producto en Supabase:', error);
-        throw error;
-      }
-
-      return true;
-    } catch (e) {
-      console.error('[ProductService Exception]: Falla al eliminar producto en PostgreSQL:', e);
-      throw e;
-    }
-  }
 };
 
 export default productService;

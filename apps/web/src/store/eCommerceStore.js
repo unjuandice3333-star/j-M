@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { PRODUCTS } from '../data/mockData';
 import { analyticsService } from '../services/analytics';
-import supabase from '../config/supabase';
+import { orderService, toOrderError } from '../services/orderService';
 
 export const DEFAULT_EDITORIAL_IMAGES = {
   hero_main: 'https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&q=80&w=2000',
@@ -26,565 +25,302 @@ export const DEFAULT_EDITORIAL_IMAGES = {
   outfit_complete_look: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=1000'
 };
 
-// Generador de ID de sesión para usuarios invitados
-const getOrCreateSessionId = () => {
-  try {
-    let sid = localStorage.getItem('jm_cart_session_id');
-    if (!sid) {
-      sid = `guest-session-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-      localStorage.setItem('jm_cart_session_id', sid);
-    }
-    return sid;
-  } catch (e) {
-    return `guest-session-${Date.now()}`;
-  }
-};
+
+const sameColor = (a, b) => String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
+
+/** Variante exacta (talla + color) de un producto normalizado; null si la combinación no existe. */
+export function findVariant(product, size, color) {
+  const colorName = typeof color === 'string' ? color : color?.name;
+  return (product?.rawVariants ?? []).find((v) => v.size === size && sameColor(v.color, colorName)) ?? null;
+}
+
+const cartSignature = (items) => items.map((i) => `${i.variantId}x${i.quantity}`).sort().join(',');
 
 export const useECommerceStore = create(
   persist(
     (set, get) => ({
-      // Dynamic Products State (Synced from Supabase PostgreSQL)
-      products: PRODUCTS,
+      // ---------------------------------------------------------------- catálogo (BD, sin datos simulados)
+      products: [],
       isLoadingProducts: false,
       productsError: null,
       productsLoaded: false,
+      shippingMethods: [],
 
       loadProducts: async (force = false) => {
         const { productsLoaded, isLoadingProducts } = get();
-        if (productsLoaded && !force && !isLoadingProducts) return;
-
+        if ((productsLoaded && !force) || isLoadingProducts) return;
         set({ isLoadingProducts: true, productsError: null });
         try {
           const { default: productService } = await import('../services/productService');
-          const fetchedProducts = await productService.getProducts();
-
-          set({
-            products: fetchedProducts,
-            isLoadingProducts: false,
-            productsLoaded: true,
-            productsError: null
-          });
+          const [products, shippingMethods] = await Promise.all([productService.getProducts(), orderService.getShippingMethods()]);
+          set({ products, shippingMethods, isLoadingProducts: false, productsLoaded: true });
+          get().reconcileCart();
         } catch (err) {
-          console.error('[eCommerceStore Error]: Error al cargar productos desde Supabase:', err);
-          set({
-            isLoadingProducts: false,
-            productsError: err.message || 'Error al conectar con la base de datos de productos.'
-          });
+          console.error('[catálogo] no se pudo cargar:', err?.cause?.message || err.message);
+          set({ isLoadingProducts: false, productsError: 'No pudimos cargar el catálogo. Revisa tu conexión e inténtalo de nuevo.' });
         }
       },
 
-      // Storefront Cart & Persistence State
+      // ---------------------------------------------------------------- carrito (persistido en el navegador)
       items: [],
-      wishlist: ['prod-1', 'prod-3'],
+      wishlist: [],
       isCartOpen: false,
       isSearchOpen: false,
       isMobileMenuOpen: false,
       searchQuery: '',
-      isSyncingCart: false,
       activeCheckoutOrderId: null,
+      appliedCoupon: null,   // { code, discountAmount, freeShipping } validado por la BD
+      quote: null,           // última cotización de la BD (quote_cart) y la firma del carrito que la produjo
+      cartNotice: null,      // avisos de reconciliación (productos retirados o sin stock)
 
-      // Coupon State
-      appliedCoupon: null,
-
-      // Editorial Home Images Dynamic Store
+      // Editorial (imágenes de portada)
       editorialImages: { ...DEFAULT_EDITORIAL_IMAGES },
-
-      updateEditorialImage: (key, imageUrl) => {
-        set((state) => ({
-          editorialImages: {
-            ...state.editorialImages,
-            [key]: imageUrl
-          }
-        }));
-      },
-
+      updateEditorialImage: (key, imageUrl) => set((state) => ({ editorialImages: { ...state.editorialImages, [key]: imageUrl } })),
       resetEditorialImage: (key) => {
         const defaultImg = DEFAULT_EDITORIAL_IMAGES[key];
-        if (defaultImg) {
-          set((state) => ({
-            editorialImages: {
-              ...state.editorialImages,
-              [key]: defaultImg
-            }
-          }));
-        }
+        if (defaultImg) set((state) => ({ editorialImages: { ...state.editorialImages, [key]: defaultImg } }));
       },
 
-      // Customer Profile & Address State
-      userProfile: {
-        name: '',
-        email: '',
-        phone: '',
-        preferredSize: 'M',
-        preferredFit: 'REGULAR'
-      },
-
+      userProfile: { name: '', email: '', phone: '', preferredSize: 'M', preferredFit: 'REGULAR' },
       savedAddresses: [],
-      orders: [],
+      orders: [],            // pedidos creados en este navegador: { id, order_number, public_token, total, status, created_at }
 
-      // Modals
       activeModal: null,
       selectedModalCategory: 'camisetas',
       selectedModalProduct: null,
 
-      // Sincronización del carrito en servidor Supabase (Carts & Cart_Items)
-      syncCartWithServer: async () => {
-        const { items } = get();
-        set({ isSyncingCart: true });
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const userId = session?.user?.id || null;
-          const sessionId = userId ? null : getOrCreateSessionId();
-
-          // 1. Obtener o crear carrito activo en PostgreSQL
-          let cartQuery = supabase.from('carts').select('id').eq('status', 'active');
-          if (userId) {
-            cartQuery = cartQuery.eq('user_id', userId);
-          } else {
-            cartQuery = cartQuery.eq('session_id', sessionId);
-            if (sessionId) {
-              cartQuery = cartQuery.setHeader('x-session-id', sessionId);
-            }
-          }
-
-          let { data: cartRecord, error: cartErr } = await cartQuery.maybeSingle();
-
-          if (!cartRecord) {
-            let insertQuery = supabase
-              .from('carts')
-              .insert([{ user_id: userId, session_id: sessionId, status: 'active' }])
-              .select('id');
-
-            if (sessionId) {
-              insertQuery = insertQuery.setHeader('x-session-id', sessionId);
-            }
-
-            const { data: newCart, error: newCartErr } = await insertQuery.single();
-
-            if (!newCartErr && newCart) {
-              cartRecord = newCart;
-            }
-          }
-
-          if (cartRecord?.id && items.length > 0) {
-            // Reconciliar cart_items en Supabase únicamente con variant_id UUID real
-            const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-            const BRANCH_ID = 'b1000000-0000-0000-0000-000000000001';
-
-            const cartItemsPayload = items
-              .filter((item) => item.variantId && UUID_REGEX.test(item.variantId) && item.variantId !== BRANCH_ID)
-              .map((item) => ({
-                cart_id: cartRecord.id,
-                variant_id: item.variantId,
-                quantity: item.quantity,
-                unit_price: item.price
-              }));
-
-            if (cartItemsPayload.length > 0) {
-              let itemsQuery = supabase
-                .from('cart_items')
-                .upsert(cartItemsPayload, { onConflict: 'cart_id,variant_id' });
-
-              if (sessionId) {
-                itemsQuery = itemsQuery.setHeader('x-session-id', sessionId);
-              }
-
-              await itemsQuery;
-            }
-          }
-        } catch (e) {
-          console.warn('[eCommerceStore Warning]: Cart server sync soft warning:', e);
-        } finally {
-          set({ isSyncingCart: false });
-        }
-      },
-
-      // Cart Actions (Optimistic UX Update + Server Reconcile)
+      /**
+       * Agrega una variante concreta (talla + color) al carrito.
+       * @returns {{ ok: boolean, message?: string }}
+       */
       addItem: (product, size, color, quantity = 1) => {
+        const colorName = typeof color === 'string' ? color : color?.name;
+        const variant = findVariant(product, size, colorName);
+        if (!variant) return { ok: false, message: 'Selecciona una talla y un color disponibles.' };
+        const qty = Math.max(1, Math.floor(Number(quantity) || 1));
         const { items } = get();
-        const colorName = typeof color === 'string' ? color : (color?.name || 'Único');
+        const existing = items.find((i) => i.variantId === variant.id);
+        const wanted = (existing?.quantity ?? 0) + qty;
+        if (variant.available <= 0) return { ok: false, message: 'Esta combinación está agotada.' };
+        if (wanted > variant.available) return { ok: false, message: `Solo hay ${variant.available} unidad(es) disponibles de esta talla y color.` };
 
-        // Resolver la variante real de PostgreSQL de forma autoritativa
-        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        const BRANCH_ID = 'b1000000-0000-0000-0000-000000000001';
-
-        let resolvedVariantId = null;
-        if (product.variantId && UUID_REGEX.test(product.variantId) && product.variantId !== BRANCH_ID) {
-          resolvedVariantId = product.variantId;
-        }
-
-        if (!resolvedVariantId && Array.isArray(product.rawVariants) && product.rawVariants.length > 0) {
-          const normSize = String(size || '').trim().toUpperCase();
-          const normColor = String(colorName || '').trim().toLowerCase();
-
-          // 1. Coincidencia por talla y color
-          let matched = product.rawVariants.find((v) => {
-            const vSize = String(v.size || '').trim().toUpperCase();
-            const vColor = String(v.color || '').trim().toLowerCase();
-            return vSize === normSize && (vColor === normColor || vColor.includes(normColor) || normColor.includes(vColor));
-          });
-
-          // 2. Coincidencia defensiva por código de SKU si se requiere (ej: BEI para Beige Lino)
-          if (!matched) {
-            const colorCode = normColor.includes('beige') ? 'BEI' : normColor.includes('blanc') ? 'BLA' : normColor.includes('gris') ? 'GRI' : normColor.includes('negr') ? 'NEG' : '';
-            matched = product.rawVariants.find((v) => {
-              const vSize = String(v.size || '').trim().toUpperCase();
-              return vSize === normSize && Boolean(colorCode && v.sku?.includes(colorCode));
-            });
-          }
-
-          // 3. Fallback a coincidencia de talla
-          if (!matched) {
-            matched = product.rawVariants.find((v) => String(v.size || '').trim().toUpperCase() === normSize);
-          }
-
-          if (matched?.id && UUID_REGEX.test(matched.id) && matched.id !== BRANCH_ID) {
-            resolvedVariantId = matched.id;
-          }
-        }
-
-        const itemId = `${product.id}-${size}-${colorName}`;
-        const existingIndex = items.findIndex((i) => i.id === itemId);
-
-        let updatedItems = [];
-        if (existingIndex >= 0) {
-          updatedItems = [...items];
-          updatedItems[existingIndex].quantity += quantity;
-          if (resolvedVariantId) {
-            updatedItems[existingIndex].variantId = resolvedVariantId;
-          }
-        } else {
-          const newItem = {
-            id: itemId,
-            productId: product.id,
-            variantId: resolvedVariantId,
-            product,
-            name: product.name,
-            price: product.price,
-            originalPrice: product.originalPrice,
-            image: product.images ? product.images[0] : product.image,
-            size,
-            color: colorName,
-            quantity
-          };
-          updatedItems = [...items, newItem];
-        }
-
+        const image = product.imagesByColor?.[variant.color]?.[0] ?? product.images?.[0] ?? null;
+        const updatedItems = existing
+          ? items.map((i) => (i.variantId === variant.id ? { ...i, quantity: wanted, available: variant.available } : i))
+          : [...items, {
+              id: variant.id, variantId: variant.id, productId: product.id, slug: product.slug, sku: variant.sku,
+              name: product.name, price: variant.price, originalPrice: product.originalPrice, image,
+              size: variant.size, color: variant.color, quantity: qty, available: variant.available,
+            }];
         set({ items: updatedItems, isCartOpen: true });
-        analyticsService.addToCart(product, size, color, quantity);
-        get().syncCartWithServer();
+        analyticsService.addToCart(product, size, colorName, qty);
+        return { ok: true };
       },
 
       removeItem: (itemId) => {
-        const itemToRemove = get().items.find((i) => i.id === itemId);
-        if (itemToRemove) {
-          analyticsService.removeFromCart(itemToRemove);
-        }
+        const item = get().items.find((i) => i.id === itemId);
+        if (item) analyticsService.removeFromCart(item);
         set({ items: get().items.filter((i) => i.id !== itemId) });
-        get().syncCartWithServer();
       },
 
+      /** Cambia la cantidad; 0 o menos elimina la línea; nunca supera el disponible conocido. */
       updateQuantity: (itemId, quantity) => {
-        if (quantity <= 0) {
-          get().removeItem(itemId);
-          return;
-        }
-        set({
-          items: get().items.map((i) => (i.id === itemId ? { ...i, quantity } : i))
-        });
-        get().syncCartWithServer();
+        const q = Math.floor(Number(quantity) || 0);
+        if (q <= 0) { get().removeItem(itemId); return { ok: true }; }
+        const item = get().items.find((i) => i.id === itemId);
+        if (!item) return { ok: false };
+        if (item.available != null && q > item.available) return { ok: false, message: `Solo hay ${item.available} unidad(es) disponibles.` };
+        set({ items: get().items.map((i) => (i.id === itemId ? { ...i, quantity: q } : i)) });
+        return { ok: true };
       },
+
+      /** Cambia la talla o el color de una línea del carrito por otra variante del mismo producto. */
+      changeVariant: (itemId, size, color) => {
+        const { items, products } = get();
+        const item = items.find((i) => i.id === itemId);
+        const product = products.find((p) => p.id === item?.productId);
+        const variant = product && findVariant(product, size, color);
+        if (!variant) return { ok: false, message: 'Esa combinación de talla y color no existe.' };
+        if (variant.available < item.quantity) return { ok: false, message: 'No hay stock suficiente en esa talla y color.' };
+        const rest = items.filter((i) => i.id !== itemId);
+        get().removeItem(itemId); set({ items: rest });
+        return get().addItem(product, variant.size, variant.color, item.quantity);
+      },
+
+      /** Ajusta el carrito al catálogo actual: retira variantes inexistentes y actualiza precio y disponibilidad. */
+      reconcileCart: () => {
+        const { items, products } = get();
+        const byVariant = new Map(products.flatMap((p) => p.rawVariants.map((v) => [v.id, { p, v }])));
+        const notices = [];
+        const next = [];
+        for (const i of items) {
+          const hit = byVariant.get(i.variantId);
+          if (!hit) { notices.push(`${i.name} ya no está disponible y se retiró del carrito.`); continue; }
+          if (hit.v.available <= 0) { notices.push(`${i.name} (${i.size}, ${i.color}) se agotó y se retiró del carrito.`); continue; }
+          const quantity = Math.min(i.quantity, hit.v.available);
+          if (quantity < i.quantity) notices.push(`${i.name}: solo quedan ${hit.v.available} unidad(es); se ajustó la cantidad.`);
+          next.push({ ...i, price: hit.v.price, available: hit.v.available, quantity });
+        }
+        set({ items: next, cartNotice: notices.length ? notices.join(' ') : null });
+      },
+      dismissCartNotice: () => set({ cartNotice: null }),
 
       saveForLater: (itemId) => {
         const { items, wishlist } = get();
         const item = items.find((i) => i.id === itemId);
         if (item) {
-          if (!wishlist.includes(item.productId)) {
-            set({ wishlist: [...wishlist, item.productId] });
-          }
+          if (!wishlist.includes(item.productId)) set({ wishlist: [...wishlist, item.productId] });
           get().removeItem(itemId);
         }
       },
 
-      clearCart: () => {
-        set({ items: [], appliedCoupon: null, activeCheckoutOrderId: null });
-        get().syncCartWithServer();
-      },
+      clearCart: () => set({ items: [], appliedCoupon: null, quote: null, activeCheckoutOrderId: null }),
 
-      // Valida que la orden confirmada como pagada corresponda a este checkout antes de vaciar el carrito
+      /** Vacía el carrito solo si el pedido confirmado es el del checkout en curso. */
       finalizePaidOrder: (orderIdentifier) => {
-        const { activeCheckoutOrderId, clearCart, orders } = get();
-        if (!orderIdentifier) return false;
-
-        const currentOrder = orders.find(
-          (o) => o.id === orderIdentifier || o.order_number === orderIdentifier
-        );
-        const isCurrentSessionOrder =
-          Boolean(activeCheckoutOrderId) &&
-          (activeCheckoutOrderId === orderIdentifier ||
-            currentOrder?.id === activeCheckoutOrderId ||
-            currentOrder?.order_number === activeCheckoutOrderId);
-
-        if (isCurrentSessionOrder) {
-          clearCart();
-          set({ activeCheckoutOrderId: null });
+        const { activeCheckoutOrderId, orders } = get();
+        if (!orderIdentifier || !activeCheckoutOrderId) return false;
+        const current = orders.find((o) => o.id === orderIdentifier || o.order_number === orderIdentifier);
+        if (activeCheckoutOrderId === orderIdentifier || current?.id === activeCheckoutOrderId) {
+          get().clearCart();
           return true;
         }
         return false;
       },
 
-      // Coupon Actions
-      applyCoupon: (code) => {
-        const cleanCode = code.trim().toUpperCase();
-        if (cleanCode === 'JM10OFF') {
-          set({ appliedCoupon: { code: 'JM10OFF', percent: 10 } });
-          return { success: true, message: '¡Cupón de 10% de descuento aplicado!' };
-        } else if (cleanCode === 'BIENVENIDO2026') {
-          set({ appliedCoupon: { code: 'BIENVENIDO2026', percent: 15 } });
-          return { success: true, message: '¡Cupón de bienvenida 15% OFF aplicado!' };
-        } else {
-          return { success: false, message: 'Cupón no válido o expirado.' };
+      // ---------------------------------------------------------------- cupones y totales (BD)
+      applyCoupon: async (code, email = null) => {
+        const subtotal = get().items.reduce((n, i) => n + i.price * i.quantity, 0);
+        try {
+          const r = await orderService.validateCoupon(code, subtotal, email);
+          if (!r.valid) return { success: false, message: r.message };
+          set({ appliedCoupon: { code: r.code, discountAmount: Number(r.discount_amount), freeShipping: Boolean(r.free_shipping) }, quote: null });
+          return { success: true, message: `Cupón ${r.code} aplicado.` };
+        } catch (e) {
+          return { success: false, message: toOrderError(e).message };
         }
       },
+      removeCoupon: () => set({ appliedCoupon: null, quote: null }),
 
-      removeCoupon: () => set({ appliedCoupon: null }),
+      /** Cotización autoritativa (precios, descuento, envío, stock) para el carrito actual. */
+      refreshQuote: async ({ shippingMethod = 'standard', email = null } = {}) => {
+        const { items, appliedCoupon } = get();
+        if (items.length === 0) { set({ quote: null }); return null; }
+        const signature = cartSignature(items);
+        const q = await orderService.quote(items, { couponCode: appliedCoupon?.code ?? null, shippingMethod, email });
+        if (cartSignature(get().items) !== signature) return null; // el carrito cambió mientras tanto
+        if (appliedCoupon && q.coupon && !q.coupon.valid) set({ appliedCoupon: null });
+        set({ quote: { ...q, signature, shippingMethod } });
+        return q;
+      },
 
-      // Wishlist Actions
+      /** Totales para mostrar: los de la BD si la cotización corresponde al carrito; si no, una estimación local. */
+      getTotals: () => {
+        const { items, appliedCoupon, quote, shippingMethods } = get();
+        const rawSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const standard = shippingMethods.find((m) => m.code === 'standard');
+        const threshold = standard?.free_over_subtotal ?? null;
+        if (quote && quote.signature === cartSignature(items)) {
+          const subtotal = Number(quote.subtotal) - Number(quote.discount_total);
+          return {
+            rawSubtotal: Number(quote.subtotal), couponDiscount: Number(quote.discount_total), subtotal,
+            shippingCost: Number(quote.shipping_cost), total: Number(quote.total), freeShippingThreshold: threshold,
+            amountForFreeShipping: threshold ? Math.max(0, threshold - subtotal) : 0,
+            hasFreeShipping: Number(quote.shipping_cost) === 0 && rawSubtotal > 0, canCheckout: Boolean(quote.can_checkout),
+            lines: quote.lines ?? [], isEstimate: false,
+          };
+        }
+        const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discountAmount, rawSubtotal) : 0;
+        const subtotal = Math.max(0, rawSubtotal - couponDiscount);
+        const free = rawSubtotal === 0 || appliedCoupon?.freeShipping || (threshold != null && subtotal >= threshold);
+        const shippingCost = free ? 0 : (standard?.cost ?? 0);
+        return {
+          rawSubtotal, couponDiscount, subtotal, shippingCost, total: subtotal + shippingCost, freeShippingThreshold: threshold,
+          amountForFreeShipping: threshold ? Math.max(0, threshold - subtotal) : 0, hasFreeShipping: free && rawSubtotal > 0,
+          canCheckout: items.length > 0, lines: [], isEstimate: true,
+        };
+      },
+
+      // ---------------------------------------------------------------- lista de deseos
       toggleWishlist: (productId) => {
         const { wishlist } = get();
-        if (wishlist.includes(productId)) {
-          set({ wishlist: wishlist.filter((id) => id !== productId) });
-        } else {
-          set({ wishlist: [...wishlist, productId] });
-        }
+        set({ wishlist: wishlist.includes(productId) ? wishlist.filter((id) => id !== productId) : [...wishlist, productId] });
       },
-
       moveWishlistToCart: () => {
         const { wishlist, products, addItem } = get();
-        wishlist.forEach((prodId) => {
+        const failed = [];
+        for (const prodId of wishlist) {
           const prod = products.find((p) => p.id === prodId);
-          if (prod) {
-            addItem(prod, prod.sizes[0], prod.colors[0], 1);
-          }
-        });
+          const v = prod?.rawVariants.find((x) => x.available > 0);
+          if (!v || !addItem(prod, v.size, v.color, 1).ok) failed.push(prod?.name ?? 'Producto no disponible');
+        }
+        return { ok: failed.length === 0, failed };
       },
-
       isInWishlist: (productId) => get().wishlist.includes(productId),
 
-      // Admin Product CRUD Actions
-      addProduct: async (newProd) => {
-        try {
-          const { default: productService } = await import('../services/productService');
-          const savedProduct = await productService.createProduct(newProd);
-
-          if (savedProduct) {
-            const { products } = get();
-            set({ products: [savedProduct, ...products.filter((p) => p.id !== savedProduct.id)] });
-            return savedProduct;
-          }
-        } catch (e) {
-          console.error('[eCommerceStore Error]: Error al guardar producto en Supabase:', e);
-          throw e;
-        }
+      // ---------------------------------------------------------------- administración de productos (RPC admin_*)
+      addProduct: async (payload) => {
+        const { adminService } = await import('../services/adminService');
+        const saved = await adminService.upsertProduct(payload);
+        await get().loadProducts(true);
+        return saved;
       },
-
-      updateProduct: async (id, updatedFields) => {
-        try {
-          const { default: productService } = await import('../services/productService');
-          const updatedProd = await productService.updateProduct(id, updatedFields);
-
-          if (updatedProd) {
-            const { products } = get();
-            set({
-              products: products.map((p) => (p.id === id ? { ...p, ...updatedProd } : p))
-            });
-            return updatedProd;
-          }
-        } catch (e) {
-          console.error('[eCommerceStore Error]: Error al actualizar producto en Supabase:', e);
-          throw e;
-        }
-      },
-
+      updateProduct: async (_id, payload) => get().addProduct(payload),
       deleteProduct: async (id) => {
-        try {
-          const { default: productService } = await import('../services/productService');
-          await productService.deleteProduct(id);
+        const { adminService } = await import('../services/adminService');
+        await adminService.setProductStatus(id, 'archived');
+        await get().loadProducts(true);
+        return true;
+      },
+      resetProductsToDefault: () => get().loadProducts(true),
 
-          const { products } = get();
-          set({ products: products.filter((p) => p.id !== id) });
-          return true;
-        } catch (e) {
-          console.error('[eCommerceStore Error]: Error al eliminar producto en Supabase:', e);
-          throw e;
-        }
+      // ---------------------------------------------------------------- pedidos
+      /**
+       * Crea el pedido en la BD (create_order). La BD fija precios, descuento, envío y reserva el stock.
+       * @param {{ customer: {name,email,phone,document?}, shipping: {department,city,address,neighborhood?,notes?},
+       *           shippingMethod?: string, idempotencyKey: string }} input
+       */
+      createOrder: async ({ customer, shipping, shippingMethod = 'standard', idempotencyKey }) => {
+        const { items, appliedCoupon, orders } = get();
+        const r = await orderService.createOrder({ customer, shipping, items, couponCode: appliedCoupon?.code, shippingMethod, idempotencyKey });
+        const order = { id: r.order_id, order_number: r.order_number, public_token: r.public_token, status: r.status,
+          total: Number(r.total), amount_in_cents: Number(r.amount_in_cents), payment_expires_at: r.payment_expires_at,
+          created_at: new Date().toISOString(), isDuplicate: r.is_duplicate };
+        set({ orders: [order, ...orders.filter((o) => o.id !== order.id)].slice(0, 20), activeCheckoutOrderId: order.id });
+        return order;
       },
 
-      resetProductsToDefault: () => {
-        get().loadProducts(true);
-      },
+      /** Recuerda un pedido del cliente (id + token) para poder pagarlo o cancelarlo desde la confirmación. */
+      rememberOrder: (o) => set({ orders: [{ id: o.id, order_number: o.order_number, public_token: o.public_token, total: Number(o.total),
+        status: o.status, created_at: o.created_at }, ...get().orders.filter((x) => x.id !== o.id)].slice(0, 20) }),
 
-      // Transactional & Idempotent Order Creation
-      createOrder: async (orderData) => {
-        const { orders, appliedCoupon, clearCart } = get();
+      updateProfile: (updatedData) => set({ userProfile: { ...get().userProfile, ...updatedData } }),
+      addAddress: (addressData) => set({ savedAddresses: [...get().savedAddresses, { id: `addr-${Date.now()}`, ...addressData }] }),
 
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const idempotencyKey = orderData.idempotencyKey || `idemp-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-
-          // Invocar el RPC extendido e idempotente con validaciones server-side completas
-          const { data: rpcResponse, error: rpcError } = await supabase.rpc('create_online_order_validated_idempotent', {
-            p_customer_name: orderData.customerName || 'Cliente J&M',
-            p_customer_email: orderData.email,
-            p_customer_phone: orderData.phone,
-            p_shipping_department: orderData.department || 'Cundinamarca',
-            p_shipping_city: orderData.city || 'Bogotá D.C.',
-            p_shipping_address: orderData.shippingAddress,
-            p_shipping_neighborhood: orderData.neighborhood || '',
-            p_shipping_notes: orderData.shippingNotes || '',
-            p_shipping_method: orderData.shippingMethod || 'Envío Estándar Nacional',
-            p_coupon_code: appliedCoupon?.code || null,
-            p_items: (orderData.items || []).map((item) => {
-              const cleanVariantId = item.variantId;
-              const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-              const BRANCH_ID = 'b1000000-0000-0000-0000-000000000001';
-
-              if (!cleanVariantId || !UUID_REGEX.test(cleanVariantId) || cleanVariantId === BRANCH_ID) {
-                throw new Error(`La prenda "${item.name}" (Talla: ${item.size || 'M'}) no tiene una variante válida de catálogo. Por favor retírala del carrito y vuelve a seleccionarla.`);
-              }
-              return {
-                variant_id: cleanVariantId,
-                quantity: item.quantity,
-                name: item.name,
-                price: item.price,
-                size: item.size,
-                color: item.color
-              };
-            }),
-            p_idempotency_key: idempotencyKey,
-            p_user_id: session?.user?.id || null
-          });
-
-          if (rpcError) {
-            console.error('[createOrder RPC Error]:', rpcError);
-            throw new Error(rpcError.message || 'Error al procesar el pedido en el servidor.');
-          }
-
-          if (rpcResponse && rpcResponse.order_id) {
-            const serverOrder = {
-              id: rpcResponse.order_id,
-              order_number: rpcResponse.order_number,
-              date: 'Hoy',
-              status: rpcResponse.status || 'payment_pending',
-              total: rpcResponse.total,
-              amount_in_cents: rpcResponse.amount_in_cents,
-              isDuplicate: rpcResponse.is_duplicate || false,
-              ...orderData
-            };
-            set({
-              orders: [serverOrder, ...orders.filter((o) => o.id !== serverOrder.id)],
-              activeCheckoutOrderId: rpcResponse.order_id
-            });
-            // NOTA: NO vaciar el carrito aquí. El carrito se vacía únicamente cuando
-            // la orden es confirmada como 'paid' por la pasarela de pagos.
-            return {
-              id: rpcResponse.order_id,
-              order_id: rpcResponse.order_id,
-              order_number: rpcResponse.order_number,
-              orderNumber: rpcResponse.order_number,
-              total: rpcResponse.total,
-              amount_in_cents: rpcResponse.amount_in_cents
-            };
-          }
-        } catch (e) {
-          console.error('[eCommerceStore Error]: Error autoritativo en checkout server-side:', e);
-          throw e;
-        }
-      },
-
-      // Profile & Address Actions
-      updateProfile: (updatedData) => {
-        set({ userProfile: { ...get().userProfile, ...updatedData } });
-      },
-
-      addAddress: (addressData) => {
-        const { savedAddresses } = get();
-        const newAddress = {
-          id: `addr-${Date.now()}`,
-          ...addressData
-        };
-        set({ savedAddresses: [...savedAddresses, newAddress] });
-      },
-
-      // Drawer Controls
       setCartOpen: (open) => set({ isCartOpen: open }),
       setSearchOpen: (open) => set({ isSearchOpen: open }),
       setMobileMenuOpen: (open) => set({ isMobileMenuOpen: open }),
       setSearchQuery: (query) => set({ searchQuery: query }),
 
-      // Modal Controls
       openFitGuide: () => set({ activeModal: 'fitGuide' }),
-      openSizeGuide: (category = 'camisetas') =>
-        set({ activeModal: 'sizeGuide', selectedModalCategory: category }),
-      openSizeRecommender: (product = null) =>
-        set({ activeModal: 'sizeRecommender', selectedModalProduct: product }),
+      openSizeGuide: (category = 'camisetas') => set({ activeModal: 'sizeGuide', selectedModalCategory: category }),
+      openSizeRecommender: (product = null) => set({ activeModal: 'sizeRecommender', selectedModalProduct: product }),
       closeModal: () => set({ activeModal: null }),
-
-      // Computed Totals
-      getTotals: () => {
-        const { items, appliedCoupon } = get();
-        const rawSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-        let couponDiscount = 0;
-        if (appliedCoupon && rawSubtotal > 0) {
-          couponDiscount = Math.round(rawSubtotal * (appliedCoupon.percent / 100));
-        }
-
-        const subtotal = Math.max(0, rawSubtotal - couponDiscount);
-        const freeShippingThreshold = 200000;
-        const shippingCost = subtotal >= freeShippingThreshold || subtotal === 0 ? 0 : 15000;
-        const amountForFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
-
-        return {
-          rawSubtotal,
-          couponDiscount,
-          subtotal,
-          shippingCost,
-          total: subtotal + shippingCost,
-          freeShippingThreshold,
-          amountForFreeShipping,
-          hasFreeShipping: subtotal >= freeShippingThreshold && subtotal > 0
-        };
-      }
     }),
     {
-      name: 'jm-fashion-store-cart-v13',
-      version: 13,
-      migrate: (persistedState, version) => {
-        if (!persistedState) return persistedState;
-
-        // Descartar ítems corruptos de versiones previas con fallback b100... o sin variantId válido
-        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        const BRANCH_ID = 'b1000000-0000-0000-0000-000000000001';
-
-        const cleanItems = Array.isArray(persistedState.items)
-          ? persistedState.items.filter((item) => item.variantId && UUID_REGEX.test(item.variantId) && item.variantId !== BRANCH_ID)
-          : [];
-
-        return {
-          ...persistedState,
-          items: cleanItems
-        };
-      },
+      name: 'jm-fashion-store-cart-v14',
+      version: 14,
+      // v14 (M27): el carrito guarda variantes reales de la BD. Los carritos anteriores (catálogo simulado) se descartan.
+      migrate: () => ({ items: [], wishlist: [], appliedCoupon: null, savedAddresses: [], orders: [], activeCheckoutOrderId: null }),
       partialize: (state) => ({
-        products: state.products,
         items: state.items,
         wishlist: state.wishlist,
         appliedCoupon: state.appliedCoupon,
         savedAddresses: state.savedAddresses,
         editorialImages: state.editorialImages,
-        activeCheckoutOrderId: state.activeCheckoutOrderId
-      })
+        orders: state.orders,
+        activeCheckoutOrderId: state.activeCheckoutOrderId,
+      }),
     }
   )
 );

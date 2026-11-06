@@ -17,9 +17,9 @@ import {
   ZoomIn,
   X
 } from 'lucide-react';
-import { REVIEWS, formatCOP } from '../data/mockData';
+import { formatCOP } from '../data/mockData';
+import supabase from '../config/supabase';
 import { useECommerceStore } from '../store/eCommerceStore';
-import CompleteTheLook from '../components/Product/CompleteTheLook';
 import ProductCard from '../components/Product/ProductCard';
 import SafeProductImage from '../components/Common/SafeImage';
 
@@ -32,6 +32,8 @@ export const ProductDetailPage = () => {
     products,
     loadProducts,
     productsLoaded,
+    isLoadingProducts,
+    productsError,
     addItem,
     toggleWishlist,
     isInWishlist,
@@ -46,17 +48,39 @@ export const ProductDetailPage = () => {
     }
   }, [productsLoaded, loadProducts]);
 
-  const product = products.find((p) => p.slug === slug || p.reference?.toLowerCase() === slug?.toLowerCase() || p.id === slug) || products[0];
+  // M27: nunca se muestra otro producto en lugar del pedido (antes: products[0] como respaldo).
+  const product = products.find((p) => p.slug === slug) || null;
   const inWishlist = isInWishlist(product?.id);
 
   // Local Component States
   const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || { name: 'Único', hex: '#000000' });
+  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || null);
   const [selectedSize, setSelectedSize] = useState(null); // null by default to enforce selection
   const [sizeError, setSizeError] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [addedFeedback, setAddedFeedback] = useState(false);
+  const [cartError, setCartError] = useState(null);
+  const [reviews, setReviews] = useState([]);
+
+  // Variantes reales: disponibilidad por talla para el color elegido
+  const variantsForColor = (product?.rawVariants ?? []).filter((v) => v.color === selectedColor?.name);
+  const variantFor = (size) => variantsForColor.find((v) => v.size === size) ?? null;
+  const selectedVariant = selectedSize ? variantFor(selectedSize) : null;
+  const maxQty = selectedVariant?.available ?? 0;
+  const colorImages = [...(product?.imagesByColor?.[selectedColor?.name] ?? []), ...(product?.images ?? [])]
+    .filter((v, i, a) => a.indexOf(v) === i);
+  const galleryProduct = product ? { ...product, images: colorImages.length ? colorImages : product.images } : null;
+
+  // Reseñas aprobadas (RLS: solo status = approved para el público)
+  useEffect(() => {
+    if (!product?.id) return undefined;
+    let alive = true;
+    supabase.from('product_reviews').select('id, author_name, city, rating, title, comment, created_at, is_verified_buyer')
+      .eq('product_id', product.id).eq('status', 'approved').order('created_at', { ascending: false }).limit(12)
+      .then(({ data }) => { if (alive) setReviews(data ?? []); });
+    return () => { alive = false; };
+  }, [product?.id]);
 
   // Accordion open states
   const [openAccordions, setOpenAccordions] = useState({
@@ -69,8 +93,9 @@ export const ProductDetailPage = () => {
   useEffect(() => {
     if (product) {
       setSelectedImage(0);
-      setSelectedColor(product.colors?.[0] || { name: 'Único', hex: '#000000' });
-      setSelectedSize(product.sizes?.[0] || null);
+      setSelectedColor(product.colors?.[0] || null);
+      setSelectedSize(null);
+      setCartError(null);
       setSizeError(false);
       setQuantity(1);
       setAddedFeedback(false);
@@ -95,7 +120,7 @@ export const ProductDetailPage = () => {
           url: window.location.href,
           priceCurrency: 'COP',
           price: product.price,
-          availability: 'https://schema.org/InStock',
+          availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
           itemCondition: 'https://schema.org/NewCondition'
         }
       };
@@ -121,33 +146,42 @@ export const ProductDetailPage = () => {
     setOpenAccordions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleAddToCart = () => {
-    if (!product) return;
-    if (product.sizes?.length > 0 && !selectedSize) {
+  const tryAdd = () => {
+    if (!product) return false;
+    if (!selectedSize || !selectedVariant) {
       setSizeError(true);
       const sizeEl = document.getElementById('size-selector-container');
       if (sizeEl) sizeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
+      return false;
     }
     setSizeError(false);
-    addItem(product, selectedSize || product.sizes?.[0] || 'M', selectedColor, quantity);
+    const r = addItem(product, selectedSize, selectedColor, quantity);
+    if (!r.ok) { setCartError(r.message); return false; }
+    setCartError(null);
+    return true;
+  };
+
+  const handleAddToCart = () => {
+    if (!tryAdd()) return;
     setAddedFeedback(true);
     setTimeout(() => setAddedFeedback(false), 2000);
   };
 
   const handleBuyNow = () => {
-    if (!product) return;
-    if (product.sizes?.length > 0 && !selectedSize) {
-      setSizeError(true);
-      return;
-    }
-    addItem(product, selectedSize || product.sizes?.[0] || 'M', selectedColor, quantity);
-    navigate('/checkout');
+    if (tryAdd()) navigate('/checkout');
   };
 
   const relatedProducts = products.filter((p) => p.category === product?.category && p.id !== product?.id).slice(0, 4);
 
-  if (!product) return null;
+  if (!product) {
+    const msg = productsError ? productsError : (isLoadingProducts || !productsLoaded) ? 'Cargando producto…' : 'Este producto no existe o ya no está disponible.';
+    return (
+      <div className="jm-container" style={{ padding: '5rem 0', textAlign: 'center' }} role={productsError ? 'alert' : 'status'}>
+        <h1 style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '1rem' }}>{msg}</h1>
+        {productsLoaded || productsError ? <Link to="/ropa" style={{ textDecoration: 'underline', fontWeight: 700 }}>Ver el catálogo</Link> : null}
+      </div>
+    );
+  }
 
   const currentImage = product.images?.[selectedImage] || product.images?.[0];
 
@@ -177,7 +211,7 @@ export const ProductDetailPage = () => {
           <div style={{ display: 'flex', gap: '1rem' }} className="pdp-gallery-wrapper">
             {/* Thumbnails list */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {product.images?.map((img, idx) => (
+              {galleryProduct.images?.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
@@ -207,7 +241,7 @@ export const ProductDetailPage = () => {
               style={{ flex: 1, position: 'relative', borderRadius: '10px', overflow: 'hidden', aspectRatio: '3/4', cursor: 'zoom-in', backgroundColor: '#F4F4F5' }}
             >
               <SafeProductImage
-                product={product}
+                product={galleryProduct}
                 imageIndex={selectedImage}
                 alt={product.name}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -308,8 +342,10 @@ export const ProductDetailPage = () => {
                 {product.colors?.map((c, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setSelectedColor(c)}
+                    onClick={() => { setSelectedColor(c); setSelectedImage(0); setSelectedSize(null); setQuantity(1); setCartError(null); }}
                     title={c.name}
+                    aria-label={`Color ${c.name}`}
+                    aria-pressed={selectedColor?.name === c.name}
                     style={{
                       width: '32px',
                       height: '32px',
@@ -348,11 +384,17 @@ export const ProductDetailPage = () => {
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {product.sizes?.map((sz) => {
+                  const v = variantFor(sz);
+                  const soldOut = !v || v.available <= 0;
                   const isSelected = selectedSize === sz;
                   return (
                     <button
                       key={sz}
-                      onClick={() => { setSelectedSize(sz); setSizeError(false); }}
+                      disabled={soldOut}
+                      aria-pressed={isSelected}
+                      aria-label={soldOut ? `Talla ${sz} agotada` : `Talla ${sz}`}
+                      title={soldOut ? 'Agotada en este color' : v.available <= 3 ? `Últimas ${v.available} unidades` : undefined}
+                      onClick={() => { setSelectedSize(sz); setSizeError(false); setCartError(null); setQuantity(1); }}
                       style={{
                         minWidth: '52px',
                         height: '44px',
@@ -360,9 +402,10 @@ export const ProductDetailPage = () => {
                         fontWeight: 800,
                         borderRadius: '6px',
                         border: isSelected ? '2px solid #09090B' : sizeError ? '1px solid #E11D48' : '1px solid #E4E4E7',
-                        backgroundColor: isSelected ? '#09090B' : '#FFFFFF',
-                        color: isSelected ? '#FFFFFF' : '#09090B',
-                        cursor: 'pointer',
+                        backgroundColor: isSelected ? '#09090B' : soldOut ? '#F4F4F5' : '#FFFFFF',
+                        color: isSelected ? '#FFFFFF' : soldOut ? '#A1A1AA' : '#09090B',
+                        textDecoration: soldOut ? 'line-through' : 'none',
+                        cursor: soldOut ? 'not-allowed' : 'pointer',
                         transition: 'all 0.15s'
                       }}
                     >
@@ -371,6 +414,14 @@ export const ProductDetailPage = () => {
                   );
                 })}
               </div>
+              {!product.inStock && (
+                <div role="status" style={{ fontSize: '0.85rem', color: '#E11D48', fontWeight: 800, marginTop: '0.5rem' }}>Producto agotado</div>
+              )}
+              {selectedVariant && selectedVariant.available <= 3 && (
+                <div style={{ fontSize: '0.78rem', color: '#B45309', fontWeight: 700, marginTop: '0.4rem' }}>
+                  ¡Últimas {selectedVariant.available} unidad(es) en esta talla!
+                </div>
+              )}
 
               {sizeError && (
                 <div style={{ fontSize: '0.78rem', color: '#E11D48', fontWeight: 700, marginTop: '0.4rem' }}>
@@ -379,6 +430,9 @@ export const ProductDetailPage = () => {
               )}
             </div>
 
+            {cartError && (
+              <div role="alert" style={{ fontSize: '0.82rem', color: '#E11D48', fontWeight: 700 }}>{cartError}</div>
+            )}
             {/* QUANTITY & BUY BUTTONS */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.4rem' }}>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -386,13 +440,16 @@ export const ProductDetailPage = () => {
                 <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E4E4E7', borderRadius: '6px', backgroundColor: '#FAFAFA' }}>
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    aria-label="Disminuir cantidad"
                     style={{ padding: '0.8rem 1rem', color: '#09090B', cursor: 'pointer' }}
                   >
                     <Minus size={15} />
                   </button>
                   <span style={{ fontWeight: 800, fontSize: '0.95rem', padding: '0 0.5rem' }}>{quantity}</span>
                   <button
-                    onClick={() => setQuantity(quantity + 1)}
+                    onClick={() => setQuantity(Math.min(Math.max(1, maxQty), quantity + 1))}
+                    disabled={!selectedVariant || quantity >= maxQty}
+                    aria-label="Aumentar cantidad"
                     style={{ padding: '0.8rem 1rem', color: '#09090B', cursor: 'pointer' }}
                   >
                     <Plus size={15} />
@@ -557,39 +614,32 @@ export const ProductDetailPage = () => {
         </div>
 
         {/* COMPLETE THE LOOK SECTION */}
-        <CompleteTheLook lookId="look-1" />
 
-        {/* REVIEWS SECTION */}
+        {/* REVIEWS SECTION — reseñas aprobadas de la BD */}
         <section style={{ margin: '4rem 0', padding: '2.5rem 0', borderTop: '1px solid #E4E4E7' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 900, textTransform: 'uppercase' }}>OPINIONES DE CLIENTES</h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
-                <div style={{ display: 'flex' }}>
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={16} fill="#D4AF37" color="#D4AF37" />
-                  ))}
-                </div>
-                <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>4.9 de 5</span>
-                <span style={{ color: '#71717A', fontSize: '0.85rem' }}>({REVIEWS.length} opiniones verificadas)</span>
-              </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 900, textTransform: 'uppercase', marginBottom: '0.4rem' }}>OPINIONES DE CLIENTES</h2>
+          {product.rating ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
+              <Star size={16} fill="#D4AF37" color="#D4AF37" />
+              <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{product.rating} de 5</span>
+              <span style={{ color: '#71717A', fontSize: '0.85rem' }}>({product.reviewCount} opiniones)</span>
             </div>
-          </div>
-
+          ) : (
+            <p style={{ color: '#71717A', fontSize: '0.9rem', marginBottom: '1rem' }}>Este producto todavía no tiene opiniones.</p>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-            {REVIEWS.map((rev) => (
+            {reviews.map((rev) => (
               <div key={rev.id} style={{ border: '1px solid #E4E4E7', padding: '1.5rem', borderRadius: '8px', backgroundColor: '#FAFAFA' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{rev.author} ({rev.city})</div>
-                  <span style={{ fontSize: '0.75rem', color: '#71717A' }}>{rev.date}</span>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{rev.author_name}{rev.city ? ` (${rev.city})` : ''}</div>
+                  <span style={{ fontSize: '0.75rem', color: '#71717A' }}>{new Date(rev.created_at).toLocaleDateString('es-CO')}</span>
                 </div>
-                <div style={{ display: 'flex', gap: '2px', marginBottom: '0.5rem' }}>
-                  {[...Array(rev.rating)].map((_, i) => (
-                    <Star key={i} size={14} fill="#D4AF37" color="#D4AF37" />
-                  ))}
+                <div style={{ display: 'flex', gap: '2px', marginBottom: '0.5rem' }} aria-label={`${rev.rating} de 5`}>
+                  {[...Array(rev.rating)].map((_, i) => (<Star key={i} size={14} fill="#D4AF37" color="#D4AF37" />))}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.4rem', color: '#09090B' }}>{rev.title}</div>
                 <p style={{ fontSize: '0.82rem', color: '#71717A', lineHeight: 1.5 }}>"{rev.comment}"</p>
+                {rev.is_verified_buyer && <div style={{ fontSize: '0.72rem', color: '#10B981', fontWeight: 700, marginTop: '0.4rem' }}>Compra verificada</div>}
               </div>
             ))}
           </div>

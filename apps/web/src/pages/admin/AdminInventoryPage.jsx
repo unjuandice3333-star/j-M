@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Boxes, AlertTriangle, CheckCircle, Search, RefreshCw, MapPin } from 'lucide-react';
 import supabase from '../../config/supabase';
+import { adminService } from '../../services/adminService';
 
 export const AdminInventoryPage = () => {
-  const [selectedLocation, setSelectedLocation] = useState('online');
   const [searchQuery, setSearchQuery] = useState('');
   const [inventoryItems, setInventoryItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -11,92 +11,50 @@ export const AdminInventoryPage = () => {
   const [adjustmentValue, setAdjustmentValue] = useState({});
 
   // Cargar inventario real desde Supabase PostgreSQL (inventories JOIN variants JOIN products)
+  const [loadError, setLoadError] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const [reasons, setReasons] = useState({});
+  // M27: stock, reservado y disponible reales (inventories + variante + color por product_colors). Sin valores inventados.
   const fetchRealInventory = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('inventories')
-        .select(`
-          id,
-          stock,
-          min_stock,
-          location_shelf,
-          variant_id,
-          branch_id,
-          variants (
-            id,
-            sku,
-            barcode,
-            sizes(code),
-            colors(name),
-            products (
-              id,
-              name,
-              reference
-            )
-          )
-        `);
-
-      if (!error && data && data.length > 0) {
-        const formatted = data.map((inv) => {
-          const prodName = inv.variants?.products?.name || 'Prenda J&M';
-          const sizeCode = inv.variants?.sizes?.code || 'M';
-          const colorName = inv.variants?.colors?.name || 'Negro Azabache';
-          const stock = inv.stock || 0;
-          const min = inv.min_stock || 5;
-
-          return {
-            id: inv.id,
-            variantId: inv.variant_id,
-            branchId: inv.branch_id,
-            name: `${prodName} — ${colorName} / ${sizeCode}`,
-            sku: inv.variants?.sku || inv.variants?.barcode || 'SKU-PENDIENTE',
-            location: 'Bodega Online',
-            total: stock,
-            reserved: 0,
-            available: stock,
-            min,
-            status: stock === 0 ? 'out' : stock <= min ? 'low' : 'ok'
-          };
-        });
-        setInventoryItems(formatted);
-      } else {
-        setInventoryItems([]);
-      }
-    } catch (e) {
-      console.error('[AdminInventoryPage Error]: Error al cargar inventario real:', e);
-      setInventoryItems([]);
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(true); setLoadError(null);
+    const { data, error } = await supabase.from('inventories').select(`
+        id, stock, reserved, min_stock, location_shelf, variant_id, branch_id,
+        variants ( id, sku, is_active, color_id, sizes ( code ), products ( id, name, reference, status, product_colors ( color_id, colors ( name ) ) ) )`)
+      .order('updated_at', { ascending: false });
+    if (error) { setLoadError('No se pudo cargar el inventario.'); setIsLoading(false); return; }
+    setInventoryItems(data.map((inv) => {
+      const v = inv.variants; const p = v?.products;
+      const colorName = p?.product_colors?.find((pc) => pc.color_id === v?.color_id)?.colors?.name ?? '—';
+      const available = inv.stock - inv.reserved;
+      return {
+        id: inv.id, variantId: inv.variant_id, branchId: inv.branch_id,
+        name: `${p?.name ?? '—'} — ${colorName} / ${v?.sizes?.code ?? '—'}`, sku: v?.sku ?? '—',
+        location: inv.location_shelf || 'Bodega principal', total: inv.stock, reserved: inv.reserved, available, min: inv.min_stock,
+        status: available <= 0 ? 'out' : available <= inv.min_stock ? 'low' : 'ok', inactive: !v?.is_active || p?.status !== 'active',
+      };
+    }));
+    setIsLoading(false);
   };
 
   useEffect(() => {
     fetchRealInventory();
   }, []);
 
+  /** Ajuste con trazabilidad (admin_adjust_inventory): entrada (restock) o ajuste (+/-) con motivo obligatorio. */
   const handleStockAdjustment = async (item) => {
     const changeVal = Number(adjustmentValue[item.id]);
-    if (isNaN(changeVal) || changeVal === 0) return;
-
+    const reason = (reasons[item.id] || '').trim();
+    setNotice(null);
+    if (!Number.isInteger(changeVal) || changeVal === 0) { setNotice({ ok: false, text: 'Escribe una cantidad entera distinta de 0 (ej. 5 o -2).' }); return; }
+    if (!reason) { setNotice({ ok: false, text: 'Escribe el motivo del ajuste.' }); return; }
     setAdjustingId(item.id);
     try {
-      // Invocación del RPC autoritativo adjust_inventory_stock con trazabilidad en inventory_movements
-      const { data, error } = await supabase.rpc('adjust_inventory_stock', {
-        p_variant_id: item.variantId,
-        p_quantity_change: changeVal,
-        p_movement_type: changeVal > 0 ? 'restock' : 'adjustment',
-        p_reason: 'Ajuste manual desde panel administrativo OMS'
-      });
-
-      if (error) {
-        alert(`Error al ajustar inventario: ${error.message}`);
-      } else {
-        await fetchRealInventory();
-        setAdjustmentValue((prev) => ({ ...prev, [item.id]: '' }));
-      }
+      const r = await adminService.adjustInventory(item.variantId, changeVal, changeVal > 0 ? 'restock' : 'adjustment', reason);
+      setNotice({ ok: true, text: `${item.sku}: stock ${r.stock_before} → ${r.stock_after} (disponible ${r.available}).` });
+      setAdjustmentValue((prev) => ({ ...prev, [item.id]: '' })); setReasons((prev) => ({ ...prev, [item.id]: '' }));
+      await fetchRealInventory();
     } catch (err) {
-      console.error('[handleStockAdjustment Exception]:', err);
+      setNotice({ ok: false, text: err.message });
     } finally {
       setAdjustingId(null);
     }
@@ -117,36 +75,11 @@ export const AdminInventoryPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>
-            CONTROL DE INVENTARIO Y MOVIMIENTOS OMS ({inventoryItems.length})
+            INVENTARIO ({inventoryItems.length} variantes)
           </h1>
           <p style={{ fontSize: '0.88rem', color: '#71717A' }}>
-            Trazabilidad transaccional de stock con registro de movimientos en PostgreSQL.
+            Stock físico, reservado por pedidos pendientes y disponible. Cada ajuste queda registrado con su motivo.
           </p>
-        </div>
-
-        <div style={{ display: 'flex', backgroundColor: '#FFFFFF', padding: '4px', borderRadius: '8px', border: '1px solid #E4E4E7' }}>
-          {[
-            { id: 'online', label: 'BODEGA ONLINE' },
-            { id: 'bogota', label: 'SHOWROOM BOGOTÁ' },
-            { id: 'medellin', label: 'SHOWROOM MEDELLÍN' }
-          ].map((loc) => (
-            <button
-              key={loc.id}
-              onClick={() => setSelectedLocation(loc.id)}
-              style={{
-                padding: '0.5rem 1rem',
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: selectedLocation === loc.id ? '#09090B' : 'transparent',
-                color: selectedLocation === loc.id ? '#FFFFFF' : '#71717A',
-                cursor: 'pointer'
-              }}
-            >
-              {loc.label}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -168,6 +101,8 @@ export const AdminInventoryPage = () => {
 
       {/* INVENTORY TABLE */}
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
+        {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600, padding: '1rem' }}>{loadError}</div>}
+        {notice && <div role={notice.ok ? 'status' : 'alert'} style={{ color: notice.ok ? '#065F46' : '#B91C1C', fontWeight: 600, padding: '0.75rem 1rem' }}>{notice.text}</div>}
         {isLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#71717A' }}>
             Cargando inventario real desde Supabase PostgreSQL...
@@ -199,7 +134,11 @@ export const AdminInventoryPage = () => {
                     <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#71717A' }}>{item.location}</span>
                   </td>
 
-                  <td style={{ ...tdInv, color: '#065F46', fontWeight: 900, fontSize: '0.95rem' }}>{item.available}</td>
+                  <td style={{ ...tdInv, color: '#065F46', fontWeight: 900, fontSize: '0.95rem' }}>
+                    {item.available}
+                    <div style={{ fontSize: '0.7rem', color: '#71717A', fontWeight: 600 }}>stock {item.total} · reservado {item.reserved}</div>
+                    {item.inactive && <div style={{ fontSize: '0.7rem', color: '#92400E', fontWeight: 700 }}>no publicado</div>}
+                  </td>
 
                   <td style={tdInv}>
                     {item.status === 'ok' && (
@@ -220,14 +159,23 @@ export const AdminInventoryPage = () => {
                         placeholder="+/- Cant"
                         value={adjustmentValue[item.id] || ''}
                         onChange={(e) => setAdjustmentValue({ ...adjustmentValue, [item.id]: e.target.value })}
+                        aria-label={`Cantidad a ajustar ${item.sku}`}
                         style={{ width: '80px', padding: '0.3rem', border: '1px solid #D4D4D8', borderRadius: '4px', textAlign: 'center', fontWeight: 700 }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Motivo"
+                        aria-label={`Motivo del ajuste ${item.sku}`}
+                        value={reasons[item.id] || ''}
+                        onChange={(e) => setReasons({ ...reasons, [item.id]: e.target.value })}
+                        style={{ width: '150px', padding: '0.3rem', border: '1px solid #D4D4D8', borderRadius: '4px' }}
                       />
                       <button
                         onClick={() => handleStockAdjustment(item)}
                         disabled={adjustingId === item.id}
                         style={{ backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.35rem 0.75rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, opacity: adjustingId === item.id ? 0.7 : 1 }}
                       >
-                        {adjustingId === item.id ? 'Ajustando...' : 'Ajustar RPC'}
+                        {adjustingId === item.id ? 'Ajustando...' : 'Ajustar'}
                       </button>
                     </div>
                   </td>

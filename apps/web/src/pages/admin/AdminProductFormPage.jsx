@@ -1,492 +1,392 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Sparkles, Check, Upload, AlertTriangle, ArrowLeftRight, Star } from 'lucide-react';
-import { CATEGORIES } from '../../data/mockData';
+// =============================================================================
+// Crear / editar producto — contrato admin_upsert_product (M24): colores del catálogo, imágenes por color (Storage o
+// https), variantes color × talla del grupo de tallas de la categoría, stock inicial por variante, slug y referencia.
+// M27: reescrito. Antes: colores de texto libre, imágenes en base64, sin referencia ni slug, datos de ejemplo
+// precargados y llamadas a funciones inexistentes. El stock de variantes existentes se ajusta en Inventario
+// (admin_adjust_inventory, con trazabilidad); aquí solo se fija el stock INICIAL de variantes nuevas.
+// =============================================================================
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { ArrowLeft, Save, Upload, Trash2, Star } from 'lucide-react';
+import { productService, imageUrl } from '../../services/productService';
+import { adminService, slugify, toReference } from '../../services/adminService';
 import { useECommerceStore } from '../../store/eCommerceStore';
-import SafeProductImage from '../../components/Common/SafeImage';
-import { hasValidProductImage } from '../../utils/productUtils';
+
+const FITS = ['SLIM', 'REGULAR', 'RELAXED', 'OVERSIZE'];
+const REF_RE = /^[A-Z0-9]+(-[A-Z0-9]+)*$/;
+const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+const emptyForm = () => ({
+  id: null, name: '', reference: '', slug: '', refTouched: false, slugTouched: false,
+  category: '', styleLine: '', fit: 'REGULAR', occasions: [], description: '', detailsText: '', fitDescription: '',
+  price: '', compareAt: '', cost: '', isNew: false, isBestSeller: false, status: 'draft',
+  colors: [],            // [{ slug, isDefault, images: [{ storage_path?, external_url?, preview }] }]
+  sizes: [],             // códigos de talla del grupo de la categoría
+  stock: {},             // `${color}|${size}` → stock inicial (solo variantes nuevas)
+  existing: {},          // `${color}|${size}` → { id, sku, stock, reserved, is_active }
+});
 
 export const AdminProductFormPage = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const editId = id || searchParams.get('editId');
-  const { products, addProduct, updateProduct } = useECommerceStore();
+  const editId = searchParams.get('editId');
+  const reloadStore = useECommerceStore((st) => st.loadProducts);
 
-  const existingProduct = editId ? products.find((p) => p.id === editId || p.slug === editId) : null;
+  const [ref, setRef] = useState(null);       // datos de referencia de la BD
+  const [form, setForm] = useState(emptyForm);
+  const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(null);
+  const [urlInput, setUrlInput] = useState({});
 
-  const [formData, setFormData] = useState({
-    name: 'Camiseta Premium J&M Colombia',
-    category: 'camisetas',
-    styleLine: 'urbana',
-    price: 129900,
-    originalPrice: 159900,
-    cost: 45000,
-    fit: 'REGULAR',
-    occasion: 'casual',
-    description: 'Prenda masculina de diseño exclusivo, confeccionada con textiles seleccionados de 220g para garantizar caída estructurada y máxima comodidad.',
-    detailsText: '100% Algodón Colombiano\nCuello reforzado anti-deformación\nHecho en Colombia',
-    images: [
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=1000',
-      'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80&w=1000'
-    ],
-    imageUrl1: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=1000',
-    imageUrl2: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80&w=1000',
-    colorName1: 'Negro Azabache',
-    colorHex1: '#121212',
-    colorName2: 'Blanco Nieve',
-    colorHex2: '#FFFFFF',
-    selectedSizes: ['S', 'M', 'L', 'XL'],
-    isNew: true,
-    isBestSeller: false,
-    isSale: true,
-    status: 'activo'
-  });
-
+  // Datos de referencia y, si se edita, el producto completo
   useEffect(() => {
-    if (existingProduct) {
-      setFormData({
-        name: existingProduct.name || '',
-        category: existingProduct.category || 'camisetas',
-        styleLine: existingProduct.styleLine || 'urbana',
-        price: existingProduct.price || 0,
-        originalPrice: existingProduct.originalPrice || '',
-        cost: existingProduct.cost || 0,
-        fit: existingProduct.fit || 'REGULAR',
-        occasion: existingProduct.occasion || 'casual',
-        description: existingProduct.description || '',
-        detailsText: Array.isArray(existingProduct.details) ? existingProduct.details.join('\n') : '',
-        images: existingProduct.images || [],
-        imageUrl1: existingProduct.images?.[0] || '',
-        imageUrl2: existingProduct.images?.[1] || '',
-        colorName1: existingProduct.colors?.[0]?.name || 'Negro Azabache',
-        colorHex1: existingProduct.colors?.[0]?.hex || '#121212',
-        colorName2: existingProduct.colors?.[1]?.name || '',
-        colorHex2: existingProduct.colors?.[1]?.hex || '#FFFFFF',
-        selectedSizes: existingProduct.sizes || ['S', 'M', 'L', 'XL'],
-        isNew: existingProduct.isNew ?? true,
-        isBestSeller: existingProduct.isBestSeller ?? false,
-        isSale: existingProduct.isSale ?? false,
-        status: existingProduct.status || 'activo'
-      });
-    }
-  }, [existingProduct]);
+    let alive = true;
+    (async () => {
+      try {
+        const data = await productService.getReferenceData();
+        if (!alive) return;
+        setRef(data);
+        if (!editId) { setForm((f) => ({ ...f, category: f.category || data.categories[0]?.slug || '' })); return; }
+        const p = await adminService.getProductForEdit(editId);
+        if (!alive) return;
+        if (!p) { setMessage({ ok: false, text: 'El producto no existe.' }); return; }
+        const colorSlugById = new Map(p.product_colors.map((pc) => [pc.color_id, pc.colors.slug]));
+        const existing = {};
+        for (const v of p.variants) {
+          const key = `${colorSlugById.get(v.color_id)}|${v.sizes.code}`;
+          const inv = v.inventories?.[0];
+          existing[key] = { id: v.id, sku: v.sku, is_active: v.is_active, stock: inv?.stock ?? 0, reserved: inv?.reserved ?? 0 };
+        }
+        setForm({
+          ...emptyForm(), id: p.id, name: p.name, reference: p.reference, slug: p.slug, refTouched: true, slugTouched: true,
+          category: p.categories?.slug ?? '', styleLine: p.style_lines?.slug ?? '', fit: p.fit,
+          occasions: p.product_occasions.map((po) => po.occasions.slug), description: p.description ?? '',
+          detailsText: (p.details ?? []).join('\n'), fitDescription: p.fit_description ?? '',
+          price: String(p.base_price), compareAt: p.compare_at_price ? String(p.compare_at_price) : '', cost: p.base_cost != null ? String(p.base_cost) : '',
+          isNew: p.is_featured_new, isBestSeller: p.is_bestseller, status: p.status,
+          colors: [...p.product_colors].sort((a, b) => a.position - b.position).map((pc) => ({
+            slug: pc.colors.slug, isDefault: pc.is_default,
+            images: p.product_images.filter((i) => i.color_id === pc.color_id).sort((a, b) => a.position - b.position)
+              .map((i) => ({ storage_path: i.storage_path, external_url: i.external_url, alt_text: i.alt_text, preview: imageUrl(i) })),
+          })),
+          sizes: [...new Set(p.variants.filter((v) => v.is_active).map((v) => v.sizes.code))],
+          existing,
+        });
+      } catch (e) {
+        if (alive) setMessage({ ok: false, text: e.message || 'No se pudieron cargar los datos.' });
+      }
+    })();
+    return () => { alive = false; };
+  }, [editId]);
 
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const category = ref?.categories.find((c) => c.slug === form.category);
+  const sizeOptions = useMemo(() => (ref?.sizes ?? []).filter((s) => s.size_group === category?.size_group), [ref, category]);
+  const colorBySlug = useMemo(() => new Map((ref?.colors ?? []).map((c) => [c.slug, c])), [ref]);
 
-  const margin = formData.price > 0 ? Math.round(((formData.price - formData.cost) / formData.price) * 100) : 0;
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  const onName = (name) => setForm((f) => ({ ...f, name,
+    reference: f.refTouched ? f.reference : toReference(name).slice(0, 40),
+    slug: f.slugTouched ? f.slug : slugify(name).slice(0, 80) }));
+  const toggleColor = (slug) => setForm((f) => {
+    if (f.colors.some((c) => c.slug === slug)) return { ...f, colors: f.colors.filter((c) => c.slug !== slug) };
+    return { ...f, colors: [...f.colors, { slug, isDefault: f.colors.length === 0, images: [] }] };
+  });
+  const setDefaultColor = (slug) => setForm((f) => ({ ...f, colors: f.colors.map((c) => ({ ...c, isDefault: c.slug === slug })) }));
+  const toggleSize = (code) => setForm((f) => ({ ...f, sizes: f.sizes.includes(code) ? f.sizes.filter((s) => s !== code) : [...f.sizes, code] }));
+  const setColorImages = (slug, fn) => setForm((f) => ({ ...f, colors: f.colors.map((c) => (c.slug === slug ? { ...c, images: fn(c.images) } : c)) }));
 
-  const handleSizeToggle = (size) => {
-    if (formData.selectedSizes.includes(size)) {
-      setFormData({ ...formData, selectedSizes: formData.selectedSizes.filter((s) => s !== size) });
-    } else {
-      setFormData({ ...formData, selectedSizes: [...formData.selectedSizes, size] });
-    }
+  const uploadFiles = async (slug, files) => {
+    setUploading(slug); setMessage(null);
+    try {
+      for (const file of files) {
+        if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type)) throw new Error('Formato no admitido (usa JPG, PNG, WebP o AVIF).');
+        if (file.size > 5 * 1024 * 1024) throw new Error('Cada imagen debe pesar como máximo 5 MB.');
+        const path = await adminService.uploadProductImage(file, form.slug || form.name);
+        setColorImages(slug, (imgs) => [...imgs, { storage_path: path, preview: imageUrl({ storage_path: path }) }]);
+      }
+    } catch (e) {
+      setMessage({ ok: false, text: e.message });
+    } finally { setUploading(null); }
+  };
+  const addUrl = (slug) => {
+    const url = (urlInput[slug] || '').trim();
+    if (!/^https:\/\/\S+$/.test(url)) { setMessage({ ok: false, text: 'La URL de la imagen debe empezar por https://' }); return; }
+    setColorImages(slug, (imgs) => [...imgs, { external_url: url, preview: url }]);
+    setUrlInput((u) => ({ ...u, [slug]: '' }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    const colors = [
-      { name: formData.colorName1 || 'Negro Azabache', hex: formData.colorHex1 || '#121212', selected: true }
-    ];
-    if (formData.colorName2) {
-      colors.push({ name: formData.colorName2, hex: formData.colorHex2 || '#FFFFFF', selected: false });
-    }
-
-    const images = formData.images && formData.images.length > 0
-      ? formData.images
-      : [formData.imageUrl1, formData.imageUrl2].filter(Boolean);
-
-    const details = formData.detailsText.split('\n').filter(Boolean);
-
-    let createdProduct = null;
-
-    if (existingProduct) {
-      updateProduct(existingProduct.id, {
-        name: formData.name,
-        category: formData.category,
-        styleLine: formData.styleLine,
-        price: Number(formData.price),
-        originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
-        cost: Number(formData.cost),
-        fit: formData.fit,
-        occasion: formData.occasion,
-        description: formData.description,
-        details,
-        colors,
-        sizes: formData.selectedSizes.length > 0 ? formData.selectedSizes : ['S', 'M', 'L', 'XL'],
-        images,
-        isNew: formData.isNew,
-        isBestSeller: formData.isBestSeller,
-        isSale: formData.isSale,
-        status: formData.status
-      });
-      createdProduct = existingProduct;
-    } else {
-      createdProduct = addProduct({
-        name: formData.name,
-        category: formData.category,
-        styleLine: formData.styleLine,
-        price: Number(formData.price),
-        originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
-        cost: Number(formData.cost),
-        fit: formData.fit,
-        occasion: formData.occasion,
-        description: formData.description,
-        details,
-        colors,
-        sizes: formData.selectedSizes.length > 0 ? formData.selectedSizes : ['S', 'M', 'L', 'XL'],
-        images,
-        isNew: formData.isNew,
-        isBestSeller: formData.isBestSeller,
-        isSale: formData.isSale,
-        status: formData.status
-      });
-    }
-
-    setSavedSuccess(true);
-    setTimeout(() => {
-      navigate(`/producto/${createdProduct.slug}`);
-    }, 1200);
+  const validate = (publish) => {
+    const e = {};
+    if (form.name.trim().length < 2 || form.name.trim().length > 150) e.name = 'Entre 2 y 150 caracteres.';
+    if (!REF_RE.test(form.reference)) e.reference = 'Solo MAYÚSCULAS, números y guiones (ej. JM-CAM-001).';
+    if (!SLUG_RE.test(form.slug)) e.slug = 'Solo minúsculas, números y guiones (ej. camiseta-oversize-negra).';
+    if (!form.category) e.category = 'Elige una categoría.';
+    const price = Number(form.price);
+    if (!Number.isInteger(price) || price <= 0) e.price = 'Precio en pesos, mayor que 0.';
+    if (form.compareAt !== '' && !(Number(form.compareAt) > price)) e.compareAt = 'Debe ser mayor que el precio (o déjalo vacío).';
+    if (form.cost !== '' && !(Number(form.cost) >= 0)) e.cost = 'Costo inválido.';
+    if (form.colors.length === 0) e.colors = 'Elige al menos un color.';
+    if (form.sizes.length === 0) e.sizes = 'Elige al menos una talla.';
+    if (publish && !form.colors.some((c) => c.images.length)) e.images = 'Para publicar, agrega al menos una imagen.';
+    for (const [k, v] of Object.entries(form.stock)) if (v !== '' && !(Number.isInteger(Number(v)) && Number(v) >= 0)) e.stock = `Stock inicial inválido en ${k.replace('|', ' / ')}.`;
+    return e;
   };
+
+  const save = async (publish) => {
+    const e = validate(publish);
+    setErrors(e);
+    if (Object.keys(e).length) { setMessage({ ok: false, text: 'Revisa los campos marcados.' }); return; }
+    setBusy(true); setMessage(null);
+    const payload = {
+      id: form.id, reference: form.reference, slug: form.slug, name: form.name.trim(), description: form.description.trim() || null,
+      details: form.detailsText.split('\n').map((d) => d.trim()).filter(Boolean), fit: form.fit, fit_description: form.fitDescription.trim() || null,
+      category: form.category, style_line: form.styleLine || null, occasions: form.occasions,
+      base_price: Number(form.price), compare_at_price: form.compareAt === '' ? null : Number(form.compareAt), base_cost: form.cost === '' ? null : Number(form.cost),
+      is_featured_new: form.isNew, is_bestseller: form.isBestSeller,
+      colors: form.colors.map((c) => ({ color: c.slug, is_default: c.isDefault,
+        images: c.images.map((i) => (i.storage_path ? { storage_path: i.storage_path, alt_text: form.name } : { external_url: i.external_url, alt_text: form.name })) })),
+      variants: form.colors.flatMap((c) => form.sizes.map((size) => {
+        const key = `${c.slug}|${size}`; const ex = form.existing[key];
+        return { id: ex?.id, color: c.slug, size, sku: ex?.sku, initial_stock: ex ? undefined : Number(form.stock[key] || 0) };
+      })),
+    };
+    try {
+      const r = await adminService.upsertProduct(payload);
+      const productId = r.product_id;
+      if (publish) await adminService.setProductStatus(productId, 'active');
+      await reloadStore(true);
+      setMessage({ ok: true, text: publish ? 'Producto guardado y publicado.' : 'Producto guardado como borrador.' });
+      if (!form.id) navigate(`/admin/productos/nuevo?editId=${productId}`, { replace: true });
+      else set({ status: publish ? 'active' : form.status });
+    } catch (err) {
+      setMessage({ ok: false, text: err.message });
+    } finally { setBusy(false); }
+  };
+
+  if (!ref) return <div role="status" style={{ padding: '2rem' }}>{message?.text ?? 'Cargando…'}</div>;
+  const Err = ({ k }) => (errors[k] ? <div role="alert" style={{ color: '#E11D48', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.25rem' }}>{errors[k]}</div> : null);
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '900px' }}>
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <form onSubmit={(e) => { e.preventDefault(); save(false); }} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '960px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button type="button" onClick={() => navigate('/admin/productos')} style={{ border: '1px solid #E4E4E7', padding: '0.5rem', borderRadius: '6px', backgroundColor: '#FFFFFF' }}>
+          <button type="button" aria-label="Volver" onClick={() => navigate('/admin/productos')} style={{ border: '1px solid #E4E4E7', padding: '0.5rem', borderRadius: '6px', backgroundColor: '#FFFFFF' }}>
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>
-              PUBLICAR NUEVA PRENDA EN LA TIENDA
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>
+              {form.id ? 'EDITAR PRODUCTO' : 'NUEVO PRODUCTO'}
             </h1>
             <p style={{ fontSize: '0.85rem', color: '#71717A' }}>
-              Al guardar, la prenda aparecerá de inmediato para los clientes en el catálogo.
+              Estado: <strong>{{ draft: 'Borrador', active: 'Publicado', archived: 'Archivado' }[form.status]}</strong>
+              {form.status === 'active' && <> · <Link to={`/producto/${form.slug}`} target="_blank" style={{ textDecoration: 'underline' }}>ver en la tienda</Link></>}
             </p>
           </div>
         </div>
-
-        <button
-          type="submit"
-          style={{
-            backgroundColor: '#09090B',
-            color: '#FFFFFF',
-            padding: '0.85rem 1.6rem',
-            borderRadius: '6px',
-            fontWeight: 800,
-            fontSize: '0.85rem',
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            cursor: 'pointer'
-          }}
-        >
-          <Save size={18} /> PUBLICAR EN TIENDA
-        </button>
+        <div style={{ display: 'flex', gap: '0.6rem' }}>
+          <button type="submit" disabled={busy} style={{ border: '1px solid #09090B', padding: '0.75rem 1.1rem', borderRadius: '6px', fontWeight: 800, display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <Save size={16} /> {busy ? 'Guardando…' : 'Guardar borrador'}
+          </button>
+          <button type="button" disabled={busy} onClick={() => save(true)} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.75rem 1.1rem', borderRadius: '6px', fontWeight: 800 }}>
+            {form.status === 'active' ? 'Guardar cambios' : 'Guardar y publicar'}
+          </button>
+        </div>
       </div>
 
-      {savedSuccess && (
-        <div style={{ backgroundColor: '#D1FAE5', color: '#065F46', padding: '1rem', borderRadius: '6px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Check size={18} /> ¡Prenda publicada exitosamente! Redirigiendo a la vista de cliente...
-        </div>
-      )}
+      {message && <div role={message.ok ? 'status' : 'alert'} style={{ padding: '0.8rem 1rem', borderRadius: '8px', fontWeight: 600,
+        backgroundColor: message.ok ? '#ECFDF5' : '#FEF2F2', color: message.ok ? '#065F46' : '#B91C1C' }}>{message.text}</div>}
 
-      {/* 1. INFORMACIÓN PRINCIPAL */}
-      <div style={{ backgroundColor: '#FFFFFF', padding: '1.75rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
-        <h3 style={sectionTitle}>1. DATOS DE LA PRENDA</h3>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}>Nombre del Producto *</label>
-          <input
-            type="text"
-            required
-            placeholder="Ej. Camiseta Heavyweight Oversize"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            style={inputStyle}
-          />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+      <section style={card}>
+        <h3 style={sectionTitle}>1. DATOS DEL PRODUCTO</h3>
+        <label style={labelStyle} htmlFor="pf-name">Nombre *</label>
+        <input id="pf-name" style={inputStyle} value={form.name} onChange={(e) => onName(e.target.value)} aria-invalid={Boolean(errors.name)} />
+        <Err k="name" />
+        <div style={grid2}>
           <div>
-            <label style={labelStyle}>Línea de Estilo *</label>
-            <select
-              value={formData.styleLine}
-              onChange={(e) => setFormData({ ...formData, styleLine: e.target.value })}
-              style={{ ...inputStyle, border: '1.5px solid #2563EB', fontWeight: 700 }}
-            >
-              <option value="urbana">Línea Urbana (Relajado / Streetwear)</option>
-              <option value="elegante">Línea Elegante (Oficina / Algodón-Seda / Drill)</option>
-              <option value="casual">Línea Smart Casual (Denim / Mocasines)</option>
+            <label style={labelStyle} htmlFor="pf-ref">Referencia *</label>
+            <input id="pf-ref" style={inputStyle} value={form.reference} onChange={(e) => set({ reference: e.target.value.toUpperCase(), refTouched: true })} />
+            <Err k="reference" />
+          </div>
+          <div>
+            <label style={labelStyle} htmlFor="pf-slug">Slug (dirección web) *</label>
+            <input id="pf-slug" style={inputStyle} value={form.slug} onChange={(e) => set({ slug: e.target.value.toLowerCase(), slugTouched: true })} />
+            <Err k="slug" />
+          </div>
+        </div>
+        <div style={grid3}>
+          <div>
+            <label style={labelStyle} htmlFor="pf-cat">Categoría *</label>
+            <select id="pf-cat" style={inputStyle} value={form.category} onChange={(e) => set({ category: e.target.value, sizes: [] })}>
+              {ref.categories.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+            </select>
+            <Err k="category" />
+          </div>
+          <div>
+            <label style={labelStyle} htmlFor="pf-line">Línea de estilo</label>
+            <select id="pf-line" style={inputStyle} value={form.styleLine} onChange={(e) => set({ styleLine: e.target.value })}>
+              <option value="">Sin línea</option>
+              {ref.styleLines.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}
             </select>
           </div>
-
           <div>
-            <label style={labelStyle}>Categoría *</label>
-            <select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              style={inputStyle}
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat.id} value={cat.slug}>{cat.name}</option>
+            <label style={labelStyle} htmlFor="pf-fit">Fit</label>
+            <select id="pf-fit" style={inputStyle} value={form.fit} onChange={(e) => set({ fit: e.target.value })}>
+              {FITS.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+        </div>
+        <label style={labelStyle}>Ocasiones</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+          {ref.occasions.map((o) => (
+            <label key={o.slug} style={{ fontSize: '0.82rem', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+              <input type="checkbox" checked={form.occasions.includes(o.slug)}
+                onChange={() => set({ occasions: form.occasions.includes(o.slug) ? form.occasions.filter((x) => x !== o.slug) : [...form.occasions, o.slug] })} />
+              {o.name}
+            </label>
+          ))}
+        </div>
+        <label style={labelStyle} htmlFor="pf-desc">Descripción</label>
+        <textarea id="pf-desc" rows={3} style={inputStyle} value={form.description} onChange={(e) => set({ description: e.target.value })} />
+        <div style={grid2}>
+          <div>
+            <label style={labelStyle} htmlFor="pf-details">Detalles (uno por línea)</label>
+            <textarea id="pf-details" rows={3} style={inputStyle} value={form.detailsText} onChange={(e) => set({ detailsText: e.target.value })} />
+          </div>
+          <div>
+            <label style={labelStyle} htmlFor="pf-fitd">Descripción del fit</label>
+            <textarea id="pf-fitd" rows={3} style={inputStyle} value={form.fitDescription} onChange={(e) => set({ fitDescription: e.target.value })} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+          <label><input type="checkbox" checked={form.isNew} onChange={(e) => set({ isNew: e.target.checked })} /> Destacar como nuevo</label>
+          <label><input type="checkbox" checked={form.isBestSeller} onChange={(e) => set({ isBestSeller: e.target.checked })} /> Más vendido</label>
+        </div>
+      </section>
+
+      <section style={card}>
+        <h3 style={sectionTitle}>2. PRECIOS (COP, SIN DECIMALES)</h3>
+        <div style={grid3}>
+          <div>
+            <label style={labelStyle} htmlFor="pf-price">Precio de venta *</label>
+            <input id="pf-price" inputMode="numeric" style={inputStyle} value={form.price} onChange={(e) => set({ price: e.target.value.replace(/[^0-9]/g, '') })} />
+            <Err k="price" />
+          </div>
+          <div>
+            <label style={labelStyle} htmlFor="pf-compare">Precio antes (tachado)</label>
+            <input id="pf-compare" inputMode="numeric" style={inputStyle} value={form.compareAt} onChange={(e) => set({ compareAt: e.target.value.replace(/[^0-9]/g, '') })} />
+            <Err k="compareAt" />
+          </div>
+          <div>
+            <label style={labelStyle} htmlFor="pf-cost">Costo (interno)</label>
+            <input id="pf-cost" inputMode="numeric" style={inputStyle} value={form.cost} onChange={(e) => set({ cost: e.target.value.replace(/[^0-9]/g, '') })} />
+            <Err k="cost" />
+          </div>
+        </div>
+      </section>
+
+      <section style={card}>
+        <h3 style={sectionTitle}>3. COLORES E IMÁGENES</h3>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '1rem' }}>
+          {ref.colors.map((c) => {
+            const on = form.colors.some((x) => x.slug === c.slug);
+            const inUse = Object.keys(form.existing).some((k) => k.startsWith(`${c.slug}|`));
+            return (
+              <button type="button" key={c.slug} onClick={() => (!inUse || !on ? toggleColor(c.slug) : setMessage({ ok: false, text: `${c.name} tiene variantes: no se puede quitar (puedes quitarle las tallas).` }))}
+                aria-pressed={on} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', padding: '0.4rem 0.7rem', borderRadius: '999px',
+                  border: on ? '2px solid #09090B' : '1px solid #D4D4D8', fontSize: '0.8rem', fontWeight: 700 }}>
+                <span style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: c.hex_code, border: '1px solid #A1A1AA' }} /> {c.name}
+              </button>
+            );
+          })}
+        </div>
+        <Err k="colors" /><Err k="images" />
+        {form.colors.map((c) => (
+          <div key={c.slug} style={{ border: '1px solid #E4E4E7', borderRadius: '8px', padding: '1rem', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+              <strong>{colorBySlug.get(c.slug)?.name}</strong>
+              <label style={{ fontSize: '0.8rem' }}><input type="radio" name="defaultColor" checked={c.isDefault} onChange={() => setDefaultColor(c.slug)} /> Color principal</label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
+              {c.images.map((img, i) => (
+                <div key={`${img.storage_path || img.external_url}-${i}`} style={{ position: 'relative', width: 72, height: 90, borderRadius: 6, overflow: 'hidden', backgroundColor: '#F4F4F5' }}>
+                  <img src={img.preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', bottom: 2, right: 2, display: 'flex', gap: 2 }}>
+                    {i > 0 && <button type="button" aria-label="Usar como primera" onClick={() => setColorImages(c.slug, (imgs) => [img, ...imgs.filter((_, j) => j !== i)])} style={miniBtn}><Star size={12} /></button>}
+                    <button type="button" aria-label="Quitar imagen" onClick={() => setColorImages(c.slug, (imgs) => imgs.filter((_, j) => j !== i))} style={miniBtn}><Trash2 size={12} /></button>
+                  </div>
+                </div>
               ))}
-            </select>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Fit / Horma *</label>
-            <select
-              value={formData.fit}
-              onChange={(e) => setFormData({ ...formData, fit: e.target.value })}
-              style={inputStyle}
-            >
-              <option value="SLIM">SLIM FIT</option>
-              <option value="REGULAR">REGULAR FIT</option>
-              <option value="RELAXED">RELAXED FIT</option>
-              <option value="OVERSIZE">OVERSIZE FIT</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Ocasión *</label>
-            <select
-              value={formData.occasion}
-              onChange={(e) => setFormData({ ...formData, occasion: e.target.value })}
-              style={inputStyle}
-            >
-              <option value="casual">Casual Urbano</option>
-              <option value="trabajo">Trabajo & Oficina</option>
-              <option value="cita">Cita & Salidas</option>
-              <option value="fiesta">Noche & Eventos</option>
-              <option value="fin-de-semana">Fin de Semana</option>
-              <option value="streetwear">Streetwear Minimal</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label style={labelStyle}>Descripción para el Cliente</label>
-          <textarea
-            rows={3}
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            style={{ ...inputStyle, fontFamily: 'inherit' }}
-          />
-        </div>
-      </div>
-
-      {/* 2. PRECIOS & COSTOS */}
-      <div style={{ backgroundColor: '#FFFFFF', padding: '1.75rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
-        <h3 style={sectionTitle}>2. PRECIOS & MARGEN ($ COP)</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem' }}>
-          <div>
-            <label style={labelStyle}>Precio de Venta ($ COP) *</label>
-            <input
-              type="number"
-              required
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Precio Anterior (Opcional)</label>
-            <input
-              type="number"
-              value={formData.originalPrice}
-              onChange={(e) => setFormData({ ...formData, originalPrice: Number(e.target.value) })}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Costo de Fabricación</label>
-            <input
-              type="number"
-              value={formData.cost}
-              onChange={(e) => setFormData({ ...formData, cost: Number(e.target.value) })}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Margen Bruto (%)</label>
-            <div style={{ ...inputStyle, backgroundColor: '#FAFAFA', fontWeight: 900, color: '#10B981', display: 'flex', alignItems: 'center' }}>
-              {margin}% Margen
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <label style={{ ...miniBtnWide, cursor: 'pointer' }}>
+                <Upload size={14} /> {uploading === c.slug ? 'Subiendo…' : 'Subir imágenes'}
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple hidden
+                  aria-label={`Subir imágenes para ${colorBySlug.get(c.slug)?.name}`}
+                  onChange={(e) => { uploadFiles(c.slug, [...e.target.files]); e.target.value = ''; }} />
+              </label>
+              <input placeholder="o pega una URL https://" aria-label={`URL de imagen para ${colorBySlug.get(c.slug)?.name}`} value={urlInput[c.slug] || ''}
+                onChange={(e) => setUrlInput((u) => ({ ...u, [c.slug]: e.target.value }))} style={{ ...inputStyle, width: 'auto', flex: 1, minWidth: 200 }} />
+              <button type="button" onClick={() => addUrl(c.slug)} style={miniBtnWide}>Agregar URL</button>
             </div>
           </div>
+        ))}
+      </section>
+
+      <section style={card}>
+        <h3 style={sectionTitle}>4. TALLAS Y STOCK INICIAL</h3>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+          {sizeOptions.map((s) => (
+            <button type="button" key={s.code} aria-pressed={form.sizes.includes(s.code)} onClick={() => toggleSize(s.code)}
+              style={{ minWidth: 48, height: 40, borderRadius: 6, fontWeight: 800, border: '1px solid #D4D4D8',
+                backgroundColor: form.sizes.includes(s.code) ? '#09090B' : '#FFF', color: form.sizes.includes(s.code) ? '#FFF' : '#09090B' }}>
+              {s.code}
+            </button>
+          ))}
         </div>
-      </div>
-
-      {/* 3. IMÁGENES & COLORES */}
-      <div style={{ backgroundColor: '#FFFFFF', padding: '1.75rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
-        <h3 style={sectionTitle}>3. FOTOGRAFÍAS DE PRODUCTO & COLORES (ADMINISTRABLE)</h3>
-
-        {/* Warning Banner if product has no valid images */}
-        {!hasValidProductImage(formData) && (
-          <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#991B1B' }}>
-            <AlertTriangle size={20} />
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '0.88rem' }}>Este producto no tiene una imagen válida asignada.</div>
-              <div style={{ fontSize: '0.8rem' }}>Sube una foto desde tu computador o ingresa una URL válida para que la prenda se muestre correctamente en la tienda pública.</div>
-            </div>
+        <Err k="sizes" /><Err k="stock" />
+        {form.colors.length > 0 && form.sizes.length > 0 && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+              <thead><tr><th style={th}>Color \ Talla</th>{form.sizes.map((s) => <th key={s} style={th}>{s}</th>)}</tr></thead>
+              <tbody>
+                {form.colors.map((c) => (
+                  <tr key={c.slug}>
+                    <td style={th}>{colorBySlug.get(c.slug)?.name}</td>
+                    {form.sizes.map((s) => {
+                      const key = `${c.slug}|${s}`; const ex = form.existing[key];
+                      return (
+                        <td key={s} style={{ padding: '0.3rem' }}>
+                          {ex ? <span title="Ajusta el stock en Inventario">{ex.stock - ex.reserved} disp.</span> : (
+                            <input aria-label={`Stock inicial ${colorBySlug.get(c.slug)?.name} ${s}`} inputMode="numeric" style={{ ...inputStyle, width: 64, padding: '0.35rem' }}
+                              value={form.stock[key] ?? ''} placeholder="0" onChange={(e) => set({ stock: { ...form.stock, [key]: e.target.value.replace(/[^0-9]/g, '') } })} />
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ fontSize: '0.75rem', color: '#71717A', marginTop: '0.5rem' }}>
+              El stock de variantes existentes se modifica en <Link to="/admin/inventario" style={{ textDecoration: 'underline' }}>Inventario</Link> (queda registrado cada movimiento). Quitar una talla desactiva sus variantes; no borra su historial.
+            </p>
           </div>
         )}
-
-        {/* Subida Multi-Imagen de Fotografías */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={labelStyle}>Galería Fotográfica de la Prenda (La primera foto es la Imagen Principal)</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
-            {formData.images?.map((imgUrl, idx) => (
-              <div key={idx} style={{ position: 'relative', width: '110px', height: '135px', borderRadius: '8px', overflow: 'hidden', border: idx === 0 ? '2px solid #09090B' : '1px solid #E4E4E7', backgroundColor: '#F4F4F5' }}>
-                <SafeProductImage src={imgUrl} alt={`Foto ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                
-                {/* Remove button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newImgs = formData.images.filter((_, i) => i !== idx);
-                    setFormData({ ...formData, images: newImgs, imageUrl1: newImgs[0] || '', imageUrl2: newImgs[1] || '' });
-                  }}
-                  style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(225, 29, 72, 0.9)', color: '#FFF', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  title="Eliminar foto"
-                >
-                  <Trash2 size={11} />
-                </button>
-
-                {/* Make Primary Image Button */}
-                {idx > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const reordered = [imgUrl, ...formData.images.filter((_, i) => i !== idx)];
-                      setFormData({ ...formData, images: reordered, imageUrl1: reordered[0], imageUrl2: reordered[1] || '' });
-                    }}
-                    style={{ position: 'absolute', top: 4, left: 4, backgroundColor: 'rgba(9, 9, 11, 0.8)', color: '#FFF', border: 'none', borderRadius: '4px', padding: '2px 5px', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer' }}
-                    title="Establecer como imagen principal"
-                  >
-                    Hacer Principal
-                  </button>
-                )}
-
-                {/* Index / Primary Badge */}
-                <span style={{ position: 'absolute', bottom: 4, left: 4, backgroundColor: idx === 0 ? '#09090B' : 'rgba(9,9,11,0.75)', color: idx === 0 ? '#D4AF37' : '#FFF', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '3px' }}>
-                  {idx === 0 ? 'PRINCIPAL' : `#${idx + 1}`}
-                </span>
-              </div>
-            ))}
-
-            <label style={{ width: '110px', height: '135px', border: '2px dashed #D4D4D8', borderRadius: '8px', backgroundColor: '#FAFAFA', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0.5rem' }}>
-              <Plus size={22} color="#71717A" />
-              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#09090B', marginTop: '0.3rem' }}>Subir Imagen</span>
-              <span style={{ fontSize: '0.62rem', color: '#A1A1AA' }}>JPG, PNG, WEBP</span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files || []);
-                  files.forEach((file) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setFormData((prev) => {
-                        const updatedImgs = [...(prev.images || []), reader.result];
-                        return {
-                          ...prev,
-                          images: updatedImgs,
-                          imageUrl1: updatedImgs[0] || '',
-                          imageUrl2: updatedImgs[1] || ''
-                        };
-                      });
-                    };
-                    reader.readAsDataURL(file);
-                  });
-                }}
-                style={{ display: 'none' }}
-              />
-            </label>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', color: '#71717A', fontWeight: 600 }}>O agregar por enlace de foto:</span>
-            <input
-              type="url"
-              placeholder="https://..."
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (e.target.value.trim()) {
-                    const updatedImgs = [...(formData.images || []), e.target.value.trim()];
-                    setFormData({ ...formData, images: updatedImgs, imageUrl1: updatedImgs[0] || '', imageUrl2: updatedImgs[1] || '' });
-                    e.target.value = '';
-                  }
-                }
-              }}
-              style={{ ...inputStyle, padding: '0.4rem 0.6rem', fontSize: '0.8rem', flex: 1 }}
-            />
-          </div>
-        </div>
-
-        {/* Tallas Selector */}
-        <div>
-          <label style={labelStyle}>Tallas Disponibles</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {['S', 'M', 'L', 'XL', 'XXL', '30', '32', '34', '36', '38', '39', '40', '41', '42'].map((sz) => {
-              const isSelected = formData.selectedSizes.includes(sz);
-              return (
-                <button
-                  key={sz}
-                  type="button"
-                  onClick={() => handleSizeToggle(sz)}
-                  style={{
-                    padding: '0.4rem 0.8rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 800,
-                    borderRadius: '4px',
-                    border: isSelected ? '2px solid #09090B' : '1px solid #E4E4E7',
-                    backgroundColor: isSelected ? '#09090B' : '#FFFFFF',
-                    color: isSelected ? '#FFFFFF' : '#09090B',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {sz}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      </section>
     </form>
   );
 };
 
-const sectionTitle = {
-  fontSize: '0.95rem',
-  fontWeight: 900,
-  color: '#09090B',
-  letterSpacing: '0.05em',
-  marginBottom: '1rem',
-  textTransform: 'uppercase'
-};
-
-const labelStyle = {
-  display: 'block',
-  fontSize: '0.78rem',
-  fontWeight: 700,
-  color: '#09090B',
-  marginBottom: '0.4rem'
-};
-
-const inputStyle = {
-  width: '100%',
-  padding: '0.7rem 0.85rem',
-  border: '1px solid #D4D4D8',
-  borderRadius: '6px',
-  fontSize: '0.85rem',
-  outline: 'none'
-};
+const card = { backgroundColor: '#FFFFFF', padding: '1.5rem', borderRadius: '10px', border: '1px solid #E4E4E7', display: 'flex', flexDirection: 'column', gap: '0.5rem' };
+const grid2 = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', margin: '0.5rem 0' };
+const grid3 = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', margin: '0.5rem 0' };
+const th = { padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 800, color: '#52525B' };
+const miniBtn = { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 4, padding: 3, display: 'flex' };
+const miniBtnWide = { border: '1px solid #D4D4D8', borderRadius: 6, padding: '0.45rem 0.8rem', fontSize: '0.8rem', fontWeight: 700, display: 'flex', gap: '0.35rem', alignItems: 'center' };
+const sectionTitle = { fontSize: '0.95rem', fontWeight: 900, color: '#09090B', letterSpacing: '0.05em', marginBottom: '0.5rem', textTransform: 'uppercase' };
+const labelStyle = { display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#09090B', marginBottom: '0.3rem', marginTop: '0.4rem' };
+const inputStyle = { width: '100%', padding: '0.65rem 0.8rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' };
 
 export default AdminProductFormPage;

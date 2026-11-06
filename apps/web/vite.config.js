@@ -1,6 +1,7 @@
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { apiDevPlugin } from './dev/apiDevPlugin.js';
 import { readDeploySignals, publicDeploySignals, deployContext, deployContextProblems, cleanSignal } from './src/config/deployContext.js';
 
 // M26-R1.1 (MAJ-2) — Guarda del contexto de despliegue en el BUILD (también el que ejecuta Vercel, que no pasa por
@@ -22,13 +23,22 @@ export function deployGuard({ viteAppEnv: rawViteAppEnv, processEnv = {} }) {
   return { signals: publicDeploySignals(signals), problems: [...new Set(problems)] };
 }
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
-  // Mismas reglas de carga que Vite (archivos .env* de apps/web y variables VITE_* del proceso, que tienen prioridad).
-  const { signals, problems } = deployGuard({ viteAppEnv: loadEnv(mode, __dirname, 'VITE_').VITE_APP_ENV, processEnv: process.env });
-  if (problems.length) throw new Error(`[Guarda de despliegue] Configuración rechazada:\n - ${problems.join('\n - ')}`);
+/** Aplica la guarda con el entorno que Vite resolvió de verdad (envDir efectivo + variables VITE_* del proceso). */
+function deployGuardPlugin() {
   return {
-    plugins: [react()],
+    name: 'jm-deploy-guard',
+    configResolved(config) {
+      const { problems } = deployGuard({ viteAppEnv: config.env.VITE_APP_ENV, processEnv: process.env });
+      if (problems.length) throw new Error(`[Guarda de despliegue] Configuración rechazada:\n - ${problems.join('\n - ')}`);
+    },
+  };
+}
+
+// https://vitejs.dev/config/
+export default defineConfig(() => {
+  const { signals } = deployGuard({ viteAppEnv: undefined, processEnv: process.env });
+  return {
+    plugins: [deployGuardPlugin(), react(), apiDevPlugin(__dirname)],
     define: { __JM_DEPLOY_SIGNALS__: JSON.stringify(signals) },
     resolve: {
       alias: {

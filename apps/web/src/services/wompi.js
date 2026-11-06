@@ -85,115 +85,61 @@ export const wompiService = {
   },
 
   /**
-   * Solicita al servidor backend (/api/wompi/signature) la firma de integridad SHA-256.
+   * Prepara el pago en el servidor (/api/wompi/signature → create_payment_attempt en la BD): devuelve la referencia
+   * del intento, el monto que fija la BD y la firma de integridad. El navegador no decide importes ni referencias.
    */
-  fetchServerIntegritySignature: async (orderNumber, orderId) => {
+  preparePayment: async (orderId, publicToken) => {
+    let response;
     try {
-      const response = await fetch('/api/wompi/signature', {
+      response = await fetch('/api/wompi/signature', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          reference: orderNumber,
-          order_id: orderId
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, public_token: publicToken }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Error del servidor (${response.status}) al obtener la firma Wompi.`);
-      }
-
-      const data = await response.json();
-      return data; // { reference, amount_in_cents, currency, signature, publicKey }
-    } catch (err) {
-      console.warn('[Wompi Service Warning]: Fallback a simulación o respuesta de error:', err);
-      throw err;
+    } catch {
+      throw new Error('No hay conexión con la tienda para preparar el pago. Inténtalo de nuevo.');
     }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw Object.assign(new Error(data.error || 'No se pudo preparar el pago.'), { status: response.status, code: data.code });
+    if (!data.signature || !data.reference || !data.amount_in_cents) throw new Error('La respuesta de preparación del pago está incompleta.');
+    return data; // { reference, amount_in_cents, currency, signature, publicKey, order_number, attempt_number }
   },
 
+  /** URL de retorno: la página de confirmación consulta el estado REAL en la BD (no confía en el resultado del widget). */
+  confirmationUrl: (orderNumber, publicToken) =>
+    `${window.location.origin}/checkout/confirmacion?order=${encodeURIComponent(orderNumber)}&token=${encodeURIComponent(publicToken)}`,
+
   /**
-   * Inicia el Checkout Widget oficial de Wompi con la firma calculada autoritativamente por el servidor.
+   * Abre el Checkout Widget de Wompi para un pedido ya creado en la BD.
+   * @param {{ order: { id, order_number, public_token }, customer: { email, name, phone } }} input
    */
-  openWompiWidget: async ({
-    orderNumber,
-    orderId,
-    totalAmount,
-    amountInCents,
-    customerEmail,
-    customerName,
-    customerPhone,
-    redirectUrl
-  }) => {
-    await wompiService.loadWompiWidgetScript();
-
-    // 1. Obtener la firma de integridad generada autoritativamente en servidor
-    let signatureData = null;
+  openWompiWidget: async ({ order, customer }) => {
+    const pay = await wompiService.preparePayment(order.id, order.public_token);
+    const redirectUrl = wompiService.confirmationUrl(order.order_number, order.public_token);
+    let CheckoutClass;
     try {
-      signatureData = await wompiService.fetchServerIntegritySignature(orderNumber, orderId);
-    } catch (err) {
-      console.error('[Wompi Service Error]: No se pudo obtener la firma de integridad server-side:', err);
-      throw new Error('No se pudo generar la firma de seguridad para el pago en Wompi. Por favor intenta nuevamente.');
+      CheckoutClass = await wompiService.loadWompiWidgetScript();
+    } catch {
+      throw Object.assign(new Error('No se pudo cargar la pasarela de pagos de Wompi. Tu pedido quedó creado: puedes reintentar el pago desde la confirmación del pedido.'), { redirectUrl });
     }
-
-    if (!signatureData || !signatureData.signature) {
-      throw new Error('La firma de seguridad de Wompi no fue recibida del servidor.');
-    }
-
-    const finalAmountInCents = signatureData.amount_in_cents || amountInCents || Math.round(totalAmount * 100);
-    const finalReference = signatureData.reference || orderNumber || `JM-ORD-${orderId}`;
-    const publicKey = signatureData.publicKey || WOMPI_CONFIG.publicKey;
-    const integritySignature = signatureData.signature;
-
-    const defaultRedirectUrl = redirectUrl || `${window.location.origin}/checkout/confirmacion?orderId=${orderId}&ref=${finalReference}`;
-
-    // Configuración oficial del Checkout Widget de Wompi Colombia
-    const checkoutOptions = {
-      currency: 'COP',
-      amountInCents: finalAmountInCents,
-      reference: finalReference,
-      publicKey: publicKey,
-      signature: {
-        integrity: integritySignature
-      },
-      redirectUrl: defaultRedirectUrl,
+    const checkout = new CheckoutClass({
+      currency: pay.currency || 'COP',
+      amountInCents: pay.amount_in_cents,
+      reference: pay.reference,
+      publicKey: pay.publicKey || WOMPI_CONFIG.publicKey,
+      signature: { integrity: pay.signature },
+      redirectUrl,
       customerData: {
-        email: customerEmail,
-        fullName: customerName,
-        phoneNumber: customerPhone ? customerPhone.replace(/[^0-9]/g, '') : '',
-        phoneNumberPrefix: '+57'
-      }
-    };
-
-    // Validación defensiva de paridad estricta entre la firma autoritativa y las opciones del Widget
-    const signatureInputsMatch = Boolean(
-      signatureData?.reference === checkoutOptions.reference &&
-      signatureData?.amount_in_cents === checkoutOptions.amountInCents &&
-      (signatureData?.currency || 'COP') === checkoutOptions.currency
-    );
-
-    if (!signatureInputsMatch) {
-      console.error('[Wompi Service Error]: Discrepancia en los parámetros de la firma de integridad.');
-      throw new Error('Discrepancia en los datos de pago para Wompi. Por favor intenta nuevamente.');
-    }
-
-    const CheckoutClass = getWompiWidgetClass();
-
-    if (CheckoutClass) {
-      const checkout = new CheckoutClass(checkoutOptions);
-      checkout.open((result) => {
-        const transaction = result?.transaction;
-        console.log('[Wompi Widget Result]:', transaction);
-        if (transaction && redirectUrl) {
-          window.location.href = defaultRedirectUrl;
-        }
-      });
-    } else {
-      console.error('[Wompi Service Error]: WidgetCheckout no está disponible en window.');
-      throw new Error('No se pudo inicializar la pasarela de pagos de Wompi. Por favor intenta nuevamente.');
-    }
-  }
+        email: customer.email,
+        fullName: customer.name,
+        phoneNumber: String(customer.phone || '').replace(/[^0-9]/g, ''),
+        phoneNumberPrefix: '+57',
+      },
+    });
+    // El resultado del widget solo sirve para volver a la confirmación; el estado pagado lo fija el webhook en la BD.
+    checkout.open(() => { window.location.href = redirectUrl; });
+    return { reference: pay.reference, redirectUrl };
+  },
 };
 
 export default wompiService;

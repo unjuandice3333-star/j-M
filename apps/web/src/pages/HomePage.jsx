@@ -953,7 +953,7 @@ export const HomePage = () => {
       {/* 7. COMPLETA EL LOOK EDITORIAL */}
       <section style={{ padding: '2rem 0' }}>
         <div className="jm-container">
-          <CompleteTheLook lookId="look-1" />
+          <CompleteTheLook />
         </div>
       </section>
 

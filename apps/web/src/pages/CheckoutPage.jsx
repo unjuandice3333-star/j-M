@@ -5,136 +5,121 @@ import { useECommerceStore } from '../store/eCommerceStore';
 import { formatCOP } from '../data/mockData';
 import { analyticsService } from '../services/analytics';
 import { wompiService } from '../services/wompi';
+import { newIdempotencyKey } from '../services/orderService';
+import { useAuthStore } from '../store/authStore';
 
+// Departamentos de Colombia (y Bogotá D.C.). Se guarda el nombre tal cual en el pedido.
 const DEPARTMENTS = [
-  'Cundinamarca (Bogotá D.C.)',
-  'Antioquia (Medellín)',
-  'Valle del Cauca (Cali)',
-  'Atlántico (Barranquilla)',
-  'Santander (Bucaramanga)',
-  'Bolívar (Cartagena)',
-  'Risaralda (Pereira)',
-  'Caldas (Manizales)',
-  'Meta (Villavicencio)',
-  'Norte de Santander (Cúcuta)',
-  'Quindío (Armenia)',
-  'Tolima (Ibagué)',
-  'Otro Departamento...'
+  'Amazonas', 'Antioquia', 'Arauca', 'Atlántico', 'Bogotá D.C.', 'Bolívar', 'Boyacá', 'Caldas', 'Caquetá', 'Casanare',
+  'Cauca', 'Cesar', 'Chocó', 'Córdoba', 'Cundinamarca', 'Guainía', 'Guaviare', 'Huila', 'La Guajira', 'Magdalena',
+  'Meta', 'Nariño', 'Norte de Santander', 'Putumayo', 'Quindío', 'Risaralda', 'San Andrés y Providencia', 'Santander',
+  'Sucre', 'Tolima', 'Valle del Cauca', 'Vaupés', 'Vichada'
 ];
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/** Validación en el navegador (la BD vuelve a validar todo en create_order). */
+function validate(f) {
+  const e = {};
+  if (f.firstName.trim().length < 2) e.firstName = 'Escribe tu nombre.';
+  if (f.lastName.trim().length < 2) e.lastName = 'Escribe tu apellido.';
+  if (!EMAIL_RE.test(f.email.trim())) e.email = 'Escribe un correo válido.';
+  const digits = f.phone.replace(/[^0-9]/g, '');
+  if (digits.length < 7 || digits.length > 15) e.phone = 'Escribe un teléfono de 7 a 15 dígitos.';
+  if (!f.department) e.department = 'Elige el departamento.';
+  if (f.city.trim().length < 2) e.city = 'Escribe la ciudad o municipio.';
+  if (f.address.trim().length < 4) e.address = 'Escribe la dirección completa.';
+  return e;
+}
 
 export const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { items, userProfile, getTotals, createOrder } = useECommerceStore();
+  const { items, getTotals, createOrder, refreshQuote, appliedCoupon, shippingMethods, loadProducts } = useECommerceStore();
+  const { user, profile } = useAuthStore();
   const totals = getTotals();
 
-  // Generar o mantener una Idempotency Key única por cada intento de checkout
-  const [idempotencyKey] = useState(() => `checkout-${Date.now()}-${Math.floor(Math.random() * 1000000)}`);
+  // Clave de idempotencia por contenido del carrito: un doble clic o un reintento del mismo carrito devuelve el MISMO
+  // pedido (create_order es idempotente); si el carrito cambia, es un pedido nuevo.
+  const cartKey = items.map((i) => `${i.variantId}x${i.quantity}`).sort().join(',') + `|${appliedCoupon?.code ?? ''}`;
+  const [idem, setIdem] = useState(() => ({ cartKey, key: newIdempotencyKey() }));
+  const idempotencyKey = idem.cartKey === cartKey ? idem.key : null;
+  useEffect(() => { if (idem.cartKey !== cartKey) setIdem({ cartKey, key: newIdempotencyKey() }); }, [cartKey, idem.cartKey]);
 
+  useEffect(() => { loadProducts(); }, [loadProducts]);
   useEffect(() => {
-    if (items.length > 0) {
-      analyticsService.beginCheckout(items, totals.total);
-    }
-  }, [items, totals.total]);
+    if (items.length > 0) analyticsService.beginCheckout(items, totals.total);
+  }, [items.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Form States
+  const fullName = (profile?.full_name || user?.user_metadata?.full_name || '').trim();
   const [formData, setFormData] = useState({
-    firstName: userProfile?.name?.split(' ')[0] || '',
-    lastName: userProfile?.name?.split(' ')[1] || '',
-    email: userProfile?.email || '',
-    phone: userProfile?.phone || '',
-    department: 'Cundinamarca (Bogotá D.C.)',
+    firstName: fullName.split(' ')[0] || '',
+    lastName: fullName.split(' ').slice(1).join(' ') || '',
+    email: user?.email || '',
+    phone: profile?.phone || '',
+    department: '',
     city: '',
     address: '',
     neighborhood: '',
     notes: ''
   });
-
-  const [shippingMethod, setShippingMethod] = useState('estandar');
-  const [paymentMethod, setPaymentMethod] = useState('credit_card');
-
+  // La sesión se restaura de forma asíncrona: completar los campos vacíos cuando llegan el usuario y su perfil.
+  useEffect(() => {
+    if (!user) return;
+    const name = (profile?.full_name || user.user_metadata?.full_name || '').trim();
+    setFormData((prev) => ({
+      ...prev,
+      firstName: prev.firstName || name.split(' ')[0] || '',
+      lastName: prev.lastName || name.split(' ').slice(1).join(' ') || '',
+      email: prev.email || user.email || '',
+      phone: prev.phone || profile?.phone || '',
+    }));
+  }, [user, profile]);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [shippingMethod, setShippingMethod] = useState('standard');
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // Cotización autoritativa (incluye límites de cupón por correo)
+  useEffect(() => {
+    if (!items.length) return;
+    const email = EMAIL_RE.test(formData.email.trim()) ? formData.email.trim().toLowerCase() : null;
+    refreshQuote({ shippingMethod, email }).catch((e) => setErrorMessage(e.message));
+  }, [cartKey, shippingMethod, formData.email, refreshQuote]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
-    if (isProcessing) return;
+    if (isProcessing || !idempotencyKey) return;
+    const errs = validate(formData);
+    setFieldErrors(errs);
+    if (Object.keys(errs).length) { setErrorMessage('Revisa los campos marcados.'); return; }
+    if (totals.canCheckout === false) { setErrorMessage('Hay productos sin stock suficiente. Ajusta tu carrito.'); return; }
 
     setIsProcessing(true);
     setErrorMessage(null);
-
+    const customer = { name: `${formData.firstName.trim()} ${formData.lastName.trim()}`, email: formData.email.trim().toLowerCase(), phone: formData.phone };
     try {
-      // Validación previa estricta de variantes reales antes de llamar a la RPC
-      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      const BRANCH_ID = 'b1000000-0000-0000-0000-000000000001';
-
-      for (const item of items) {
-        if (!item.variantId || !UUID_REGEX.test(item.variantId) || item.variantId === BRANCH_ID) {
-          throw new Error(`La prenda "${item.name}" (Talla: ${item.size || 'Única'}) no tiene una variante válida del catálogo. Por favor retírala del carrito y vuelve a seleccionarla.`);
-        }
-      }
-
-      const orderData = {
+      const order = await createOrder({
+        customer,
+        shipping: { department: formData.department, city: formData.city.trim(), address: formData.address.trim(),
+          neighborhood: formData.neighborhood.trim(), notes: formData.notes.trim() },
+        shippingMethod,
         idempotencyKey,
-        customerName: `${formData.firstName} ${formData.lastName}`,
-        email: formData.email,
-        phone: formData.phone,
-        department: formData.department,
-        city: formData.city,
-        shippingAddress: `${formData.address}, ${formData.neighborhood}, ${formData.city}, ${formData.department}`,
-        neighborhood: formData.neighborhood,
-        shippingNotes: formData.notes,
-        shippingMethod: shippingMethod === 'expreso' ? 'Envío Expreso 24h' : 'Envío Estándar Nacional',
-        paymentMethod:
-          paymentMethod === 'credit_card'
-            ? 'Tarjeta de Crédito / Débito'
-            : paymentMethod === 'pse'
-            ? 'PSE Débito Bancario'
-            : paymentMethod === 'nequi'
-            ? 'Nequi / Bancolombia'
-            : 'Pago Contraentrega en Efectivo',
-        items: items.map((i) => ({
-          variantId: i.variantId,
-          name: i.name,
-          size: i.size,
-          color: i.color,
-          price: i.price,
-          quantity: i.quantity,
-          image: i.image
-        }))
-      };
-
-      const orderResult = await createOrder(orderData);
-      const orderId = typeof orderResult === 'object' ? orderResult?.id : orderResult;
-      const orderNumber = typeof orderResult === 'object' && (orderResult?.order_number || orderResult?.orderNumber)
-        ? (orderResult.order_number || orderResult.orderNumber)
-        : null;
-
-      // Si el método de pago es Wompi (Tarjeta, PSE, Nequi), abrir Widget Oficial con Firma Server-Side
-      if (paymentMethod !== 'contraentrega') {
-        const totalAmount = totals.total;
-
-        await wompiService.openWompiWidget({
-          orderNumber,
-          orderId,
-          totalAmount,
-          amountInCents: Math.round(totalAmount * 100),
-          customerEmail: formData.email,
-          customerName: `${formData.firstName} ${formData.lastName}`,
-          customerPhone: formData.phone,
-          redirectUrl: `${window.location.origin}/checkout/confirmacion?orderId=${orderId}`
-        });
-      } else {
-        // Pago contraentrega navega directo a la página de confirmación
-        navigate(`/checkout/confirmacion?orderId=${orderId}`);
+      });
+      try {
+        await wompiService.openWompiWidget({ order, customer });
+      } catch (payErr) {
+        // El pedido existe y reservó stock; el pago puede reintentarse desde la confirmación.
+        setErrorMessage(`${payErr.message}`);
+        navigate(`/checkout/confirmacion?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.public_token)}&pago=error`);
       }
     } catch (err) {
-      console.error('[Checkout Error]:', err);
-      setErrorMessage(err.message || 'No pudimos procesar la orden en este momento. Por favor verifica el stock de tus prendas.');
+      setErrorMessage(err.message || 'No pudimos crear tu pedido. Inténtalo de nuevo.');
     } finally {
       setIsProcessing(false);
     }
@@ -179,7 +164,7 @@ export const CheckoutPage = () => {
         </div>
 
         {errorMessage && (
-          <div style={{
+          <div role="alert" style={{
             backgroundColor: '#FEF2F2',
             color: '#991B1B',
             padding: '1rem 1.5rem',
@@ -192,7 +177,7 @@ export const CheckoutPage = () => {
           </div>
         )}
 
-        <form onSubmit={handlePlaceOrder} style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: '3rem' }} className="checkout-page-layout">
+        <form onSubmit={handlePlaceOrder} noValidate style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: '3rem' }} className="checkout-page-layout">
           {/* LEFT FORM COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             {/* 1. INFORMACIÓN DE CONTACTO */}
@@ -203,21 +188,25 @@ export const CheckoutPage = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={labelStyle}>Nombre *</label>
-                  <input type="text" name="firstName" required value={formData.firstName} onChange={handleInputChange} style={inputStyle} />
+                  <input type="text" name="firstName" required value={formData.firstName} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.firstName)} style={inputStyle} />
+                  <FieldError msg={fieldErrors.firstName} />
                 </div>
                 <div>
                   <label style={labelStyle}>Apellido *</label>
-                  <input type="text" name="lastName" required value={formData.lastName} onChange={handleInputChange} style={inputStyle} />
+                  <input type="text" name="lastName" required value={formData.lastName} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.lastName)} style={inputStyle} />
+                  <FieldError msg={fieldErrors.lastName} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={labelStyle}>Correo Electrónico *</label>
-                  <input type="email" name="email" required value={formData.email} onChange={handleInputChange} style={inputStyle} />
+                  <input type="email" name="email" required value={formData.email} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.email)} style={inputStyle} />
+                  <FieldError msg={fieldErrors.email} />
                 </div>
                 <div>
                   <label style={labelStyle}>Teléfono Celular (WhatsApp) *</label>
-                  <input type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} style={inputStyle} />
+                  <input type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.phone)} style={inputStyle} />
+                  <FieldError msg={fieldErrors.phone} />
                 </div>
               </div>
             </div>
@@ -230,25 +219,29 @@ export const CheckoutPage = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={labelStyle}>Departamento *</label>
-                  <select name="department" value={formData.department} onChange={handleInputChange} style={inputStyle}>
+                  <select name="department" required value={formData.department} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.department)} style={inputStyle}>
+                    <option value="">Selecciona…</option>
                     {DEPARTMENTS.map((dept) => (
                       <option key={dept} value={dept}>{dept}</option>
                     ))}
                   </select>
+                  <FieldError msg={fieldErrors.department} />
                 </div>
                 <div>
                   <label style={labelStyle}>Ciudad / Municipio *</label>
-                  <input type="text" name="city" required value={formData.city} onChange={handleInputChange} style={inputStyle} />
+                  <input type="text" name="city" required value={formData.city} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.city)} style={inputStyle} />
+                  <FieldError msg={fieldErrors.city} />
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={labelStyle}>Dirección Exacta (Calle, Carrera, Número, Apto/Torre) *</label>
-                <input type="text" name="address" required placeholder="Ej: Calle 93B # 11A - 28, Apt 402" value={formData.address} onChange={handleInputChange} style={inputStyle} />
+                <input type="text" name="address" required placeholder="Ej: Calle 93B # 11A - 28, Apt 402" value={formData.address} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.address)} style={inputStyle} />
+                  <FieldError msg={fieldErrors.address} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={labelStyle}>Barrio *</label>
-                  <input type="text" name="neighborhood" required value={formData.neighborhood} onChange={handleInputChange} style={inputStyle} />
+                  <label style={labelStyle}>Barrio</label>
+                  <input type="text" name="neighborhood" value={formData.neighborhood} onChange={handleInputChange} style={inputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Notas adicionales de entrega (Opcional)</label>
@@ -263,25 +256,21 @@ export const CheckoutPage = () => {
                 3. MÉTODO DE ENVÍO
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                <label style={optionCardStyle(shippingMethod === 'estandar')}>
-                  <input type="radio" name="shipping" checked={shippingMethod === 'estandar'} onChange={() => setShippingMethod('estandar')} style={{ accentColor: '#09090B' }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Envío Estándar Nacional (2 a 4 días hábiles)</div>
-                    <div style={{ fontSize: '0.78rem', color: '#71717A' }}>Entrega garantizada a todo Colombia por Coordinadora / Servientrega</div>
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
-                    {totals.shippingCost === 0 ? <span style={{ color: '#10B981' }}>GRATIS</span> : formatCOP(15000)}
-                  </div>
-                </label>
-
-                <label style={optionCardStyle(shippingMethod === 'expreso')}>
-                  <input type="radio" name="shipping" checked={shippingMethod === 'expreso'} onChange={() => setShippingMethod('expreso')} style={{ accentColor: '#09090B' }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Envío Expreso 24h (Solo Bogotá y Medellín)</div>
-                    <div style={{ fontSize: '0.78rem', color: '#71717A' }}>Recibe tu pedido al día siguiente útil</div>
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{formatCOP(22000)}</div>
-                </label>
+                {shippingMethods.length === 0 && <div style={{ fontSize: '0.85rem', color: '#71717A' }}>Cargando métodos de envío…</div>}
+                {shippingMethods.map((m) => (
+                  <label key={m.code} style={optionCardStyle(shippingMethod === m.code)}>
+                    <input type="radio" name="shipping" checked={shippingMethod === m.code} onChange={() => setShippingMethod(m.code)} style={{ accentColor: '#09090B' }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{m.name}{m.eta_text ? ` (${m.eta_text})` : ''}</div>
+                      {m.free_over_subtotal ? <div style={{ fontSize: '0.78rem', color: '#71717A' }}>Gratis en compras desde {formatCOP(m.free_over_subtotal)}</div> : null}
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
+                      {shippingMethod === m.code && !totals.isEstimate
+                        ? (totals.shippingCost === 0 ? <span style={{ color: '#10B981' }}>GRATIS</span> : formatCOP(totals.shippingCost))
+                        : formatCOP(m.cost)}
+                    </div>
+                  </label>
+                ))}
               </div>
             </div>
 
@@ -290,38 +279,12 @@ export const CheckoutPage = () => {
               <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#09090B', textTransform: 'uppercase', marginBottom: '1.25rem' }}>
                 4. MÉTODO DE PAGO
               </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                <label style={optionCardStyle(paymentMethod === 'credit_card')}>
-                  <input type="radio" name="payment" checked={paymentMethod === 'credit_card'} onChange={() => setPaymentMethod('credit_card')} style={{ accentColor: '#09090B' }} />
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Tarjeta de Crédito / Débito</div>
-                    <div style={{ fontSize: '0.78rem', color: '#71717A' }}>Visa, Mastercard, American Express</div>
-                  </div>
-                </label>
-
-                <label style={optionCardStyle(paymentMethod === 'pse')}>
-                  <input type="radio" name="payment" checked={paymentMethod === 'pse'} onChange={() => setPaymentMethod('pse')} style={{ accentColor: '#09090B' }} />
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>PSE — Débito desde cualquier banco en Colombia</div>
-                    <div style={{ fontSize: '0.78rem', color: '#71717A' }}>Bancolombia, Davivienda, BBVA, Banco de Bogotá, etc.</div>
-                  </div>
-                </label>
-
-                <label style={optionCardStyle(paymentMethod === 'nequi')}>
-                  <input type="radio" name="payment" checked={paymentMethod === 'nequi'} onChange={() => setPaymentMethod('nequi')} style={{ accentColor: '#09090B' }} />
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Nequi / Bancolombia QR</div>
-                    <div style={{ fontSize: '0.78rem', color: '#71717A' }}>Transferencia inmediata mediante código QR</div>
-                  </div>
-                </label>
-
-                <label style={optionCardStyle(paymentMethod === 'contraentrega')}>
-                  <input type="radio" name="payment" checked={paymentMethod === 'contraentrega'} onChange={() => setPaymentMethod('contraentrega')} style={{ accentColor: '#09090B' }} />
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Pago Contraentrega (Bogotá y Medellín)</div>
-                    <div style={{ fontSize: '0.78rem', color: '#71717A' }}>Pagas en efectivo o datáfono al recibir tu paquete</div>
-                  </div>
-                </label>
+              <div style={optionCardStyle(true)}>
+                <CreditCard size={20} />
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Pago seguro con Wompi</div>
+                  <div style={{ fontSize: '0.78rem', color: '#71717A' }}>Tarjeta de crédito o débito, PSE, Nequi o Bancolombia. Eliges el medio en la ventana de Wompi.</div>
+                </div>
               </div>
             </div>
           </div>
@@ -347,7 +310,7 @@ export const CheckoutPage = () => {
                     <img src={item.image} alt={item.name} style={{ width: '48px', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#09090B' }}>{item.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#71717A' }}>Talla: {item.size} • Cant: {item.quantity}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#71717A' }}>Talla: {item.size} • {item.color} • Cant: {item.quantity}</div>
                     </div>
                     <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#09090B' }}>
                       {formatCOP(item.price * item.quantity)}
@@ -360,8 +323,14 @@ export const CheckoutPage = () => {
               <div style={{ borderTop: '1px solid #E4E4E7', paddingTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.88rem', color: '#71717A', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Subtotal</span>
-                  <span>{formatCOP(totals.subtotal)}</span>
+                  <span>{formatCOP(totals.rawSubtotal)}</span>
                 </div>
+                {totals.couponDiscount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10B981', fontWeight: 700 }}>
+                    <span>Descuento ({appliedCoupon?.code})</span>
+                    <span>-{formatCOP(totals.couponDiscount)}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Envío</span>
                   <span>{totals.shippingCost === 0 ? <strong style={{ color: '#10B981' }}>GRATIS</strong> : formatCOP(totals.shippingCost)}</span>
@@ -374,7 +343,7 @@ export const CheckoutPage = () => {
 
               <button
                 type="submit"
-                disabled={isProcessing}
+                disabled={isProcessing || !idempotencyKey || totals.canCheckout === false}
                 style={{
                   width: '100%',
                   backgroundColor: '#09090B',
@@ -393,7 +362,7 @@ export const CheckoutPage = () => {
                   cursor: isProcessing ? 'not-allowed' : 'pointer'
                 }}
               >
-                {isProcessing ? 'PROCESANDO CON SUPABASE...' : 'CONFIRMAR Y PAGAR'} <ChevronRight size={18} />
+                {isProcessing ? 'CREANDO TU PEDIDO…' : 'CONFIRMAR Y PAGAR'} <ChevronRight size={18} />
               </button>
 
               <div style={{ marginTop: '1.25rem', fontSize: '0.75rem', color: '#71717A', textAlign: 'center', lineHeight: 1.5 }}>
@@ -412,6 +381,8 @@ export const CheckoutPage = () => {
     </div>
   );
 };
+
+const FieldError = ({ msg }) => (msg ? <div role="alert" style={{ color: '#E11D48', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.25rem' }}>{msg}</div> : null);
 
 const labelStyle = {
   display: 'block',
