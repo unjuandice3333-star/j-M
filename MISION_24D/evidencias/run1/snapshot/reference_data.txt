@@ -1,0 +1,78 @@
+branches|00000000-0000-4000-8000-000000001001|BOD-PRINCIPAL|Bodega principal e-commerce|t
+brands|00000000-0000-4000-8000-000000001101|J&M Fashion Store
+sizes|00000000-0000-4000-8000-000000002001|alpha|XS|Extra pequeña|1
+sizes|00000000-0000-4000-8000-000000002002|alpha|S|Pequeña|2
+sizes|00000000-0000-4000-8000-000000002003|alpha|M|Mediana|3
+sizes|00000000-0000-4000-8000-000000002004|alpha|L|Grande|4
+sizes|00000000-0000-4000-8000-000000002005|alpha|XL|Extra grande|5
+sizes|00000000-0000-4000-8000-000000002006|alpha|XXL|Doble extra grande|6
+sizes|00000000-0000-4000-8000-000000002101|numeric_pants|28|Talla 28|1
+sizes|00000000-0000-4000-8000-000000002102|numeric_pants|30|Talla 30|2
+sizes|00000000-0000-4000-8000-000000002103|numeric_pants|32|Talla 32|3
+sizes|00000000-0000-4000-8000-000000002104|numeric_pants|34|Talla 34|4
+sizes|00000000-0000-4000-8000-000000002105|numeric_pants|36|Talla 36|5
+sizes|00000000-0000-4000-8000-000000002106|numeric_pants|38|Talla 38|6
+sizes|00000000-0000-4000-8000-000000002107|numeric_pants|40|Talla 40|7
+sizes|00000000-0000-4000-8000-000000002201|footwear|37|Talla 37|1
+sizes|00000000-0000-4000-8000-000000002202|footwear|38|Talla 38|2
+sizes|00000000-0000-4000-8000-000000002203|footwear|39|Talla 39|3
+sizes|00000000-0000-4000-8000-000000002204|footwear|40|Talla 40|4
+sizes|00000000-0000-4000-8000-000000002205|footwear|41|Talla 41|5
+sizes|00000000-0000-4000-8000-000000002206|footwear|42|Talla 42|6
+sizes|00000000-0000-4000-8000-000000002207|footwear|43|Talla 43|7
+sizes|00000000-0000-4000-8000-000000002208|footwear|44|Talla 44|8
+sizes|00000000-0000-4000-8000-000000002301|one_size|UNICA|Talla única|1
+colors|00000000-0000-4000-8000-000000003001|negro|Negro|#0A0A0A
+colors|00000000-0000-4000-8000-000000003002|blanco|Blanco|#FFFFFF
+colors|00000000-0000-4000-8000-000000003003|blanco-crudo|Blanco crudo|#F9F6EE
+colors|00000000-0000-4000-8000-000000003004|gris|Gris|#808080
+colors|00000000-0000-4000-8000-000000003005|gris-oxford|Gris oxford|#353839
+colors|00000000-0000-4000-8000-000000003006|beige|Beige|#E2D3C4
+colors|00000000-0000-4000-8000-000000003007|azul-navy|Azul navy|#1B2A4A
+colors|00000000-0000-4000-8000-000000003008|azul-indigo|Azul índigo|#2E3A87
+colors|00000000-0000-4000-8000-000000003009|verde-oliva|Verde oliva|#556B2F
+colors|00000000-0000-4000-8000-000000003010|cafe|Café|#5C4033
+categories|00000000-0000-4000-8000-000000004001|camisetas|Camisetas|alpha
+categories|00000000-0000-4000-8000-000000004002|camisas|Camisas|alpha
+categories|00000000-0000-4000-8000-000000004003|polos|Polos|alpha
+categories|00000000-0000-4000-8000-000000004004|jeans|Jeans|numeric_pants
+categories|00000000-0000-4000-8000-000000004005|pantalones|Pantalones|numeric_pants
+categories|00000000-0000-4000-8000-000000004006|bermudas|Bermudas|numeric_pants
+categories|00000000-0000-4000-8000-000000004007|chaquetas|Chaquetas|alpha
+categories|00000000-0000-4000-8000-000000004008|calzado|Calzado|footwear
+categories|00000000-0000-4000-8000-000000004009|accesorios|Accesorios|one_size
+style_lines|00000000-0000-4000-8000-000000005001|urbana|Urbana|Actitud, comodidad y carácter.
+style_lines|00000000-0000-4000-8000-000000005002|elegante|Elegante|Presencia para cada ocasión.
+style_lines|00000000-0000-4000-8000-000000005003|casual|Smart Casual|Equilibrio entre estilo y comodidad.
+occasions|00000000-0000-4000-8000-000000006001|trabajo|Trabajo & oficina
+occasions|00000000-0000-4000-8000-000000006002|cita|Cita & salidas
+occasions|00000000-0000-4000-8000-000000006003|casual|Casual urbano
+occasions|00000000-0000-4000-8000-000000006004|fiesta|Noche & eventos
+occasions|00000000-0000-4000-8000-000000006005|fin-de-semana|Fin de semana
+occasions|00000000-0000-4000-8000-000000006006|streetwear|Streetwear
+shipping|express|0||f
+shipping|standard|15000|200000|t
+status|payment_pending|Pago pendiente|f
+status|paid|Pago confirmado|f
+status|processing|En preparación|f
+status|shipped|Enviado|f
+status|delivered|Entregado|f
+status|cancelled|Cancelado|t
+status|expired|Pago no completado|t
+status|refunded|Reembolsado|t
+transition|payment_pending|paid|webhook|f
+transition|payment_pending|cancelled|customer|f
+transition|payment_pending|cancelled|admin|t
+transition|payment_pending|expired|system|f
+transition|paid|processing|admin|f
+transition|paid|cancelled|admin|t
+transition|paid|refunded|admin|t
+transition|processing|shipped|admin|f
+transition|processing|cancelled|admin|t
+transition|processing|refunded|admin|t
+transition|shipped|delivered|admin|f
+transition|delivered|refunded|admin|t
+transition|expired|paid|webhook|f
+buckets|product-images|t|5242880|image/jpeg,image/png,image/webp,image/avif
+buckets|site-content|t|5242880|image/jpeg,image/png,image/webp,image/avif
+cron|jm-expire-pending-orders|*/5 * * * *|SELECT public.expire_pending_orders()|t

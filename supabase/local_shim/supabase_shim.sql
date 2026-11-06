@@ -1,5 +1,6 @@
 -- =============================================================================
--- SHIM LOCAL DE SUPABASE — SOLO PARA PostgreSQL LOCAL SIN DOCKER
+-- SHIM LOCAL DE SUPABASE — SOLO PARA PostgreSQL LOCAL SIN DOCKER (fuera de supabase/tests/ para que
+-- `supabase test db` no lo recoja; movido en M24D)
 -- =============================================================================
 -- NO aplicar en Supabase (local con Docker, QA ni Production): allí estos
 -- objetos ya existen. Reproduce lo mínimo de lo que depende la línea base:
@@ -35,6 +36,15 @@ CREATE TABLE IF NOT EXISTS auth.users (
   email varchar(255),
   encrypted_password varchar(255),
   email_confirmed_at timestamptz,
+  -- Columnas de token de GoTrue (M24D, H1): mismas que el auth.users real
+  confirmation_token varchar(255),
+  recovery_token varchar(255),
+  email_change_token_new varchar(255),
+  email_change varchar(255),
+  email_change_token_current varchar(255) DEFAULT '',
+  reauthentication_token varchar(255) DEFAULT '',
+  phone_change text DEFAULT '',
+  phone_change_token varchar(255) DEFAULT '',
   raw_app_meta_data jsonb DEFAULT '{}'::jsonb,
   raw_user_meta_data jsonb DEFAULT '{}'::jsonb,
   created_at timestamptz DEFAULT now(),

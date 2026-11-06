@@ -1,0 +1,17 @@
+Target: local stack (127.0.0.1:54322)
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/01_structure.test.sql ...... ok
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/10_catalog.test.sql ........ ok
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/20_checkout.test.sql ....... ok
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/30_reservations.test.sql ... ok
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/40_payments.test.sql ....... ok
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/50_cancellations.test.sql .. ok
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/60_coupons.test.sql ........ ok
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/70_transitions.test.sql .... ok
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/80_metrics.test.sql ........ ok
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/90_rls.test.sql ............ ok
+psql:/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/95_concurrency.test.sql:57: NOTICE:  Stock insuficiente: Polo Piqué Edición Limitada (talla M, Beige): disponibles 0, solicitadas 1
+HINT:  JM_OUT_OF_STOCK
+/tmp/claude-0/-home-user/918ae96b-25eb-521a-a0ea-f213bf7038ea/scratchpad/m24d/clean3/supabase/tests/database/95_concurrency.test.sql .... ok
+All tests successful.
+Files=11, Tests=290,  4 wallclock secs ( 0.08 usr  0.02 sys +  0.12 cusr  0.06 csys =  0.28 CPU)
+Result: PASS

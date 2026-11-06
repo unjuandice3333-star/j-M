@@ -1,0 +1,11 @@
+Estado sembrado: confirmation_token=<NULL>|recovery_token=<NULL>|email_change_token_new=<NULL>|email_change=<NULL>|email_change_token_current=|reauthentication_token=|phone_change=|phone_change_token=
+Login con el seed tal cual: 500
+Login con todas en '': 200
+  solo confirmation_token = NULL -> HTTP 500
+  solo recovery_token = NULL -> HTTP 500
+  solo email_change_token_new = NULL -> HTTP 500
+  solo email_change = NULL -> HTTP 500
+  solo email_change_token_current = NULL -> HTTP 500
+  solo reauthentication_token = NULL -> HTTP 500
+  solo phone_change = NULL -> HTTP 500
+  solo phone_change_token = NULL -> HTTP 500

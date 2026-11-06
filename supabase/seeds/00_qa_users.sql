@@ -6,10 +6,16 @@
 -- No son credenciales reales ni personas reales.
 -- =============================================================================
 
+-- GoTrue lee estas 8 columnas de token como texto NO nulo: si alguna queda NULL, el login
+-- responde HTTP 500 ("converting NULL to string is unsupported"). Cuatro de ellas no tienen
+-- DEFAULT en auth.users, así que se escriben explícitamente las 8 con '' (corrección H1, M24D).
 INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+                        confirmation_token, recovery_token, email_change_token_new, email_change,
+                        email_change_token_current, reauthentication_token, phone_change, phone_change_token,
                         raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 SELECT '00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated', u.email,
        extensions.crypt('QaLocal-2026!', extensions.gen_salt('bf')), now(),
+       '', '', '', '', '', '', '', '',
        '{"provider":"email","providers":["email"]}'::jsonb,
        jsonb_build_object('full_name', u.full_name), now(), now()
 FROM (VALUES

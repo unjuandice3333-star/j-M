@@ -50,7 +50,7 @@ EOF
 "${PSQL[@]}" -d postgres -c "CREATE DATABASE $DB"
 
 build_db() {   # $1 = nombre de BD
-  "${PSQL[@]}" -d "$1" -f "$HERE/local_shim/supabase_shim.sql" >/dev/null
+  "${PSQL[@]}" -d "$1" -f "$ROOT/supabase/local_shim/supabase_shim.sql" >/dev/null
   for f in "$ROOT"/supabase/migrations/*.sql; do
     echo "  migración: $(basename "$f")"
     "${PSQL[@]}" -d "$1" --single-transaction -f "$f"

@@ -1,13 +1,35 @@
 -- 95 · Concurrencia REAL con dos conexiones independientes (dblink).
 -- A diferencia de las demás pruebas, las conexiones A y B hacen COMMIT: ejecutar al final
--- y sobre una base efímera (run_local.sh lo hace así). Requiere la extensión dblink.
+-- (orden alfabético de `supabase test db`) y siempre tras `supabase db reset` / run_local.sh.
+--
+-- Infraestructura de la prueba (M24D, H2), autocontenida y versionada aquí:
+--   * habilita dblink (idempotente);
+--   * crea un rol de prueba efímero `jm_test_concurrency` con contraseña ALEATORIA generada
+--     en la propia prueba (sin credenciales fijas ni cambios manuales) y lo elimina al final;
+--   * las conexiones A y B usan ese rol: como compradores con SET ROLE anon y como webhook
+--     con SET ROLE service_role (igual que la función de Vercel).
+-- Por qué: en Supabase `postgres` no es superusuario y dblink exige que el servidor solicite
+-- contraseña. Por eso se conecta a la dirección de red del propio servidor (inet_server_addr(),
+-- cubierta por scram-sha-256 en pg_hba). En PostgreSQL local (run_local.sh), donde la sesión
+-- llega por socket y es superusuario, se usa el socket.
+CREATE EXTENSION IF NOT EXISTS dblink WITH SCHEMA extensions;
+CREATE TEMP TABLE t_infra AS SELECT encode(extensions.gen_random_bytes(24), 'hex') AS password;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'jm_test_concurrency') THEN
+    DROP ROLE jm_test_concurrency;   -- restos de una ejecución interrumpida
+  END IF;
+  EXECUTE format('CREATE ROLE jm_test_concurrency LOGIN NOINHERIT PASSWORD %L', (SELECT password FROM t_infra));
+  GRANT anon, service_role TO jm_test_concurrency;
+END $$;
+CREATE TEMP TABLE t_conn AS
+SELECT format('dbname=%s host=%s port=%s user=jm_test_concurrency password=%s', current_database(),
+              COALESCE(host(inet_server_addr()), split_part(current_setting('unix_socket_directories'), ',', 1)),
+              current_setting('port'), (SELECT password FROM t_infra)) AS c;
+
 BEGIN;
 \ir _helpers.psql
 SELECT plan(12);
-
-CREATE TEMP TABLE t_conn AS
-SELECT format('dbname=%s host=%s port=%s user=%s', current_database(),
-              split_part(current_setting('unix_socket_directories'), ',', 1), current_setting('port'), current_user) AS c;
 
 -- La única unidad del polo (P5) debe estar disponible al empezar
 SELECT results_eq($$SELECT stock - reserved FROM tests.stock('JM-POL-001-BEIGE-M')$$, ARRAY[1], 'precondición: 1 unidad disponible');
@@ -46,8 +68,8 @@ CREATE TEMP TABLE t_att AS SELECT tests.attempt('conc-buyer-a') AS att;
 COMMIT;   -- el intento debe ser visible para las conexiones A y B
 BEGIN;
 SET LOCAL search_path = public, extensions;
-SELECT dblink_exec('a', 'RESET ROLE');
-SELECT dblink_exec('b', 'RESET ROLE');
+SELECT dblink_exec('a', 'SET ROLE service_role');   -- el webhook corre con service_role (Vercel)
+SELECT dblink_exec('b', 'SET ROLE service_role');
 CREATE TEMP TABLE t_ev AS SELECT tests.wompi_event((SELECT att ->> 'reference' FROM t_att), 'APPROVED',
                                                    (SELECT (att ->> 'amount_in_cents')::bigint FROM t_att), 'tx-conc-1') AS ev;
 SELECT dblink_exec('a', 'BEGIN');
@@ -68,3 +90,4 @@ SELECT dblink_disconnect('a');
 SELECT dblink_disconnect('b');
 SELECT * FROM finish();
 ROLLBACK;
+DROP ROLE IF EXISTS jm_test_concurrency;

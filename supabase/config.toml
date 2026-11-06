@@ -34,7 +34,8 @@ additional_redirect_urls = ["http://localhost:3000/admin", "http://localhost:300
 enable_signup = true
 
 [auth.email]
-enable_signup = true
+# M24D (H3): clave vigente en Supabase CLI 3.x (sustituye a la obsoleta auth.email.enable_signup).
+enabled = true
 enable_confirmations = false
 
 [storage]
