@@ -72,7 +72,7 @@ export const ProductCard = ({ product }) => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            toggleWishlist(product.id);
+            toggleWishlist(product.id).then((r) => { if (r && !r.ok) setQuickMsg(r.message); });
           }}
           style={{
             pointerEvents: 'auto',
@@ -90,6 +90,8 @@ export const ProductCard = ({ product }) => {
             transition: 'transform 0.18s ease, background-color 0.18s ease'
           }}
           title={inWishlist ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+          aria-label={`${inWishlist ? 'Quitar de favoritos' : 'Guardar en favoritos'}: ${product.name}`}
+          aria-pressed={inWishlist}
         >
           <Heart size={17} fill={inWishlist ? '#E11D48' : 'none'} color={inWishlist ? '#E11D48' : '#09090B'} />
         </button>

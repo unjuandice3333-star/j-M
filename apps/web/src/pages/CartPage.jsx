@@ -19,8 +19,15 @@ export const CartPage = () => {
     quote,
     cartNotice,
     dismissCartNotice,
-    loadProducts
+    loadProducts,
+    products,
+    changeVariant
   } = useECommerceStore();
+  const [variantMsg, setVariantMsg] = useState(null); // { itemId, ok, text }
+  const onChangeVariant = (item, size, color) => {
+    const r = changeVariant(item.id, size, color);
+    setVariantMsg(r.ok ? { itemId: r.merged ? null : item.id, ok: true, text: r.merged ? 'Unimos las dos líneas de la misma talla y color.' : null } : { itemId: item.id, ok: false, text: r.message });
+  };
   const [qtyError, setQtyError] = useState(null);
   const [quoteError, setQuoteError] = useState(null);
 
@@ -129,6 +136,7 @@ export const CartPage = () => {
                 )}
               </div>
 
+              {variantMsg && !variantMsg.itemId && variantMsg.text && <div role="status" style={{ color: '#065F46', fontWeight: 700, fontSize: '0.85rem' }}>{variantMsg.text}</div>}
               {/* Items List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 {items.map((item) => (
@@ -157,9 +165,37 @@ export const CartPage = () => {
                           {item.name}
                         </h3>
                       </Link>
-                      <div style={{ fontSize: '0.82rem', color: '#71717A', marginBottom: '0.8rem' }}>
-                        Talla: <strong style={{ color: '#09090B' }}>{item.size}</strong> • Color: <strong style={{ color: '#09090B' }}>{item.color}</strong>
-                      </div>
+                      {(() => {
+                        // M28: cambiar talla/color en el carrito con las variantes reales del producto (stock de la BD).
+                        const prod = products.find((p) => p.id === item.productId);
+                        const vs = prod?.rawVariants ?? [];
+                        const colors = [...new Set(vs.map((v) => v.color))];
+                        const sizes = vs.filter((v) => v.color === item.color);
+                        const sel = { padding: '0.3rem 0.4rem', border: '1px solid #D4D4D8', borderRadius: 4, fontSize: '0.8rem', fontWeight: 700, color: '#09090B', backgroundColor: '#FFF' };
+                        return (
+                          <div style={{ fontSize: '0.82rem', color: '#71717A', marginBottom: '0.8rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <label>Talla{' '}
+                              <select aria-label={`Talla de ${item.name}`} value={item.size} disabled={!prod} style={sel}
+                                onChange={(e) => onChangeVariant(item, e.target.value, item.color)}>
+                                {sizes.map((v) => <option key={v.id} value={v.size} disabled={v.id !== item.variantId && v.available <= 0}>{v.size}{v.available <= 0 ? ' (agotada)' : ''}</option>)}
+                                {!sizes.some((v) => v.size === item.size) && <option value={item.size}>{item.size}</option>}
+                              </select>
+                            </label>
+                            <label>Color{' '}
+                              <select aria-label={`Color de ${item.name}`} value={item.color} disabled={!prod || colors.length < 2} style={sel}
+                                onChange={(e) => {
+                                  const c = e.target.value;
+                                  const same = vs.find((v) => v.color === c && v.size === item.size && v.available > 0);
+                                  const any = vs.find((v) => v.color === c && v.available > 0);
+                                  onChangeVariant(item, (same ?? any ?? { size: item.size }).size, c);
+                                }}>
+                                {colors.map((c) => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </label>
+                            {variantMsg?.itemId === item.id && variantMsg.text && <span role={variantMsg.ok ? 'status' : 'alert'} style={{ color: variantMsg.ok ? '#065F46' : '#B91C1C', fontWeight: 700 }}>{variantMsg.text}</span>}
+                          </div>
+                        );
+                      })()}
 
                       <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
                         {/* Quantity Counter */}

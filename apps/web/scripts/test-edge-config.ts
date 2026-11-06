@@ -53,7 +53,9 @@ check('R1.1 negativo: production en el proyecto QA (contradictorio)', errs(runL(
 check('R1.1 negativo: production en el stack local (loopback o kong)', ['http://127.0.0.1:54321', 'http://kong:8000'].every((u) => errs(runL({ APP_ENV: 'production', SUPABASE_URL: u, WOMPI_EVENTS_SECRET: EVT_PROD })).some((e) => e.includes('contradictoria'))));
 check('R1.1 elusión: APP_ENV entre comillas y espacios se normaliza y se aplica la regla', errs(runL({ APP_ENV: ' "production" ', SUPABASE_URL: 'https://' + QA_HOST, WOMPI_EVENTS_SECRET: EVT_PROD })).some((e) => e.includes('contradictoria')));
 check('R1.1 negativo: production con secreto sandbox es coherente solo si el proyecto no es de la fábrica', errs(runL({ APP_ENV: 'production', SUPABASE_URL: 'https://' + QA_HOST })).length > 0);
-check('R1.1: la lista por defecto es la copia generada (versionada: QA vacía)', errs(readEdgeConfig((n) => ({ ...base, APP_ENV: 'qa', SUPABASE_URL: 'https://' + QA_HOST } as Record<string, string | undefined>)[n])).some((e) => e.includes('qa no tiene hosts permitidos')));
+// M28: la copia versionada ya contiene el host del proyecto QA existente; un host QA ficticio sigue rechazado.
+const defaultQaErrs = errs(readEdgeConfig((n) => ({ ...base, APP_ENV: 'qa', SUPABASE_URL: 'https://' + QA_HOST } as Record<string, string | undefined>)[n]));
+check('R1.1: la lista por defecto es la copia generada (versionada: solo el host QA real)', defaultQaErrs.length > 0 && !defaultQaErrs.some((e) => e.includes('qa no tiene hosts permitidos')));
 check('R1.1 seguridad: los errores no revelan el host recibido', !errs(runL({ APP_ENV: 'qa', SUPABASE_URL: 'https://' + PROD_HOST })).join('').includes('v'.repeat(20)));
 
 console.log(`SUMMARY: ${passed}/${passed + failed} TESTS PASSED`);

@@ -179,7 +179,9 @@ test('lista de permitidos: añadir un host QA sin regenerar las copias se detect
   try {
     mkdirSync(path.join(d, 'config'));
     for (const rel of TARGETS) { mkdirSync(path.dirname(path.join(d, rel)), { recursive: true }); writeFileSync(path.join(d, rel), readFileSync(path.join(ROOT, rel))); }
-    const withQa = configWithQaHosts([QA_PROJECT_HOST]);
+    // M28: el host QA real ya está en la lista versionada; se añade un host ficticio adicional para que la prueba no
+    // dependa del contenido actual de la lista.
+    const withQa = configWithQaHosts([QA_PROJECT_HOST, `${'z'.repeat(20)}${SB}`]);
     writeFileSync(path.join(d, 'config/environments.json'), JSON.stringify(withQa));
     assert.deepEqual(staleTargets(d).sort(), [...TARGETS].sort());
     for (const rel of TARGETS) writeFileSync(path.join(d, rel), allowlistText(withQa));

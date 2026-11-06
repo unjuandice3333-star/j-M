@@ -8,13 +8,29 @@ import SizeRecommenderModal from '../components/Modals/SizeRecommenderModal';
 import WhatsAppButton from '../components/Common/WhatsAppButton';
 import MobileBottomBar from '../components/Navigation/MobileBottomBar';
 import { useECommerceStore } from '../store/eCommerceStore';
+import { useAuthStore } from '../store/authStore';
 
 export const PublicLayout = () => {
-  const { loadProducts, productsError, isLoadingProducts } = useECommerceStore();
+  const { loadProducts, productsError, isLoadingProducts, loadSiteContent } = useECommerceStore();
 
   useEffect(() => {
     loadProducts();
-  }, [loadProducts]);
+    loadSiteContent();
+  }, [loadProducts, loadSiteContent]);
+
+  // M28: lista de deseos ligada a la cuenta (wishlist_items). Se sincroniza al cambiar la sesión y al volver a la
+  // pestaña (cambios hechos desde otro dispositivo).
+  const syncWishlist = useECommerceStore((s) => s.syncWishlist);
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const authLoading = useAuthStore((s) => s.isLoading);
+  useEffect(() => {
+    if (authLoading) return undefined;
+    syncWishlist(userId);
+    if (!userId) return undefined;
+    const onVisible = () => { if (document.visibilityState === 'visible') syncWishlist(userId); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [userId, authLoading, syncWishlist]);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#FFFFFF', paddingBottom: '40px' }}>
       <Header />

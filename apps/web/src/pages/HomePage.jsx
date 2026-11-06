@@ -9,7 +9,7 @@ import SafeImage from '../components/Common/SafeImage';
 
 export const HomePage = () => {
   const navigate = useNavigate();
-  const { products, editorialImages } = useECommerceStore();
+  const { products, editorialImages, siteContent } = useECommerceStore();
   const carouselRef = useRef(null);
 
   const getEditorialImg = (key, fallback) => (editorialImages && editorialImages[key]) ? editorialImages[key] : fallback;
@@ -58,7 +58,7 @@ export const HomePage = () => {
         {/* Background Editorial Male Fashion Image */}
         <div
           role="img"
-          aria-label="Colección Moda Masculina J&M"
+          aria-label={siteContent?.hero_main?.alt || 'Colección Moda Masculina J&M'}
           style={{
             position: 'absolute',
             inset: 0,

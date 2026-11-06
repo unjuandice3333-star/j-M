@@ -7,7 +7,7 @@
       "wompi": { "mode": "sandbox", "public_key_prefix": "pub_test_" }
     },
     "qa": {
-      "supabase": { "allowed_protocols": ["https"], "allowed_hosts": [] },
+      "supabase": { "allowed_protocols": ["https"], "allowed_hosts": ["yomgxdjgfjnrjaqiarvw.supabase.co"] },
       "wompi": { "mode": "sandbox", "public_key_prefix": "pub_test_" }
     }
   }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Package,
   Clock,
@@ -20,6 +20,9 @@ import { useECommerceStore } from '../store/eCommerceStore';
 
 export const AccountPage = () => {
   const navigate = useNavigate();
+  // M28: volver a la página de origen (p. ej. el checkout tras una sesión vencida). Solo rutas internas.
+  const returnTo = useLocation().state?.from;
+  const safeReturn = typeof returnTo === 'string' && /^\/(?!\/)/.test(returnTo) ? returnTo : null;
   const { isLoggedIn, user, profile, login, signUp, logout, isLoading, error } = useAuthStore();
 
   const [inputEmail, setInputEmail] = useState('');
@@ -85,6 +88,7 @@ export const AccountPage = () => {
         await signUp(inputEmail, inputPassword, inputName);
       } else {
         await login(inputEmail, inputPassword);
+        if (safeReturn) navigate(safeReturn, { replace: true });
       }
     } catch (err) {
       setFormError(err.message || 'Error durante la autenticación.');

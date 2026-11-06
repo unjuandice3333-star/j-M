@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { analyticsService } from '../services/analytics';
 import { orderService, toOrderError } from '../services/orderService';
+import { wishlistService } from '../services/wishlistService';
 
 export const DEFAULT_EDITORIAL_IMAGES = {
   hero_main: 'https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&q=80&w=2000',
@@ -64,6 +65,10 @@ export const useECommerceStore = create(
       // ---------------------------------------------------------------- carrito (persistido en el navegador)
       items: [],
       wishlist: [],
+      // M28: dueño de la lista en caché (id de usuario) o null si es la lista anónima de este navegador.
+      // Con sesión, la fuente de verdad es public.wishlist_items; el navegador solo guarda una copia.
+      wishlistOwner: null,
+      wishlistError: null,
       isCartOpen: false,
       isSearchOpen: false,
       isMobileMenuOpen: false,
@@ -73,12 +78,21 @@ export const useECommerceStore = create(
       quote: null,           // última cotización de la BD (quote_cart) y la firma del carrito que la produjo
       cartNotice: null,      // avisos de reconciliación (productos retirados o sin stock)
 
-      // Editorial (imágenes de portada)
-      editorialImages: { ...DEFAULT_EDITORIAL_IMAGES },
-      updateEditorialImage: (key, imageUrl) => set((state) => ({ editorialImages: { ...state.editorialImages, [key]: imageUrl } })),
-      resetEditorialImage: (key) => {
-        const defaultImg = DEFAULT_EDITORIAL_IMAGES[key];
-        if (defaultImg) set((state) => ({ editorialImages: { ...state.editorialImages, [key]: defaultImg } }));
+      // Editorial (imágenes de portada) — M28: viene de public.site_content (BD), nunca del navegador.
+      // editorialImages solo contiene las claves personalizadas por el admin; el resto usa la imagen del diseño.
+      editorialImages: {},
+      siteContent: {},
+      siteContentError: null,
+      loadSiteContent: async () => {
+        try {
+          const { default: siteContentService } = await import('../services/siteContentService');
+          const siteContent = await siteContentService.getAll();
+          const editorialImages = Object.fromEntries(Object.entries(siteContent).filter(([, v]) => v.url).map(([k, v]) => [k, v.url]));
+          set({ siteContent, editorialImages, siteContentError: null });
+        } catch (err) {
+          console.error('[portada] no se pudo cargar site_content:', err?.cause?.message || err.message);
+          set({ siteContentError: err.message });
+        }
       },
 
       userProfile: { name: '', email: '', phone: '', preferredSize: 'M', preferredFit: 'REGULAR' },
@@ -135,16 +149,36 @@ export const useECommerceStore = create(
       },
 
       /** Cambia la talla o el color de una línea del carrito por otra variante del mismo producto. */
+      /**
+       * M28: cambia la talla/color de una línea conservando su cantidad y su posición. Atómico: si la nueva variante no
+       * existe o no tiene stock para la cantidad, el carrito no cambia (nada se elimina antes de validar). Si el carrito ya
+       * tiene la variante destino, las líneas se fusionan sumando cantidades solo si el stock lo permite.
+       * El precio sale de la variante (BD) y la cotización (quote_cart) se recalcula al cambiar la firma del carrito.
+       */
       changeVariant: (itemId, size, color) => {
         const { items, products } = get();
         const item = items.find((i) => i.id === itemId);
-        const product = products.find((p) => p.id === item?.productId);
-        const variant = product && findVariant(product, size, color);
+        if (!item) return { ok: false, message: 'Ese artículo ya no está en el carrito.' };
+        const product = products.find((p) => p.id === item.productId);
+        if (!product) return { ok: false, message: 'Este producto ya no está disponible.' };
+        const variant = findVariant(product, size, color);
         if (!variant) return { ok: false, message: 'Esa combinación de talla y color no existe.' };
-        if (variant.available < item.quantity) return { ok: false, message: 'No hay stock suficiente en esa talla y color.' };
-        const rest = items.filter((i) => i.id !== itemId);
-        get().removeItem(itemId); set({ items: rest });
-        return get().addItem(product, variant.size, variant.color, item.quantity);
+        if (variant.id === item.variantId) return { ok: true };
+        if (variant.available <= 0) return { ok: false, message: `${variant.size} / ${variant.color} está agotado.` };
+        const twin = items.find((i) => i.variantId === variant.id);
+        const total = item.quantity + (twin?.quantity ?? 0);
+        if (total > variant.available) {
+          return { ok: false, message: twin
+            ? `Ya tienes ${twin.quantity} en ${variant.size} / ${variant.color}; solo hay ${variant.available} disponible(s).`
+            : `Solo hay ${variant.available} unidad(es) en ${variant.size} / ${variant.color}.` };
+        }
+        const image = product.imagesByColor?.[variant.color]?.[0] ?? item.image;
+        const next = twin
+          ? items.filter((i) => i.id !== itemId).map((i) => (i.id === twin.id ? { ...i, quantity: total, price: variant.price, available: variant.available } : i))
+          : items.map((i) => (i.id === itemId ? { ...i, id: variant.id, variantId: variant.id, sku: variant.sku, size: variant.size,
+              color: variant.color, price: variant.price, available: variant.available, image } : i));
+        set({ items: next, quote: null });
+        return { ok: true, merged: Boolean(twin) };
       },
 
       /** Ajusta el carrito al catálogo actual: retira variantes inexistentes y actualiza precio y disponibilidad. */
@@ -169,7 +203,7 @@ export const useECommerceStore = create(
         const { items, wishlist } = get();
         const item = items.find((i) => i.id === itemId);
         if (item) {
-          if (!wishlist.includes(item.productId)) set({ wishlist: [...wishlist, item.productId] });
+          if (!wishlist.includes(item.productId)) get().toggleWishlist(item.productId);
           get().removeItem(itemId);
         }
       },
@@ -242,9 +276,42 @@ export const useECommerceStore = create(
       },
 
       // ---------------------------------------------------------------- lista de deseos
-      toggleWishlist: (productId) => {
-        const { wishlist } = get();
-        set({ wishlist: wishlist.includes(productId) ? wishlist.filter((id) => id !== productId) : [...wishlist, productId] });
+      /**
+       * Sincroniza la lista con la sesión. userId null = sin sesión.
+       * - Al iniciar sesión: la lista anónima de este navegador se fusiona en la BD (sin duplicados) y se carga la del usuario.
+       * - Al cerrar sesión: se borra la copia local para no exponer la lista del usuario en un equipo compartido.
+       */
+      syncWishlist: async (userId) => {
+        const { wishlist, wishlistOwner } = get();
+        if (!userId) {
+          if (wishlistOwner) set({ wishlist: [], wishlistOwner: null, wishlistError: null });
+          return;
+        }
+        try {
+          if (wishlistOwner === null && wishlist.length) {
+            // Uno a uno: un producto local que ya no existe (FK) no impide guardar el resto.
+            await Promise.allSettled(wishlist.map((id) => wishlistService.addMany(userId, [id])));
+          }
+          const ids = await wishlistService.getIds();
+          set({ wishlist: ids, wishlistOwner: userId, wishlistError: null });
+        } catch (err) {
+          set({ wishlistError: err.message });
+        }
+      },
+      toggleWishlist: async (productId) => {
+        const { wishlist, wishlistOwner } = get();
+        const had = wishlist.includes(productId);
+        set({ wishlist: had ? wishlist.filter((id) => id !== productId) : [...wishlist, productId], wishlistError: null });
+        if (!wishlistOwner) return { ok: true };
+        try {
+          if (had) await wishlistService.remove(wishlistOwner, productId);
+          else await wishlistService.addMany(wishlistOwner, [productId]);
+          return { ok: true };
+        } catch (err) {
+          // Revertir: la UI no debe mostrar como guardado algo que la BD no tiene.
+          set((st) => ({ wishlist: had ? [...st.wishlist.filter((id) => id !== productId), productId] : st.wishlist.filter((id) => id !== productId), wishlistError: err.message }));
+          return { ok: false, message: err.message };
+        }
       },
       moveWishlistToCart: () => {
         const { wishlist, products, addItem } = get();
@@ -309,15 +376,19 @@ export const useECommerceStore = create(
     }),
     {
       name: 'jm-fashion-store-cart-v14',
-      version: 14,
+      version: 15,
       // v14 (M27): el carrito guarda variantes reales de la BD. Los carritos anteriores (catálogo simulado) se descartan.
-      migrate: () => ({ items: [], wishlist: [], appliedCoupon: null, savedAddresses: [], orders: [], activeCheckoutOrderId: null }),
+      // v15 (M28): las imágenes de portada dejan de guardarse en el navegador (vienen de site_content).
+      migrate: (persisted, version) => {
+        if (version === 14 && persisted) { const { editorialImages: _drop, ...rest } = persisted; return rest; }
+        return { items: [], wishlist: [], appliedCoupon: null, savedAddresses: [], orders: [], activeCheckoutOrderId: null };
+      },
       partialize: (state) => ({
         items: state.items,
         wishlist: state.wishlist,
+        wishlistOwner: state.wishlistOwner,
         appliedCoupon: state.appliedCoupon,
         savedAddresses: state.savedAddresses,
-        editorialImages: state.editorialImages,
         orders: state.orders,
         activeCheckoutOrderId: state.activeCheckoutOrderId,
       }),

@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
 import ProductCard from '../components/Product/ProductCard';
+import { useAuthStore } from '../store/authStore';
 
 export const WishlistPage = () => {
-  const { wishlist, products, moveWishlistToCart } = useECommerceStore();
+  const { wishlist, products, moveWishlistToCart, wishlistError } = useECommerceStore();
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const [moveResult, setMoveResult] = useState(null);
   const wishlistProducts = products.filter((p) => wishlist.includes(p.id));
+  const onMoveAll = () => {
+    const r = moveWishlistToCart();
+    setMoveResult(r.ok ? { ok: true, text: 'Agregamos tus favoritos al carrito (talla disponible por defecto).' }
+      : { ok: false, text: `No se pudieron agregar: ${r.failed.join(', ')} (sin stock).` });
+  };
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
@@ -31,7 +39,7 @@ export const WishlistPage = () => {
 
           {wishlistProducts.length > 0 && (
             <button
-              onClick={moveWishlistToCart}
+              onClick={onMoveAll}
               style={{
                 backgroundColor: '#09090B',
                 color: '#FFFFFF',
@@ -51,6 +59,13 @@ export const WishlistPage = () => {
           )}
         </div>
 
+        {!isLoggedIn && (
+          <p style={{ fontSize: '0.85rem', color: '#52525B', marginBottom: '1rem' }}>
+            Tu lista se guarda solo en este navegador. <Link to="/login" style={{ textDecoration: 'underline', fontWeight: 700 }}>Inicia sesión</Link> para conservarla en tu cuenta y verla en otros dispositivos.
+          </p>
+        )}
+        {wishlistError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600, marginBottom: '1rem' }}>{wishlistError}</div>}
+        {moveResult && <div role={moveResult.ok ? 'status' : 'alert'} style={{ color: moveResult.ok ? '#065F46' : '#B91C1C', fontWeight: 600, marginBottom: '1rem' }}>{moveResult.text}</div>}
         {wishlistProducts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 1rem', border: '1px dashed #D4D4D8', borderRadius: '12px' }}>
             <Heart size={52} color="#A1A1AA" style={{ margin: '0 auto 1rem auto' }} />

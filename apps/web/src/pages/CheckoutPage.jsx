@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Truck, CreditCard, ShieldCheck, CheckCircle2, ChevronRight, Check } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
@@ -7,6 +7,7 @@ import { analyticsService } from '../services/analytics';
 import { wompiService } from '../services/wompi';
 import { newIdempotencyKey } from '../services/orderService';
 import { useAuthStore } from '../store/authStore';
+import supabase from '../config/supabase';
 
 // Departamentos de Colombia (y Bogotá D.C.). Se guarda el nombre tal cual en el pedido.
 const DEPARTMENTS = [
@@ -17,6 +18,14 @@ const DEPARTMENTS = [
 ];
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+// M28: borrador del envío en sessionStorage (se borra al cerrar la pestaña y al crear el pedido) para no perder lo
+// escrito si hay que volver a iniciar sesión a mitad del checkout.
+const DRAFT_KEY = 'jm-checkout-draft';
+const DRAFT_FIELDS = ['phone', 'department', 'city', 'address', 'neighborhood', 'notes'];
+const readDraft = () => { try { return JSON.parse(sessionStorage.getItem(DRAFT_KEY) || '{}'); } catch { return {}; } };
+const writeDraft = (f) => { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(Object.fromEntries(DRAFT_FIELDS.map((k) => [k, f[k]])))); } catch { /* sin almacenamiento */ } };
+const clearDraft = () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* sin almacenamiento */ } };
 
 /** Validación en el navegador (la BD vuelve a validar todo en create_order). */
 function validate(f) {
@@ -51,17 +60,28 @@ export const CheckoutPage = () => {
   }, [items.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fullName = (profile?.full_name || user?.user_metadata?.full_name || '').trim();
-  const [formData, setFormData] = useState({
-    firstName: fullName.split(' ')[0] || '',
-    lastName: fullName.split(' ').slice(1).join(' ') || '',
-    email: user?.email || '',
-    phone: profile?.phone || '',
-    department: '',
-    city: '',
-    address: '',
-    neighborhood: '',
-    notes: ''
+  const [formData, setFormData] = useState(() => {
+    const draft = readDraft();
+    return {
+      firstName: fullName.split(' ')[0] || '',
+      lastName: fullName.split(' ').slice(1).join(' ') || '',
+      email: user?.email || '',
+      phone: draft.phone || profile?.phone || '',
+      department: draft.department || '',
+      city: draft.city || '',
+      address: draft.address || '',
+      neighborhood: draft.neighborhood || '',
+      notes: draft.notes || '',
+    };
   });
+  useEffect(() => { writeDraft(formData); }, [formData]);
+
+  // M28: si el cliente empezó el checkout con sesión y la sesión vence (o se cierra desde otro dispositivo), NO se crea
+  // un pedido como invitado sin avisar: quedaría fuera de «Mis pedidos». Se le pide volver a entrar o elegir invitado.
+  const startedLoggedIn = useRef(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [guestAllowed, setGuestAllowed] = useState(false);
+  useEffect(() => { if (user) { startedLoggedIn.current = true; setSessionExpired(false); } }, [user]);
   // La sesión se restaura de forma asíncrona: completar los campos vacíos cuando llegan el usuario y su perfil.
   useEffect(() => {
     if (!user) return;
@@ -102,6 +122,11 @@ export const CheckoutPage = () => {
 
     setIsProcessing(true);
     setErrorMessage(null);
+    if (startedLoggedIn.current && !guestAllowed) {
+      // getSession renueva el token si venció; si el refresh token ya no es válido devuelve null.
+      const { data } = await supabase.auth.getSession();
+      if (!data?.session) { setSessionExpired(true); setIsProcessing(false); return; }
+    }
     const customer = { name: `${formData.firstName.trim()} ${formData.lastName.trim()}`, email: formData.email.trim().toLowerCase(), phone: formData.phone };
     try {
       const order = await createOrder({
@@ -111,6 +136,7 @@ export const CheckoutPage = () => {
         shippingMethod,
         idempotencyKey,
       });
+      clearDraft();
       try {
         await wompiService.openWompiWidget({ order, customer });
       } catch (payErr) {
@@ -163,6 +189,15 @@ export const CheckoutPage = () => {
           </div>
         </div>
 
+        {sessionExpired && (
+          <div role="alert" style={{ backgroundColor: '#FFFBEB', color: '#92400E', padding: '1rem 1.5rem', borderRadius: 8, marginBottom: '2rem', border: '1px solid #FCD34D', fontWeight: 600, display: 'grid', gap: '0.6rem' }}>
+            <span>Tu sesión expiró. Inicia sesión de nuevo para que este pedido quede en tu cuenta. Tu carrito y los datos de envío se conservan.</span>
+            <span style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <Link to="/cuenta" state={{ from: '/checkout' }} style={{ color: '#92400E', textDecoration: 'underline', fontWeight: 800 }}>Iniciar sesión</Link>
+              <button type="button" onClick={() => { setGuestAllowed(true); setSessionExpired(false); }} style={{ color: '#92400E', textDecoration: 'underline', fontWeight: 700 }}>Continuar como invitado</button>
+            </span>
+          </div>
+        )}
         {errorMessage && (
           <div role="alert" style={{
             backgroundColor: '#FEF2F2',
