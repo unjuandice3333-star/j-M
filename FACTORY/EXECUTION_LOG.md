@@ -28,3 +28,6 @@ Formato: fecha (UTC) · misión · actor · acción · resultado. Solo hechos ve
 | 2026-11-06 | M25 | orquestador | Commit de documentación 29c6ab0 + validación completa sobre ese SHA | PASS 13/13 · 72/72 · actionlint 0 · árbol limpio |
 | 2026-11-06 | M25 | orquestador | Verificación de cierre: 2 errores en la documentación ("11 commits" en vez de 7; autopruebas intermedias atribuidas a SHA exactos) | Corregidos en e2f1232 (validación completa PASS); el recuento volvió a quedar desactualizado por el propio commit y se reformuló sin autorreferencia |
 | 2026-11-06 | M26 | orquestador | Plan de M26 en una rama y worktree separados (4944d93) | En curso |
+| 2026-11-06 | M25 | orquestador | Push autorizado de db/baseline-m24b (3710615) y mission/m25-ci-governance (9fa7d4f) | OK. La integración de Vercel creó 4 despliegues Preview automáticos (ninguno en Production) |
+| 2026-11-06 | M25 | GitHub Actions | Ejecución 42181794518 sobre 9fa7d4f | failure: db-local (superusuario del clúster ≠ postgres en el runner); el resto success |
+| 2026-11-06 | M25 | orquestador | Corrección de run_local.sh (PG_SUPERUSER=postgres), verificada como runner y como postgres | 290/290, determinismo OK |

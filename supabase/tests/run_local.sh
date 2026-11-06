@@ -14,6 +14,10 @@
 #   WORKDIR  (por defecto /tmp/jm_db_test_$$)  — se borra al terminar salvo KEEP=1
 #   PORT     (por defecto 54340)
 #   OUTDIR   (por defecto $WORKDIR/out)        — logs y resultados
+#   PG_SUPERUSER (por defecto postgres)         — superusuario del clúster efímero. Debe ser `postgres`, como en
+#                Supabase: la migración base autoriza ciertas operaciones (p. ej. el cambio de rol de los
+#                usuarios QA del seed) solo a `postgres`/`supabase_admin`. Antes se usaba el usuario del sistema
+#                (`whoami`), lo que fallaba en GitHub Actions (usuario `runner`).
 # =============================================================================
 set -euo pipefail
 
@@ -24,9 +28,10 @@ WORKDIR="${WORKDIR:-/tmp/jm_db_test_$$}"
 PORT="${PORT:-54340}"
 OUTDIR="${OUTDIR:-$WORKDIR/out}"
 DB=jm_test
+PG_SUPERUSER="${PG_SUPERUSER:-postgres}"
 
 mkdir -p "$WORKDIR" "$OUTDIR"
-PSQL=(psql -X -q -h "$WORKDIR" -p "$PORT" -U "$(whoami)" -v ON_ERROR_STOP=1)
+PSQL=(psql -X -q -h "$WORKDIR" -p "$PORT" -U "$PG_SUPERUSER" -v ON_ERROR_STOP=1)
 
 cleanup() {
   "$PG_BIN/pg_ctl" -D "$WORKDIR/data" -m fast stop >/dev/null 2>&1 || true
@@ -37,7 +42,7 @@ trap cleanup EXIT
 step() { echo; echo "=== $* ==="; }
 
 step "1. Clúster efímero"
-"$PG_BIN/initdb" -D "$WORKDIR/data" -A trust -E UTF8 --locale=C.UTF-8 >/dev/null
+"$PG_BIN/initdb" -D "$WORKDIR/data" -U "$PG_SUPERUSER" -A trust -E UTF8 --locale=C.UTF-8 >/dev/null
 cat >> "$WORKDIR/data/postgresql.conf" <<EOF
 shared_preload_libraries = 'pg_cron'
 cron.database_name = '$DB'
@@ -67,7 +72,7 @@ build_db "$DB" 2>&1 | tee "$OUTDIR/rebuild.log"
 step "3. Pruebas pgTAP (funcionales, RPC y RLS)"
 "${PSQL[@]}" -d "$DB" -c "CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions" >/dev/null
 set +e
-pg_prove -h "$WORKDIR" -p "$PORT" -U "$(whoami)" -d "$DB" --ext .sql -v \
+pg_prove -h "$WORKDIR" -p "$PORT" -U "$PG_SUPERUSER" -d "$DB" --ext .sql -v \
   $(ls "$ROOT"/supabase/tests/database/*.test.sql | grep -v concurrency) 2>&1 | tee "$OUTDIR/pgtap.log"
 PGTAP_RC=${PIPESTATUS[0]}
 set -e
@@ -75,7 +80,7 @@ set -e
 step "4. Concurrencia real (2 conexiones, 1 unidad)"
 "${PSQL[@]}" -d "$DB" -c "CREATE EXTENSION IF NOT EXISTS dblink WITH SCHEMA extensions" >/dev/null
 set +e
-pg_prove -h "$WORKDIR" -p "$PORT" -U "$(whoami)" -d "$DB" --ext .sql -v \
+pg_prove -h "$WORKDIR" -p "$PORT" -U "$PG_SUPERUSER" -d "$DB" --ext .sql -v \
   "$ROOT"/supabase/tests/database/*concurrency*.test.sql 2>&1 | tee "$OUTDIR/concurrency.log"
 CONC_RC=${PIPESTATUS[0]}
 set -e
