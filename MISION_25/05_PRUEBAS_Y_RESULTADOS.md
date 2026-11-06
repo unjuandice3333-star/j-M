@@ -28,14 +28,18 @@ Versiones: Node 22.23.4 · pnpm 11.0.8 · PostgreSQL 16.15 · Docker 29.9.2 · S
 ESLint 9.39.4 · TypeScript 5.9.3 · vitest 2.1.9 · gitleaks 8.21.2 (por digest) · actionlint 1.7.7.
 
 ## Historial de ejecuciones completas (todas con árbol limpio y base origin/main)
-| Commit | Motivo | CI completa | Autoprueba |
+| Commit | Motivo | CI completa sobre el SHA exacto | Autoprueba |
 |---|---|---|---|
-| aff182e | Primera versión tras la revisión 1 | PASS 13/13 | 35/35 (versión de entonces) |
-| 5550c17 | Correcciones de la revisión 2 | PASS 13/13 | 39/39 |
-| 9b6fc43 | Correcciones de la revisión 3 | PASS 13/13 | 52/52 |
-| 20a29c9 | Correcciones de la revisión 4 | PASS 13/13 | 63/63 |
-| 5e48ede | Correcciones de la revisión 5 | PASS 13/13 | 72/72 |
-| **876146a** | Correcciones de la revisión 6 (definitivo de código) | **PASS 13/13** | **72/72** |
+| aff182e | Primera versión tras la revisión 1 | PASS 13/13 | 35/35 † |
+| 5550c17 | Correcciones de la revisión 2 | PASS 13/13 | 39/39 † |
+| 9b6fc43 | Correcciones de la revisión 3 | PASS 13/13 | 52/52 † |
+| 20a29c9 | Correcciones de la revisión 4 | PASS 13/13 | 63/63 † |
+| 5e48ede | Correcciones de la revisión 5 | PASS 13/13 | 72/72 † |
+| **876146a** | Correcciones de la revisión 6 (definitivo de código) | **PASS 13/13** | **72/72 sobre el SHA exacto** |
+
+† Ejecutada sobre el árbol de trabajo inmediatamente anterior a ese commit (mismos scripts de compuertas; el commit
+añadió además documentación), **no** sobre el SHA exacto. La única autoprueba sobre un SHA exacto, además de la del
+commit de documentación final, es la de 876146a.
 
 Antes de aff182e solo hubo ejecuciones con cambios sin commit. Sus evidencias se descartaron porque atribuían los
 resultados al SHA 3710615 (el error de trazabilidad corregido en esta misión).

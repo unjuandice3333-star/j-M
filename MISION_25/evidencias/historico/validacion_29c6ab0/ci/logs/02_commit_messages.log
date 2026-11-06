@@ -1,0 +1,7 @@
+### paso: 02_commit_messages
+### comando: env PR_TITLE= bash scripts/ci/check_commits.sh 2661f2a7ce09550c0df3fe9b82fd5c43ffd60d5d HEAD
+### commit: 29c6ab082b99340278c54512e35851df537b8ea4
+### inicio: 2026-11-06T07:19:48Z
+commits revisados: 12
+convenciones de commits: OK
+### fin: 2026-11-06T07:19:48Z exit=0

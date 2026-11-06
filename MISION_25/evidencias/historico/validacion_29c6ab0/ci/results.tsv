@@ -1,0 +1,14 @@
+step	status	exit_code	seconds	command
+01_branch_name	PASS	0	0	bash scripts/ci/check_branch_name.sh mission/m25-ci-governance 
+02_commit_messages	PASS	0	0	env PR_TITLE= bash scripts/ci/check_commits.sh 2661f2a7ce09550c0df3fe9b82fd5c43ffd60d5d HEAD
+10_install	PASS	0	1	pnpm install --frozen-lockfile
+11_lint	PASS	0	2	npx --no-install eslint .
+12_typecheck	PASS	0	1	npx --no-install tsc -p tsconfig.ci.json
+13_unit_tests	PASS	0	1	npx --no-install vitest run --dir packages
+14_webhook_tests	PASS	0	0	node --experimental-test-module-mocks apps/web/scripts/test-webhook-security.mjs
+15_edge_tests	PASS	0	0	bash scripts/ci/edge_tests.sh
+16_build	PASS	0	5	bash scripts/ci/build.sh
+20_migrations_policy	PASS	0	0	bash scripts/ci/migrations_policy.sh
+21_secrets_scan	PASS	0	2	bash scripts/ci/secrets_scan.sh
+30_db_local_pg16	PASS	0	8	su postgres -s /bin/bash -c WORKDIR=/tmp/jm_ci_pg_$$ bash '/home/user/unjuandice3333-star/j-m/scripts/ci/db_local.sh'
+31_db_supabase	PASS	0	110	bash scripts/ci/db_supabase.sh

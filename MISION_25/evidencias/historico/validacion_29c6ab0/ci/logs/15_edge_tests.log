@@ -1,0 +1,51 @@
+### paso: 15_edge_tests
+### comando: bash scripts/ci/edge_tests.sh
+### commit: 29c6ab082b99340278c54512e35851df537b8ea4
+### inicio: 2026-11-06T07:19:53Z
+deno 2.9.6 (stable, release, x86_64-unknown-linux-gnu)
+================================================================
+EDGE FUNCTION WOMPI WEBHOOK HARDENING TEST SUITE (SEC-01 & SEC-03)
+Target: supabase/functions/wompi-webhook/index.ts (Real Deno Handler)
+================================================================
+
+[Wompi Edge Webhook Security Error]: La propiedad firmada 'transaction.nonexistent_field' no existe en el payload.
+[PASS] Escenario 1: 1. Propiedad firmada inexistente: rechazo con HTTP 400 y 0 escrituras (SEC-01)
+[Wompi Edge Webhook Security Error]: signature.properties no incluye todas las propiedades requeridas: [
+  "transaction.id",
+  "transaction.status",
+  "transaction.amount_in_cents"
+]
+[PASS] Escenario 2: 2. Propiedades obligatorias ausentes en firma: rechazo con HTTP 400 y 0 escrituras (SEC-01)
+[Wompi Edge Webhook Success]: Transacción tx_wompi_edge_2001 procesada para orden JM-ORD-EDGE-2001 (Orden: paid, Tx: APPROVED)
+[PASS] Escenario 3: 3. Firma válida y evento legítimo: HTTP 200, orden pagada y transacción registrada
+[Wompi Edge Webhook Security Error]: Checksum SHA-256 no coincide.
+[PASS] Escenario 4: 4. Firma inválida: rechazo criptográfico con HTTP 401 y 0 escrituras
+[Wompi Edge Webhook Idempotencia]: Transacción tx_wompi_edge_2001 y orden JM-ORD-EDGE-2001 ya están en estado final 'paid'. Sin mutaciones.
+[PASS] Escenario 5: 5. Evento duplicado: HTTP 200 Idempotente sin escrituras redundantes
+[Wompi Edge Webhook Success]: Transacción tx_wompi_edge_2001 procesada para orden JM-ORD-EDGE-2001 (Orden: paid, Tx: APPROVED)
+[PASS] Escenario 6: 6. Transacción aprobada con orden pendiente: reconciliación a paid (SEC-03)
+[Wompi Edge Webhook Error]: Fallo al actualizar online_orders: DB connection timeout on online_orders
+[Wompi Edge Webhook Warning]: No se pudo registrar order_event: Audit error dead letter queue
+[Wompi Edge Webhook Success]: Transacción tx_wompi_edge_2001 procesada para orden JM-ORD-EDGE-2001 (Orden: paid, Tx: APPROVED)
+[Wompi Edge Webhook Error]: Fallo al registrar payment_transaction: Constraint violation on payment_transactions
+[Wompi Edge Webhook Success]: Transacción tx_wompi_edge_2001 procesada para orden JM-ORD-EDGE-2001 (Orden: paid, Tx: APPROVED)
+[PASS] Escenario 7: 7. Fallo en escrituras de base de datos y reintento (Resiliencia transaccional)
+[Wompi Edge Webhook Security Error]: La transacción tx_wompi_edge_2001 ya está asociada a la referencia 'JM-ORD-EDGE-2001', no a 'JM-ORD-EDGE-2002'.
+[PASS] Escenario 8: 8. Intento de secuestro de transacción o ID vinculado a otra orden: HTTP 409 (SEC-03)
+[Wompi Edge Webhook Fraud Alert]: Discrepancia de monto para orden JM-ORD-EDGE-2001. Esperado: 18990000, Recibido: 500000
+[Wompi Edge Webhook Fraud Alert]: Moneda inválida: USD
+[PASS] Escenario 9: 9. Importe o moneda incorrectos: rechazo con HTTP 422 y 0 escrituras
+[Wompi Edge Webhook Success]: Transacción tx_conc_e1 procesada para orden JM-ORD-CONCURRENT-EDGE (Orden: paid, Tx: APPROVED)
+[Wompi Edge Webhook Idempotencia]: Transacción tx_conc_e1 y orden JM-ORD-CONCURRENT-EDGE ya están en estado final 'paid'. Sin mutaciones.
+[PASS] Escenario 10: 10. Eventos concurrentes simultáneos: consistencia garantizada sin estado corrupto
+[Wompi Edge Webhook Security Error]: La orden JM-ORD-APPROVED-EDGE ya cuenta con una transacción aprobada distinta (tx_orig_approved_edge).
+[PASS] Escenario 11: 11. Transacción cruzada: orden aprobada no puede ser sobrescrita por otro tx ID (HTTP 409)
+[Wompi Edge Webhook Success]: Transacción tx_dec_edge procesada para orden JM-ORD-DEC-EDGE (Orden: cancelled, Tx: DECLINED)
+[Wompi Edge Webhook Success]: Transacción tx_dec_late_edge procesada para orden JM-ORD-PAID-EDGE (Orden: paid, Tx: DECLINED)
+[PASS] Escenario 12: 12. Transiciones no aprobadas: orden pendiente cancela; orden pagada no se degrada
+
+================================================================
+SUMMARY: 12/12 TESTS PASSED
+================================================================
+
+### fin: 2026-11-06T07:19:53Z exit=0

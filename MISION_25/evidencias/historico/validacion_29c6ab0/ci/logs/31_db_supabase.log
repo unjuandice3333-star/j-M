@@ -1,0 +1,17 @@
+### paso: 31_db_supabase
+### comando: bash scripts/ci/db_supabase.sh
+### commit: 29c6ab082b99340278c54512e35851df537b8ea4
+### inicio: 2026-11-06T07:20:08Z
+== start (1)
+== db reset
+advertencias en start/reset: 0
+== instantánea A
+== test db
+Files=11, Tests=290,  3 wallclock secs ( 0.08 usr  0.02 sys +  0.10 cusr  0.08 csys =  0.28 CPU)
+Result: PASS
+== HTTP
+39/39 PASS
+== stop + reconstrucción (2)
+== instantánea B
+determinismo: OK (7/7)
+### fin: 2026-11-06T07:21:58Z exit=0

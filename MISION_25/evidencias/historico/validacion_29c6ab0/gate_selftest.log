@@ -1,0 +1,75 @@
+-- controles positivos (árbol sin defectos)
+[PASA LIMPIO] lint
+[PASA LIMPIO] typecheck
+[PASA LIMPIO] unit
+[PASA LIMPIO] webhook
+[PASA LIMPIO] build
+[PASA LIMPIO] migraciones
+[PASA LIMPIO] secretos
+[PASA LIMPIO] commits
+[PASA LIMPIO] rama + flujo
+[PASA LIMPIO] ci-gate (todo success)
+[PASA LIMPIO] resolve_base: rama nueva (before=000…) → merge-base con la rama por defecto
+[PASA LIMPIO] resolve_base: dispatch sin commits nuevos (base == HEAD) se acepta con aviso
+[PASA LIMPIO] resolve_base: push con avance rápido → before
+-- controles negativos (defecto inyectado)
+[BLOQUEÓ]    lint: error no-undef
+[BLOQUEÓ]    typecheck: error de tipos
+[BLOQUEÓ]    unit: regresión
+[BLOQUEÓ]    build: nombre de secreto de servidor en el bundle
+[BLOQUEÓ]    build: VALOR de un JWT service_role en el bundle
+[BLOQUEÓ]    migraciones: edición de una migración existente (commit)
+[BLOQUEÓ]    migraciones: edición SIN commit (árbol de trabajo)
+[BLOQUEÓ]    migraciones: edición de migrations_legacy
+[BLOQUEÓ]    migraciones: versión nueva anterior a la última
+[BLOQUEÓ]    migraciones: base inexistente no se aprueba
+[BLOQUEÓ]    regla 6: operación remota de Supabase en un script
+[BLOQUEÓ]    regla 6: operación remota invocada mediante una variable
+[BLOQUEÓ]    regla 6: variable entre comillas
+[BLOQUEÓ]    regla 6: variable con otro nombre
+[BLOQUEÓ]    regla 6: bandera global entre la variable y el subcomando
+[BLOQUEÓ]    regla 6: espacios múltiples
+[BLOQUEÓ]    regla 6: arreglo bash
+[BLOQUEÓ]    regla 6: lista de Python (subprocess)
+[BLOQUEÓ]    regla 6: workflow con extensión .YML
+[BLOQUEÓ]    regla 6: permiso de escritura entre comillas
+[BLOQUEÓ]    regla 6: permisos en estilo flujo
+[BLOQUEÓ]    regla 6: workflow sin bloque permissions
+[BLOQUEÓ]    regla 6: workflow que usa el token
+[BLOQUEÓ]    regla 6: envío de config.toml al proyecto
+[BLOQUEÓ]    regla 6: eliminación de un proyecto
+[BLOQUEÓ]    regla 6: creación de una rama de preview
+[BLOQUEÓ]    regla 6: bandera de id de proyecto
+[BLOQUEÓ]    regla 6: API de gestión de Supabase
+[BLOQUEÓ]    regla 6: CLI de Vercel sin subcomando (despliega)
+[BLOQUEÓ]    regla 6: host de proyecto interpolado
+[BLOQUEÓ]    regla 6: spawn con link
+[BLOQUEÓ]    regla 6: listado de migraciones del proyecto
+[BLOQUEÓ]    regla 6: escritura en Storage remoto
+[BLOQUEÓ]    regla 6: inspección de la BD remota
+[BLOQUEÓ]    regla 6: descarga de una función
+[BLOQUEÓ]    regla 6: secretos del proyecto vía sbr
+[BLOQUEÓ]    regla 6: despliegue de Vercel mediante variable
+[BLOQUEÓ]    regla 6: script de package.json que despliega
+[PASA LIMPIO] regla 6: código legítimo (redirección /login, lista de acciones, host ficticio, --remote de git, vercel dev)
+[BLOQUEÓ]    regla 6: operación remota mediante el envoltorio sbr
+[BLOQUEÓ]    regla 6: workflow con pull_request_target, write-all y toJSON(secrets)
+[BLOQUEÓ]    regla 6: el workflow usa secretos
+[BLOQUEÓ]    secretos: llave privada en el árbol
+[BLOQUEÓ]    commits: mensaje no convencional
+[BLOQUEÓ]    commits: base desconocida no se aprueba
+[BLOQUEÓ]    commits: título de PR no convencional
+[BLOQUEÓ]    commits: archivo prohibido (.env.local)
+[BLOQUEÓ]    rama: nombre no permitido
+[BLOQUEÓ]    rama: feat/* directo a main
+[BLOQUEÓ]    ci-gate: un job skipped
+[BLOQUEÓ]    ci-gate: jobs ausentes
+[BLOQUEÓ]    resolve_base: before desconocido (historial reescrito)
+[BLOQUEÓ]    resolve_base: push sin avance rápido a una rama protegida (main)
+[PASA LIMPIO] resolve_base: push sin avance rápido a una mission/* (rebase) → merge-base
+[BLOQUEÓ]    resolve_base: rama desconocida (REF vacío) sin avance rápido se trata como protegida
+[PASA LIMPIO] resolve_base: mission/* rebasada se compara con origin/develop
+[BLOQUEÓ]    resolve_base: rama por defecto borrada y recreada (before=000…)
+[BLOQUEÓ]    resolve_base: PR sin base conocida
+[BLOQUEÓ]    run_all: REQUIRE_CLEAN con árbol sucio
+controles correctos: 72/72
