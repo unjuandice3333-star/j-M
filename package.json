@@ -17,7 +17,11 @@
     "env:local": "bash scripts/env/gen_local_env.sh",
     "smoke:env-local": "bash scripts/env/smoke_local_env.sh",
     "check:qa": "node scripts/env/qa_config.mjs check",
-    "qa:rehearse-reset": "bash scripts/qa/rehearse_reset_local.sh"
+    "qa:rehearse-reset": "bash scripts/qa/rehearse_reset_local.sh",
+    "dev:qa": "node scripts/env/qa_build.mjs dev",
+    "build:qa": "node scripts/env/qa_build.mjs build",
+    "preview:qa": "node scripts/env/qa_build.mjs preview",
+    "test:qa-build": "node --test --test-concurrency=1 scripts/env/qa_build.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

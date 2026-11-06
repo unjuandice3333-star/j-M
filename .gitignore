@@ -64,3 +64,6 @@ android/app/src/main/assets/public
 # CI / Supabase CLI local (M25)
 ci-artifacts/
 supabase/.temp/
+
+# M26-T8: build del perfil QA (scripts/env/qa_build.mjs)
+apps/web/dist-qa/

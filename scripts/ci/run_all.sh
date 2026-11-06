@@ -4,7 +4,8 @@
 #
 #   CI_PROFILE=full  (por defecto) | quick (omite las etapas de BD: SKIPPED, veredicto "PASS PARCIAL")
 #   CI_STAGES="governance quality security db-local db-supabase"  (subconjunto; cada job de GitHub ejecuta una)
-#   La etapa quality incluye las guardas de entorno de M26 (17_env_tests, 18_env_templates, 19_env_cli_checks).
+#   La etapa quality incluye las guardas de entorno de M26 (17_env_tests, 18_env_templates, 19_env_cli_checks,
+#   19b_qa_profile_tests).
 #   BASE_REF=<rama|commit>   base para commits y migraciones (por defecto origin/develop u origin/main)
 #   PR_TITLE, TARGET_BRANCH  (opcionales, en PRs: título del squash y rama destino)
 #   REQUIRE_CLEAN=1          falla si el árbol de trabajo tiene cambios sin commit
@@ -65,6 +66,9 @@ if want quality; then
   run_step 17_env_tests      env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 pnpm -s test:env
   run_step 18_env_templates  env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 pnpm -s check:templates
   run_step 19_env_cli_checks env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 node scripts/env/ci_env_checks.mjs
+  # M26-T8: comandos del perfil QA (build/preview/dev con Vite real y fixtures ficticios). Secuencial y fuera de test:env:
+  # usa puertos fijos (4174, 3100) y comprueba el aislamiento frente a apps/web/.env.local.
+  run_step 19b_qa_profile_tests env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 pnpm -s test:qa-build
 fi
 
 # --- Seguridad y migraciones -----------------------------------------------------

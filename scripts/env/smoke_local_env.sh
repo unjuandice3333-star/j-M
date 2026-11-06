@@ -24,7 +24,10 @@ docker info >/dev/null 2>&1 || { echo "ERROR: Docker no disponible"; exit 2; }
 [[ -f supabase/.temp/project-ref || -n "${SUPABASE_ACCESS_TOKEN:-}" ]] && { echo "ERROR: proyecto remoto enlazado o token presente; solo stack local"; exit 2; }
 KEY="${SMOKE_WOMPI_PUBLIC_KEY:-$(grep -E '^VITE_WOMPI_PUBLIC_KEY=' config/env/local-ci.env | cut -d= -f2-)}"
 fail=0
-cleanup() { pkill -f "vite preview --port $PORT" >/dev/null 2>&1; rm -f "$OUT"; rm -rf apps/web/dist; "$SB" stop --no-backup >/dev/null 2>&1; }
+# M26-T8: el servidor de preview se detiene por su PID. (Antes `pkill -f "vite preview --port N"` solo alcanzaba el
+# envoltorio npx: el proceso real, `node …/vite.js preview`, quedaba huérfano ocupando el puerto.)
+PREVIEW_PID=""
+cleanup() { [[ -n "$PREVIEW_PID" ]] && kill "$PREVIEW_PID" >/dev/null 2>&1; rm -f "$OUT"; rm -rf apps/web/dist; "$SB" stop --no-backup >/dev/null 2>&1; }
 trap cleanup EXIT
 
 echo "== 1. stack local"; "$SB" start -x "$EXCLUDE" >/dev/null 2>&1 || { echo "ERROR: supabase start falló"; exit 1; }
@@ -52,7 +55,8 @@ code=$(curl -s -o /dev/null -w '%{http_code}' "$API/rest/v1/products?select=id&l
 [[ "$code" == 200 ]] && echo "   OK (HTTP 200)" || { echo "   FALLO (HTTP $code)"; fail=1; }
 
 echo "== 6. navegador"
-(cd apps/web && npx --no-install vite preview --port "$PORT" --strictPort >/dev/null 2>&1 &)
+node apps/web/node_modules/vite/bin/vite.js preview apps/web --port "$PORT" --strictPort >/dev/null 2>&1 &
+PREVIEW_PID=$!
 for _ in $(seq 1 40); do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break; sleep 0.5; done
 NODE_PATH="${NODE_PATH:-$(npm root -g)}" node scripts/env/smoke_browser.cjs "http://127.0.0.1:$PORT/" "$API" || fail=1
 [[ $fail -eq 0 ]] && echo "== PRUEBA DE HUMO: OK" || echo "== PRUEBA DE HUMO: FALLO"
