@@ -39,3 +39,21 @@ se negó); la regla `Bash(gh api:*)` existe pero esta prueba no la verificó.
   de rol (prompt) más la ausencia de Edit/Write, **no** un aislamiento técnico completo.
 - Las definiciones de `.claude/agents/` se cargan al iniciar una sesión. Durante M25, la revisión independiente
   se hizo con un subagente `general-purpose` de contexto nuevo, con instrucciones equivalentes a las de `reviewer`.
+
+## 4. Segunda verificación con salida JSON original (antes del commit de correcciones de la ronda 2)
+Archivos en `evidencias/agentes/` (salida JSON completa de `claude -p --output-format json`):
+
+| Archivo | Agente | Resultado |
+|---|---|---|
+| `herramientas_{developer,db-engineer,reviewer,qa}.json` | los 4 | developer y db-engineer: Read, Edit, Write, Bash · reviewer y qa: Read, Bash |
+| `reviewer_permisos.json` | reviewer | `permission_denials`: `gh api --help`, `git push --help`, `npx supabase db push --help`. Sin herramienta Edit. Control `git log` ejecutado |
+| `qa_permisos.json` | qa | `permission_denials`: Read `.env.example`, `vercel --version`, `supabase link --help`. Sin herramienta Write; `/tmp/qa_write_probe.txt` no existe. Control ejecutado |
+
+Con esto queda verificada también la regla `Bash(gh api:*)`, que no se había comprobado en la primera verificación.
+
+## 5. Conclusión
+- **Aplicado técnicamente y verificado:** delimitación de herramientas por agente (qa y reviewer sin Edit/Write) y
+  denegación, en toda sesión del proyecto, de push, gh api, operaciones remotas de Supabase, vercel y lectura de `.env*`.
+- **No aplicado técnicamente (limitación):** qa y reviewer conservan Bash y podrían escribir archivos o ejecutar
+  comandos no listados. Su condición de solo lectura depende de su política de rol (en estas pruebas la respetaron) y
+  de que trabajen en worktrees desechables. Las reglas de denegación comparan prefijos y no cubren invocaciones indirectas.

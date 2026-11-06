@@ -91,7 +91,7 @@ bash scripts/ci/run_all.sh                                   # perfil completo (
 REQUIRE_CLEAN=1 BASE_REF=origin/develop bash scripts/ci/run_all.sh   # evidencia válida: exige árbol limpio
 CI_PROFILE=quick bash scripts/ci/run_all.sh                  # sin BD → veredicto "PASS PARCIAL", nunca PASS
 CI_STAGES="governance security" bash scripts/ci/run_all.sh   # solo algunas etapas (así lo usa cada job de GitHub)
-bash scripts/ci/gate_selftest.sh                             # 35 controles: cada compuerta pasa limpia y bloquea su defecto
+bash scripts/ci/gate_selftest.sh                             # 39 controles: cada compuerta pasa limpia y bloquea su defecto
 ```
 
 El informe `ci-artifacts/REPORT.md` (más `verdict.txt`, `results.tsv`, `environment.txt` y `logs/`) registra el SHA,

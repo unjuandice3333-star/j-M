@@ -34,7 +34,7 @@ env:
 
 jobs:
   governance:
-    name: Gobierno (rama, flujo, commits, título del PR)
+    name: governance   # Gobierno (rama, flujo, commits, título del PR) — el nombre es el check exigido por la protección de ramas
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -42,7 +42,10 @@ jobs:
         with:
           fetch-depth: 0
       - name: Base de comparación
-        run: echo "BASE_REF=$(bash scripts/ci/resolve_base.sh)" >> "$GITHUB_ENV"
+        # Si resolve_base.sh falla (exit 2), el paso falla: nunca se valida contra una base sustituta
+        run: |
+          b=$(bash scripts/ci/resolve_base.sh) || exit 2
+          echo "BASE_REF=$b" >> "$GITHUB_ENV"
       - name: Compuertas de gobierno
         env:
           CI_STAGES: governance
@@ -57,7 +60,7 @@ jobs:
           retention-days: 30
 
   quality:
-    name: Calidad (install, lint, typecheck, unit, webhook, edge, build)
+    name: quality   # Calidad (install, lint, typecheck, unit, webhook, edge, build) — el nombre es el check exigido por la protección de ramas
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -84,7 +87,7 @@ jobs:
           retention-days: 30
 
   security:
-    name: Seguridad (política de migraciones y secretos)
+    name: security   # Seguridad (política de migraciones y secretos) — el nombre es el check exigido por la protección de ramas
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -92,7 +95,10 @@ jobs:
         with:
           fetch-depth: 0
       - name: Base de comparación
-        run: echo "BASE_REF=$(bash scripts/ci/resolve_base.sh)" >> "$GITHUB_ENV"
+        # Si resolve_base.sh falla (exit 2), el paso falla: nunca se valida contra una base sustituta
+        run: |
+          b=$(bash scripts/ci/resolve_base.sh) || exit 2
+          echo "BASE_REF=$b" >> "$GITHUB_ENV"
       - name: Compuertas de seguridad
         env:
           CI_STAGES: security
@@ -105,9 +111,11 @@ jobs:
           retention-days: 30
 
   trusted-policy:
-    # Ejecuta la política de migraciones de la RAMA BASE (copia confiable) sobre el código del PR,
-    # para que un PR no pueda desactivar la compuerta modificando su propia copia del script.
-    name: Política de migraciones (copia confiable de la base)
+    # Ejecuta la política de migraciones de la RAMA BASE (copia confiable) sobre el código del PR: protege
+    # frente a un PR que modifique scripts/ci/migrations_policy.sh. NO protege frente a un PR que modifique
+    # este mismo workflow (el workflow que corre es el del PR); eso solo lo impide la revisión obligatoria
+    # de CODEOWNERS sobre .github/ más la exigencia de cada job como check en la protección de ramas.
+    name: trusted-policy   # Política de migraciones (copia confiable de la base) — el nombre es el check exigido por la protección de ramas
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -126,7 +134,7 @@ jobs:
           fi
 
   db-local:
-    name: BD en PostgreSQL 16 (pgTAP ≥290 + concurrencia + determinismo)
+    name: db-local   # BD en PostgreSQL 16 (pgTAP ≥290 + concurrencia + determinismo) — el nombre es el check exigido por la protección de ramas
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -150,7 +158,7 @@ jobs:
           retention-days: 30
 
   db-supabase:
-    name: BD en Supabase oficial local (start, reset, test db, HTTP, determinismo)
+    name: db-supabase   # BD en Supabase oficial local (start, reset, test db, HTTP, determinismo) — el nombre es el check exigido por la protección de ramas
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:

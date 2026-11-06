@@ -86,8 +86,11 @@ fi
 mapfile -t files < <(git ls-files -co --exclude-standard -- \
     '*.sh' '*.bash' '*.mjs' '*.cjs' '*.py' '*.yml' '*.yaml' '*.toml' 'package.json' '*/package.json' '.husky/*' \
     | grep -v '^scripts/ci/migrations_policy\.sh$' | grep -v '^node_modules/' | while read -r f; do [[ -f "$f" ]] && echo "$f"; done)
-REMOTE_RE='supabase.*(\blink\b|db (push|pull|dump)|--remote|--linked|--db-url|--project-ref|functions deploy|secrets (set|unset)|migration repair|\blogin\b)'
-REMOTE_RE+='|\$\{?[A-Za-z_]*SB[A-Za-z_]*\}?[[:space:]]+(link|db (push|pull|dump)|functions deploy|secrets|migration repair|login)\b'
+REMOTE_RE='supabase.*(\blink\b|db (push|pull|dump)|--remote|functions deploy|secrets (set|unset)|migration repair|\blogin\b)'
+# Banderas que solo tienen sentido contra un proyecto remoto, en cualquier línea
+REMOTE_RE+='|--(project-ref|db-url|linked)\b'
+# Cualquier invocación mediante variable ($X, ${X}, "$X", "${X}") seguida de un subcomando remoto
+REMOTE_RE+='|"?\$\{?[A-Za-z_][A-Za-z0-9_]*\}?"?[[:space:]]+(link|db (push|pull|dump)|functions deploy|secrets (set|unset|list)|migration repair|login)\b'
 REMOTE_RE+='|[a-z0-9]{20}\.supabase\.co|pooler\.supabase\.com|postgres(ql)?://[^[:space:]]*supabase\.(co|com)'
 REMOTE_RE+='|vercel[[:space:]]+(deploy|--prod|env|link)'
 remote=$( ((${#files[@]})) && grep -nHE "$REMOTE_RE" "${files[@]}" || true)
@@ -96,7 +99,9 @@ remote=$( ((${#files[@]})) && grep -nHE "$REMOTE_RE" "${files[@]}" || true)
 # Los workflows no pueden usar secretos ni entornos de despliegue de GitHub
 wf=$(ls .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null || true)
 if [[ -n "$wf" ]]; then
-  ghs=$(grep -nHE 'secrets\.|^\s*environment:|id-token:\s*write|contents:\s*write' $wf || true)
+  # secrets en cualquier forma (secrets.X, secrets['X'], toJSON(secrets)), entornos, eventos con privilegios
+  # sobre PRs de terceros y cualquier permiso de escritura
+  ghs=$(grep -nHiE '\bsecrets\b|^\s*environment\s*:|pull_request_target|workflow_run|write-all|:\s*write\b' $wf || true)
   [[ -n "$ghs" ]] && err "los workflows no pueden usar secretos, entornos ni permisos de escritura:"$'\n'"$ghs"
 fi
 echo "archivos de automatización revisados: ${#files[@]}"

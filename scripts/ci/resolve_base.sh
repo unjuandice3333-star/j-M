@@ -12,9 +12,13 @@ if [[ "${EVENT_NAME:-}" == pull_request ]]; then
   known "${PR_BASE_SHA:-}" && { git rev-parse "$PR_BASE_SHA"; exit 0; }
   echo "ERROR: base del PR desconocida (${PR_BASE_SHA:-vacía})" >&2; exit 2
 fi
+HEAD_SHA=$(git rev-parse HEAD)
 if known "${PUSH_BEFORE:-}"; then git rev-parse "$PUSH_BEFORE"; exit 0; fi
 if git rev-parse -q --verify "$DEF^{commit}" >/dev/null; then
   echo "AVISO: before '${PUSH_BEFORE:-}' no utilizable; se usa merge-base con $DEF" >&2
-  git merge-base HEAD "$DEF" && exit 0
+  mb=$(git merge-base HEAD "$DEF") || { echo "ERROR: sin merge-base con $DEF" >&2; exit 2; }
+  # Push (p. ej. force-push) a la propia rama por defecto: el merge-base es HEAD y no habría nada que comparar
+  if [[ "$mb" == "$HEAD_SHA" ]]; then echo "ERROR: la base resultante es HEAD (rango vacío); no se puede validar este push" >&2; exit 2; fi
+  echo "$mb"; exit 0
 fi
 echo "ERROR: no hay base resoluble (before='${PUSH_BEFORE:-}', $DEF ausente)" >&2; exit 2

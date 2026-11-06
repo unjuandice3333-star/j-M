@@ -1,5 +1,30 @@
 {
-  "required_status_checks": { "strict": true, "checks": [ { "context": "ci-gate" } ] },
+  "required_status_checks": {
+    "strict": true,
+    "checks": [
+      {
+        "context": "ci-gate"
+      },
+      {
+        "context": "governance"
+      },
+      {
+        "context": "quality"
+      },
+      {
+        "context": "security"
+      },
+      {
+        "context": "trusted-policy"
+      },
+      {
+        "context": "db-local"
+      },
+      {
+        "context": "db-supabase"
+      }
+    ]
+  },
   "enforce_admins": true,
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": true,

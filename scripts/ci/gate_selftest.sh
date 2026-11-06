@@ -98,12 +98,24 @@ reset_tree
 
 expect_fail "migraciones: base inexistente no se aprueba" "ERROR FATAL" env BASE_REF=no-existe-esta-ref bash scripts/ci/migrations_policy.sh
 
-printf 'npx supa%s functions dep%s --project-ref abc\n' base loy > scripts/ci/__selftest_remote.sh
+printf 'npx supa%s functions dep%s --project-re%s abc\n' base loy f > scripts/ci/__selftest_remote.sh
 expect_fail "regla 6: operación remota de Supabase en un script" "__selftest_remote" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
 reset_tree
 
 printf 'SB=supabase\n$SB li%s\n' nk > scripts/ci/__selftest_indirect.sh
 expect_fail "regla 6: operación remota invocada mediante una variable" "__selftest_indirect" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
+reset_tree
+
+printf 'SB=supabase\n"$SB" li%s\n' nk > scripts/ci/__selftest_quoted.sh
+expect_fail "regla 6: variable entre comillas" "__selftest_quoted" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
+reset_tree
+
+printf 'CLI=supa%s; ${CLI} db pu%s\n' base sh > scripts/ci/__selftest_cli.sh
+expect_fail "regla 6: variable con otro nombre" "__selftest_cli" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
+reset_tree
+
+printf 'on: pull_request_targ%s\npermissions: write-%s\njobs:\n  x:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo "${{ toJSON(secre%s) }}"\n' et all ts > .github/workflows/__selftest_evil.yml
+expect_fail "regla 6: workflow con pull_request_target, write-all y toJSON(secrets)" "__selftest_evil" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
 reset_tree
 
 printf '        env:\n          T: ${{ secre%s.PROD_TOKEN }}\n' ts >> .github/workflows/ci.yml
@@ -130,6 +142,7 @@ expect_fail "rama: feat/* directo a main" "a main solo se integran" bash scripts
 
 expect_fail "ci-gate: un job skipped" "FALLA" env NEEDS_JSON="$ONE_SKIPPED" bash scripts/ci/ci_gate.sh
 expect_fail "ci-gate: jobs ausentes" "ausente" env NEEDS_JSON='{"governance":{"result":"success"}}' bash scripts/ci/ci_gate.sh
+expect_fail "resolve_base: push a la rama por defecto con before desconocido (rango vacío)" "rango vacío" env EVENT_NAME=push PUSH_BEFORE=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef DEFAULT_BRANCH=selftest-head bash -c 'git update-ref refs/remotes/origin/selftest-head HEAD && bash scripts/ci/resolve_base.sh; rc=$?; git update-ref -d refs/remotes/origin/selftest-head; exit $rc'
 expect_fail "resolve_base: PR sin base conocida" "base del PR desconocida" env EVENT_NAME=pull_request PR_BASE_SHA=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef bash scripts/ci/resolve_base.sh
 
 echo 'x' > __selftest_dirty.txt

@@ -3,8 +3,8 @@
 **Revisor:** subagente `general-purpose` de Claude Code con contexto nuevo. Recibió el código y los requisitos de la
 misión, no las conclusiones del autor. Trabajó en modo de solo lectura (ejecutó `run_all.sh` quick y `gate_selftest.sh`).
 **Veredicto recibido:** CAMBIOS REQUERIDOS: 4 bloqueantes, 6 mayores y 10 menores.
-**Estado tras las correcciones:** 18 corregidos con prueba de regresión, 2 corregidos parcialmente (la parte restante
-depende de decisiones o permisos del propietario). Ninguno se descartó.
+**Estado tras la primera ronda de correcciones (commit aff182e):** ver la tabla siguiente. La **segunda revisión** (§ Ronda 2)
+confirmó 15 corregidos y 5 parciales, y encontró 3 defectos nuevos. Todos se atendieron en el commit siguiente. Ninguno se descartó.
 
 Leyenda de disposición: **C** corregido · **C+T** corregido y cubierto por la autoprueba · **P** parcial (la parte pendiente está justificada).
 
@@ -30,6 +30,17 @@ Leyenda de disposición: **C** corregido · **C+T** corregido y cubierto por la 
 | 18 | Menor | `run_local.sh`: la suma de códigos de salida podía desbordar a 0 | C | `exit $(( (A|B|C) != 0 ))` |
 | 19 | Menor | Autoprueba: archivos borrados y huecos de cobertura | C+T (alcance documentado) | Borrados manejados; de 17 a 35 controles: webhook (positivo), ci-gate, resolve_base, base desconocida, árbol de trabajo, título de PR, `.env.local`, flujo de ramas, REQUIRE_CLEAN. Las etapas de BD no tienen control negativo en la autoprueba (son lentas); tienen aserciones propias (MIN_TESTS, instantáneas) |
 | 20 | Menor | Normas sin control automático presentadas como si lo tuvieran | C | Mínimo de 290 pruebas exigido en ambas etapas de BD (`MIN_TESTS`); CONTRIBUTING §7 separa los controles automáticos de los manuales; AGENT_ROLES distingue control técnico y de proceso |
+
+## Ronda 2 — re-revisión de aff182e (mismo revisor, verificando el código y no la tabla anterior)
+Veredicto: CAMBIOS REQUERIDOS. Resultado: 15 FIXED, 5 PARTIALLY FIXED (#4, #8, #9, #12, y #3/#10/#16 sin verificar en un runner) y 3 nuevos.
+
+| # | Sev. | Hallazgo | Disposición | Corrección / prueba |
+|---|---|---|---|---|
+| N1 | Mayor (bloq.) | `echo "BASE_REF=$(resolve_base.sh)"` ignora el exit 2 bajo `bash -e`; además `run_all.sh` recurría a origin/* y, en un force-push a main, el merge-base era HEAD (rango vacío) | C+T | Workflow: `b=$(…) \|\| exit 2`. Demostrado: antes rc=0 y el paso continuaba; ahora rc=2. `run_all.sh`: sin respaldo a origin/* si `GITHUB_ACTIONS=true`. `resolve_base.sh`: exit 2 si la base resultante es HEAD. Prueba "push a la rama por defecto con before desconocido (rango vacío)" |
+| N2 | Mayor | La verificación del workflow no detectaba `secrets['X']`, `toJSON(secrets)`, `pull_request_target` ni `write-all`; un PR puede borrar `trusted-policy` o quitarlo de la lista de `ci-gate` | C+T / P | Regex: `\bsecrets\b` en cualquier forma, `pull_request_target`, `workflow_run`, `write-all`, cualquier `: write`. Prueba "workflow con pull_request_target, write-all y toJSON(secrets)". Cada job es un check exigido en la protección de ramas (los nombres de job son estables). **Hueco residual documentado:** un PR que cambie los pasos de un job solo lo detiene la revisión de CODEOWNERS (segunda identidad pendiente) |
+| N3 / #12 | Menor | Las PRs de Dependabot hacia main fallan la regla de flujo | C (decisión documentada) | Bots → develop permitido; hacia main se rechaza con un mensaje que indica `target-branch: develop`. No se añadió `dependabot.yml` (generaría PRs remotos: decisión del propietario) |
+| #9 | Mayor | No detectaba `"$SB" link` ni `$CLI db push`; `--project-ref` solo en líneas con "supabase" | C+T | Cualquier variable (con o sin comillas o llaves) seguida de un subcomando remoto; `--project-ref`, `--db-url` y `--linked` en cualquier línea. Pruebas "variable entre comillas" y "variable con otro nombre" |
+| #7 | Menor | trusted-policy y ci-gate no suben artefactos | Aceptado | Sus salidas son de una línea y quedan en el log del job; no generan informe propio |
 
 ## Puntos que el revisor marcó como "sin verificar" y siguen así
 - La instalación de `postgresql-16-pgtap` y `postgresql-16-cron` en ubuntu-24.04, que `supabase/setup-cli` instale la 3.0.0

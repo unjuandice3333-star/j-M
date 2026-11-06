@@ -18,7 +18,9 @@ fi
 # Flujo de integración (separación entre desarrollo y liberación)
 if [[ -n "$T" ]]; then
   case "$T" in
-    main)      [[ "$B" =~ ^(release/|hotfix/) ]] || { echo "ERROR: a main solo se integran release/* o hotfix/* (origen: $B)"; exit 1; } ;;
+    main)      [[ "$B" =~ ^(release/|hotfix/) ]] || { echo "ERROR: a main solo se integran release/* o hotfix/* (origen: $B)"
+                 [[ "$B" =~ $BOT_RE ]] && echo "Las actualizaciones de dependencias deben apuntar a develop (Dependabot: target-branch: develop)"
+                 exit 1; } ;;
     release/*) [[ "$B" =~ ^(fix/|hotfix/) ]]     || { echo "ERROR: a $T solo se integran fix/* o hotfix/* (origen: $B)"; exit 1; } ;;
     mission/*) [[ "$B" =~ ^agent/ ]]             || { echo "ERROR: a $T solo se integran ramas agent/* (origen: $B)"; exit 1; } ;;
   esac

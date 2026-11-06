@@ -20,7 +20,9 @@ PROFILE="${CI_PROFILE:-full}"
 STAGES=" ${CI_STAGES:-governance quality security db-local db-supabase} "
 want() { [[ "$STAGES" == *" $1 "* ]]; }
 STAGES_TXT=$(echo $STAGES)
-if [[ -z "${BASE_REF:-}" ]]; then
+# En GitHub Actions la base la fija resolve_base.sh y es obligatoria: sin ella no se recurre a ninguna rama
+# por defecto (evita validar contra una base distinta de la del evento).
+if [[ -z "${BASE_REF:-}" && "${GITHUB_ACTIONS:-}" != true ]]; then
   for r in origin/develop origin/main; do git rev-parse -q --verify "$r" >/dev/null && { BASE_REF=$r; break; }; done
 fi
 BASE_REF="${BASE_REF:-}"
