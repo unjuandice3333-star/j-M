@@ -68,10 +68,12 @@ Formato [Conventional Commits](https://www.conventionalcommits.org/) **[CI]** (`
 2. Las migraciones existentes son inmutables: no se editan, borran ni renombran. Toda corrección va en una migración nueva.
 3. Una migración nueva lleva una versión posterior a la última existente.
 4. `supabase/migrations_legacy/` es histórico y es inmutable.
-5. Ningún archivo ejecutable (`*.sh`, `*.mjs`, `*.py`, `*.yml`, `*.toml`, `package.json`, `.husky/*`) puede contener
-   operaciones o destinos remotos: `supabase link|login|db push|pull|dump|functions deploy|secrets set|migration repair`,
-   `--linked|--remote|--db-url|--project-ref`, la misma operación invocada mediante una variable, URLs `*.supabase.co`
-   o del pooler, ni `vercel deploy|env|link`. Los workflows no pueden usar `secrets.*`, `environment:` ni permisos de escritura.
+5. Ningún archivo de automatización (scripts, `*.js/*.ts` de servidor, workflows, `*.toml`, `package.json`, `.husky/*`)
+   puede contener operaciones o destinos remotos de Supabase o Vercel, con cualquier forma de invocación (directa, npx,
+   variable, envoltorio, banderas intermedias, listas de argumentos). El detalle y los límites de esta heurística están en
+   `MISION_25/06_LIMITACIONES.md` §4. Los workflows deben declarar `permissions:` y no pueden usar secretos (en ninguna
+   forma), el token del workflow, `environment:`, eventos privilegiados (`pull_request_target`, `workflow_run`,
+   `issue_comment`, `pull_request_review*`) ni permisos de escritura.
    La comparación se hace contra el **árbol de trabajo**, así que también cubre los cambios sin commit.
 6. Toda migración debe reconstruir la BD desde cero de forma determinista, con un mínimo de 290 pruebas pgTAP
    ejecutadas y aprobadas **[CI: `MIN_TESTS`]**, tanto en PostgreSQL 16 local como en el stack oficial de Supabase local.

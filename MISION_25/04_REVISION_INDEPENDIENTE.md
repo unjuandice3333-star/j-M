@@ -77,6 +77,29 @@ falso PASS en las compuertas que deciden un merge (evento PR + ci-gate). Cinco o
 | M4 | Menor | REF vacío se trataba como rama no protegida | C+T | REF vacío = protegida. Prueba negativa |
 | M5 | Menor | En el push de una mission/* rebasada se comparaba con main en lugar de develop | C+T | Las ramas de trabajo se comparan con `origin/develop` si existe. Prueba positiva; la autoprueba guarda y restaura la referencia real de origin/develop (las referencias se comparten entre worktrees) |
 
+## Ronda 6 — verificación final de 5e48ede
+Veredicto: **APROBADO CON OBSERVACIONES MENORES**. M1-M5 FIXED; sin regresiones en las 37 sondas de operación remota, los
+casos legítimos, la matriz de resolve_base ni las verificaciones de workflows. Sin hallazgos bloqueantes ni mayores.
+Tres falsos positivos menores en el patrón de Vercel, corregidos:
+
+| # | Sev. | Hallazgo | Disposición | Corrección / prueba |
+|---|---|---|---|---|
+| F1 | Menor | `` console.log(`${name} deploy started`) `` en apps/web/api | C+T | El despliegue mediante variable solo se busca en shell, Python y YAML |
+| F2 | Menor | `{"platform": "vercel"}` en apps/web/api | C+T | La forma `"clave": "vercel …"` solo se busca en package.json |
+| F3 | Menor | `git push "$REMOTE" deploy` | C+T | Se excluyen las líneas de git del despliegue mediante variable |
+
+Las tres líneas forman parte del control positivo "código legítimo" de la autoprueba (72/72).
+
+## Resumen de las seis rondas
+| Ronda | Commit revisado | Veredicto | Bloq./Mayores abiertos al cerrar la ronda |
+|---|---|---|---|
+| 1 | árbol sin commit (base 3710615) | CAMBIOS REQUERIDOS (4 bloq., 6 mayores, 10 menores) | 0 (corregidos en aff182e) |
+| 2 | aff182e | CAMBIOS REQUERIDOS (N1 mayor/bloq.) | 0 (5550c17) |
+| 3 | 5550c17 | CAMBIOS REQUERIDOS | 0 (9b6fc43) |
+| 4 | 9b6fc43 | CAMBIOS REQUERIDOS (D1, D2 mayores) | 0 (20a29c9) |
+| 5 | 20a29c9 | APROBADO CON MENORES (M1-M5) | 0 (5e48ede) |
+| 6 | 5e48ede | APROBADO CON MENORES (F1-F3) | 0 (commit final) |
+
 ## Puntos que el revisor marcó como "sin verificar" y siguen así
 - La instalación de `postgresql-16-pgtap` y `postgresql-16-cron` en ubuntu-24.04, que `supabase/setup-cli` instale la 3.0.0
   y el comportamiento de gitleaks en el runner de GitHub. Verificarlos exige ejecutar el workflow en GitHub, es decir,

@@ -150,8 +150,8 @@ expect_r6 "despliegue de Vercel mediante variable" scripts/ci/__st_vv.sh 'cmd=ve
 expect_r6 "script de package.json que despliega" apps/web/__st/package.json '{"scripts": {"deploy": "verc%s --prod"}}\n' el
 
 # Código legítimo que NO debe disparar la regla 6 (falsos positivos detectados en la revisión)
-printf 'res.redirect(`${origin}/login`);\nif (["login", "logout"].includes(action)) {}\nconst u = "https://mock.supabase.co";\nconst platform = process.env.VERCEL ? %s : %s;\nif (req.headers["user-agent"] === %s) {}\nconsole.log("secrets list loaded"); // projects list, domains list\n' "'vercel'" "'local'" "'vercel'" > apps/web/api/__st_fp.js
-printf 'echo "Open $URL to link your account"\ngit submodule update --remote\nsupabase db reset\nsupabase test db\nnpx vercel dev\n' > scripts/ci/__st_fp.sh
+printf 'res.redirect(`${origin}/login`);\nif (["login", "logout"].includes(action)) {}\nconst u = "https://mock.supabase.co";\nconst platform = process.env.VERCEL ? %s : %s;\nif (req.headers["user-agent"] === %s) {}\nconsole.log("secrets list loaded"); // projects list, domains list\nconsole.log(`${name} %s started`);\nconst cfg = {"platform": "vercel"};\n' "'vercel'" "'local'" "'vercel'" "depl""oy" > apps/web/api/__st_fp.js
+printf 'echo "Open $URL to link your account"\ngit submodule update --remote\ngit push "$REMOTE" %s\nsupabase db reset\nsupabase test db\nnpx vercel dev\n' "depl""oy" > scripts/ci/__st_fp.sh
 expect_pass "regla 6: código legítimo (redirección /login, lista de acciones, host ficticio, --remote de git, vercel dev)" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
 reset_tree
 

@@ -108,13 +108,19 @@ B+="|[\"']supabase[\"'][^)]*[\"'](link|login|projects|branches|secrets|storage)[
 # dentro de exec/spawn, o un despliegue invocado mediante una variable.
 V="(^|[;&|(\`]|\\bnpx|\\bpnpm([[:space:]]+dlx)?|\\bexec)[[:space:]]*vercel([[:space:]\"']|$)"
 V+="|\\b(spawn|spawnSync|exec|execSync|execFile|execFileSync)\\([\"'\`](npx[[:space:]]+)?vercel\\b"
-V+="|\":[[:space:]]*\"(npx[[:space:]]+)?vercel\\b"
-V+="|\"?\\\$\\{?[A-Za-z_][A-Za-z0-9_]*\\}?\"?${S}(deploy|--prod|promote|alias)\\b"
+# Solo en package.json: un script cuyo valor invoca vercel
+VPKG="\":[[:space:]]*\"(npx[[:space:]]+)?vercel\\b"
+# Solo en shell, Python y YAML: despliegue mediante una variable (se excluyen las líneas de git, p. ej. git push "$R" deploy)
+VVAR="\"?\\\$\\{?[A-Za-z_][A-Za-z0-9_]*\\}?\"?${S}(deploy|--prod|promote|alias)\\b"
 remote=""
 if ((${#files[@]})); then
   remote=$(grep -nHE "$A|$B" "${files[@]}" || true)
   vc=$(grep -nHE "$V" "${files[@]}" | grep -vE "vercel${S}dev\\b" || true)
-  [[ -n "$vc" ]] && remote+=$'\n'"$vc"
+  mapfile -t pkg < <(printf '%s\n' "${files[@]}" | grep -E '(^|/)package\.json$')
+  ((${#pkg[@]})) && vc+=$'\n'$(grep -nHE "$VPKG" "${pkg[@]}" | grep -vE "vercel${S}dev\\b" || true)
+  mapfile -t shx < <(printf '%s\n' "${files[@]}" | grep -iE '\.(sh|bash|py|ya?ml)$|^\.husky/')
+  ((${#shx[@]})) && vc+=$'\n'$(grep -nHE "$VVAR" "${shx[@]}" | grep -vE "\\bgit${S}" || true)
+  [[ -n "$(sed '/^$/d' <<< "$vc")" ]] && remote+=$'\n'"$vc"
   remote=$(sed '/^$/d' <<< "$remote")
 fi
 [[ -n "$remote" ]] && err "la automatización contiene operaciones o destinos remotos:"$'\n'"$remote"
