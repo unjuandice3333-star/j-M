@@ -30,7 +30,7 @@ Lint, typecheck, build, unitarias (6/6), webhook (12/12 + 12/12), política de m
 ## 4. Verificaciones de gobierno (instrucción 5 del propietario)
 | Comprobación | Resultado |
 |---|---|
-| Los cambios de M25 están en `mission/m25-ci-governance` | Sí: 7 commits desde 3710615 (6 de código, aff182e…876146a, y 1 de documentación). Respecto a origin/main la rama tiene 12, porque incluye los 5 de M24. M24 (`db/baseline-m24b`) no se modificó |
+| Los cambios de M25 están en `mission/m25-ci-governance` | Sí: desde 3710615, 6 commits de código (aff182e…876146a) seguidos de commits que solo añaden documentación y evidencias (lista exacta: `git log --oneline 3710615..mission/m25-ci-governance`). Respecto a origin/main, la rama incluye además los 5 commits de M24. M24 (`db/baseline-m24b`) no se modificó |
 | Production no se modificó | Sí: no hubo ninguna conexión, credencial ni operación remota (la sesión no tiene credenciales; reglas de denegación activas) |
 | Sin cambios externos de permisos | Sí: no se ejecutó `apply_branch_protection.sh` ni ninguna llamada `gh api` de escritura; no hubo push |
 | Workflows con permisos mínimos | Sí: `permissions: contents: read`, sin secretos ni entornos (la regla 6 lo exige y la autoprueba lo demuestra) |

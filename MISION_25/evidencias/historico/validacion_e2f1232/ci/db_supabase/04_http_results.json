@@ -1,0 +1,201 @@
+{
+ "passed": 39,
+ "total": 39,
+ "results": [
+  {
+   "check": "auth: login de usuario seed superadmin@qa.jm.test con GoTrue real",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "auth: login de usuario seed admin@qa.jm.test con GoTrue real",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "auth: login de usuario seed cliente1@qa.jm.test con GoTrue real",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "auth: login de usuario seed cliente2@qa.jm.test con GoTrue real",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "auth: contraseña incorrecta rechazada",
+   "ok": true,
+   "detail": "HTTP 400"
+  },
+  {
+   "check": "auth: registro público (signup) vía GoTrue",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "auth→trigger: perfil creado automáticamente con rol customer, email y nombre",
+   "ok": true,
+   "detail": "HTTP 200 [{'email': 'nuevo.d2d9fdba@qa.jm.test', 'full_name': 'Registro Nuevo', 'role': 'customer'}]"
+  },
+  {
+   "check": "roles: usuario nuevo no puede autoasignarse admin vía API",
+   "ok": true,
+   "detail": "HTTP 403"
+  },
+  {
+   "check": "roles: is_admin() verdadero para admin@qa (JWT real)",
+   "ok": true,
+   "detail": "HTTP 200 True"
+  },
+  {
+   "check": "roles: is_admin() falso para cliente1",
+   "ok": true,
+   "detail": "HTTP 200 False"
+  },
+  {
+   "check": "catálogo: anon ve 6 productos activos con colores e imágenes embebidos",
+   "ok": true,
+   "detail": "HTTP 200 n=6"
+  },
+  {
+   "check": "catálogo: vista de disponibilidad accesible para anon",
+   "ok": true,
+   "detail": "HTTP 200 n=39"
+  },
+  {
+   "check": "RLS: anon sin acceso a inventarios vía API",
+   "ok": true,
+   "detail": "HTTP 401"
+  },
+  {
+   "check": "RLS: anon no enumera cupones vía API",
+   "ok": true,
+   "detail": "HTTP 401"
+  },
+  {
+   "check": "RLS: admin lee inventarios vía API",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "productos: admin_upsert_product vía PostgREST con JWT de admin",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "productos: cliente recibe 403 en admin_upsert_product",
+   "ok": true,
+   "detail": "HTTP 403 JM_FORBIDDEN"
+  },
+  {
+   "check": "productos: publicación vía API",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "storage: admin sube imagen al bucket product-images (Storage API real)",
+   "ok": true,
+   "detail": "HTTP 200 {'Key': 'product-images/m24c/negro-1.png', 'Id': '16c1e427-79fb-44f9-8388-302b2c25a11b'}"
+  },
+  {
+   "check": "storage: anon no puede subir imágenes",
+   "ok": true,
+   "detail": "HTTP 400"
+  },
+  {
+   "check": "storage: cliente no puede subir imágenes",
+   "ok": true,
+   "detail": "HTTP 400"
+  },
+  {
+   "check": "storage: lectura pública de la imagen (bucket público)",
+   "ok": true,
+   "detail": "HTTP (200, 'image/png')"
+  },
+  {
+   "check": "storage: tipo MIME no permitido (pdf) rechazado por el bucket",
+   "ok": true,
+   "detail": "HTTP 400"
+  },
+  {
+   "check": "checkout: quote_cart vía API (anon) = 129.900 + 15.000",
+   "ok": true,
+   "detail": "HTTP 200 total=144900"
+  },
+  {
+   "check": "checkout: create_order vía API (anon) con precio manipulado → total 144.900",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "checkout: idempotencia vía API",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "contrato de errores: PostgREST devuelve hint JM_* al frontend",
+   "ok": true,
+   "detail": "HTTP 400 hint=JM_INVALID_QUANTITY"
+  },
+  {
+   "check": "pagos: anon no puede crear intentos (solo service_role)",
+   "ok": true,
+   "detail": "HTTP 401"
+  },
+  {
+   "check": "pagos: service_role crea intento (simula Vercel /api/wompi/signature)",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "webhook simulado: APPROVED aplicado vía API con service_role",
+   "ok": true,
+   "detail": "HTTP 200 {'detail': 'order_paid', 'result': 'applied', 'reference': 'JM-001037-1', 'order_status': 'paid', 'attempt_status': 'APPROVED'}"
+  },
+  {
+   "check": "webhook simulado: reentrega idéntica → duplicate",
+   "ok": true,
+   "detail": "HTTP 200 {'result': 'duplicate', 'reference': 'JM-001037-1'}"
+  },
+  {
+   "check": "webhook: ni un admin puede invocar apply_payment_event",
+   "ok": true,
+   "detail": "HTTP 403"
+  },
+  {
+   "check": "confirmación: get_order_public (anon + token) muestra 'Pago confirmado'",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "RLS: anon no lee pedidos vía API",
+   "ok": true,
+   "detail": "HTTP 401"
+  },
+  {
+   "check": "RLS: cliente1 ve solo sus 3 pedidos vía API",
+   "ok": true,
+   "detail": "HTTP 200 n=3"
+  },
+  {
+   "check": "RLS: cliente no modifica pagos vía API",
+   "ok": true,
+   "detail": "HTTP 403"
+  },
+  {
+   "check": "transiciones: paid → processing (admin, vía API)",
+   "ok": true,
+   "detail": "HTTP 200"
+  },
+  {
+   "check": "transiciones: processing → delivered rechazada con JM_INVALID_TRANSITION",
+   "ok": true,
+   "detail": "HTTP 400"
+  },
+  {
+   "check": "cancelación: processing → cancelled con nota (reingreso de stock)",
+   "ok": true,
+   "detail": "HTTP 200 {'order_id': 'cca52ca3-6eb0-4306-b3e2-7138775428bf', 'shortages': [], 'to_status': 'cancelled', 'from_status': 'processing', 'order_number': 'JM-001037', 'lines_restocked': 1, 'reservations_released': 0}"
+  }
+ ]
+}

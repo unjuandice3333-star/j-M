@@ -38,8 +38,8 @@ ESLint 9.39.4 · TypeScript 5.9.3 · vitest 2.1.9 · gitleaks 8.21.2 (por digest
 | **876146a** | Correcciones de la revisión 6 (definitivo de código) | **PASS 13/13** | **72/72 sobre el SHA exacto** |
 
 † Ejecutada sobre el árbol de trabajo inmediatamente anterior a ese commit (mismos scripts de compuertas; el commit
-añadió además documentación), **no** sobre el SHA exacto. La única autoprueba sobre un SHA exacto, además de la del
-commit de documentación final, es la de 876146a.
+añadió además documentación), **no** sobre el SHA exacto. Las autopruebas sobre un SHA exacto son la de 876146a y las
+de los commits de solo documentación posteriores (`evidencias/historico/validacion_*` y la validación entregada fuera del repositorio).
 
 Antes de aff182e solo hubo ejecuciones con cambios sin commit. Sus evidencias se descartaron porque atribuían los
 resultados al SHA 3710615 (el error de trazabilidad corregido en esta misión).

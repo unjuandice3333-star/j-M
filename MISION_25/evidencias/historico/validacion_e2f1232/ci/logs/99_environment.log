@@ -1,0 +1,17 @@
+commit=e2f1232653ec4814b167c9cb41bcd3ef3fafd8f8
+branch=mission/m25-ci-governance
+tree_dirty=0
+date_utc=2026-11-06T07:26:00Z
+os=Linux 6.18.44-fc-v242 x86_64
+node=v22.23.4
+pnpm=11.0.8
+python=Python 3.13.18
+postgres_local=postgres (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)
+pg_prove=pg_prove 3.36
+docker=29.9.2
+supabase_cli=3.0.0
+deno=deno 2.9.6 (stable, release, x86_64-unknown-linux-gnu)
+eslint=v9.39.4
+typescript=Version 5.9.3
+vitest=vitest/2.1.9 linux-x64 node-v22.23.4
+gitleaks_image=zricethezav/gitleaks:v8.21.2@sha256:0e99e882…(fijada por digest)

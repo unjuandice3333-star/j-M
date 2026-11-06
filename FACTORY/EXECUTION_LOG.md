@@ -26,5 +26,5 @@ Formato: fecha (UTC) · misión · actor · acción · resultado. Solo hechos ve
 | 2026-11-06 | M25 | orquestador | Error propio: `git stash` accidental durante una prueba | Detectado y restaurado (`stash pop`); pruebas repetidas |
 | 2026-11-06 | M25 | orquestador | Validación final sobre 876146a (árbol limpio): CI completa, autoprueba, actionlint | PASS 13/13 · 72/72 · exit 0 |
 | 2026-11-06 | M25 | orquestador | Commit de documentación 29c6ab0 + validación completa sobre ese SHA | PASS 13/13 · 72/72 · actionlint 0 · árbol limpio |
-| 2026-11-06 | M25 | orquestador | Verificación de cierre: 2 errores en la documentación ("11 commits" en vez de 7; autopruebas intermedias atribuidas a SHA exactos) | Corregidos en un nuevo commit y validación completa repetida |
+| 2026-11-06 | M25 | orquestador | Verificación de cierre: 2 errores en la documentación ("11 commits" en vez de 7; autopruebas intermedias atribuidas a SHA exactos) | Corregidos en e2f1232 (validación completa PASS); el recuento volvió a quedar desactualizado por el propio commit y se reformuló sin autorreferencia |
 | 2026-11-06 | M26 | orquestador | Plan de M26 en una rama y worktree separados (4944d93) | En curso |
