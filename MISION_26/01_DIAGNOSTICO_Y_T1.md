@@ -23,7 +23,7 @@ el commit del plan (`00_PLAN.md`) se conservó byte a byte. Respaldo de la versi
 ### Riesgos
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
-| **Las Preview de Vercel podrían usar variables de Production** (no verificable sin acceso a Vercel) | Código de ramas internas ejecutándose contra datos reales, incluida la service role en `apps/web/api/wompi/*` | Auditoría por el propietario (ver el informe de la fase 2) · requisito R-PREVIEW · las guardas T2/T3 rechazan un host no listado |
+| **Las Preview de Vercel podrían usar variables de Production** (no verificable sin acceso a Vercel) | Código de ramas internas ejecutándose contra datos reales, incluida la service role en `apps/web/api/wompi/*` | Auditoría por el propietario (ver el informe de la fase 2) · requisito R-PREVIEW · guardas en ejecución (corregido en M26-R1, MAJ-2: hasta R1 solo la guarda de build T2 —que Vercel no ejecuta— comprobaba la lista; desde R1, el cliente comprueba la lista en el navegador y servidor/Edge exigen `APP_ENV` y rechazan credenciales `prod_` fuera de production) |
 | El código acepta `VITE_SUPABASE_URL` y `SUPABASE_URL` indistintamente en el servidor | Un despliegue puede mezclar entornos | T3 |
 | Valor por defecto de la llave pública de Wompi en `wompi.js` | Configuración incompleta que no falla | T2/T3 (sin valores por defecto) |
 | Sin acceso de la fábrica a Vercel (por diseño) | Las comprobaciones de Vercel dependen del propietario | Guía T8 y comprobaciones del lado del repositorio |
@@ -45,6 +45,11 @@ quiere un Preview, debe apuntar a QA y nunca a Production.
 
 **Criterio de aceptación añadido (n.º 9):** un push de una rama interna no genera ningún despliegue (verificable en la API
 de deployments de GitHub), o el despliegue generado solo puede apuntar a hosts de QA (guardas T2/T3).
+> Nota M26-R1 (MAJ-2): la segunda alternativa no se cumplía hasta R1 (Vercel no ejecuta la guarda de build T2 y el
+> cliente no consultaba la lista en ejecución). Desde R1 un build con `VITE_APP_ENV=qa` solo arranca si el host está en
+> la lista de QA versionada, y servidor/Edge rechazan credenciales `prod_` con `APP_ENV=qa`. Un Preview **sin**
+> `VITE_APP_ENV`/`APP_ENV` tampoco arranca. Un Preview configurado expresamente con `production` no se restringe (por
+> diseño, Production queda fuera de la lista): eso sigue dependiendo de R-PREVIEW y de las variables de Vercel.
 
 ## 3. T1 — `config/environments.json` y validador
 ### Archivos

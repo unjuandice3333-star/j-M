@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "_doc": "M26-R1 (MAJ-5). SOLO NOMBRES, nunca valores. El propietario configura estas variables en Vercel Production y en los secretos de la Edge Function del proyecto Supabase de Production, y después marca owner_confirmation (confirmed=true, confirmed_by, confirmed_on, fingerprint = salida de `node scripts/release/production_readiness.mjs fingerprint`). Sin esa confirmación la CI bloquea cualquier PR hacia main. Ver MISION_26/09_R1_CORRECCIONES.md.",
+  "targets": {
+    "vercel": {
+      "variables": [
+        {
+          "name": "APP_ENV",
+          "expected": "production",
+          "note": "servidor (funciones /api)"
+        },
+        {
+          "name": "SUPABASE_SERVICE_ROLE_KEY",
+          "note": "servidor; secreta"
+        },
+        {
+          "name": "SUPABASE_URL",
+          "note": "servidor; misma URL que VITE_SUPABASE_URL"
+        },
+        {
+          "name": "VITE_APP_ENV",
+          "expected": "production",
+          "note": "cliente; Vite la incrusta en el build"
+        },
+        {
+          "name": "VITE_SUPABASE_ANON_KEY",
+          "note": "cliente"
+        },
+        {
+          "name": "VITE_SUPABASE_URL",
+          "note": "cliente"
+        },
+        {
+          "name": "VITE_WOMPI_ENV",
+          "note": "cliente; production"
+        },
+        {
+          "name": "VITE_WOMPI_PUBLIC_KEY",
+          "note": "cliente; pub_prod_"
+        },
+        {
+          "name": "WOMPI_EVENTS_SECRET",
+          "note": "servidor; secreta, prod_events_"
+        },
+        {
+          "name": "WOMPI_INTEGRITY_SECRET",
+          "note": "servidor; secreta, prod_integrity_"
+        },
+        {
+          "name": "WOMPI_PUBLIC_KEY",
+          "note": "servidor; misma que VITE_WOMPI_PUBLIC_KEY"
+        }
+      ]
+    },
+    "supabase_edge": {
+      "variables": [
+        {
+          "name": "APP_ENV",
+          "expected": "production",
+          "note": "secreto de la función wompi-webhook"
+        },
+        {
+          "name": "WOMPI_EVENTS_SECRET",
+          "note": "secreto de la función; prod_events_"
+        }
+      ]
+    }
+  },
+  "owner_confirmation": {
+    "confirmed": false,
+    "confirmed_by": "",
+    "confirmed_on": "",
+    "fingerprint": ""
+  }
+}

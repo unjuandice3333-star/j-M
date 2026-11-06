@@ -222,8 +222,15 @@ reset_tree
 
 printf '%s\n' "$(sed "s/^VITE_WOMPI_PUBLIC_KEY=$/VITE_WOMPI_PUBLIC_KEY=pub_pr""od_$(printf 'x%.0s' $(seq 24))/" config/env/qa.env.example)" > config/env/qa.env.example
 expect_fail "env: valor con forma de secreto en la plantilla QA" "qa.env.example.*(sin valor|forma de|vacía)" "${CLEAN[@]}" pnpm -s check:templates
-expect_fail "run_all: el defecto de plantilla hace FAIL la etapa quality (veredicto global)" "18_env_templates" \
-  env CI_STAGES=quality CI_OUT="$WT.ciout2" bash -c 'bash scripts/ci/run_all.sh; rc=$?; grep -E "^18_env_templates\tFAIL" "$CI_OUT/results.tsv"; grep -q "^verdict=FAIL" "$CI_OUT/verdict.txt" || exit 0; exit $rc'
+# M26-R1 (MIN-1): step_failed <paso> comprueba en results.tsv (separado por tabuladores) que ESE paso está en FAIL.
+# Si el paso no está en FAIL, el control sale con 0 → [NO BLOQUEÓ]. La firma solo aparece si el paso falló.
+STEP_FAILED='step_failed() { awk -F "\t" -v s="$1" '"'"'$1==s && $2=="FAIL"{f=1} END{exit !f}'"'"' "$CI_OUT/results.tsv"; }'
+expect_fail "run_all: el defecto de plantilla hace FAIL la etapa quality (veredicto global)" "PASO-EN-FAIL:18_env_templates" \
+  env CI_STAGES=quality CI_OUT="$WT.ciout2" bash -c "$STEP_FAILED"'
+    bash scripts/ci/run_all.sh; rc=$?
+    step_failed 18_env_templates || exit 0
+    grep -q "^verdict=FAIL" "$CI_OUT/verdict.txt" || exit 0
+    echo "PASO-EN-FAIL:18_env_templates"; exit $rc'
 rm -rf "$WT.ciout2"; reset_tree
 
 sed -i "s/else if (ref \&\& claims.ref !== ref) errors.push(/else if (false) errors.push(/" scripts/env/qa_config.mjs
@@ -232,6 +239,29 @@ reset_tree
 
 sed -i "s/if (QA_PATH_RE.test(abs)) return/if (false) return/" scripts/env/gen_local_env.mjs
 expect_fail "env: regresión en el generador (escribe archivos de QA)" "\\[FAIL\\] GEN-5" "${CLEAN[@]}" node scripts/env/ci_env_checks.mjs
+reset_tree
+
+echo "-- M26-R1 (MAJ-5): preparación de Production antes de main"
+expect_pass "release: declaración sincronizada con el código (validate)" "${CLEAN[@]}" node scripts/release/production_readiness.mjs validate
+expect_fail "release: sin confirmación del propietario, main queda bloqueado" "NO PREPARADO" "${CLEAN[@]}" node scripts/release/production_readiness.mjs main
+expect_fail "run_all: hacia main sin confirmación, 03_production_readiness FAIL (veredicto global)" "PASO-EN-FAIL:03_production_readiness" \
+  env CI_STAGES=governance TARGET_BRANCH=main CI_OUT="$WT.ciout3" bash -c "$STEP_FAILED"'
+    bash scripts/ci/run_all.sh; rc=$?
+    step_failed 03_production_readiness || exit 0
+    grep -q "^verdict=FAIL" "$CI_OUT/verdict.txt" || exit 0
+    echo "PASO-EN-FAIL:03_production_readiness"; exit $rc'
+rm -rf "$WT.ciout3"
+expect_pass "release: confirmada con la huella vigente, main se permite" "${CLEAN[@]}" bash -c '
+  f=$(mktemp); node -e "const d=JSON.parse(require(\"fs\").readFileSync(\"config/production_readiness.json\",\"utf8\"));d.owner_confirmation={confirmed:true,confirmed_by:\"selftest\",confirmed_on:\"2026-01-01\",fingerprint:process.argv[1]};require(\"fs\").writeFileSync(process.argv[2],JSON.stringify(d))" "$(node scripts/release/production_readiness.mjs fingerprint)" "$f"
+  node scripts/release/production_readiness.mjs main --file "$f"; rc=$?; rm -f "$f"; exit $rc'
+python3 - <<'PY'
+import json; p='config/production_readiness.json'; d=json.load(open(p))
+d['targets']['vercel']['variables']=[v for v in d['targets']['vercel']['variables'] if v['name']!='APP_ENV']; json.dump(d,open(p,'w'))
+PY
+expect_fail "release: declaración desincronizada (falta APP_ENV) bloquea también fuera de main" "no nombra: APP_ENV" "${CLEAN[@]}" node scripts/release/production_readiness.mjs validate
+reset_tree
+sed -i "s/if (c.confirmed !== true)/if (false)/" scripts/release/production_readiness.mjs
+expect_fail "release: regresión en la comprobación (acepta sin confirmar)" "# fail [1-9]" "${CLEAN[@]}" pnpm -s test:env
 reset_tree
 
 git update-ref -d refs/remotes/origin/selftest-default 2>/dev/null

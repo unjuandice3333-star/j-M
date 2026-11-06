@@ -75,6 +75,14 @@ que lo ejecute debe definir, además de lo que ya tenga:
 Sin ellas, los endpoints responderán 500 y el frontend no arrancará. Ese es el comportamiento deseado (fallo rápido),
 pero debe preverse. La Edge Function solo necesita `WOMPI_EVENTS_SECRET`; Supabase inyecta las otras dos.
 
+> **Ampliado en M26-R1 (MAJ-2, MAJ-5).** Además: **servidor y Edge Function** exigen `APP_ENV` (`local`, `qa` o
+> `production`); con `local`/`qa` rechazan `pub_prod_` y los secretos `prod_*`, `local` exige un `SUPABASE_URL` de
+> loopback y `qa` uno https no loopback. El **cliente** exige `VITE_APP_ENV` y, con `local`/`qa`, comprueba en el
+> navegador que el host de `VITE_SUPABASE_URL` está en la lista de `config/environments.json` incrustada en el build
+> (un Preview de QA configurado con otro proyecto no arranca, aunque Vercel no ejecute la guarda de build). Para
+> Production: `APP_ENV=production` y `VITE_APP_ENV=production`. La lista completa la deriva del código y la exige la
+> condición previa de `main` (`config/production_readiness.json`, paso de CI `03_production_readiness`).
+
 ## Limitaciones
 - Las pruebas de T3 (`test:env`, `test-edge-config.ts`) aún no son un paso de CI: es T7. Los tests de webhook y Edge
   que ya estaban en CI sí cubren los handlers modificados.

@@ -100,13 +100,16 @@ Se ejecutan **fuera de `test:env` y de forma secuencial**: usan puertos fijos y 
 - INC-M26-01 (desajuste frontend ↔ esquema M24): el catálogo de QA no mostrará datos reales hasta resolverla; tarea funcional posterior (`INCIDENCIAS.md`).
 
 ## 7. Estado de los criterios de aceptación de M26
-| # | Criterio | Estado |
+> Tabla corregida en M26-R1. El estado tras R1 y la disposición de cada hallazgo de la revisión independiente están en
+> `09_R1_CORRECCIONES.md`; esta tabla es la que manda.
+
+| # | Criterio | Estado tras R1 |
 |---|---|---|
-| 1 | Ningún build de la fábrica con una URL fuera de la lista de su entorno (con negativos) | Cumplido localmente: T1/T2 y, para QA, `build:qa` (T8) |
-| 2 | Sin `pub_prod_`/`prod_` aceptados en local o QA | Cumplido (T2, T3, T6, T8) |
+| 1 | Ningún build de la fábrica con una URL fuera de la lista de su entorno (con negativos) | Cumplido en local (T1/T2, `build:qa`). Para builds que Vercel construye sin guarda, la lista se aplica en el navegador (R1, MAJ-2) |
+| 2 | Sin `pub_prod_`/`prod_` aceptados en local o QA | Cumplido en build (T2, T6, T8) y, desde R1, en ejecución: servidor y Edge con `APP_ENV` |
 | 3 | Sin valores de respaldo para variables críticas | Cumplido (T2, T3) |
 | 4 | `.env*` reales ignorados; plantillas sin valores con forma de secreto | Cumplido (T4); `dist-qa` también ignorado |
-| 5 | Entorno local generado desde el stack local y la app arranca contra él | Cumplido (T5), con INC-M26-01 abierta (defecto de la app) |
-| 6 | CI completa en PASS sobre el commit final, con la autoprueba ampliada | Ver el informe de T8 sobre el commit de T8 |
-| 7 | Revisión independiente sin hallazgos bloqueantes pendientes | **NO REALIZADA en M26**: no se ha ejecutado una revisión independiente de M26 |
-| 8 | Ninguna operación remota; QA documentado y listo para que el propietario lo cree | Cumplido localmente (esta guía); la creación de QA queda pendiente del propietario |
+| 5 | Entorno local generado desde el stack local y la app arranca contra él | Cumplido (T5). La app arranca, pero el catálogo es simulado por INC-M26-01 (tarea posterior) |
+| 6 | CI completa en PASS sobre el commit final, con la autoprueba ampliada | Ver `09_R1_CORRECCIONES.md` |
+| 7 | Revisión independiente sin hallazgos bloqueantes pendientes | Revisión realizada: APROBADO CON HALLAZGOS (0 BLOCKER, 5 MAJOR). R1 los corrige; **pendiente de la revisión del propietario** |
+| 8 | Ninguna operación remota; QA documentado | Cumplido: ninguna operación remota. QA ya existe (`yomgxdjgfjnrjaqiarvw`); su configuración queda pendiente del propietario (§2) |

@@ -50,6 +50,10 @@ if want governance; then
   if [[ -n "$BASE_REF" ]] && MB=$(git merge-base HEAD "$BASE_REF" 2>/dev/null); then
     run_step 02_commit_messages env PR_TITLE="${PR_TITLE:-}" bash scripts/ci/check_commits.sh "$MB" HEAD
   else record_fail 02_commit_messages "base '$BASE_REF' no resoluble"; fi
+  # M26-R1 (MAJ-5): hacia main (o en main) exige la confirmación del propietario de que Production tiene las variables
+  # que el código exige; en cualquier otra rama, que la declaración esté sincronizada con el código.
+  if [[ "${TARGET_BRANCH:-}" == main || "${GITHUB_REF_NAME:-$BRANCH}" == main ]]; then RM=main; else RM=validate; fi
+  run_step 03_production_readiness node scripts/release/production_readiness.mjs "$RM"
 fi
 
 # --- Calidad ----------------------------------------------------------------------

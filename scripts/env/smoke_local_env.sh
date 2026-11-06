@@ -21,6 +21,10 @@ SB="${SUPABASE_BIN:-supabase}"; PORT="${PORT_PREVIEW:-4180}"; OUT=apps/web/.env.
 EXCLUDE="studio,realtime,edge-runtime,logflare,vector,imgproxy,mailpit,postgres-meta,supavisor"
 [[ -e "$OUT" ]] && { echo "ERROR: $OUT ya existe; no se sobrescribe. Muévalo y repita."; exit 2; }
 docker info >/dev/null 2>&1 || { echo "ERROR: Docker no disponible"; exit 2; }
+# M26-R1 (MIN-3): no reutilizar ni destruir un stack local ajeno al script (la limpieza hace `supabase stop --no-backup`).
+[[ -n "$(docker ps -q --filter name=_jm-fashion-store 2>/dev/null)" ]] && { echo "ERROR: el stack local de Supabase ya está en marcha; deténgalo (supabase stop) y repita. No se toca."; exit 2; }
+# M26-R1 (MIN-3): la limpieza borra apps/web/dist; si ya existe un build, no es de este script.
+[[ -e apps/web/dist ]] && { echo "ERROR: apps/web/dist ya existe; la limpieza lo borraría. Muévalo y repita."; exit 2; }
 [[ -f supabase/.temp/project-ref || -n "${SUPABASE_ACCESS_TOKEN:-}" ]] && { echo "ERROR: proyecto remoto enlazado o token presente; solo stack local"; exit 2; }
 KEY="${SMOKE_WOMPI_PUBLIC_KEY:-$(grep -E '^VITE_WOMPI_PUBLIC_KEY=' config/env/local-ci.env | cut -d= -f2-)}"
 fail=0

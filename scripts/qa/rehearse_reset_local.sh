@@ -21,6 +21,8 @@ EXCLUDE="studio,realtime,edge-runtime,logflare,vector,imgproxy,mailpit,postgres-
 OUT="${OUT:-$(mktemp -d /tmp/jm-qa-reset-rehearsal.XXXXXX)}"; mkdir -p "$OUT"
 [[ -f supabase/.temp/project-ref || -n "${SUPABASE_ACCESS_TOKEN:-}" ]] && { echo "ERROR: proyecto remoto enlazado o token presente; el ensayo solo usa el stack local"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "ERROR: Docker no disponible"; exit 2; }
+# M26-R1 (MIN-3): no reutilizar ni destruir un stack local ajeno al script (la limpieza hace `supabase stop --no-backup`).
+[[ -n "$(docker ps -q --filter name=_jm-fashion-store 2>/dev/null)" ]] && { echo "ERROR: el stack local de Supabase ya está en marcha; deténgalo (supabase stop) y repita. No se toca."; exit 2; }
 trap '"$SB" stop --no-backup >/dev/null 2>&1' EXIT
 
 snapshot() {  # <dir>: instantánea normalizada (mismo método que la compuerta 31 de la CI)
