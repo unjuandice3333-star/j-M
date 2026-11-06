@@ -53,6 +53,18 @@ Veredicto: CAMBIOS REQUERIDOS. N1 y N3/#12 FIXED; resolve_base, N2 y #9 PARTIAL;
 | #9 | Mayor | Quedaban sin detectar: banderas globales (`--workdir`), espacios dobles, arreglos, listas de Python y **el envoltorio `sbr` del propio repositorio** | C+T | Los subcomandos remotos (`db push/pull/dump`, `functions deploy`, `secrets set/unset/list`, `migration repair`) se detectan por sí solos, sin exigir el prefijo; `link/login` en líneas que invocan la CLI; listas de argumentos entre comillas; alcance ampliado a `*.js`/`*.ts` de servidor. 5 pruebas nuevas, incluida "operación remota mediante el envoltorio sbr" |
 | R2 | Menor | La autoprueba no cubría esas variantes | C | La autoprueba pasa de 39 a 52 controles |
 
+## Ronda 4 — re-revisión de 9b6fc43
+Veredicto: CAMBIOS REQUERIDOS. resolve_base, verificaciones de workflows y formas de invocación de la regla 6: FIXED.
+Cobertura de la regla 6: PARTIAL. Defectos nuevos D1-D4.
+
+| # | Sev. | Hallazgo | Disposición | Corrección / prueba |
+|---|---|---|---|---|
+| D1 | Mayor | No se detectaban comandos remotos naturales: `config push`, `projects delete`, `branches create`, `--project-id`, la API de gestión (`api.supabase.com`), `npx vercel --yes` ni el host interpolado `${ref}.supabase.co` | C+T | Nivel A ampliado (config push, projects, branches, postgres-config, network-restrictions, ssl-enforcement, sso, domains, snippets, backups, orgs, `--project-id`, API de gestión, host con referencia de 20 caracteres o interpolada); Vercel en posición de comando salvo `vercel dev`. 8 pruebas negativas nuevas |
+| D2 | Mayor | Falsos positivos en código legítimo: `` `${origin}/login` ``, `["login","logout"]`, `echo "… link …"`, `git submodule --remote` | C+T | `link/login/logout` solo justo después de una invocación de la CLI (supabase, sbr o variable, con banderas intermedias); se eliminó `--remote` como bandera aislada; la forma de lista exige "supabase" en la misma llamada; los hosts ficticios de las pruebas (`mock.supabase.co`) no coinciden. Control positivo "código legítimo" |
+| D3 | Menor | Un rebase normal de una rama mission/* hacía fallar el push | C+T | Sin avance rápido: exit 2 solo en ramas protegidas (main, develop, release/*); en el resto, merge-base con la rama por defecto. Pruebas positiva (mission rebasada) y negativa (main) |
+| D4 | Menor | La rama por defecto borrada y recreada (before=000…) daba una base vacía | C+T | exit 2 si la rama del push es la rama por defecto y before=000…. Prueba "rama por defecto borrada y recreada" |
+| — | — | `psql "$PROD_DATABASE_URL"` | Fuera de alcance (documentado) | Indistinguible estáticamente de una conexión local; la fábrica no tiene credenciales |
+
 ## Puntos que el revisor marcó como "sin verificar" y siguen así
 - La instalación de `postgresql-16-pgtap` y `postgresql-16-cron` en ubuntu-24.04, que `supabase/setup-cli` instale la 3.0.0
   y el comportamiento de gitleaks en el runner de GitHub. Verificarlos exige ejecutar el workflow en GitHub, es decir,

@@ -34,7 +34,7 @@ La fábrica **no** es todavía un sistema multiagente que opere de forma autóno
   revisión independiente.
 - Cuatro definiciones de agente que cargan y funcionan en sesiones reales de Claude Code, con herramientas
   delimitadas y reglas de denegación probadas (`MISION_25/evidencias/verificacion_agentes.md`).
-- Compuertas automáticas idénticas en local y en GitHub Actions, con una autoprueba de 52 controles.
+- Compuertas automáticas idénticas en local y en GitHub Actions, con una autoprueba de 63 controles.
 Todavía no ha funcionado ningún ciclo completo developer → qa → reviewer → integración sobre una tarea de producto.
 Eso es el objetivo de la misión piloto M35.
 

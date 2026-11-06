@@ -19,7 +19,7 @@ sha256sum -c PRESERVACION_M24/INVENTARIO_M24.sha256 --quiet && echo "inventario 
 ```bash
 pnpm install --frozen-lockfile
 bash scripts/ci/run_all.sh        # veredicto PASS esperado
-bash scripts/ci/gate_selftest.sh  # 52/52 esperado
+bash scripts/ci/gate_selftest.sh  # 63/63 esperado
 ```
 
 ## Fallos frecuentes

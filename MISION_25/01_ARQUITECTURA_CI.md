@@ -30,7 +30,7 @@ workflow ejecuta `run_all.sh` con una etapa (`CI_STAGES`) y sube el mismo inform
 | `db_local.sh` | PG16 local (delegado a `supabase/tests/run_local.sh`) | Mínimo `MIN_TESTS=290` |
 | `db_supabase.sh` | Stack oficial local, doble reconstrucción, HTTP | Aborta si hay un proyecto enlazado o un token; `$OUT` limpio; redacción de llaves y verificación final; mínimo 290 |
 | `ci_gate.sh` | Agregación de jobs | Probado con skipped/ausente |
-| `gate_selftest.sh` | 52 controles positivos y negativos en un worktree efímero | Firma de error esperada; detecta "bloqueos" por script ausente |
+| `gate_selftest.sh` | 63 controles positivos y negativos en un worktree efímero | Firma de error esperada; detecta "bloqueos" por script ausente |
 
 ## Evidencias por ejecución
 `ci-artifacts/`: `REPORT.md`, `verdict.txt` (veredicto, sha, rama, árbol, evidence_valid, perfil, etapas, base),

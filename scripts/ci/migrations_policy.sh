@@ -88,18 +88,31 @@ mapfile -t files < <(git ls-files -co --exclude-standard | grep -v '^node_module
     | grep -vE '^apps/web/(src|public)/|^packages/[^/]+/(src/|index\.)|\.test\.(ts|js|sql)$' \
     | grep -v '^scripts/ci/migrations_policy\.sh$' | while read -r f; do [[ -f "$f" ]] && echo "$f"; done)
 S='[[:space:]]+'
-# a) Subcomandos remotos de la CLI de Supabase, con o sin "supabase" delante (cubre variables, funciones
-#    envoltorio como sbr, banderas globales intermedias y espacios múltiples).
-REMOTE_RE="\\bdb${S}(push|pull|dump)\\b|\\bfunctions${S}deploy\\b|\\bsecrets${S}(set|unset|list)\\b|\\bmigration${S}repair\\b"
-# b) link/login solo cuando la línea invoca la CLI (palabra supabase o una variable/función que la envuelve)
-REMOTE_RE+="|(supabase|\\\$|\\bsbr\\b).*\\b(link|login)\\b"
-# c) Forma de lista (Python subprocess, JS spawn): "db", "push" / "link"
-REMOTE_RE+="|[\"']db[\"'][[:space:],]+[\"'](push|pull|dump)[\"']|[\"'](link|login)[\"'][[:space:]]*[],]"
-# d) Banderas y destinos que solo tienen sentido contra un proyecto remoto
-REMOTE_RE+="|--(project-ref|db-url|linked|remote)\\b|[a-z0-9]{20}\\.supabase\\.co|pooler\\.supabase\\.com|postgres(ql)?://[^[:space:]]*supabase\\.(co|com)"
-# e) Vercel
-REMOTE_RE+="|\\bvercel${S}(deploy|--prod|env|link|promote|alias)\\b"
-remote=$( ((${#files[@]})) && grep -nHE "$REMOTE_RE" "${files[@]}" || true)
+# Nivel A — subcomandos y destinos inequívocamente remotos, en cualquier línea y con cualquier forma de invocación
+# (directa, npx, variable, envoltorio como sbr, banderas intermedias, espacios múltiples).
+A="\\bdb${S}(push|pull|dump)\\b|\\bfunctions${S}deploy\\b|\\bsecrets${S}(set|unset|list)\\b|\\bmigration${S}repair\\b"
+A+="|\\bconfig${S}push\\b|\\bprojects${S}(create|delete|list|api-keys)\\b|\\bbranches${S}(create|delete|update|list|get|disable)\\b"
+A+="|\\bpostgres-config${S}(update|delete)\\b|\\b(network-restrictions|ssl-enforcement|vanity-subdomains|network-bans)\\b"
+A+="|\\b(sso|domains|snippets|backups|orgs)${S}(add|remove|update|create|delete|list|get|activate|restore|download)\\b"
+A+="|--(project-ref|project-id|db-url|linked)\\b"
+# Destinos: API de gestión, pooler y hosts de proyecto con una referencia real (20 caracteres) o interpolada
+# (${ref}.supabase.co, $REF.supabase.co). Hosts ficticios de las pruebas (mock.supabase.co) no coinciden.
+A+="|api\\.supabase\\.(com|io)|pooler\\.supabase\\.com|(\\b[a-z0-9]{20}|\\}|\\\$[A-Za-z_][A-Za-z0-9_]*)\\.supabase\\.co\\b"
+A+="|[\"']db[\"'][[:space:],]+[\"'](push|pull|dump)[\"']|[\"']functions[\"'][[:space:],]+[\"']deploy[\"']"
+# Nivel B — link/login/logout SOLO justo después de una invocación de la CLI (supabase, sbr o una variable),
+# admitiendo banderas intermedias; y la forma de lista con "supabase" en la misma llamada.
+FLAGS="([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*"
+B="(\\bsupabase|\\bsbr([[:space:]]+\"[^\"]*\")?|\"?\\\$\\{?[A-Za-z_][A-Za-z0-9_]*(\\[@\\])?\\}?\"?)${FLAGS}[[:space:]]+(link|login|logout)\\b"
+B+="|[\"']supabase[\"'][^)]*[\"'](link|login)[\"']"
+# Vercel: el comando vercel en posición de comando (salvo `vercel dev`)
+V="(^|[;&|(\`]|\\bnpx|\\bpnpm([[:space:]]+dlx)?|\\bexec|\\bspawn\\(|[\"'])[[:space:]]*vercel([[:space:]\"']|$)"
+remote=""
+if ((${#files[@]})); then
+  remote=$(grep -nHE "$A|$B" "${files[@]}" || true)
+  vc=$(grep -nHE "$V" "${files[@]}" | grep -vE "vercel${S}dev\\b" || true)
+  [[ -n "$vc" ]] && remote+=$'\n'"$vc"
+  remote=$(sed '/^$/d' <<< "$remote")
+fi
 [[ -n "$remote" ]] && err "la automatización contiene operaciones o destinos remotos:"$'\n'"$remote"
 
 # Workflows (cualquier .yml/.yaml en .github/workflows, sin distinguir mayúsculas)

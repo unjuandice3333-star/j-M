@@ -132,6 +132,21 @@ expect_r6 "permiso de escritura entre comillas" .github/workflows/__st_quoted.ym
 expect_r6 "permisos en estilo flujo" .github/workflows/__st_flow.yml "on: push\npermissions: { pull-requests: 'wri%s' }\n" te
 expect_r6 "workflow sin bloque permissions" .github/workflows/__st_noperm.yml 'on: push\njobs: {}\n%s' ''
 expect_r6 "workflow que usa el token" .github/workflows/__st_token.yml 'on: issue_comment\npermissions:\n  contents: read\njobs:\n  x:\n    steps:\n      - run: echo ${{ github.tok%s }}\n' en
+expect_r6 "envío de config.toml al proyecto" scripts/ci/__st_cfg.sh 'supa%s config pu%s\n' base sh
+expect_r6 "eliminación de un proyecto" scripts/ci/__st_proj.sh 'npx supa%s projects dele%s abcdefghijklmnopqrst\n' base te
+expect_r6 "creación de una rama de preview" scripts/ci/__st_br.sh 'supa%s branches crea%s preview\n' base te
+expect_r6 "bandera de id de proyecto" scripts/ci/__st_pid.sh 'supa%s gen types typescript --project-i%s x > t.ts\n' base d
+expect_r6 "API de gestión de Supabase" scripts/ci/__st_api.sh 'curl -s https://api.supa%s.com/v1/projects/$REF/database/query\n' base
+expect_r6 "CLI de Vercel sin subcomando (despliega)" scripts/ci/__st_vc.sh 'npx verc%s --yes\n' el
+expect_r6 "host de proyecto interpolado" scripts/ci/__st_host.mjs 'fetch(`https://${ref}.supa%s.co/rest/v1/x`)\n' base
+expect_r6 "spawn con link" scripts/ci/__st_spawn.mjs 'spawn("supa%s", ["li%s", "--x", ref])\n' base nk
+
+# Código legítimo que NO debe disparar la regla 6 (falsos positivos detectados en la revisión)
+printf 'res.redirect(`${origin}/login`);\nif (["login", "logout"].includes(action)) {}\nconst u = "https://mock.supabase.co";\n' > apps/web/api/__st_fp.js
+printf 'echo "Open $URL to link your account"\ngit submodule update --remote\nsupabase db reset\nsupabase test db\nnpx vercel dev\n' > scripts/ci/__st_fp.sh
+expect_pass "regla 6: código legítimo (redirección /login, lista de acciones, host ficticio, --remote de git, vercel dev)" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
+reset_tree
+
 # Envoltorio existente del repositorio: una operación remota a través de sbr en db_supabase.sh
 printf 'sbr "$OUT/09.log" db pu%s\n' sh >> scripts/ci/db_supabase.sh
 expect_fail "regla 6: operación remota mediante el envoltorio sbr" "db_supabase.sh" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
@@ -167,7 +182,9 @@ expect_fail "ci-gate: un job skipped" "FALLA" env NEEDS_JSON="$ONE_SKIPPED" bash
 expect_fail "ci-gate: jobs ausentes" "ausente" env NEEDS_JSON='{"governance":{"result":"success"}}' bash scripts/ci/ci_gate.sh
 expect_fail "resolve_base: before desconocido (historial reescrito)" "no existe en el clon" env EVENT_NAME=push PUSH_BEFORE=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef bash scripts/ci/resolve_base.sh
 G commit -q --allow-empty -m "test: rewritten tip"; REWRITTEN=$(git rev-parse HEAD); git reset -q --hard HEAD~1
-expect_fail "resolve_base: push sin avance rápido (retroceso o reescritura)" "sin avance rápido" env EVENT_NAME=push PUSH_BEFORE="$REWRITTEN" bash scripts/ci/resolve_base.sh
+expect_fail "resolve_base: push sin avance rápido a una rama protegida (main)" "sin avance rápido" env EVENT_NAME=push REF_NAME=main PUSH_BEFORE="$REWRITTEN" bash scripts/ci/resolve_base.sh
+expect_pass "resolve_base: push sin avance rápido a una mission/* (rebase) → merge-base" env EVENT_NAME=push REF_NAME=mission/m25-x PUSH_BEFORE="$REWRITTEN" DEFAULT_BRANCH=selftest-default bash scripts/ci/resolve_base.sh
+expect_fail "resolve_base: rama por defecto borrada y recreada (before=000…)" "borrada y recreada" env EVENT_NAME=push REF_NAME=main DEFAULT_BRANCH=main PUSH_BEFORE=0000000000000000000000000000000000000000 bash scripts/ci/resolve_base.sh
 expect_fail "resolve_base: PR sin base conocida" "base del PR desconocida" env EVENT_NAME=pull_request PR_BASE_SHA=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef bash scripts/ci/resolve_base.sh
 
 echo 'x' > __selftest_dirty.txt
