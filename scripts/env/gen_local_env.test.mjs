@@ -81,10 +81,10 @@ test('render: solo variables de cliente, sin nombres ni valores de servidor', ()
   assert.ok(!text.includes(SERVICE) && !/SUPABASE_SERVICE_ROLE_KEY|WOMPI_.*SECRET|^SUPABASE_URL=/m.test(text));
 });
 test('destino: dentro del repo solo rutas ignoradas por git; un destino existente nunca se acepta', () => {
-  assert.equal(checkOutputPath('config/env/generado.txt').ok, false, 'ruta versionable');
-  assert.equal(checkOutputPath('config/env/generado.txt').code, EXIT.REJECTED);
+  assert.equal(checkOutputPath('scripts/env/generado.txt').ok, false, 'ruta versionable');
+  assert.match(checkOutputPath('scripts/env/generado.txt').error, /no está ignorado por git/);
   assert.equal(checkOutputPath('apps/web/.env.local').ok, !existsSync(path.join(ROOT, 'apps/web/.env.local')));
-  assert.equal(checkOutputPath(TEMPLATE).code, EXIT.EXISTS);
+  assert.equal(checkOutputPath('package.json').code, EXIT.EXISTS);
 });
 
 // ===================================================================== CLI real
@@ -128,9 +128,9 @@ test('CLI: host remoto → exit 1 y no se escribe nada; destino versionable → 
     const r = run(['--status-file', writeStatus(d, statusFixture({ API_URL: 'https://' + 'p'.repeat(20) + '.supa' + 'base.co' })), '--output', out], { VITE_WOMPI_PUBLIC_KEY: USER_KEY });
     assert.equal(r.status, EXIT.REJECTED); assert.match(r.stderr, /RECHAZADO/);
     assert.equal(existsSync(out), false);
-    const r2 = run(['--status-file', writeStatus(d, statusFixture()), '--output', 'config/env/generado.txt'], { VITE_WOMPI_PUBLIC_KEY: USER_KEY });
+    const r2 = run(['--status-file', writeStatus(d, statusFixture()), '--output', 'scripts/env/generado.txt'], { VITE_WOMPI_PUBLIC_KEY: USER_KEY });
     assert.equal(r2.status, EXIT.REJECTED); assert.match(r2.stderr, /no está ignorado por git/);
-    assert.equal(existsSync(path.join(ROOT, 'config/env/generado.txt')), false);
+    assert.equal(existsSync(path.join(ROOT, 'scripts/env/generado.txt')), false);
   } finally { rmSync(d, { recursive: true, force: true }); }
 });
 test('CLI: --dry-run valida sin escribir; opción desconocida y status ilegible → exit 2', () => {
@@ -142,5 +142,37 @@ test('CLI: --dry-run valida sin escribir; opción desconocida y status ilegible 
     assert.equal(run(['--forzar']).status, EXIT.USAGE);
     writeFileSync(path.join(d, 'roto.json'), '{no json');
     assert.equal(run(['--status-file', path.join(d, 'roto.json'), '--output', out]).status, EXIT.USAGE);
+  } finally { rmSync(d, { recursive: true, force: true }); }
+});
+
+// ============================================ M26-T6: separación local / QA
+test('T6 negativo: el generador local nunca escribe un archivo de QA (ruta o nombre con "qa")', () => {
+  for (const p of ['apps/web/.env.qa', 'apps/web/.env.qa.local', path.join(tmpdir(), 'qa', 'x.env'), path.join(tmpdir(), 'jm-qa.env'), path.join(tmpdir(), 'x.qa.env')]) {
+    const r = checkOutputPath(p);
+    assert.equal(r.ok, false, p); assert.equal(r.code, EXIT.REJECTED); assert.match(r.error, /archivo de QA/);
+  }
+});
+test('T6 negativo: el generador nunca escribe en config/env/ (plantillas versionadas, local y QA)', () => {
+  for (const p of [TEMPLATE, 'config/env/nuevo.env']) {
+    const r = checkOutputPath(p);
+    assert.equal(r.ok, false, p); assert.match(r.error, /config\/env\//);
+  }
+  // La plantilla QA queda rechazada por ambas reglas; la de QA se evalúa primero.
+  assert.match(checkOutputPath('config/env/qa.env.example').error, /archivo de QA|config\/env\//);
+});
+test('T6 positivo: nombres que solo contienen la secuencia "qa" dentro de otra palabra no se confunden con QA', () => {
+  for (const p of [path.join(tmpdir(), 'aqa.env'), path.join(tmpdir(), 'quality.env')]) assert.equal(checkOutputPath(p).ok, true, p);
+});
+test('T6 CLI: --output hacia un archivo de QA → exit 1, sin escribir, y la plantilla QA queda intacta', () => {
+  const d = tmp();
+  const qaTemplate = path.join(ROOT, 'config/env/qa.env.example');
+  const before = readFileSync(qaTemplate, 'utf8');
+  try {
+    for (const out of [path.join(d, '.env.qa'), 'config/env/qa.env.example']) {
+      const r = run(['--status-file', writeStatus(d, statusFixture()), '--output', out], { VITE_WOMPI_PUBLIC_KEY: USER_KEY });
+      assert.equal(r.status, EXIT.REJECTED, out);
+    }
+    assert.equal(existsSync(path.join(d, '.env.qa')), false);
+    assert.equal(readFileSync(qaTemplate, 'utf8'), before);
   } finally { rmSync(d, { recursive: true, force: true }); }
 });

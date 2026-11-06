@@ -94,9 +94,14 @@ export function renderEnvFile(templateText, vars, source) {
   return header.concat(names.map((n) => `${n}=${vars[n] ?? ''}`)).join('\n') + '\n';
 }
 
-/** Comprueba si el destino es seguro: inexistente y, dentro del repositorio, ignorado por git. */
+// M26-T6: separación local/QA. El generador local nunca escribe archivos de QA ni toca las plantillas.
+const QA_PATH_RE = /(^|[\\/._-])qa([\\/._-]|$)/i;
+
+/** Comprueba si el destino es seguro: inexistente, no es de QA ni de plantillas y, dentro del repo, ignorado por git. */
 export function checkOutputPath(output, root = ROOT) {
   const abs = path.resolve(root, output);
+  if (QA_PATH_RE.test(abs)) return { ok: false, code: EXIT.REJECTED, error: 'el destino parece un archivo de QA; el generador local solo escribe el perfil local' };
+  if (abs.startsWith(path.join(root, 'config', 'env') + path.sep)) return { ok: false, code: EXIT.REJECTED, error: 'el destino está en config/env/ (plantillas versionadas); el generador no las modifica' };
   if (existsSync(abs)) return { ok: false, code: EXIT.EXISTS, error: `el destino ya existe (${path.relative(root, abs) || abs}); no se sobrescribe. Bórrelo o use --output` };
   const rel = path.relative(root, abs);
   const inside = rel && !rel.startsWith('..') && !path.isAbsolute(rel);
@@ -137,6 +142,7 @@ if (isMain) {
   const { vars, rejected, pending } = buildClientEnv(templateText, status, cfg, process.env);
   if (rejected.length) { console.error('Entorno local: RECHAZADO (no se escribió nada)'); rejected.forEach((e) => console.error(`  ERROR ${e}`)); process.exit(EXIT.REJECTED); }
 
+  if (vars.VITE_APP_ENV !== 'local') { console.error('ERROR: la plantilla local no produce VITE_APP_ENV=local; no se escribe nada'); process.exit(EXIT.REJECTED); }
   if (!dryRun) {
     const out = checkOutputPath(output);
     if (!out.ok) { console.error(`ERROR: ${out.error}`); process.exit(out.code); }
