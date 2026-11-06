@@ -67,3 +67,7 @@ supabase/.temp/
 
 # M26-T8: build del perfil QA (scripts/env/qa_build.mjs)
 apps/web/dist-qa/
+
+# M26-R1: bytecode de Python (nunca se versiona)
+__pycache__/
+*.pyc

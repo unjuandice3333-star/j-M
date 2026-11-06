@@ -11,7 +11,8 @@ catálogo, checkout ni POS.
 | `5b6235b` | MAJ-1, MAJ-2 (código), MAJ-3, MIN-2, MIN-4 |
 | `c94ed00` | MAJ-4, INF-3 (y un literal de la regla 6 en un título de prueba de `5b6235b`) |
 | `32b05ed` | MAJ-5, MIN-1, MIN-3, MIN-5, MIN-6 y documentación de MAJ-2 |
-| (commit siguiente) | Este documento |
+| `eff3ed1` | Este documento |
+| (commit siguiente) | Retira `scripts/ci/lib/__pycache__/http_checks.cpython-313.pyc`, versionado por error en `c94ed00` (bytecode de una comprobación local con `py_compile`; sin secretos), e ignora `__pycache__/` y `*.pyc` |
 
 ## 2. Disposición de cada hallazgo
 | ID | Estado | Qué se hizo | Pruebas de regresión |
