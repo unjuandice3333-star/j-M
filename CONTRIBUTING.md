@@ -93,7 +93,7 @@ bash scripts/ci/run_all.sh                                   # perfil completo (
 REQUIRE_CLEAN=1 BASE_REF=origin/develop bash scripts/ci/run_all.sh   # evidencia válida: exige árbol limpio
 CI_PROFILE=quick bash scripts/ci/run_all.sh                  # sin BD → veredicto "PASS PARCIAL", nunca PASS
 CI_STAGES="governance security" bash scripts/ci/run_all.sh   # solo algunas etapas (así lo usa cada job de GitHub)
-bash scripts/ci/gate_selftest.sh                             # 72 controles: cada compuerta pasa limpia y bloquea su defecto
+bash scripts/ci/gate_selftest.sh                             # 81 controles: cada compuerta pasa limpia y bloquea su defecto
 ```
 
 El informe `ci-artifacts/REPORT.md` (más `verdict.txt`, `results.tsv`, `environment.txt` y `logs/`) registra el SHA,
@@ -109,6 +109,7 @@ informe como artefacto.
 | Nombres de rama y flujo de integración | Automático (governance) |
 | Conventional Commits, título del PR, archivos prohibidos | Automático (governance) |
 | Lint, tipos, unitarias, webhook, edge, build, bundle sin secretos | Automático (quality) |
+| Guardas de entorno M26: validadores T1–T6, plantillas sin secretos, CLI de QA y del generador local | Automático (quality: 17_env_tests, 18_env_templates, 19_env_cli_checks; entorno limpio) |
 | Migraciones inmutables, sin operaciones remotas, workflows sin secretos | Automático (security + trusted-policy) |
 | Reconstrucción determinista, ≥290 pruebas pgTAP, 39 verificaciones HTTP | Automático (db-local, db-supabase) |
 | Todas las compuertas en success | Automático (ci-gate), **efectivo solo cuando se aplique la protección de ramas** |

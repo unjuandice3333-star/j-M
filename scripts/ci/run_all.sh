@@ -4,6 +4,7 @@
 #
 #   CI_PROFILE=full  (por defecto) | quick (omite las etapas de BD: SKIPPED, veredicto "PASS PARCIAL")
 #   CI_STAGES="governance quality security db-local db-supabase"  (subconjunto; cada job de GitHub ejecuta una)
+#   La etapa quality incluye las guardas de entorno de M26 (17_env_tests, 18_env_templates, 19_env_cli_checks).
 #   BASE_REF=<rama|commit>   base para commits y migraciones (por defecto origin/develop u origin/main)
 #   PR_TITLE, TARGET_BRANCH  (opcionales, en PRs: título del squash y rama destino)
 #   REQUIRE_CLEAN=1          falla si el árbol de trabajo tiene cambios sin commit
@@ -60,6 +61,10 @@ if want quality; then
   if have "${DENO_BIN:-deno}"; then run_step 15_edge_tests bash scripts/ci/edge_tests.sh
   else record_blocked 15_edge_tests "deno no disponible (DENO_BIN)"; fi
   run_step 16_build         bash scripts/ci/build.sh
+  # M26-T7: guardas de entorno (T1–T6). Entorno limpio (solo PATH/HOME/LANG): no dependen de variables de la máquina.
+  run_step 17_env_tests      env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 pnpm -s test:env
+  run_step 18_env_templates  env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 pnpm -s check:templates
+  run_step 19_env_cli_checks env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 node scripts/env/ci_env_checks.mjs
 fi
 
 # --- Seguridad y migraciones -----------------------------------------------------

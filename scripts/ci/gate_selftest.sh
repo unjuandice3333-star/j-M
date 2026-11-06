@@ -6,6 +6,7 @@
 # dependencias; el repositorio principal no se modifica. Los fixtures que parecen secretos u operaciones
 # remotas se componen en tiempo de ejecución para que este archivo no dispare las propias compuertas.
 # No cubre las etapas de BD (lentas; tienen sus propias aserciones: mínimo de pruebas, determinismo).
+# M26-T7: incluye las guardas de entorno (17-19), un control de hermeticidad y un fallo de etapa con veredicto global.
 # Salida: exit 0 solo si todos los controles se comportan como se espera.
 # =============================================================================
 set -uo pipefail
@@ -204,6 +205,34 @@ expect_fail "resolve_base: PR sin base conocida" "base del PR desconocida" env E
 echo 'x' > __selftest_dirty.txt
 expect_fail "run_all: REQUIRE_CLEAN con árbol sucio" "00_clean_tree" env REQUIRE_CLEAN=1 CI_STAGES=none CI_OUT="$WT.ciout" bash scripts/ci/run_all.sh
 rm -rf "$WT.ciout"; reset_tree
+
+# ---------------------------------------------------------------- M26-T7: guardas de entorno
+CLEAN=(env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8)
+echo "-- M26: guardas de entorno"
+expect_pass "env: pnpm test:env (entorno limpio)"            "${CLEAN[@]}" pnpm -s test:env
+expect_pass "env: plantillas"                                "${CLEAN[@]}" pnpm -s check:templates
+expect_pass "env: CLI de QA y del generador (fixtures ficticios)" "${CLEAN[@]}" node scripts/env/ci_env_checks.mjs
+# Las pruebas son herméticas: con variables de la máquina deliberadamente contaminadas siguen pasando.
+expect_pass "env: test:env con variables de la máquina contaminadas" env VITE_APP_ENV=production VITE_SUPABASE_URL=https://contaminado.example.com \
+  SUPABASE_URL=https://contaminado.example.com VITE_WOMPI_ENV=production WOMPI_EVENTS_SECRET=contaminado pnpm -s test:env
+
+sed -i "s/if (!ALLOWED_ENVIRONMENTS.includes(name)) {/if (false) {/" scripts/env/environments.mjs
+expect_fail "env: regresión en el validador de entornos (acepta production)" "# fail [1-9]" "${CLEAN[@]}" pnpm -s test:env
+reset_tree
+
+printf '%s\n' "$(sed "s/^VITE_WOMPI_PUBLIC_KEY=$/VITE_WOMPI_PUBLIC_KEY=pub_pr""od_$(printf 'x%.0s' $(seq 24))/" config/env/qa.env.example)" > config/env/qa.env.example
+expect_fail "env: valor con forma de secreto en la plantilla QA" "qa.env.example.*(sin valor|forma de|vacía)" "${CLEAN[@]}" pnpm -s check:templates
+expect_fail "run_all: el defecto de plantilla hace FAIL la etapa quality (veredicto global)" "18_env_templates" \
+  env CI_STAGES=quality CI_OUT="$WT.ciout2" bash -c 'bash scripts/ci/run_all.sh; rc=$?; grep -E "^18_env_templates\tFAIL" "$CI_OUT/results.tsv"; grep -q "^verdict=FAIL" "$CI_OUT/verdict.txt" || exit 0; exit $rc'
+rm -rf "$WT.ciout2"; reset_tree
+
+sed -i "s/else if (ref \&\& claims.ref !== ref) errors.push(/else if (false) errors.push(/" scripts/env/qa_config.mjs
+expect_fail "env: regresión en la verificación QA (acepta llaves de otro proyecto)" "\\[FAIL\\] QA-3" "${CLEAN[@]}" node scripts/env/ci_env_checks.mjs
+reset_tree
+
+sed -i "s/if (QA_PATH_RE.test(abs)) return/if (false) return/" scripts/env/gen_local_env.mjs
+expect_fail "env: regresión en el generador (escribe archivos de QA)" "\\[FAIL\\] GEN-5" "${CLEAN[@]}" node scripts/env/ci_env_checks.mjs
+reset_tree
 
 git update-ref -d refs/remotes/origin/selftest-default 2>/dev/null
 echo "controles correctos: $ok/$total"

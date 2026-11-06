@@ -8,3 +8,5 @@ if ! command -v "$DENO" >/dev/null 2>&1; then
 fi
 "$DENO" --version | head -1
 "$DENO" run --allow-env --allow-read --import-map=import-map-deno.json test-edge-security.ts
+# M26-T3/T7: configuración de la Edge Function (sin red ni archivos; solo variables de entorno ficticias)
+"$DENO" run --allow-env test-edge-config.ts

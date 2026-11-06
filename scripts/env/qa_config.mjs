@@ -3,7 +3,8 @@
 //
 // El propietario rellena un archivo de entorno QA (forma: config/env/qa.env.example) FUERA del repositorio o en una
 // ruta ignorada por git, y lo comprueba con:
-//   node scripts/env/qa_config.mjs check --file <ruta>     (pnpm check:qa -- --file <ruta>)
+//   node scripts/env/qa_config.mjs check --file <ruta> [--config <environments.json>]   (pnpm check:qa -- --file <ruta>)
+// --config solo existe para pruebas y CI (fixtures con un host QA ficticio); por defecto, config/environments.json.
 // No se conecta a ningún servicio: solo valida valores. Nunca imprime valores, solo nombres.
 //
 // Reglas (además de las guardas T1, T2 y T3):
@@ -105,13 +106,14 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPat
 if (isMain) {
   const args = process.argv.slice(2);
   const i = args.indexOf('--file');
-  if (args[0] !== 'check' || i < 0 || !args[i + 1]) { console.error('uso: node scripts/env/qa_config.mjs check --file <ruta>'); process.exit(2); }
+  const c = args.indexOf('--config');
+  if (args[0] !== 'check' || i < 0 || !args[i + 1] || (c >= 0 && !args[c + 1])) { console.error('uso: node scripts/env/qa_config.mjs check --file <ruta> [--config <environments.json>]'); process.exit(2); }
   const loc = checkEnvFileLocation(args[i + 1]);
   if (!loc.ok) { console.error(`ERROR: ${loc.error}`); process.exit(loc.error === 'el archivo no existe' ? 2 : 1); }
   let vars, cfg;
   try {
     vars = Object.fromEntries(parseEnv(readFileSync(loc.abs, 'utf8')).entries.map((e) => [e.name, e.value]));
-    cfg = loadConfig(path.join(ROOT, 'config/environments.json'));
+    cfg = loadConfig(c >= 0 ? path.resolve(args[c + 1]) : path.join(ROOT, 'config/environments.json'));
   } catch { console.error('ERROR: no se pudo leer el archivo de entorno o config/environments.json'); process.exit(2); }
   const { errors, manualChecks } = checkQaEnv(vars, cfg);
   if (errors.length) { console.error('Entorno QA: INVÁLIDO'); errors.forEach((e) => console.error(`  ERROR ${e}`)); process.exit(1); }
