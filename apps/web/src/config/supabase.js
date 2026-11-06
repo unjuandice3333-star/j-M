@@ -1,13 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import { getClientConfig } from './clientConfig.js';
 
-// Inicialización autoritativa del cliente Supabase (Fail-Fast sin fallbacks sintéticos)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Cliente Supabase del navegador. La configuración se valida al arrancar (M26-T3): sin valores por defecto,
+// y la llave debe ser la pública/anon (nunca service_role ni una llave secreta).
+const { supabase: supabaseConfig } = getClientConfig();
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('[Supabase Config Error]: Las variables de entorno VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY son obligatorias y deben estar configuradas.');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseConfig.url, supabaseConfig.anonKey);
 
 export default supabase;

@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { readEdgeConfig } from './config.ts';
 
 // Supabase Edge Function: Webhook Oficial Wompi Colombia (Hardened & Audited)
 // J&M FASHION STORE
@@ -72,26 +73,16 @@ serve(async (req: Request) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('VITE_SUPABASE_URL') || '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const rawEventsSecret = Deno.env.get('WOMPI_EVENTS_SECRET');
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('[Wompi Edge Webhook Error]: Faltan las credenciales de servicio de Supabase.');
+    // M26-T3: configuración de servidor validada; sin respaldo a VITE_SUPABASE_URL ni valores por defecto.
+    const cfgResult = readEdgeConfig((name) => Deno.env.get(name));
+    if (!cfgResult.ok) {
+      console.error(`[Wompi Edge Webhook] Configuración de servidor inválida:\n - ${cfgResult.errors.join('\n - ')}`);
       return new Response(JSON.stringify({ error: 'Configuración de servidor incompleta.' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const eventsSecret = rawEventsSecret ? String(rawEventsSecret).trim().replace(/^["']|["']$/g, '') : '';
-    if (!eventsSecret) {
-      console.error('[Wompi Edge Webhook Security Error]: WOMPI_EVENTS_SECRET no configurado en el servidor.');
-      return new Response(JSON.stringify({ error: 'Configuración de servidor incompleta para verificación de eventos.' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const { supabaseUrl, serviceRoleKey: supabaseServiceKey, eventsSecret } = cfgResult.config;
 
     let payload: any;
     try {

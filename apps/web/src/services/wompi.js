@@ -8,9 +8,14 @@
  * - Utiliza VITE_WOMPI_PUBLIC_KEY para instanciar el Checkout Widget oficial.
  */
 
+import { getClientConfig } from '../config/clientConfig.js';
+
+// M26-T3: sin valores por defecto fijos. La llave pública y el modo vienen de la configuración validada del
+// cliente (VITE_WOMPI_PUBLIC_KEY y VITE_WOMPI_ENV, obligatorias y coherentes entre sí).
+const { wompi: wompiClientConfig } = getClientConfig();
 const WOMPI_CONFIG = {
-  publicKey: import.meta.env.VITE_WOMPI_PUBLIC_KEY || 'pub_test_Q5y15g9QLiTH8ljNipYwuXYxBWsN6L2b',
-  env: import.meta.env.VITE_WOMPI_ENV || 'sandbox',
+  publicKey: wompiClientConfig.publicKey,
+  env: wompiClientConfig.env,
   widgetScriptUrl: 'https://checkout.wompi.co/widget.js'
 };
 

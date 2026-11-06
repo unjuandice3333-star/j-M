@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { requireServerConfig } from '../_lib/serverConfig.js';
 
 // Vercel Serverless Function: Webhook Oficial de Transacciones Wompi Colombia (Hardened & Audited)
 // Endpoint: POST /api/wompi/webhook
@@ -56,20 +57,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const rawEventsSecret = process.env.WOMPI_EVENTS_SECRET;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('[Wompi Webhook Error]: Faltan las credenciales de servicio de Supabase.');
-      return res.status(500).json({ error: 'Configuración de servidor incompleta.' });
-    }
-
-    const eventsSecret = rawEventsSecret ? String(rawEventsSecret).trim().replace(/^["']|["']$/g, '') : '';
-    if (!eventsSecret) {
-      console.error('[Wompi Webhook Security Error]: WOMPI_EVENTS_SECRET no configurado en el servidor.');
-      return res.status(500).json({ error: 'Configuración de servidor incompleta para verificación de eventos.' });
-    }
+    // M26-T3: solo variables de servidor, validadas (SUPABASE_URL ya no cede ante VITE_SUPABASE_URL).
+    const cfg = requireServerConfig(res, 'Wompi Webhook', ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'WOMPI_EVENTS_SECRET']);
+    if (!cfg) return;
+    const supabaseUrl = cfg.SUPABASE_URL;
+    const supabaseServiceKey = cfg.SUPABASE_SERVICE_ROLE_KEY;
+    const eventsSecret = cfg.WOMPI_EVENTS_SECRET;
 
     const payload = req.body;
     if (!payload || typeof payload !== 'object') {

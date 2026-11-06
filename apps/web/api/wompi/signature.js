@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { requireServerConfig } from '../_lib/serverConfig.js';
 
 // Vercel Serverless Function: Generador Server-Side de Firma de Integridad Wompi Colombia
 // Endpoint: POST /api/wompi/signature
@@ -25,15 +26,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Parámetros incompletos: se requiere reference u order_id.' });
     }
 
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-    const integritySecret = process.env.WOMPI_INTEGRITY_SECRET;
-    const publicKey = process.env.VITE_WOMPI_PUBLIC_KEY || process.env.WOMPI_PUBLIC_KEY;
-
-    if (!integritySecret) {
-      console.error('[Wompi Signature Error]: WOMPI_INTEGRITY_SECRET no está configurado en las variables de entorno.');
-      return res.status(500).json({ error: 'Configuración de servidor incompleta (WOMPI_INTEGRITY_SECRET).' });
-    }
+    // M26-T3: solo variables de servidor, validadas; sin respaldo a VITE_* ni a la llave anon.
+    const cfg = requireServerConfig(res, 'Wompi Signature', ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'WOMPI_INTEGRITY_SECRET', 'WOMPI_PUBLIC_KEY']);
+    if (!cfg) return;
+    const supabaseUrl = cfg.SUPABASE_URL;
+    const supabaseServiceKey = cfg.SUPABASE_SERVICE_ROLE_KEY;
+    const integritySecret = cfg.WOMPI_INTEGRITY_SECRET;
+    const publicKey = cfg.WOMPI_PUBLIC_KEY;
 
     // 1. Obtener la orden desde Supabase para verificar el monto real autoritativo (Preventing Total Tampering)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -66,7 +65,7 @@ export default async function handler(req, res) {
 
     // 2. Generar Firma de Integridad SHA-256 Oficial de Wompi
     // Fórmula oficial: SHA-256(reference + amount_in_cents + currency + integrity_secret)
-    const cleanSecret = integritySecret ? integritySecret.trim().replace(/^["']|["']$/g, '') : '';
+    const cleanSecret = integritySecret; // ya normalizado por readServerConfig
     const concatenatedString = `${orderReference}${amountInCents}${currency}${cleanSecret}`;
     const signature = crypto.createHash('sha256').update(concatenatedString, 'utf8').digest('hex');
 
