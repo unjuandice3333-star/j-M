@@ -1,0 +1,14 @@
+{
+  "$comment": "M26-T1. Lista de PERMITIDOS por entorno. Solo existen local y qa: Production está fuera del alcance de la fábrica y una entrada 'production' se rechaza. La lista de hosts de qa la completa el propietario con <ref-qa>.supabase.co cuando cree el proyecto QA; mientras esté vacía, cualquier configuración de QA se rechaza. Sin valores secretos: solo hosts, protocolos y prefijos.",
+  "version": 1,
+  "environments": {
+    "local": {
+      "supabase": { "allowed_protocols": ["http"], "allowed_hosts": ["127.0.0.1", "localhost"] },
+      "wompi": { "mode": "sandbox", "public_key_prefix": "pub_test_" }
+    },
+    "qa": {
+      "supabase": { "allowed_protocols": ["https"], "allowed_hosts": [] },
+      "wompi": { "mode": "sandbox", "public_key_prefix": "pub_test_" }
+    }
+  }
+}
