@@ -43,12 +43,27 @@ Reglas comunes:
 | Navegador real (vite preview + Chromium), build de la fábrica | La app arranca sin `ConfigError` |
 | Navegador real, build sin guarda (como Vercel) con Wompi incoherente | No arranca: `ConfigError` con `VITE_WOMPI_ENV: no coincide…` (solo nombres) |
 | `build.sh` | PASS (tras resolver el conflicto descrito abajo) |
-| CI quick, autoprueba de compuertas y actionlint sobre el commit de T3 | ver el informe de T3 |
+| CI quick, autoprueba de compuertas y actionlint sobre `02f2051` | PASS PARCIAL (11 PASS, 2 SKIPPED por perfil) · 72/72 · 0 hallazgos |
 
-## Incidencia resuelta
-La guarda del cliente contenía el literal del prefijo de las llaves secretas de Supabase (para *rechazarlas*), y la
-verificación del bundle de `build.sh` (M25) rechaza cualquier bundle que contenga ese marcador. Se corrigió en el código
-nuevo (el prefijo se compone en ejecución) y no se relajó la verificación.
+## Incidencias resueltas
+1. **Conflicto entre guardas.** La guarda del cliente contenía el literal del prefijo de las llaves secretas de Supabase
+   (para *rechazarlas*), y la verificación del bundle de `build.sh` (M25) rechaza cualquier bundle que contenga ese marcador.
+   Se corrigió en el código nuevo (el prefijo se compone en ejecución) y no se relajó la verificación.
+2. **Falso positivo de gitleaks causado por un fixture de prueba.** La validación del primer commit de T3, `6450f90`,
+   falló en `21_secrets_scan` (y en el control positivo "secretos" de la autoprueba, 71/72): gitleaks (regla
+   `generic-api-key`) detectó en `apps/web/scripts/test-edge-config.ts:28` el literal ficticio asignado a la clave
+   `WOMPI_EVENTS_SECRET`. No era un secreto real, pero la compuerta actuó correctamente. Es el mismo tipo de error que en
+   T2: el fixture debía componerse en tiempo de ejecución.
+   - **Corrección:** el valor se compone en ejecución (`FAKE_VALUE`). Se revisaron los demás archivos nuevos de T3 en
+     busca de literales similares: no había otros.
+   - **Historial:** como gitleaks también analiza el historial, no bastaba un commit de corrección posterior. `6450f90`
+     era local y nunca se publicó, así que se **enmendó**: el commit definitivo de T3 es **`02f2051`**. Antes de enmendar
+     se ejecutó gitleaks sobre el árbol de trabajo (sin hallazgos) y, después, sobre el historial `1eba099..02f2051`
+     (4 commits, sin hallazgos).
+   - **Validación repetida sobre `02f2051`** (árbol limpio): CI quick PASS PARCIAL (11 compuertas PASS y 2 de BD
+     SKIPPED por el perfil), gitleaks sobre 103 commits y sobre el árbol **sin hallazgos**, autoprueba 72/72, actionlint 0,
+     `test:env` 54/54, configuración Edge 12/12, webhook 12/12, Edge 12/12 y prueba de humo en navegador (positiva y negativa) OK.
+   - **Cambio de proceso:** desde T3, gitleaks se ejecuta **antes** de cada commit, no solo en la validación posterior.
 
 ## Requisito para cualquier despliegue futuro (acción del propietario, no ejecutada)
 Antes de integrar este código en una rama que Vercel despliegue (Preview de esta rama o `main`), cada entorno de Vercel
