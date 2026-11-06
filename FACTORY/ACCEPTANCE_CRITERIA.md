@@ -23,6 +23,6 @@
 | D1 | Rama o worktree aislado por agente; nadie sobrescribe a otro | AGENT_ROLES.md + `gate_selftest.sh` (worktree efímero) |
 | D2 | Revisor independiente | revisión por subagente de contexto nuevo (MISION_25/04); todos los hallazgos atendidos |
 | D4 | Agentes utilizables y delimitados | `MISION_25/evidencias/verificacion_agentes.md` (sesiones reales de Claude Code) |
-| D3 | Los fallos bloquean la integración | `gate_selftest.sh`: 39 controles (11 positivos + 28 negativos con firma); `ci_gate.sh` falla ante skipped/failure/ausente |
+| D3 | Los fallos bloquean la integración | `gate_selftest.sh`: 52 controles (13 positivos + 39 negativos con firma); `ci_gate.sh` falla ante skipped/failure/ausente |
 | E1–E3 | Dev y QA separados, datos de prueba, secretos fuera del código | ENVIRONMENT_POLICY.md; gitleaks; redacción de evidencias |
 | E4 | Production inaccesible | Política + la CI rechaza operaciones remotas; sin secretos en el workflow |

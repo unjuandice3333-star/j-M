@@ -81,30 +81,37 @@ else
 fi
 
 # --- 6: sin operaciones remotas en la automatización -------------------------
-# Archivos ejecutables versionados o nuevos (no la documentación .md). Se excluye solo este archivo,
-# que necesariamente contiene los patrones.
-mapfile -t files < <(git ls-files -co --exclude-standard -- \
-    '*.sh' '*.bash' '*.mjs' '*.cjs' '*.py' '*.yml' '*.yaml' '*.toml' 'package.json' '*/package.json' '.husky/*' \
-    | grep -v '^scripts/ci/migrations_policy\.sh$' | grep -v '^node_modules/' | while read -r f; do [[ -f "$f" ]] && echo "$f"; done)
-REMOTE_RE='supabase.*(\blink\b|db (push|pull|dump)|--remote|functions deploy|secrets (set|unset)|migration repair|\blogin\b)'
-# Banderas que solo tienen sentido contra un proyecto remoto, en cualquier línea
-REMOTE_RE+='|--(project-ref|db-url|linked)\b'
-# Cualquier invocación mediante variable ($X, ${X}, "$X", "${X}") seguida de un subcomando remoto
-REMOTE_RE+='|"?\$\{?[A-Za-z_][A-Za-z0-9_]*\}?"?[[:space:]]+(link|db (push|pull|dump)|functions deploy|secrets (set|unset|list)|migration repair|login)\b'
-REMOTE_RE+='|[a-z0-9]{20}\.supabase\.co|pooler\.supabase\.com|postgres(ql)?://[^[:space:]]*supabase\.(co|com)'
-REMOTE_RE+='|vercel[[:space:]]+(deploy|--prod|env|link)'
+# Archivos ejecutables versionados o nuevos (no la documentación .md), con extensión sin distinguir mayúsculas.
+# Se excluye solo este archivo, que necesariamente contiene los patrones.
+mapfile -t files < <(git ls-files -co --exclude-standard | grep -v '^node_modules/' \
+    | grep -iE '\.(sh|bash|mjs|cjs|js|ts|py|ya?ml|toml)$|(^|/)package\.json$|^\.husky/' \
+    | grep -vE '^apps/web/(src|public)/|^packages/[^/]+/(src/|index\.)|\.test\.(ts|js|sql)$' \
+    | grep -v '^scripts/ci/migrations_policy\.sh$' | while read -r f; do [[ -f "$f" ]] && echo "$f"; done)
+S='[[:space:]]+'
+# a) Subcomandos remotos de la CLI de Supabase, con o sin "supabase" delante (cubre variables, funciones
+#    envoltorio como sbr, banderas globales intermedias y espacios múltiples).
+REMOTE_RE="\\bdb${S}(push|pull|dump)\\b|\\bfunctions${S}deploy\\b|\\bsecrets${S}(set|unset|list)\\b|\\bmigration${S}repair\\b"
+# b) link/login solo cuando la línea invoca la CLI (palabra supabase o una variable/función que la envuelve)
+REMOTE_RE+="|(supabase|\\\$|\\bsbr\\b).*\\b(link|login)\\b"
+# c) Forma de lista (Python subprocess, JS spawn): "db", "push" / "link"
+REMOTE_RE+="|[\"']db[\"'][[:space:],]+[\"'](push|pull|dump)[\"']|[\"'](link|login)[\"'][[:space:]]*[],]"
+# d) Banderas y destinos que solo tienen sentido contra un proyecto remoto
+REMOTE_RE+="|--(project-ref|db-url|linked|remote)\\b|[a-z0-9]{20}\\.supabase\\.co|pooler\\.supabase\\.com|postgres(ql)?://[^[:space:]]*supabase\\.(co|com)"
+# e) Vercel
+REMOTE_RE+="|\\bvercel${S}(deploy|--prod|env|link|promote|alias)\\b"
 remote=$( ((${#files[@]})) && grep -nHE "$REMOTE_RE" "${files[@]}" || true)
 [[ -n "$remote" ]] && err "la automatización contiene operaciones o destinos remotos:"$'\n'"$remote"
 
-# Los workflows no pueden usar secretos ni entornos de despliegue de GitHub
-wf=$(ls .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null || true)
-if [[ -n "$wf" ]]; then
-  # secrets en cualquier forma (secrets.X, secrets['X'], toJSON(secrets)), entornos, eventos con privilegios
-  # sobre PRs de terceros y cualquier permiso de escritura
-  ghs=$(grep -nHiE '\bsecrets\b|^\s*environment\s*:|pull_request_target|workflow_run|write-all|:\s*write\b' $wf || true)
-  [[ -n "$ghs" ]] && err "los workflows no pueden usar secretos, entornos ni permisos de escritura:"$'\n'"$ghs"
-fi
-echo "archivos de automatización revisados: ${#files[@]}"
+# Workflows (cualquier .yml/.yaml en .github/workflows, sin distinguir mayúsculas)
+mapfile -t wf < <(find .github/workflows -maxdepth 1 -type f \( -iname '*.yml' -o -iname '*.yaml' \) 2>/dev/null | sort)
+for w in "${wf[@]}"; do
+  # Bloque permissions: de nivel superior obligatorio (sin él el token hereda los permisos por defecto del repositorio)
+  grep -qE '^permissions:' "$w" || err "$w: falta el bloque 'permissions:' de nivel superior"
+  # Secretos en cualquier forma, token del workflow, entornos, eventos con privilegios y cualquier permiso de escritura
+  ghs=$(grep -nHiE "\\bsecrets\\b|github\\.token|GITHUB_TOKEN|^[[:space:]]*environment[[:space:]]*:|pull_request_target|workflow_run|issue_comment|pull_request_review|write-all|:[[:space:]]*[\"']?write[\"']?([[:space:]]|,|}|$)" "$w" || true)
+  [[ -n "$ghs" ]] && err "los workflows no pueden usar secretos, el token, entornos, eventos privilegiados ni permisos de escritura:"$'\n'"$ghs"
+done
+echo "archivos de automatización revisados: ${#files[@]} · workflows: ${#wf[@]}"
 
 if [[ $fail -eq 0 ]]; then echo "política de migraciones: OK"; fi
 exit $fail

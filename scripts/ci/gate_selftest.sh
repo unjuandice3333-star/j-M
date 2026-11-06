@@ -54,8 +54,11 @@ expect_pass "secretos"             bash scripts/ci/secrets_scan.sh
 expect_pass "commits"              bash scripts/ci/check_commits.sh HEAD~1 HEAD
 expect_pass "rama + flujo"         bash scripts/ci/check_branch_name.sh agent/qa/m25-x mission/m25-x
 expect_pass "ci-gate (todo success)" env NEEDS_JSON="$ALL_OK" bash scripts/ci/ci_gate.sh
-expect_pass "resolve_base: force-push → merge-base con la rama por defecto" \
-            env EVENT_NAME=push PUSH_BEFORE=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef DEFAULT_BRANCH=selftest-default bash scripts/ci/resolve_base.sh
+expect_pass "resolve_base: rama nueva (before=000…) → merge-base con la rama por defecto" \
+            env EVENT_NAME=push PUSH_BEFORE=0000000000000000000000000000000000000000 DEFAULT_BRANCH=selftest-default bash scripts/ci/resolve_base.sh
+expect_pass "resolve_base: dispatch sin commits nuevos (base == HEAD) se acepta con aviso" \
+            env EVENT_NAME=workflow_dispatch DEFAULT_BRANCH=selftest-head bash -c 'git update-ref refs/remotes/origin/selftest-head HEAD && bash scripts/ci/resolve_base.sh; rc=$?; git update-ref -d refs/remotes/origin/selftest-head; exit $rc'
+expect_pass "resolve_base: push con avance rápido → before" env EVENT_NAME=push PUSH_BEFORE=HEAD~1 bash scripts/ci/resolve_base.sh
 
 echo "-- controles negativos (defecto inyectado)"
 echo 'export const roto = () => variableNoDefinida + 1;' > apps/web/src/__selftest_lint.js
@@ -114,6 +117,26 @@ printf 'CLI=supa%s; ${CLI} db pu%s\n' base sh > scripts/ci/__selftest_cli.sh
 expect_fail "regla 6: variable con otro nombre" "__selftest_cli" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
 reset_tree
 
+expect_r6() {   # <descripción> <archivo> <contenido printf> [args...]
+  local desc="$1" file="$2" fmt="$3"; shift 3
+  mkdir -p "$(dirname "$file")"; printf "$fmt" "$@" > "$file"
+  expect_fail "regla 6: $desc" "$(basename "$file")" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
+  reset_tree
+}
+expect_r6 "bandera global entre la variable y el subcomando" scripts/ci/__st_flag.sh 'SB=supabase\n"$SB" --workdir . db pu%s\n' sh
+expect_r6 "espacios múltiples" scripts/ci/__st_spaces.sh 'supa%s db   pu%s\n' base sh
+expect_r6 "arreglo bash" scripts/ci/__st_array.sh 'c=(supa%s); "${c[@]}" li%s\n' base nk
+expect_r6 "lista de Python (subprocess)" scripts/ci/__st_sub.py 'import subprocess\nsubprocess.run(["supa%s", "db", "pu%s"])\n' base sh
+expect_r6 "workflow con extensión .YML" .github/workflows/__st_upper.YML 'on: push\npermissions: write-%s\n' all
+expect_r6 "permiso de escritura entre comillas" .github/workflows/__st_quoted.yml 'on: push\npermissions:\n  actions: "wri%s"\n' te
+expect_r6 "permisos en estilo flujo" .github/workflows/__st_flow.yml "on: push\npermissions: { pull-requests: 'wri%s' }\n" te
+expect_r6 "workflow sin bloque permissions" .github/workflows/__st_noperm.yml 'on: push\njobs: {}\n%s' ''
+expect_r6 "workflow que usa el token" .github/workflows/__st_token.yml 'on: issue_comment\npermissions:\n  contents: read\njobs:\n  x:\n    steps:\n      - run: echo ${{ github.tok%s }}\n' en
+# Envoltorio existente del repositorio: una operación remota a través de sbr en db_supabase.sh
+printf 'sbr "$OUT/09.log" db pu%s\n' sh >> scripts/ci/db_supabase.sh
+expect_fail "regla 6: operación remota mediante el envoltorio sbr" "db_supabase.sh" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
+reset_tree
+
 printf 'on: pull_request_targ%s\npermissions: write-%s\njobs:\n  x:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: echo "${{ toJSON(secre%s) }}"\n' et all ts > .github/workflows/__selftest_evil.yml
 expect_fail "regla 6: workflow con pull_request_target, write-all y toJSON(secrets)" "__selftest_evil" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
 reset_tree
@@ -142,7 +165,9 @@ expect_fail "rama: feat/* directo a main" "a main solo se integran" bash scripts
 
 expect_fail "ci-gate: un job skipped" "FALLA" env NEEDS_JSON="$ONE_SKIPPED" bash scripts/ci/ci_gate.sh
 expect_fail "ci-gate: jobs ausentes" "ausente" env NEEDS_JSON='{"governance":{"result":"success"}}' bash scripts/ci/ci_gate.sh
-expect_fail "resolve_base: push a la rama por defecto con before desconocido (rango vacío)" "rango vacío" env EVENT_NAME=push PUSH_BEFORE=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef DEFAULT_BRANCH=selftest-head bash -c 'git update-ref refs/remotes/origin/selftest-head HEAD && bash scripts/ci/resolve_base.sh; rc=$?; git update-ref -d refs/remotes/origin/selftest-head; exit $rc'
+expect_fail "resolve_base: before desconocido (historial reescrito)" "no existe en el clon" env EVENT_NAME=push PUSH_BEFORE=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef bash scripts/ci/resolve_base.sh
+G commit -q --allow-empty -m "test: rewritten tip"; REWRITTEN=$(git rev-parse HEAD); git reset -q --hard HEAD~1
+expect_fail "resolve_base: push sin avance rápido (retroceso o reescritura)" "sin avance rápido" env EVENT_NAME=push PUSH_BEFORE="$REWRITTEN" bash scripts/ci/resolve_base.sh
 expect_fail "resolve_base: PR sin base conocida" "base del PR desconocida" env EVENT_NAME=pull_request PR_BASE_SHA=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef bash scripts/ci/resolve_base.sh
 
 echo 'x' > __selftest_dirty.txt

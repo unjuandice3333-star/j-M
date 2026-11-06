@@ -42,6 +42,17 @@ Veredicto: CAMBIOS REQUERIDOS. Resultado: 15 FIXED, 5 PARTIALLY FIXED (#4, #8, #
 | #9 | Mayor | No detectaba `"$SB" link` ni `$CLI db push`; `--project-ref` solo en líneas con "supabase" | C+T | Cualquier variable (con o sin comillas o llaves) seguida de un subcomando remoto; `--project-ref`, `--db-url` y `--linked` en cualquier línea. Pruebas "variable entre comillas" y "variable con otro nombre" |
 | #7 | Menor | trusted-policy y ci-gate no suben artefactos | Aceptado | Sus salidas son de una línea y quedan en el log del job; no generan informe propio |
 
+## Ronda 3 — re-revisión de 5550c17
+Veredicto: CAMBIOS REQUERIDOS. N1 y N3/#12 FIXED; resolve_base, N2 y #9 PARTIAL; 2 defectos nuevos (R1, R2).
+
+| # | Sev. | Hallazgo | Disposición | Corrección / prueba |
+|---|---|---|---|---|
+| resolve_base | Mayor | Un push sin avance rápido con `before` conocido (retroceso o reescritura de main) daba un rango vacío y pasaba | C+T | `before` debe ser antecesor de HEAD; si no, exit 2. Un `before` desconocido distinto de cero → exit 2. Prueba "push sin avance rápido" y "before desconocido" |
+| R1 | Menor/Mayor | La comprobación base == HEAD rompía pushes legítimos (rama nueva en un commit existente, dispatch en main) | C+T | Se decide por `before`: 000…/vacío → merge-base, y si es HEAD se acepta con aviso (las reglas independientes de la base se siguen aplicando). Pruebas positivas "rama nueva" y "dispatch sin commits nuevos" |
+| N2 | Mayor | Quedaban sin detectar: `"write"` entre comillas, el estilo flujo `{ x: 'write' }`, `issue_comment` + `github.token` sin bloque permissions, la extensión `.YML` | C+T | Regex de escritura con comillas o en estilo flujo; `github.token`, `GITHUB_TOKEN`, `issue_comment` y `pull_request_review*` prohibidos; bloque `permissions:` de nivel superior obligatorio; workflows con `find -iname`. 5 pruebas nuevas |
+| #9 | Mayor | Quedaban sin detectar: banderas globales (`--workdir`), espacios dobles, arreglos, listas de Python y **el envoltorio `sbr` del propio repositorio** | C+T | Los subcomandos remotos (`db push/pull/dump`, `functions deploy`, `secrets set/unset/list`, `migration repair`) se detectan por sí solos, sin exigir el prefijo; `link/login` en líneas que invocan la CLI; listas de argumentos entre comillas; alcance ampliado a `*.js`/`*.ts` de servidor. 5 pruebas nuevas, incluida "operación remota mediante el envoltorio sbr" |
+| R2 | Menor | La autoprueba no cubría esas variantes | C | La autoprueba pasa de 39 a 52 controles |
+
 ## Puntos que el revisor marcó como "sin verificar" y siguen así
 - La instalación de `postgresql-16-pgtap` y `postgresql-16-cron` en ubuntu-24.04, que `supabase/setup-cli` instale la 3.0.0
   y el comportamiento de gitleaks en el runner de GitHub. Verificarlos exige ejecutar el workflow en GitHub, es decir,

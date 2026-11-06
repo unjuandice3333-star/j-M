@@ -7,8 +7,11 @@
    bloquea merges en GitHub. Localmente, `run_all.sh` sí bloquea (exit ≠ 0).
 3. **Revisor independiente en GitHub:** hace falta una segunda identidad (cuenta de máquina para los agentes o un segundo
    revisor humano). Es decisión del propietario.
-4. **La regla 6 es heurística (regex).** Detecta las formas directas, `npx`, la invocación mediante cualquier variable
-   (con o sin comillas o llaves) seguida de un subcomando remoto, las banderas `--project-ref`, `--db-url` y `--linked`, y URLs de proyecto. Una ofuscación deliberada (por ejemplo, codificación o eval) no se puede detectar estáticamente. Las
+4. **La regla 6 es heurística (regex), no un análisis semántico.** Detecta los subcomandos remotos de la CLI por sí mismos
+   (cualquier forma de invocación: directa, `npx`, variable, función envoltorio, banderas intermedias, espacios múltiples,
+   listas de argumentos), las banderas `--project-ref`, `--db-url`, `--linked` y `--remote`, y los destinos `*.supabase.co`
+   y del pooler. **No** detecta construcciones que generen el comando en tiempo de ejecución (por ejemplo, concatenar
+   cadenas, base64 o eval), ni código fuera de los archivos analizados. Una ofuscación deliberada (por ejemplo, codificación o eval) no se puede detectar estáticamente. Las
    defensas de fondo son: la sesión no tiene credenciales remotas, el workflow no tiene secretos, y las reglas de
    denegación de Claude Code.
 5. **qa y reviewer tienen Bash:** su "solo lectura" no es un aislamiento técnico completo (pueden escribir con Bash).
