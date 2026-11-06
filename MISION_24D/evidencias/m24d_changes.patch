@@ -59,7 +59,7 @@ index 3db3b1a..5b00b19 100644
 +                        email_change_token_current, reauthentication_token, phone_change, phone_change_token,
                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
  SELECT '00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated', u.email,
-        extensions.crypt('QaLocal-2026!', extensions.gen_salt('bf')), now(),
+        extensions.crypt('<contraseña retirada en M26-R1>', extensions.gen_salt('bf')), now(),
 +       '', '', '', '', '', '', '', '',
         '{"provider":"email","providers":["email"]}'::jsonb,
         jsonb_build_object('full_name', u.full_name), now(), now()

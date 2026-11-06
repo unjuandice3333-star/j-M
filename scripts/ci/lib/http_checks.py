@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """M24C — Validación de servicios reales de Supabase local (GoTrue, PostgREST, Storage) vía HTTP.
 Solo localhost. Las llaves se leen de `supabase status -o json` y nunca se imprimen."""
-import json, sys, time, uuid, urllib.request, urllib.error
+import json, secrets, sys, time, uuid, urllib.request, urllib.error
 
 st = json.load(open(sys.argv[1]))
 API = st["API_URL"]            # http://127.0.0.1:54321
@@ -29,13 +29,25 @@ def call(method, path, body=None, token=None, apikey=ANON, headers=None, raw=Non
         try: return e.code, json.loads(txt)
         except Exception: return e.code, txt
 
-def login(email, pwd="QaLocal-2026!"):
-    s, b = call("POST", "/auth/v1/token?grant_type=password", {"email": email, "password": pwd})
+# M26-R1 (MAJ-4): los usuarios seed no tienen contraseña conocida. Cada ejecución genera una
+# contraseña aleatoria (nunca se imprime ni se guarda) y la fija con la API de administración de
+# GoTrue usando la llave de servicio LOCAL. No existe contraseña fija versionada.
+RUN_PWD = secrets.token_urlsafe(24)
+SEED_USERS = {"superadmin": "00000000-0000-4000-8000-00000000a001", "admin": "00000000-0000-4000-8000-00000000a002",
+              "cliente1": "00000000-0000-4000-8000-00000000a003", "cliente2": "00000000-0000-4000-8000-00000000a004"}
+
+def login(email, pwd=None):
+    s, b = call("POST", "/auth/v1/token?grant_type=password", {"email": email, "password": pwd or RUN_PWD})
     return s, (b.get("access_token") if isinstance(b, dict) else None), b
 
 # ---------------- AUTH (GoTrue) ----------------
 tokens = {}
-for who in ["superadmin", "admin", "cliente1", "cliente2"]:
+s, _, _ = login("cliente1@qa.jm.test")
+check("auth: usuario seed sin contraseña conocida (login rechazado antes de fijarla)", s == 400, f"HTTP {s}")
+for who, uid in SEED_USERS.items():
+    s, _ = call("PUT", f"/auth/v1/admin/users/{uid}", {"password": RUN_PWD}, token=SERVICE, apikey=SERVICE)
+    check(f"auth: contraseña por ejecución fijada vía API admin para {who}", s == 200, f"HTTP {s}")
+for who in SEED_USERS:
     s, tok, b = login(f"{who}@qa.jm.test")
     tokens[who] = tok
     check(f"auth: login de usuario seed {who}@qa.jm.test con GoTrue real", s == 200 and tok, f"HTTP {s}")
@@ -43,7 +55,7 @@ s, tok, _ = login("cliente1@qa.jm.test", "contraseña-incorrecta")
 check("auth: contraseña incorrecta rechazada", s == 400 and not tok, f"HTTP {s}")
 
 new_email = f"nuevo.{uuid.uuid4().hex[:8]}@qa.jm.test"
-s, b = call("POST", "/auth/v1/signup", {"email": new_email, "password": "QaLocal-2026!", "data": {"full_name": "Registro Nuevo"}})
+s, b = call("POST", "/auth/v1/signup", {"email": new_email, "password": secrets.token_urlsafe(24), "data": {"full_name": "Registro Nuevo"}})
 new_tok = b.get("access_token") if isinstance(b, dict) else None
 check("auth: registro público (signup) vía GoTrue", s == 200 and new_tok, f"HTTP {s}")
 s, prof = call("GET", "/rest/v1/profiles?select=email,full_name,role", token=new_tok)

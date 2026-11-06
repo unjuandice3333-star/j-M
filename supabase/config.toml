@@ -41,3 +41,10 @@ enable_confirmations = false
 [storage]
 enabled = true
 file_size_limit = "5MiB"
+
+[functions.wompi-webhook]
+# M26-R1 (INF-3): Wompi llama al webhook sin JWT de Supabase; la autenticidad se verifica dentro de la
+# función con la firma del evento (WOMPI_EVENTS_SECRET, comparación en tiempo constante).
+# Con verify_jwt = true la pasarela de Supabase rechazaría (401) todos los eventos reales de Wompi.
+# Al desplegar en QA debe conservarse este valor (la configuración del archivo se aplica al desplegar).
+verify_jwt = false

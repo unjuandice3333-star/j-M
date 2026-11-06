@@ -29,7 +29,7 @@ def call(method, path, body=None, token=None, apikey=ANON, headers=None, raw=Non
         try: return e.code, json.loads(txt)
         except Exception: return e.code, txt
 
-def login(email, pwd="QaLocal-2026!"):
+def login(email, pwd="<contraseña retirada en M26-R1>"):
     s, b = call("POST", "/auth/v1/token?grant_type=password", {"email": email, "password": pwd})
     return s, (b.get("access_token") if isinstance(b, dict) else None), b
 
@@ -43,7 +43,7 @@ s, tok, _ = login("cliente1@qa.jm.test", "contraseña-incorrecta")
 check("auth: contraseña incorrecta rechazada", s == 400 and not tok, f"HTTP {s}")
 
 new_email = f"nuevo.{uuid.uuid4().hex[:8]}@qa.jm.test"
-s, b = call("POST", "/auth/v1/signup", {"email": new_email, "password": "QaLocal-2026!", "data": {"full_name": "Registro Nuevo"}})
+s, b = call("POST", "/auth/v1/signup", {"email": new_email, "password": "<contraseña retirada en M26-R1>", "data": {"full_name": "Registro Nuevo"}})
 new_tok = b.get("access_token") if isinstance(b, dict) else None
 check("auth: registro público (signup) vía GoTrue", s == 200 and new_tok, f"HTTP {s}")
 s, prof = call("GET", "/rest/v1/profiles?select=email,full_name,role", token=new_tok)

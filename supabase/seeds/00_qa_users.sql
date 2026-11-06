@@ -1,8 +1,11 @@
 -- =============================================================================
 -- SEED QA — USUARIOS DE PRUEBA (solo local, CI y QA. NUNCA Production)
 -- =============================================================================
--- Dominio reservado de pruebas (.test, RFC 2606). Contraseña común de QA local:
---   QaLocal-2026!
+-- Dominio reservado de pruebas (.test, RFC 2606).
+-- M26-R1 (MAJ-4): SIN contraseña conocida. Cada usuario recibe un hash de un valor aleatorio
+-- que nadie conoce, así que no se puede iniciar sesión con ellos hasta que alguien con la llave
+-- de servicio del entorno fije una contraseña (CI: aleatoria por ejecución; QA: el propietario,
+-- manualmente). La contraseña común que usaban M24–M25 queda RETIRADA y se considera comprometida.
 -- No son credenciales reales ni personas reales.
 -- =============================================================================
 
@@ -14,7 +17,7 @@ INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, e
                         email_change_token_current, reauthentication_token, phone_change, phone_change_token,
                         raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 SELECT '00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated', u.email,
-       extensions.crypt('QaLocal-2026!', extensions.gen_salt('bf')), now(),
+       extensions.crypt(gen_random_uuid()::text, extensions.gen_salt('bf')), now(),
        '', '', '', '', '', '', '', '',
        '{"provider":"email","providers":["email"]}'::jsonb,
        jsonb_build_object('full_name', u.full_name), now(), now()

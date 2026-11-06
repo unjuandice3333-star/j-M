@@ -35,7 +35,7 @@ Los documentos de M24B y M24C conservan la ruta antigua del shim y la afirmació
 | L7 | Servicios excluidos: Studio, Realtime, Edge Runtime, Analytics, imgproxy, Mailpit, postgres-meta, Supavisor | La base no depende de ellos | — |
 | L8 | Eventos de Wompi sintéticos; sin Google OAuth ni correo real | Fuera del alcance de la base de datos | Misión de integración con Wompi Sandbox |
 | L9 | El frontend y el backend actuales siguen siendo incompatibles con la nueva base (M24B, 28 cambios) | La base **no** debe aplicarse a entornos que sirvan la app actual | Misión de adaptación |
-| L10 | La contraseña de QA local (`QaLocal-2026!`) y los correos `@qa.jm.test` están en el seed | Solo local / QA; nunca Production | Mantener los seeds fuera de Production |
+| L10 | La contraseña de QA local (`<contraseña retirada en M26-R1>`) y los correos `@qa.jm.test` están en el seed | Solo local / QA; nunca Production | Mantener los seeds fuera de Production |
 
 ## 4. Restricciones respetadas
 - Sin conexión a QA ni Production y sin credenciales remotas (ninguna variable `SUPABASE_*`, sin `supabase link`).

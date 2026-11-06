@@ -54,7 +54,7 @@ SELECT …, '', '', '', '', '', '', '', '', …
 
 **`supabase/local_shim/supabase_shim.sql`** (solo PostgreSQL local sin Docker): su `auth.users` incorpora las mismas 8 columnas, con los mismos DEFAULT que el esquema real. Así el mismo seed sirve para ambos entornos y el shim deja de ocultar este tipo de diferencia.
 
-No cambia nada más: mismos 4 usuarios, mismos UUID, misma contraseña de QA local (`QaLocal-2026!`), mismas identidades y mismos roles.
+No cambia nada más: mismos 4 usuarios, mismos UUID, misma contraseña de QA local (`<contraseña retirada en M26-R1>`), mismas identidades y mismos roles.
 
 ## 4. Verificación (dos reconstrucciones limpias, sin pasos manuales)
 

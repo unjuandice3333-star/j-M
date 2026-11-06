@@ -71,7 +71,7 @@ Regresiones de la auditoría M23, todas verificadas como **corregidas**:
 ### 5.2 Contenido de los seeds de QA
 | Archivo | Datos |
 |---|---|
-| `00_qa_users.sql` | 4 usuarios con dominio reservado `.test`: `superadmin@qa.jm.test`, `admin@qa.jm.test`, `cliente1@qa.jm.test`, `cliente2@qa.jm.test`. Contraseña de QA local: `QaLocal-2026!` (no es una credencial real). 2 direcciones de prueba |
+| `00_qa_users.sql` | 4 usuarios con dominio reservado `.test`: `superadmin@qa.jm.test`, `admin@qa.jm.test`, `cliente1@qa.jm.test`, `cliente2@qa.jm.test`. Contraseña de QA local: `<contraseña retirada en M26-R1>` (no es una credencial real). 2 direcciones de prueba |
 | `10_qa_catalog.sql` | 8 productos creados **con la RPC real `admin_upsert_product`**, detalle abajo. 7 cupones: `QA10`, `QAFIJO20K`, `QAENVIO`, `QAEXPIRADO`, `QAAGOTADO`, `QAFUTURO`, `QAUNICO`. 4 reseñas (aprobadas, pendiente, rechazada). 1 contenido editorial |
 | `20_qa_orders.sql` | 8 pedidos creados y avanzados **con las RPC reales**, uno por cada estado (detalle abajo), con intentos de pago y eventos Wompi **sintéticos** |
 

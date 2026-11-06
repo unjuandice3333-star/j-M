@@ -1,6 +1,9 @@
-# M26 — T8: guía del propietario para crear y configurar QA, y comandos locales del perfil QA
+# M26 — T8: guía del propietario para configurar el QA existente, y comandos locales del perfil QA
 
-**Estado:** la parte LOCAL de T8 está ejecutada y pendiente de revisión. La parte REMOTA (crear y configurar QA) es,
+> **Corregida en M26-R1 (MAJ-4, MIN-6).** El proyecto QA **ya existe** (`yomgxdjgfjnrjaqiarvw`, confirmado por el
+> propietario): no se crea otro. Ningún paso aplica `db reset` sobre QA sin las salvaguardas de `06_T6_QA.md` §3.
+
+**Estado:** la parte LOCAL de T8 está ejecutada y pendiente de revisión. La parte REMOTA (configurar QA) es,
 por definición del plan, una acción del propietario que requiere autorización: **no se ha realizado**. No se creó ni se
 modificó ningún proyecto Supabase, no se tocó Vercel, no hubo despliegues ni publicación de M26.
 
@@ -16,20 +19,21 @@ despliegue (§3).
 ## 2. Guía del propietario (pasos remotos; requieren autorización)
 | # | Paso | Dónde | Comprobación local antes o después |
 |---|---|---|---|
-| 1 | Crear el proyecto Supabase **QA** (región y plan a decidir). Anotar `<ref-qa>` | Supabase | — |
-| 2 | Añadir `<ref-qa>.supabase.co` a `environments.qa.supabase.allowed_hosts` en `config/environments.json`, mediante PR revisado. **Nunca** la referencia de Production | Repositorio | `pnpm check:templates`; la CI valida el formato (T1) |
-| 3 | Rellenar un archivo QA **fuera del repositorio** (forma: `config/env/qa.env.example`) con las 10 variables del proyecto QA y de Wompi **sandbox** | Equipo del propietario | `pnpm check:qa -- --file <qa.env>` → VÁLIDO |
-| 4 | Aplicar migraciones y seeds en QA (`supabase link --project-ref <ref-qa>` → comprobar `supabase/.temp/project-ref` → `supabase db reset --linked` → `supabase unlink`; ver `06_T6_QA.md` §3) | Supabase | Antes, `check:qa`; después, borrar `supabase/.temp/project-ref` (la CI local aborta si existe) |
-| 5 | Secreto de la Edge Function: `WOMPI_EVENTS_SECRET` de **sandbox** (`supabase secrets set`). `SUPABASE_URL` y la llave de servicio las inyecta Supabase | Supabase | — |
-| 6 | Auth de QA: Site URL y Redirect URLs del frontend de QA; proveedores necesarios | Supabase | — |
-| 7 | Entorno de Vercel para QA (Preview o un proyecto/entorno dedicado): las **10** variables del archivo QA (5 de cliente `VITE_*` y 5 de servidor), **todas de QA y Wompi sandbox**. Desde T3 el servidor exige `SUPABASE_URL` y `WOMPI_PUBLIC_KEY` propias, y el cliente `VITE_WOMPI_ENV` | Vercel | Antes, en local: `pnpm build:qa -- --file <qa.env>` (build verificado) y `pnpm preview:qa -- --file <qa.env>` |
-| 8 | Webhook de Wompi **sandbox** apuntando al endpoint de QA (Vercel `/api/wompi/webhook` o la Edge Function) | Panel sandbox de Wompi | — |
-| 9 | Decidir R-PREVIEW (que las ramas internas no generen Preview automáticos; ver `01_DIAGNOSTICO_Y_T1.md` §2) | Vercel | — |
-| 10 | Tras cualquier cambio de configuración: repetir `check:qa` y `build:qa` en local | Equipo del propietario | — |
+| 1 | Proyecto QA: **ya existe**, `yomgxdjgfjnrjaqiarvw` (`https://yomgxdjgfjnrjaqiarvw.supabase.co`). No crear otro | Supabase | — |
+| 2 | Añadir `yomgxdjgfjnrjaqiarvw.supabase.co` a `environments.qa.supabase.allowed_hosts` en `config/environments.json`, mediante PR revisado. **Nunca** la referencia de Production | Repositorio | `node scripts/env/environments.mjs validate-config` (formato de la lista); `pnpm test:env` (las pruebas no dependen de la lista versionada) |
+| 3 | Rellenar un archivo QA **fuera del repositorio** (forma: `config/env/qa.env.example`) con las **11** variables del proyecto QA y de Wompi **sandbox**, incluidas `APP_ENV=qa` y `VITE_APP_ENV=qa` | Equipo del propietario | `pnpm check:qa -- --file <qa.env>` → VÁLIDO |
+| 4 | Base de datos: **Fase A** obligatoria (copia, inventario, historial de migraciones, versión de PostgreSQL); después `db push` no destructivo o, solo con la **Fase C** y decisión escrita, `db reset`. Ver `06_T6_QA.md` §3 | Supabase | Antes, `check:qa`. Nunca `supabase link` ni `--linked`: siempre `--remote=yomgxdjgfjnrjaqiarvw` |
+| 5 | Usuarios de QA: los seeds no tienen contraseña utilizable; fijarla a mano en el panel. Si QA se cargó alguna vez con los seeds de M24–M25, **rotar ya** sus contraseñas (la antigua es pública en el historial) | Supabase | — |
+| 6 | Edge Function `wompi-webhook`: secretos `WOMPI_EVENTS_SECRET` de **sandbox** y `APP_ENV=qa`; desplegar con `verify_jwt = false` (versionado en `supabase/config.toml`) y comprobarlo en el panel. `SUPABASE_URL` y la llave de servicio las inyecta Supabase | Supabase | — |
+| 7 | Auth de QA: Site URL y Redirect URLs del frontend de QA; proveedores necesarios | Supabase | — |
+| 8 | Entorno de Vercel para QA (Preview o un proyecto/entorno dedicado): las **11** variables del archivo QA (5 de cliente `VITE_*` y 6 de servidor, con `APP_ENV=qa`), **todas de QA y Wompi sandbox**. El servidor rechaza arrancar sin `APP_ENV`, y el navegador rechaza un host de Supabase que no esté en la lista de QA versionada | Vercel | Antes, en local: `pnpm build:qa -- --file <qa.env>` (build verificado) y `pnpm preview:qa -- --file <qa.env>` |
+| 9 | Webhook de Wompi **sandbox** apuntando al endpoint de QA (Vercel `/api/wompi/webhook` o la Edge Function) | Panel sandbox de Wompi | — |
+| 10 | Decidir R-PREVIEW (que las ramas internas no generen Preview automáticos; ver `01_DIAGNOSTICO_Y_T1.md` §2) | Vercel | — |
+| 11 | Tras cualquier cambio de configuración: repetir `check:qa` y `build:qa` en local | Equipo del propietario | — |
 
 **Nunca:** variables de Production en QA, llaves `pub_prod_`/secretos `prod_` en QA, ni la referencia de Production en
-la lista de permitidos de QA. Los comandos de §3 rechazan las dos primeras situaciones. La tercera depende de la
-revisión del PR del paso 2 (ver §6, decisión pendiente).
+la lista de permitidos de QA. Los comandos de §3 y las guardas en ejecución rechazan las dos primeras situaciones. La
+tercera depende de la revisión del PR del paso 2 (decisión del propietario: no se añade una lista de hosts prohibidos).
 
 ## 3. Comandos locales del perfil QA (preparados en T8)
 | Comando | Qué hace | Salida |
@@ -88,12 +92,12 @@ Se ejecutan **fuera de `test:env` y de forma secuencial**: usan puertos fijos y 
    revirtió (el archivo aún no estaba versionado) y se retiró a mano. No quedó en el commit.
 
 ## 6. Pendiente (remoto o decisión del propietario)
-- Todos los pasos de §2 (crear QA, lista de permitidos, migraciones y seeds, secretos, Auth, Vercel, webhook sandbox).
-- **Decisión pendiente:** una lista de hosts **prohibidos** con la referencia de Production como defensa adicional en
-  `check:qa`/`build:qa`. El plan la evita a propósito (la fábrica no guarda datos de Production) y hoy la protección es
-  la lista de permitidos + la revisión del PR del paso 2.
+- Todos los pasos de §2 (lista de permitidos, base de datos con salvaguardas, credenciales, secretos, Auth, Vercel,
+  webhook sandbox).
+- **Decidido por el propietario (R1):** no se añade una lista de hosts prohibidos con la referencia de Production; la
+  protección es la lista de permitidos + la revisión del PR del paso 2.
 - R-PREVIEW (paso 9).
-- INC-M26-01 (`products.deleted_at`): la aplicación no cargará el catálogo en QA hasta resolverla (`INCIDENCIAS.md`).
+- INC-M26-01 (desajuste frontend ↔ esquema M24): el catálogo de QA no mostrará datos reales hasta resolverla; tarea funcional posterior (`INCIDENCIAS.md`).
 
 ## 7. Estado de los criterios de aceptación de M26
 | # | Criterio | Estado |

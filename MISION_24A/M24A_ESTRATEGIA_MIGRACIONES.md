@@ -166,6 +166,12 @@ Resultado: `DIAGNOSTICO_<entorno>.md` + `schema_<entorno>.sql`, guardados fuera 
 `supabase start` + `supabase db reset`: base, seeds y pgTAP. Nada que migrar.
 
 ### 5.2 QA
+> **Nota M26-R1:** para el proyecto QA existente (`yomgxdjgfjnrjaqiarvw`) este apartado queda **sustituido** por
+> `MISION_26/06_T6_QA.md` §3: copia de seguridad, inventario, historial de migraciones y versión antes de nada;
+> `db push` no destructivo cuando sea posible; `db reset` solo con decisión escrita del propietario. Con Supabase CLI 3.x
+> se usa `--remote=<ref>` explícito en lugar de `supabase link`/`--linked`. El paso 3 de abajo («`db push` tras recrear»)
+> es redundante tras un `reset`, que ya aplica las migraciones.
+
 1. Confirmar con el propietario que QA no tiene datos que preservar (P1).
 2. Recrear: proyecto QA nuevo, o reset completo del QA actual.
 3. `supabase link` + `supabase db push`: aplica solo la base.

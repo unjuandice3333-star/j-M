@@ -14,7 +14,7 @@ def sql(q):
 
 def login():
     req = urllib.request.Request(API + "/auth/v1/token?grant_type=password",
-        data=json.dumps({"email": EMAIL, "password": "QaLocal-2026!"}).encode(), method="POST",
+        data=json.dumps({"email": EMAIL, "password": "<contraseña retirada en M26-R1>"}).encode(), method="POST",
         headers={"apikey": ANON, "Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=20) as r: return r.status

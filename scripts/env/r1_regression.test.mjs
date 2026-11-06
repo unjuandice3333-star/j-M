@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,7 +49,7 @@ test('MAJ-1 parseEnv: comillas sin cerrar o texto tras la comilla → problema (
   assert.ok(r.problems.some((p) => /A tiene comillas sin cerrar/.test(p)));
   assert.ok(r.problems.some((p) => /B tiene texto tras la comilla de cierre/.test(p)));
 });
-test('MAJ-1 check:qa: un archivo QA válido con TODOS los valores entre comillas sigue siendo válido (formato `vercel env pull`)', () => {
+test('MAJ-1 check:qa: un archivo QA válido con TODOS los valores entre comillas sigue siendo válido (formato de los archivos exportados por Vercel)', () => {
   const r = checkFile(envText(qaVars(), '"'));
   assert.equal(r.status, 0, r.stderr); assert.match(r.stdout, /VÁLIDO/);
 });
@@ -138,4 +138,38 @@ test('MAJ-2 cliente: un build QA apuntando a otro proyecto (p. ej. Production) n
 });
 test('MAJ-2 cliente: production no se restringe por la lista de la fábrica', () => {
   assert.deepEqual(cliErr(cli({ VITE_APP_ENV: 'production', VITE_SUPABASE_URL: `https://${OTHER_REF}.supa${'base.co'}`, VITE_WOMPI_PUBLIC_KEY: PUB_PROD, VITE_WOMPI_ENV: 'production' })), []);
+});
+
+// ------------------------------------------------------------------ MAJ-4
+const readRepo = (rel) => readFileSync(path.join(ROOT, rel), 'utf8');
+test('MAJ-4 seeds: ningún usuario seed recibe una contraseña fija (solo hash de un valor aleatorio)', () => {
+  for (const f of readdirSync(path.join(ROOT, 'supabase/seeds')).filter((n) => n.endsWith('.sql'))) {
+    const sql = readRepo(`supabase/seeds/${f}`);
+    assert.doesNotMatch(sql, /crypt\(\s*'/, `${f}: crypt() con literal`);
+    assert.doesNotMatch(sql, /encrypted_password\s*=\s*'/, `${f}: hash literal`);
+  }
+  assert.match(readRepo('supabase/seeds/00_qa_users.sql'), /extensions\.crypt\(gen_random_uuid\(\)::text,/);
+});
+test('MAJ-4 CI: las pruebas HTTP usan una contraseña aleatoria por ejecución, sin literal', () => {
+  const py = readRepo('scripts/ci/lib/http_checks.py');
+  assert.match(py, /RUN_PWD = secrets\.token_urlsafe\(/);
+  assert.doesNotMatch(py, /"password":\s*"/, 'contraseña literal en una petición');
+  assert.doesNotMatch(py, /pwd\s*=\s*"/, 'contraseña literal por defecto');
+});
+test('MAJ-4 / INF-3: la Edge Function del webhook se declara sin verificación de JWT de Supabase', () => {
+  assert.match(readRepo('supabase/config.toml'), /\[functions\.wompi-webhook\]\s*\n(?:#.*\n)*verify_jwt = false/);
+});
+const FORBIDDEN_QA_OPS = new RegExp([['reset', '--' + 'linked'].join(' '), ['supabase', 'li' + 'nk', '--project' + '-ref'].join(' '), '`--' + 'remote`\\s'].join('|'));
+test('MAJ-4 guías: ninguna instrucción usa reset/link sobre QA sin las salvaguardas', () => {
+  for (const rel of ['MISION_26/06_T6_QA.md', 'MISION_26/08_T8_GUIA_QA.md']) {
+    const lines = readRepo(rel).split('\n');
+    for (const l of lines) {
+      if (/Corrección M26-R1|Nunca|nunca/.test(l)) continue; // notas que describen lo prohibido
+      // Patrón compuesto en ejecución: la regla 6 de la CI prohíbe órdenes remotas literales en la automatización.
+      assert.doesNotMatch(l, FORBIDDEN_QA_OPS, `${rel}: ${l.slice(0, 80)}`);
+    }
+    const doc = lines.join('\n');
+    assert.match(readRepo('MISION_26/06_T6_QA.md'), /Fase A[\s\S]*Copia de seguridad[\s\S]*Historial de migraciones[\s\S]*Versión de PostgreSQL[\s\S]*Fase C/);
+    assert.doesNotMatch(doc, /Crear el proyecto Supabase \*\*QA\*\*/, `${rel}: aún pide crear QA`);
+  }
 });
