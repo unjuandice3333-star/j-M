@@ -110,7 +110,7 @@ Pendiente del propietario (operaciones remotas que requieren autorización):
 - Autoprueba de la compuerta (`gate_selftest.sh`): **90/90**.
 - Lint 0 errores · typecheck OK · build OK · política de migraciones OK (sin migraciones nuevas) · gitleaks OK.
 - Incidencias del entorno durante la validación (no del código): el CLI de Supabase dejó llaves de demostración locales en
-  `supabase/.temp/start-secrets/` (ignorado por git) y gitleaks las detectó; se borró el temporal. `/tmp/claude-0` perdió
+  `supabase/.temp/start-secrets/` (ignorado por git) y gitleaks las detectó; se borró el temporal. El directorio temporal del entorno perdió
   el permiso de lectura para `postgres` (etapa pgTAP); se restauró. Deno no estaba en el PATH (etapa Edge BLOCKED); se
   ejecutó con `DENO_BIN`.
 
