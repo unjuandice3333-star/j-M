@@ -1,0 +1,188 @@
+profiles|profiles_full_name_check|CHECK (((full_name IS NULL) OR (length(full_name) <= 150)))
+profiles|profiles_id_fkey|FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+profiles|profiles_phone_check|CHECK (((phone IS NULL) OR (length(phone) <= 30)))
+profiles|profiles_pkey|PRIMARY KEY (id)
+profiles|profiles_preferred_size_check|CHECK (((preferred_size IS NULL) OR (length(preferred_size) <= 10)))
+customer_addresses|customer_addresses_address_line_check|CHECK (((length(address_line) >= 4) AND (length(address_line) <= 255)))
+customer_addresses|customer_addresses_city_check|CHECK (((length(city) >= 2) AND (length(city) <= 100)))
+customer_addresses|customer_addresses_department_check|CHECK (((length(department) >= 2) AND (length(department) <= 100)))
+customer_addresses|customer_addresses_neighborhood_check|CHECK (((neighborhood IS NULL) OR (length(neighborhood) <= 100)))
+customer_addresses|customer_addresses_phone_check|CHECK (((length(phone) >= 7) AND (length(phone) <= 30)))
+customer_addresses|customer_addresses_pkey|PRIMARY KEY (id)
+customer_addresses|customer_addresses_recipient_name_check|CHECK (((length(recipient_name) >= 2) AND (length(recipient_name) <= 150)))
+customer_addresses|customer_addresses_reference_check|CHECK (((reference IS NULL) OR (length(reference) <= 500)))
+customer_addresses|customer_addresses_user_id_fkey|FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+categories|categories_parent_id_fkey|FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE RESTRICT
+categories|categories_pkey|PRIMARY KEY (id)
+categories|categories_slug_check|CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))
+categories|categories_slug_key|UNIQUE (slug)
+style_lines|style_lines_pkey|PRIMARY KEY (id)
+style_lines|style_lines_slug_check|CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))
+style_lines|style_lines_slug_key|UNIQUE (slug)
+occasions|occasions_pkey|PRIMARY KEY (id)
+occasions|occasions_slug_check|CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))
+occasions|occasions_slug_key|UNIQUE (slug)
+brands|brands_name_key|UNIQUE (name)
+brands|brands_pkey|PRIMARY KEY (id)
+sizes|sizes_code_check|CHECK ((code ~ '^[A-Z0-9]{1,6}$'::text))
+sizes|sizes_pkey|PRIMARY KEY (id)
+sizes|sizes_size_group_code_key|UNIQUE (size_group, code)
+colors|colors_hex_code_check|CHECK ((hex_code ~ '^#[0-9A-Fa-f]{6}$'::text))
+colors|colors_name_key|UNIQUE (name)
+colors|colors_pkey|PRIMARY KEY (id)
+colors|colors_slug_check|CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))
+colors|colors_slug_key|UNIQUE (slug)
+products|products_active_requires_published|CHECK (((status <> 'active'::product_status) OR (published_at IS NOT NULL)))
+products|products_base_cost_check|CHECK (((base_cost IS NULL) OR (base_cost >= 0)))
+products|products_base_price_check|CHECK ((base_price > 0))
+products|products_brand_id_fkey|FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE SET NULL
+products|products_category_id_fkey|FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
+products|products_check|CHECK (((compare_at_price IS NULL) OR (compare_at_price > base_price)))
+products|products_name_check|CHECK (((length(name) >= 2) AND (length(name) <= 150)))
+products|products_pkey|PRIMARY KEY (id)
+products|products_reference_check|CHECK ((reference ~ '^[A-Z0-9]+(-[A-Z0-9]+)*$'::text))
+products|products_reference_key|UNIQUE (reference)
+products|products_slug_check|CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))
+products|products_slug_key|UNIQUE (slug)
+products|products_style_line_id_fkey|FOREIGN KEY (style_line_id) REFERENCES style_lines(id) ON DELETE SET NULL
+product_occasions|product_occasions_occasion_id_fkey|FOREIGN KEY (occasion_id) REFERENCES occasions(id) ON DELETE CASCADE
+product_occasions|product_occasions_pkey|PRIMARY KEY (product_id, occasion_id)
+product_occasions|product_occasions_product_id_fkey|FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+product_colors|product_colors_color_id_fkey|FOREIGN KEY (color_id) REFERENCES colors(id) ON DELETE RESTRICT
+product_colors|product_colors_pkey|PRIMARY KEY (id)
+product_colors|product_colors_product_id_color_id_key|UNIQUE (product_id, color_id)
+product_colors|product_colors_product_id_fkey|FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+product_images|product_images_color_declared|FOREIGN KEY (product_id, color_id) REFERENCES product_colors(product_id, color_id) ON DELETE CASCADE
+product_images|product_images_external_url_check|CHECK (((external_url IS NULL) OR (external_url ~ '^https://'::text)))
+product_images|product_images_one_source|CHECK ((num_nonnulls(storage_path, external_url) = 1))
+product_images|product_images_pkey|PRIMARY KEY (id)
+product_images|product_images_product_id_fkey|FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+product_images|product_images_storage_path_check|CHECK (((storage_path IS NULL) OR (storage_path ~ '^[a-z0-9/_.-]+$'::text)))
+variants|variants_barcode_key|UNIQUE (barcode)
+variants|variants_color_declared|FOREIGN KEY (product_id, color_id) REFERENCES product_colors(product_id, color_id) ON DELETE RESTRICT
+variants|variants_pkey|PRIMARY KEY (id)
+variants|variants_price_override_check|CHECK (((price_override IS NULL) OR (price_override > 0)))
+variants|variants_product_id_color_id_size_id_key|UNIQUE (product_id, color_id, size_id)
+variants|variants_product_id_fkey|FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+variants|variants_size_id_fkey|FOREIGN KEY (size_id) REFERENCES sizes(id) ON DELETE RESTRICT
+variants|variants_sku_check|CHECK ((sku ~ '^[A-Z0-9]+(-[A-Z0-9]+)*$'::text))
+variants|variants_sku_key|UNIQUE (sku)
+collections|collections_kind_check|CHECK ((kind = ANY (ARRAY['collection'::text, 'look'::text])))
+collections|collections_pkey|PRIMARY KEY (id)
+collections|collections_slug_check|CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))
+collections|collections_slug_key|UNIQUE (slug)
+collection_products|collection_products_collection_id_fkey|FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+collection_products|collection_products_pkey|PRIMARY KEY (collection_id, product_id)
+collection_products|collection_products_product_id_fkey|FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+branches|branches_code_key|UNIQUE (code)
+branches|branches_pkey|PRIMARY KEY (id)
+inventories|inventories_branch_id_fkey|FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE RESTRICT
+inventories|inventories_branch_id_variant_id_key|UNIQUE (branch_id, variant_id)
+inventories|inventories_min_stock_check|CHECK ((min_stock >= 0))
+inventories|inventories_pkey|PRIMARY KEY (id)
+inventories|inventories_reserved_check|CHECK ((reserved >= 0))
+inventories|inventories_reserved_le_stock|CHECK ((reserved <= stock))
+inventories|inventories_stock_check|CHECK ((stock >= 0))
+inventories|inventories_variant_id_fkey|FOREIGN KEY (variant_id) REFERENCES variants(id) ON DELETE RESTRICT
+inventory_movements|inventory_movements_actor_user_id_fkey|FOREIGN KEY (actor_user_id) REFERENCES auth.users(id) ON DELETE SET NULL
+inventory_movements|inventory_movements_arithmetic|CHECK ((quantity_after = (quantity_before + quantity_change)))
+inventory_movements|inventory_movements_branch_id_fkey|FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE RESTRICT
+inventory_movements|inventory_movements_inventory_id_fkey|FOREIGN KEY (inventory_id) REFERENCES inventories(id) ON DELETE RESTRICT
+inventory_movements|inventory_movements_pkey|PRIMARY KEY (id)
+inventory_movements|inventory_movements_quantity_after_check|CHECK ((quantity_after >= 0))
+inventory_movements|inventory_movements_quantity_before_check|CHECK ((quantity_before >= 0))
+inventory_movements|inventory_movements_quantity_change_check|CHECK ((quantity_change <> 0))
+inventory_movements|inventory_movements_reference_type_check|CHECK ((reference_type = ANY (ARRAY['order'::text, 'manual'::text, 'product_setup'::text])))
+inventory_movements|inventory_movements_variant_id_fkey|FOREIGN KEY (variant_id) REFERENCES variants(id) ON DELETE RESTRICT
+shipping_methods|shipping_methods_active_needs_cost|CHECK (((NOT is_active) OR (cost > 0)))
+shipping_methods|shipping_methods_code_check|CHECK ((code ~ '^[a-z_]+$'::text))
+shipping_methods|shipping_methods_cost_check|CHECK ((cost >= 0))
+shipping_methods|shipping_methods_free_over_subtotal_check|CHECK (((free_over_subtotal IS NULL) OR (free_over_subtotal > 0)))
+shipping_methods|shipping_methods_pkey|PRIMARY KEY (code)
+coupons|coupons_code_check|CHECK ((code ~ '^[A-Z0-9_-]{3,40}$'::text))
+coupons|coupons_code_key|UNIQUE (code)
+coupons|coupons_discount_value_check|CHECK ((discount_value >= 0))
+coupons|coupons_fixed_positive|CHECK (((discount_type <> 'fixed'::coupon_type) OR (discount_value > 0)))
+coupons|coupons_max_uses_check|CHECK (((max_uses IS NULL) OR (max_uses > 0)))
+coupons|coupons_max_uses_per_email_check|CHECK (((max_uses_per_email IS NULL) OR (max_uses_per_email > 0)))
+coupons|coupons_min_subtotal_check|CHECK ((min_subtotal >= 0))
+coupons|coupons_percent_range|CHECK (((discount_type <> 'percent'::coupon_type) OR ((discount_value >= 1) AND (discount_value <= 90))))
+coupons|coupons_pkey|PRIMARY KEY (id)
+coupons|coupons_used_count_check|CHECK ((used_count >= 0))
+coupons|coupons_window|CHECK (((expires_at IS NULL) OR (starts_at IS NULL) OR (expires_at > starts_at)))
+online_orders|online_orders_branch_id_fkey|FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE RESTRICT
+online_orders|online_orders_check|CHECK (((discount_total >= 0) AND (discount_total <= subtotal)))
+online_orders|online_orders_coupon_id_fkey|FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE RESTRICT
+online_orders|online_orders_coupon_snapshot|CHECK (((coupon_id IS NULL) = (coupon_code IS NULL)))
+online_orders|online_orders_currency_check|CHECK ((currency = 'COP'::bpchar))
+online_orders|online_orders_customer_email_check|CHECK ((customer_email = lower(customer_email)))
+online_orders|online_orders_idempotency_key_check|CHECK (((length(idempotency_key) >= 8) AND (length(idempotency_key) <= 150)))
+online_orders|online_orders_idempotency_key_key|UNIQUE (idempotency_key)
+online_orders|online_orders_order_number_key|UNIQUE (order_number)
+online_orders|online_orders_pkey|PRIMARY KEY (id)
+online_orders|online_orders_public_token_key|UNIQUE (public_token)
+online_orders|online_orders_shipping_cost_check|CHECK ((shipping_cost >= 0))
+online_orders|online_orders_shipping_method_code_fkey|FOREIGN KEY (shipping_method_code) REFERENCES shipping_methods(code)
+online_orders|online_orders_subtotal_check|CHECK ((subtotal > 0))
+online_orders|online_orders_total_arithmetic|CHECK ((total = ((subtotal - discount_total) + shipping_cost)))
+online_orders|online_orders_tracking_url_check|CHECK (((tracking_url IS NULL) OR (tracking_url ~ '^https://'::text)))
+online_orders|online_orders_user_id_fkey|FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL
+online_order_items|online_order_items_arithmetic|CHECK ((line_total = ((unit_price * quantity) - line_discount)))
+online_order_items|online_order_items_discount_le_gross|CHECK ((line_discount <= (unit_price * quantity)))
+online_order_items|online_order_items_line_discount_check|CHECK ((line_discount >= 0))
+online_order_items|online_order_items_order_id_fkey|FOREIGN KEY (order_id) REFERENCES online_orders(id) ON DELETE RESTRICT
+online_order_items|online_order_items_order_id_variant_id_key|UNIQUE (order_id, variant_id)
+online_order_items|online_order_items_pkey|PRIMARY KEY (id)
+online_order_items|online_order_items_product_id_fkey|FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+online_order_items|online_order_items_quantity_check|CHECK (((quantity >= 1) AND (quantity <= 20)))
+online_order_items|online_order_items_unit_price_check|CHECK ((unit_price > 0))
+online_order_items|online_order_items_variant_id_fkey|FOREIGN KEY (variant_id) REFERENCES variants(id) ON DELETE RESTRICT
+coupon_redemptions|coupon_redemptions_coupon_id_fkey|FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE RESTRICT
+coupon_redemptions|coupon_redemptions_discount_amount_check|CHECK ((discount_amount >= 0))
+coupon_redemptions|coupon_redemptions_order_id_fkey|FOREIGN KEY (order_id) REFERENCES online_orders(id) ON DELETE RESTRICT
+coupon_redemptions|coupon_redemptions_order_id_key|UNIQUE (order_id)
+coupon_redemptions|coupon_redemptions_pkey|PRIMARY KEY (id)
+inventory_reservations|inventory_reservations_inventory_id_fkey|FOREIGN KEY (inventory_id) REFERENCES inventories(id) ON DELETE RESTRICT
+inventory_reservations|inventory_reservations_order_id_fkey|FOREIGN KEY (order_id) REFERENCES online_orders(id) ON DELETE RESTRICT
+inventory_reservations|inventory_reservations_order_id_inventory_id_key|UNIQUE (order_id, inventory_id)
+inventory_reservations|inventory_reservations_pkey|PRIMARY KEY (id)
+inventory_reservations|inventory_reservations_quantity_check|CHECK ((quantity > 0))
+inventory_reservations|inventory_reservations_variant_id_fkey|FOREIGN KEY (variant_id) REFERENCES variants(id) ON DELETE RESTRICT
+order_status_catalog|order_status_catalog_pkey|PRIMARY KEY (status)
+order_status_transitions|order_status_transitions_check|CHECK ((from_status <> to_status))
+order_status_transitions|order_status_transitions_pkey|PRIMARY KEY (from_status, to_status, allowed_actor)
+order_events|order_events_actor_user_id_fkey|FOREIGN KEY (actor_user_id) REFERENCES auth.users(id) ON DELETE SET NULL
+order_events|order_events_order_id_fkey|FOREIGN KEY (order_id) REFERENCES online_orders(id) ON DELETE RESTRICT
+order_events|order_events_pkey|PRIMARY KEY (id)
+payment_transactions|payment_transactions_amount_in_cents_check|CHECK ((amount_in_cents > 0))
+payment_transactions|payment_transactions_attempt_number_check|CHECK (((attempt_number >= 1) AND (attempt_number <= 10)))
+payment_transactions|payment_transactions_order_id_attempt_number_key|UNIQUE (order_id, attempt_number)
+payment_transactions|payment_transactions_order_id_fkey|FOREIGN KEY (order_id) REFERENCES online_orders(id) ON DELETE RESTRICT
+payment_transactions|payment_transactions_pkey|PRIMARY KEY (id)
+payment_transactions|payment_transactions_provider_check|CHECK ((provider = 'wompi'::text))
+payment_transactions|payment_transactions_provider_transaction_id_key|UNIQUE (provider_transaction_id)
+payment_transactions|payment_transactions_reference_key|UNIQUE (reference)
+webhook_events|webhook_events_pkey|PRIMARY KEY (id)
+webhook_events|webhook_events_provider_event_checksum_key|UNIQUE (provider, event_checksum)
+webhook_events|webhook_events_result_check|CHECK ((result = ANY (ARRAY['applied'::text, 'ignored'::text, 'rejected'::text])))
+order_refunds|order_refunds_amount_check|CHECK ((amount > 0))
+order_refunds|order_refunds_order_id_fkey|FOREIGN KEY (order_id) REFERENCES online_orders(id) ON DELETE RESTRICT
+order_refunds|order_refunds_payment_transaction_id_fkey|FOREIGN KEY (payment_transaction_id) REFERENCES payment_transactions(id) ON DELETE RESTRICT
+order_refunds|order_refunds_pkey|PRIMARY KEY (id)
+order_refunds|order_refunds_processed_by_fkey|FOREIGN KEY (processed_by) REFERENCES auth.users(id) ON DELETE SET NULL
+order_refunds|order_refunds_requested_by_fkey|FOREIGN KEY (requested_by) REFERENCES auth.users(id) ON DELETE SET NULL
+product_reviews|product_reviews_moderated_by_fkey|FOREIGN KEY (moderated_by) REFERENCES auth.users(id) ON DELETE SET NULL
+product_reviews|product_reviews_order_item_id_fkey|FOREIGN KEY (order_item_id) REFERENCES online_order_items(id) ON DELETE SET NULL
+product_reviews|product_reviews_order_item_id_key|UNIQUE (order_item_id)
+product_reviews|product_reviews_pkey|PRIMARY KEY (id)
+product_reviews|product_reviews_product_id_fkey|FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+product_reviews|product_reviews_rating_check|CHECK (((rating >= 1) AND (rating <= 5)))
+product_reviews|product_reviews_user_id_fkey|FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL
+site_content|site_content_key_check|CHECK ((key ~ '^[a-z0-9_]+$'::text))
+site_content|site_content_pkey|PRIMARY KEY (key)
+site_content|site_content_updated_by_fkey|FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL
+wishlist_items|wishlist_items_pkey|PRIMARY KEY (user_id, product_id)
+wishlist_items|wishlist_items_product_id_fkey|FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+wishlist_items|wishlist_items_user_id_fkey|FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+audit_logs|audit_logs_action_check|CHECK ((action = ANY (ARRAY['INSERT'::text, 'UPDATE'::text, 'DELETE'::text])))
+audit_logs|audit_logs_pkey|PRIMARY KEY (id)

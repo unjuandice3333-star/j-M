@@ -1,0 +1,77 @@
+public|audit_logs|audit_logs_super_read|SELECT|authenticated|is_super_admin()|
+public|branches|branches_admin_read|SELECT|authenticated|is_admin()|
+public|branches|branches_super_write|ALL|authenticated|is_super_admin()|is_super_admin()
+public|brands|brands_admin|ALL|authenticated|is_admin()|is_admin()
+public|brands|brands_read|SELECT|public|true|
+public|categories|categories_admin|ALL|authenticated|is_admin()|is_admin()
+public|categories|categories_read|SELECT|public|(is_active OR is_admin())|
+public|collection_products|collection_products_admin|ALL|authenticated|is_admin()|is_admin()
+public|collection_products|collection_products_read|SELECT|public|((EXISTS ( SELECT 1
+   FROM collections c
+  WHERE (c.id = collection_products.collection_id))) AND (EXISTS ( SELECT 1
+   FROM products p
+  WHERE (p.id = collection_products.product_id))))|
+public|collections|collections_admin|ALL|authenticated|is_admin()|is_admin()
+public|collections|collections_read|SELECT|public|(is_active OR is_admin())|
+public|colors|colors_admin|ALL|authenticated|is_admin()|is_admin()
+public|colors|colors_read|SELECT|public|true|
+public|coupon_redemptions|coupon_redemptions_admin_read|SELECT|authenticated|is_admin()|
+public|coupons|coupons_admin|ALL|authenticated|is_admin()|is_admin()
+public|customer_addresses|customer_addresses_admin_read|SELECT|authenticated|is_admin()|
+public|customer_addresses|customer_addresses_own|ALL|authenticated|(user_id = auth.uid())|(user_id = auth.uid())
+public|inventories|inventories_admin_read|SELECT|authenticated|is_admin()|
+public|inventory_movements|inventory_movements_admin_read|SELECT|authenticated|is_admin()|
+public|inventory_reservations|inventory_reservations_admin_read|SELECT|authenticated|is_admin()|
+public|occasions|occasions_admin|ALL|authenticated|is_admin()|is_admin()
+public|occasions|occasions_read|SELECT|public|(is_active OR is_admin())|
+public|online_order_items|online_order_items_read|SELECT|authenticated|(EXISTS ( SELECT 1
+   FROM online_orders o
+  WHERE (o.id = online_order_items.order_id)))|
+public|online_orders|online_orders_read|SELECT|authenticated|((user_id = auth.uid()) OR is_admin())|
+public|order_events|order_events_read|SELECT|authenticated|(EXISTS ( SELECT 1
+   FROM online_orders o
+  WHERE (o.id = order_events.order_id)))|
+public|order_refunds|order_refunds_read|SELECT|authenticated|(EXISTS ( SELECT 1
+   FROM online_orders o
+  WHERE (o.id = order_refunds.order_id)))|
+public|order_status_catalog|order_status_catalog_read|SELECT|public|true|
+public|order_status_transitions|order_status_transitions_read|SELECT|public|true|
+public|payment_transactions|payment_transactions_read|SELECT|authenticated|(EXISTS ( SELECT 1
+   FROM online_orders o
+  WHERE (o.id = payment_transactions.order_id)))|
+public|product_colors|product_colors_admin|ALL|authenticated|is_admin()|is_admin()
+public|product_colors|product_colors_read|SELECT|public|(EXISTS ( SELECT 1
+   FROM products p
+  WHERE (p.id = product_colors.product_id)))|
+public|product_images|product_images_admin|ALL|authenticated|is_admin()|is_admin()
+public|product_images|product_images_read|SELECT|public|(EXISTS ( SELECT 1
+   FROM products p
+  WHERE (p.id = product_images.product_id)))|
+public|product_occasions|product_occasions_admin|ALL|authenticated|is_admin()|is_admin()
+public|product_occasions|product_occasions_read|SELECT|public|(EXISTS ( SELECT 1
+   FROM products p
+  WHERE (p.id = product_occasions.product_id)))|
+public|product_reviews|product_reviews_admin|ALL|authenticated|is_admin()|is_admin()
+public|product_reviews|product_reviews_read|SELECT|public|((status = 'approved'::review_status) OR is_admin())|
+public|products|products_admin|ALL|authenticated|is_admin()|is_admin()
+public|products|products_read|SELECT|public|((status = 'active'::product_status) OR is_admin())|
+public|profiles|profiles_read|SELECT|authenticated|((id = auth.uid()) OR is_admin())|
+public|profiles|profiles_update_own|UPDATE|authenticated|(id = auth.uid())|(id = auth.uid())
+public|shipping_methods|shipping_methods_admin|ALL|authenticated|is_admin()|is_admin()
+public|shipping_methods|shipping_methods_read|SELECT|public|(is_active OR is_admin())|
+public|site_content|site_content_admin|ALL|authenticated|is_admin()|is_admin()
+public|site_content|site_content_read|SELECT|public|true|
+public|sizes|sizes_admin|ALL|authenticated|is_admin()|is_admin()
+public|sizes|sizes_read|SELECT|public|true|
+public|style_lines|style_lines_admin|ALL|authenticated|is_admin()|is_admin()
+public|style_lines|style_lines_read|SELECT|public|(is_active OR is_admin())|
+public|variants|variants_admin|ALL|authenticated|is_admin()|is_admin()
+public|variants|variants_read|SELECT|public|((is_active AND (EXISTS ( SELECT 1
+   FROM products p
+  WHERE (p.id = variants.product_id)))) OR is_admin())|
+public|webhook_events|webhook_events_admin_read|SELECT|authenticated|is_admin()|
+public|wishlist_items|wishlist_items_own|ALL|authenticated|(user_id = auth.uid())|(user_id = auth.uid())
+storage|objects|jm_admin_images_delete|DELETE|authenticated|((bucket_id = ANY (ARRAY['product-images'::text, 'site-content'::text])) AND is_admin())|
+storage|objects|jm_admin_images_insert|INSERT|authenticated||((bucket_id = ANY (ARRAY['product-images'::text, 'site-content'::text])) AND is_admin())
+storage|objects|jm_admin_images_update|UPDATE|authenticated|((bucket_id = ANY (ARRAY['product-images'::text, 'site-content'::text])) AND is_admin())|
+storage|objects|jm_public_images_read|SELECT|public|(bucket_id = ANY (ARRAY['product-images'::text, 'site-content'::text]))|

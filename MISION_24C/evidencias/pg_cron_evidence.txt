@@ -1,0 +1,8 @@
+2026-11-06 05:50:06.300017+00 | JM-001038 | expired
+reserva | expired | 1
+inventario | 3 | 0
+evento | ORDER_CREATED |  | payment_pending | customer |  | 2026-11-06 05:48:06.610471+00
+evento | STATUS_CHANGED | payment_pending | expired | system | Ventana de pago vencida | 2026-11-06 05:50:00.019869+00
+cron | jm-expire-pending-orders | succeeded | 1 row | 2026-11-06 05:40:00.013775+00
+cron | jm-expire-pending-orders | succeeded | 1 row | 2026-11-06 05:45:00.008765+00
+cron | jm-expire-pending-orders | succeeded | 1 row | 2026-11-06 05:50:00.009357+00

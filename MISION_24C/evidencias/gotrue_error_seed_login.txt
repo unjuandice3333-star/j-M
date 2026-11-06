@@ -1,0 +1,6 @@
+Registro de GoTrue v2.197.0 (contenedor supabase_auth) al intentar iniciar sesión con un usuario del seed 00_qa_users.sql
+ANTES de aplicar auth_seed_fix.sql (stack local, 2026-11-06T05:38:45Z):
+
+{"component":"api","error":"error finding user: sql: Scan error on column index 3, name \"confirmation_token\": converting NULL to string is unsupported","error_code":"unexpected_failure","grant_type":"password","level":"error","method":"POST","msg":"request completed","path":"/token","status":500}
+
+Mismo error para superadmin@, admin@, cliente1@ y cliente2@qa.jm.test (4 de 4).

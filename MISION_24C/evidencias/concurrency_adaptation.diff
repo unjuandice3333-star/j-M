@@ -1,0 +1,8 @@
+0a1
+> CREATE EXTENSION IF NOT EXISTS dblink WITH SCHEMA extensions;   -- ADAPTACIÓN M24C
+9,10c10,11
+< SELECT format('dbname=%s host=%s port=%s user=%s', current_database(),
+<               split_part(current_setting('unix_socket_directories'), ',', 1), current_setting('port'), current_user) AS c;
+---
+> SELECT format('dbname=%s host=%s port=%s user=%s password=postgres', current_database(), host(inet_server_addr()),
+>               current_setting('port'), current_user) AS c;   -- ADAPTACIÓN M24C (solo copia de validación)
