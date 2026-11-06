@@ -9,7 +9,10 @@
     "build": "pnpm --filter @jm/web build",
     "lint": "pnpm --recursive lint",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css,json,md,sql}\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "check:env": "node scripts/env/check_env.mjs",
+    "build:factory": "node scripts/env/check_env.mjs && pnpm --filter @jm/web build",
+    "test:env": "node --test scripts/env/environments.test.mjs scripts/env/check_env.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

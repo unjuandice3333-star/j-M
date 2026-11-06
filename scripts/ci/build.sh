@@ -6,6 +6,10 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"; cd "$ROOT"
 source "$ROOT/scripts/ci/lib/gitleaks.sh"
+# M26-T2: entorno de build de la fábrica (público, ficticio, perfil local) y guarda ANTES de vite build.
+FACTORY_ENV_FILE="${FACTORY_ENV_FILE:-$ROOT/config/env/local-ci.env}"
+set -a; source "$FACTORY_ENV_FILE"; set +a
+node "$ROOT/scripts/env/check_env.mjs"
 pnpm --filter @jm/web build
 DIST="apps/web/dist"
 test -f "$DIST/index.html" || { echo "ERROR: no se generó $DIST/index.html"; exit 1; }
@@ -33,5 +37,7 @@ print("JWT en el bundle: ninguno con privilegios")
 PY
 
 # gitleaks sobre el bundle con las reglas por defecto (sin la allowlist que excluye dist/)
-run_gitleaks dir --no-banner --redact --exit-code 1 "$DIST" || { echo "ERROR: gitleaks detectó secretos en el bundle"; exit 1; }
+run_gitleaks dir --no-banner --redact --exit-code 1 "$DIST"; rc=$?
+if [[ $rc -eq 1 ]]; then echo "ERROR: gitleaks detectó secretos en el bundle"; exit 1
+elif [[ $rc -ne 0 ]]; then echo "ERROR: no se pudo ejecutar gitleaks sobre el bundle (rc=$rc); el bundle NO se ha verificado"; exit 2; fi
 echo "build OK; bundle sin secretos de servidor ($(du -sh "$DIST" | cut -f1))"
