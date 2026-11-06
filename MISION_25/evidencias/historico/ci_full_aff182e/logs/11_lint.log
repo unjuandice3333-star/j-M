@@ -1,0 +1,66 @@
+### paso: 11_lint
+### comando: npx --no-install eslint .
+### commit: aff182e2ca13f913c6119b7b912eb49f7f45ff5a
+### inicio: 2026-11-06T06:48:04Z
+(node:23275) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/user/unjuandice3333-star/j-m/eslint.config.js?mtime=1793945826911 is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/user/unjuandice3333-star/j-m/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+/home/user/unjuandice3333-star/j-m/apps/web/scripts/test-checkout-invariants.mjs
+  219:9  warning  'isPaid' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/components/Footer/Footer.jsx
+  163:7  warning  'socialIconStyle' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/components/Header/Header.jsx
+  674:7  warning  'navLinkStyle' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/components/Modals/SizeRecommenderModal.jsx
+  21:11  warning  'bmi' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/components/Product/ProductCard.jsx
+  13:10  warning  'selectedSize' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u     no-unused-vars
+  13:24  warning  'setSelectedSize' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/pages/CatalogPage.jsx
+  13:21  warning  'isLoadingProducts' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  13:40  warning  'productsError' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u      no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/pages/Login.jsx
+  12:44  warning  'profile' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/pages/OrderConfirmationPage.jsx
+   25:10  warning  'timelineEvents' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                    no-unused-vars
+  126:6   warning  React Hook useEffect has a missing dependency: 'fallbackOrder'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/pages/admin/AdminDashboardPage.jsx
+   32:10  warning  'isLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  227:60  warning  'Icon' is defined but never used. Allowed unused args must match /^_/u                     no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/pages/admin/AdminEditorialImagesPage.jsx
+  19:10  warning  'savedSuccessKey' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u     no-unused-vars
+  19:27  warning  'setSavedSuccessKey' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/pages/admin/AdminInventoryPage.jsx
+   7:23  warning  'setSearchQuery' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  85:15  warning  'data' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u            no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/pages/admin/AdminOrdersPage.jsx
+  8:11  warning  'orders' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/pages/admin/AdminReviewsPage.jsx
+  9:10  warning  'replyText' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u     no-unused-vars
+  9:21  warning  'setReplyText' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/services/productService.js
+  321:15  warning  'data' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+/home/user/unjuandice3333-star/j-m/apps/web/src/store/eCommerceStore.js
+  150:42  warning  'cartErr' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u    no-unused-vars
+  429:40  warning  'clearCart' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  563:33  warning  'version' is defined but never used. Allowed unused args must match /^_/u                  no-unused-vars
+
+✖ 24 problems (0 errors, 24 warnings)
+
+### fin: 2026-11-06T06:48:05Z exit=0

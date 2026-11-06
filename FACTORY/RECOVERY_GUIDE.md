@@ -4,7 +4,7 @@
 1. **Commits locales** en `db/baseline-m24b` (M24, preservación) y `mission/m25-ci-governance` (M25).
 2. **Bundles git** entregados al propietario (historia completa; verificables offline).
    - `jm-fashion-store_db-baseline-m24b_3710615.bundle` — sha256 `3784917e6a8f70b811ffd65593259febbf5f1a6f48071b2294e3ec71fa6e172f`
-   - Bundle de M25: ver `MISION_25/05_INFORME_FINAL.md`.
+   - Bundle de M25: `jm-fashion-store_mission-m25_<sha>.bundle` (entregado al cerrar M25; SHA-256 en el informe al propietario).
 3. Inventarios SHA-256: `PRESERVACION_M24/INVENTARIO_M24.sha256`.
 
 ## Restaurar desde un bundle

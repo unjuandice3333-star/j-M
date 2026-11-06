@@ -1,0 +1,11 @@
+### paso: 20_migrations_policy
+### comando: bash scripts/ci/migrations_policy.sh
+### commit: 9b6fc430cd0e73e025222ecfff36de0f8cc2100c
+### inicio: 2026-11-06T06:59:01Z
+migraciones activas: 1 (última versión 20261106120000)
+base de comparación: origin/main → merge-base 2661f2a7ce09550c0df3fe9b82fd5c43ffd60d5d
+AVISO: el rango incluye la línea base M24B (91830903ac2539ea077be97e9676e24914b4a778), excepción única documentada en MISION_24B.
+       Se valida base→padre(M24B) y M24B→árbol de trabajo; el commit M24B queda exento.
+archivos de automatización revisados: 48 · workflows: 1
+política de migraciones: OK
+### fin: 2026-11-06T06:59:01Z exit=0

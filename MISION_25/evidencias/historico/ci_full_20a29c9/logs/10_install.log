@@ -1,0 +1,8 @@
+### paso: 10_install
+### comando: pnpm install --frozen-lockfile
+### commit: 20a29c9497973538ef332d65b9a075ab275e6bcf
+### inicio: 2026-11-06T07:04:27Z
+Scope: all 6 workspace projects
+Already up to date
+Done in 283ms using pnpm v11.0.8
+### fin: 2026-11-06T07:04:28Z exit=0

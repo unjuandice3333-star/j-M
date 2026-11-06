@@ -1,0 +1,8 @@
+verdict=PASS
+sha=9b6fc430cd0e73e025222ecfff36de0f8cc2100c
+branch=mission/m25-ci-governance
+tree=LIMPIO
+evidence_valid=yes
+profile=full
+stages=governance quality security db-local db-supabase
+base_ref=origin/main

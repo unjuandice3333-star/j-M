@@ -16,4 +16,13 @@ Formato: fecha (UTC) · misión · actor · acción · resultado. Solo hechos ve
 | 2026-11-06 | M25 | reviewer (subagente de contexto nuevo) | Revisión independiente: CAMBIOS REQUERIDOS (4 bloqueantes, 6 mayores, 10 menores) | ver MISION_25/04_REVISION_INDEPENDIENTE.md |
 | 2026-11-06 | M25 | orquestador | Corrección de los 20 hallazgos (atendidos o justificados) | ver MISION_25/04 |
 | 2026-11-06 | M25 | orquestador | Autoprueba ampliada: 35/35 (11 positivos + 24 negativos) | OK |
-| 2026-11-06 | M25 | orquestador | Verificación real de agentes (claude -p --agent) y reglas de denegación | 4/4 cargan; push, supabase link, vercel y .env* denegados |
+| 2026-11-06 | M25 | orquestador | Verificación real de agentes (claude -p --agent) y reglas de denegación | 4/4 cargan; push, gh api, supabase link/db push, vercel y .env* denegados |
+| 2026-11-06 | M25 | orquestador | Commit aff182e + CI completa con el árbol limpio | PASS 13/13 |
+| 2026-11-06 | M25 | reviewer | Ronda 2 (aff182e): CAMBIOS REQUERIDOS (N1 mayor/bloq.) | Corregido en 5550c17 (CI PASS) |
+| 2026-11-06 | M25 | reviewer | Ronda 3 (5550c17): CAMBIOS REQUERIDOS | Corregido en 9b6fc43 (CI PASS) |
+| 2026-11-06 | M25 | reviewer | Ronda 4 (9b6fc43): CAMBIOS REQUERIDOS (D1, D2) | Corregido en 20a29c9 (CI PASS) |
+| 2026-11-06 | M25 | reviewer | Ronda 5 (20a29c9): APROBADO CON MENORES (M1-M5) | Corregido en 5e48ede (CI PASS) |
+| 2026-11-06 | M25 | reviewer | Ronda 6 (5e48ede): APROBADO CON MENORES (F1-F3) | Corregido en 876146a |
+| 2026-11-06 | M25 | orquestador | Error propio: `git stash` accidental durante una prueba | Detectado y restaurado (`stash pop`); pruebas repetidas |
+| 2026-11-06 | M25 | orquestador | Validación final sobre 876146a (árbol limpio): CI completa, autoprueba, actionlint | PASS 13/13 · 72/72 · exit 0 |
+| 2026-11-06 | M26 | orquestador | Plan de M26 en una rama y worktree separados (4944d93) | En curso |

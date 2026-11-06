@@ -1,0 +1,17 @@
+Target: local stack (127.0.0.1:54322)
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/01_structure.test.sql ...... ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/10_catalog.test.sql ........ ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/20_checkout.test.sql ....... ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/30_reservations.test.sql ... ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/40_payments.test.sql ....... ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/50_cancellations.test.sql .. ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/60_coupons.test.sql ........ ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/70_transitions.test.sql .... ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/80_metrics.test.sql ........ ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/90_rls.test.sql ............ ok
+psql:/home/user/unjuandice3333-star/j-m/supabase/tests/database/95_concurrency.test.sql:57: NOTICE:  Stock insuficiente: Polo Piqué Edición Limitada (talla M, Beige): disponibles 0, solicitadas 1
+HINT:  JM_OUT_OF_STOCK
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/95_concurrency.test.sql .... ok
+All tests successful.
+Files=11, Tests=290,  4 wallclock secs ( 0.09 usr  0.04 sys +  0.11 cusr  0.08 csys =  0.32 CPU)
+Result: PASS

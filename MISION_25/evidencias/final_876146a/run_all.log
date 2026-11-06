@@ -1,0 +1,15 @@
+== CI J&M · perfil=full · etapas=[governance quality security db-local db-supabase] · commit=876146a3b826 · rama=mission/m25-ci-governance · árbol=LIMPIO · base=origin/main
+[PASS] 01_branch_name               exit=0      0s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/01_branch_name.log)
+[PASS] 02_commit_messages           exit=0      0s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/02_commit_messages.log)
+[PASS] 10_install                   exit=0      1s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/10_install.log)
+[PASS] 11_lint                      exit=0      2s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/11_lint.log)
+[PASS] 12_typecheck                 exit=0      1s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/12_typecheck.log)
+[PASS] 13_unit_tests                exit=0      1s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/13_unit_tests.log)
+[PASS] 14_webhook_tests             exit=0      0s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/14_webhook_tests.log)
+[PASS] 15_edge_tests                exit=0      0s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/15_edge_tests.log)
+[PASS] 16_build                     exit=0      6s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/16_build.log)
+[PASS] 20_migrations_policy         exit=0      0s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/20_migrations_policy.log)
+[PASS] 21_secrets_scan              exit=0      2s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/21_secrets_scan.log)
+[PASS] 30_db_local_pg16             exit=0      8s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/30_db_local_pg16.log)
+[PASS] 31_db_supabase               exit=0    110s  (/home/user/unjuandice3333-star/j-m/ci-artifacts/logs/31_db_supabase.log)
+== VEREDICTO: PASS · informe: /home/user/unjuandice3333-star/j-m/ci-artifacts/REPORT.md

@@ -1,0 +1,395 @@
+### paso: 30_db_local_pg16
+### comando: su postgres -s /bin/bash -c WORKDIR=/tmp/jm_ci_pg_$$ bash '/home/user/unjuandice3333-star/j-m/scripts/ci/db_local.sh'
+### commit: 9b6fc430cd0e73e025222ecfff36de0f8cc2100c
+### inicio: 2026-11-06T06:59:04Z
+
+=== 1. Clúster efímero ===
+
+=== 2. Reconstrucción desde cero (shim + migraciones + seeds) ===
+  migración: 20261106120000_baseline_ecommerce.sql
+  seed: 00_qa_users.sql
+  seed: 10_qa_catalog.sql
+  seed: 20_qa_orders.sql
+
+=== 3. Pruebas pgTAP (funcionales, RPC y RLS) ===
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/01_structure.test.sql ...... 
+1..30
+ok 1 - el esquema public contiene exactamente las 34 tablas del diseño (sin objetos POS)
+ok 2 - RLS activa en todas las tablas de public
+ok 3 - objeto POS eliminado: employees
+ok 4 - objeto POS eliminado: shifts
+ok 5 - objeto POS eliminado: sales
+ok 6 - objeto POS eliminado: sale_items
+ok 7 - objeto POS eliminado: transfers
+ok 8 - objeto POS eliminado: transfer_items
+ok 9 - objeto POS eliminado: customers
+ok 10 - objeto POS eliminado: role_permissions
+ok 11 - objeto POS eliminado: carts
+ok 12 - order_status con los 8 estados del diseño (sin pending/packed/preparing)
+ok 13 - catálogo de estados alineado con el enum
+ok 14 - toda función SECURITY DEFINER fija search_path
+ok 15 - anon solo puede ejecutar las RPC públicas de tienda
+ok 16 - authenticated: RPC de tienda + RPC admin (que validan el rol internamente)
+ok 17 - apply_payment_event solo para service_role
+ok 18 - create_payment_attempt y expire_pending_orders no expuestas a clientes
+ok 19 - ninguna función privada es ejecutable por anon/authenticated
+ok 20 - sin privilegios de escritura directa en pedidos, pagos e inventario
+ok 21 - perfil: el cliente puede editar su nombre pero no su rol
+ok 22 - una sola bodega por defecto
+ok 23 - envío estándar $15.000, gratis desde $200.000; express inactivo
+ok 24 - 13 transiciones de estado definidas
+ok 25 - UUID de datos de referencia y variantes pasan la validación del frontend (v1-5, variante 8-b)
+ok 26 - imagen con color no declarado en el producto: rechazada
+ok 27 - reservado > stock: rechazado
+ok 28 - total inconsistente: rechazado
+ok 29 - inventory_movements es append-only
+ok 30 - order_events es append-only
+ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/10_catalog.test.sql ........ 
+1..24
+ok 1 - admin crea producto completo en una llamada
+ok 2 - producto nuevo queda en borrador
+ok 3 - referencia normalizada a mayúsculas
+ok 4 - SKU generados REFERENCIA-COLOR-TALLA
+ok 5 - color por defecto respetado
+ok 6 - galería por color con orden y una imagen general
+ok 7 - stock inicial cargado
+ok 8 - movimientos initial_load solo para stock > 0
+ok 9 - anon no ve productos en borrador
+ok 10 - admin publica el producto
+ok 11 - published_at asignado al publicar
+ok 12 - anon ve las variantes del producto publicado
+ok 13 - vista de disponibilidad pública
+ok 14 - admin actualiza producto
+ok 15 - variante no listada queda desactivada (no se borra)
+ok 16 - actualizar no altera el stock existente
+ok 17 - no se puede quitar un color que tiene variantes
+ok 18 - variante con color no declarado: rechazada
+ok 19 - talla alfabética en categoría de tallas numéricas: rechazada
+ok 20 - no se publica un producto sin imágenes
+ok 21 - cliente no puede crear productos
+ok 22 - cliente no puede ajustar inventario
+ok 23 - restock suma al stock
+ok 24 - signo incoherente con el tipo de movimiento: rechazado
+ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/20_checkout.test.sql ....... 
+1..34
+ok 1 - cotización: 129.900 + envío 15.000 = 144.900 (subtotal < 200.000)
+ok 2 - cotización: envío gratis con subtotal 319.800
+ok 3 - cotización: 199.800 (< 200.000) paga envío
+ok 4 - cotización: 249.900 (>= 200.000) envío gratis
+ok 5 - cotización marca falta de stock (2 pedidas, 1 disponible)
+ok 6 - anon crea pedido con campos manipulados en el payload
+ok 7 - cabecera con precios de BD (2 × 129.900) y envío gratis
+ok 8 - línea con snapshot de BD: nombre, SKU, talla, color y precio (ignora price/name/size/color del cliente)
+ok 9 - imagen de la línea = primera imagen del color comprado
+ok 10 - pedido de invitado sin user_id
+ok 11 - número de pedido secuencial JM-NNNNNN
+ok 12 - ventana de pago de 30 minutos
+ok 13 - evento ORDER_CREATED registrado
+ok 14 - email normalizado
+ok 15 - cliente autenticado crea pedido
+ok 16 - user_id = auth.uid() del JWT
+ok 17 - create_order no expone un parámetro p_user_id
+ok 18 - pedido con la misma variante repetida
+ok 19 - una sola línea con cantidad 3
+ok 20 - misma clave de idempotencia devuelve el pedido existente
+ok 21 - no se crea un segundo pedido
+ok 22 - reservas: 2 (invitado) + 1 (cliente), sin duplicar por el reintento
+ok 23 - email inválido rechazado
+ok 24 - teléfono inválido rechazado
+ok 25 - dirección incompleta rechazada
+ok 26 - carrito vacío rechazado
+ok 27 - cantidad 0 rechazada
+ok 28 - cantidad 21 rechazada
+ok 29 - variante inexistente rechazada
+ok 30 - producto en borrador no se puede comprar
+ok 31 - producto agotado rechazado con mensaje de stock
+ok 32 - envío express inactivo rechazado
+ok 33 - clave de idempotencia demasiado corta rechazada
+ok 34 - las solicitudes rechazadas no dejaron pedidos
+ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/30_reservations.test.sql ... 
+1..19
+ok 1 - estado inicial: 1 unidad, 0 reservadas
+ok 2 - comprador A reserva la última unidad
+ok 3 - stock físico intacto y 1 reservada
+ok 4 - disponibilidad pública = 0
+ok 5 - reserva activa registrada
+ok 6 - comprador B no puede comprar una unidad reservada
+ok 7 - expire_pending_orders no afecta pedidos dentro de la ventana
+ok 8 - expire_pending_orders vence 1 pedido
+ok 9 - pedido pasa a expired
+ok 10 - reserva liberada: 1 unidad disponible otra vez
+ok 11 - reserva marcada expired
+ok 12 - reservar/expirar no genera movimientos de stock físico
+ok 13 - tras la expiración, comprador B sí puede reservar
+ok 14 - no se crean intentos de pago para pedidos vencidos
+ok 15 - no se crean intentos fuera de la ventana aunque el job no haya corrido
+ok 16 - token público incorrecto: pedido no encontrado
+ok 17 - anon no puede ejecutar expire_pending_orders
+ok 18 - cliente no puede ejecutar expire_pending_orders
+ok 19 - job pg_cron de expiración programado cada 5 minutos (si pg_cron está disponible)
+ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/40_payments.test.sql ....... 
+1..44
+ok 1 - pedido A creado
+ok 2 - intento 1 con referencia NUMERO-1
+ok 3 - monto del intento = total × 100 (pesos enteros → centavos)
+ok 4 - anon no puede crear intentos
+ok 5 - evento APPROVED aplicado
+ok 6 - pedido pagado con paid_at
+ok 7 - stock descontado 5 → 3 y reserva consumida
+ok 8 - movimiento de venta con aritmética correcta
+ok 9 - reserva consumida
+ok 10 - intento aprobado con id de Wompi
+ok 11 - mismo evento: duplicado sin efectos
+ok 12 - reentrega con otro checksum: ignorada
+ok 13 - sigue habiendo un solo movimiento de venta
+ok 14 - stock no se descuenta dos veces
+ok 15 - bandeja de webhooks registra los 2 eventos distintos (el duplicado no se reinserta)
+ok 16 - DECLINED después de APPROVED: ignorado
+ok 17 - pedido sigue pagado
+ok 18 - pedido B creado
+ok 19 - pago rechazado registrado
+ok 20 - tras el rechazo el pedido sigue pendiente y conserva la reserva
+ok 21 - reintento con nueva referencia NUMERO-2
+ok 22 - segundo intento aprobado
+ok 23 - historial de intentos conservado
+ok 24 - evento PAYMENT_ATTEMPT_FAILED registrado
+ok 25 - pedido C creado
+ok 26 - monto distinto: rechazado
+ok 27 - moneda distinta: rechazada
+ok 28 - referencia desconocida: rechazada
+ok 29 - id de transacción de otro pedido: rechazado
+ok 30 - tipo de evento no soportado: ignorado
+ok 31 - evento malformado: rechazado
+ok 32 - ningún evento rechazado modificó el pedido C
+ok 33 - eventos rechazados quedan registrados para auditoría
+ok 34 - pedido C vencido
+ok 35 - aprobación tardía con stock disponible: expired → paid
+ok 36 - stock descontado directamente (sin reserva vigente)
+ok 37 - pedido D (última unidad)
+{"ok": true, "rows": [{"n": 1}]}
+{"ok": true, "rows": [{"r": {"total": 114900, "status": "payment_pending", "currency": "COP", "order_id": "bee90a12-fb84-4076-b735-fceebe45f32c", "subtotal": 99900, "is_duplicate": false, "order_number": "JM-001017", "public_token": "a7928a5d-7d3f-4a36-a7a4-a373e3e6e1a3", "shipping_cost": 15000, "discount_total": 0, "amount_in_cents": 11490000, "payment_expires_at": "2026-11-06T02:29:06.379023-05:00"}}]}
+{"ok": true, "rows": [{"r": {"detail": "order_paid", "result": "applied", "reference": "JM-001017-1", "order_status": "paid", "attempt_status": "APPROVED"}}]}
+ok 38 - aprobación tardía sin stock: el pago se respeta (paid)
+ok 39 - pedido marcado para atención con evento PAID_WITHOUT_STOCK
+ok 40 - el inventario nunca queda negativo
+{"ok": true, "rows": [{"r": {"total": 249900, "status": "payment_pending", "currency": "COP", "order_id": "50bbfa75-4db7-4817-9e6d-d46c0a156d41", "subtotal": 249900, "is_duplicate": false, "order_number": "JM-001018", "public_token": "7d8dbf66-9d4b-4b71-8a32-8f34bce99221", "shipping_cost": 0, "discount_total": 0, "amount_in_cents": 24990000, "payment_expires_at": "2026-11-06T02:29:06.379023-05:00"}}]}
+{"ok": true, "rows": [{"r": {"detail": "order_paid", "result": "applied", "reference": "JM-001018-1", "order_status": "paid", "attempt_status": "APPROVED"}}]}
+ok 41 - segundo pago aprobado del mismo pedido: marcado para reembolso
+ok 42 - dos aprobados, uno a reembolsar, stock descontado una sola vez
+{"ok": true, "rows": [{"r": {"total": 249900, "status": "payment_pending", "currency": "COP", "order_id": "c0440b68-b5a5-45af-a4f7-ddf866e1631e", "subtotal": 249900, "is_duplicate": false, "order_number": "JM-001019", "public_token": "c098b6e6-e81a-44dd-ac3b-395bd69ff767", "shipping_cost": 0, "discount_total": 0, "amount_in_cents": 24990000, "payment_expires_at": "2026-11-06T02:29:06.379023-05:00"}}]}
+{"ok": true, "rows": [{"r": {"order_id": "c0440b68-b5a5-45af-a4f7-ddf866e1631e", "shortages": [], "to_status": "cancelled", "from_status": "payment_pending", "order_number": "JM-001019", "lines_restocked": 0, "reservations_released": 1}}]}
+ok 43 - pago aprobado sobre pedido cancelado: el pedido sigue cancelado y el pago queda para reembolso
+ok 44 - anulación posterior al pago: pedido marcado para revisión
+ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/50_cancellations.test.sql .. 
+1..22
+{"ok": true, "rows": [{"r": {"total": 233820, "status": "payment_pending", "currency": "COP", "order_id": "5a1eccce-9342-4398-b270-2e896dde67bd", "subtotal": 259800, "is_duplicate": false, "order_number": "JM-001020", "public_token": "bd5d55f4-5cd8-4aaa-a655-7758f68478b9", "shipping_cost": 0, "discount_total": 25980, "amount_in_cents": 23382000, "payment_expires_at": "2026-11-06T02:29:06.536278-05:00"}}]}
+ok 1 - reserva de 2 unidades
+ok 2 - otro cliente no puede cancelar el pedido
+ok 3 - token incorrecto no permite cancelar
+ok 4 - el propietario cancela
+ok 5 - pedido cancelado
+ok 6 - reserva liberada sin tocar el stock físico
+ok 7 - redención del cupón liberada; used_count no aumenta (1 = uso del seed O3)
+{"ok": true, "rows": [{"r": {"total": 144900, "status": "payment_pending", "currency": "COP", "order_id": "996fe63e-cb8b-4882-a439-53ca24f5081b", "subtotal": 129900, "is_duplicate": false, "order_number": "JM-001021", "public_token": "11dc7f6d-d2dd-42cc-809a-fad3367078aa", "shipping_cost": 15000, "discount_total": 0, "amount_in_cents": 14490000, "payment_expires_at": "2026-11-06T02:29:06.536278-05:00"}}]}
+ok 8 - invitado cancela con su token público
+ok 9 - pago aprobado descuenta 3
+ok 10 - el cliente no puede cancelar un pedido pagado
+ok 11 - cancelar un pedido pagado exige nota
+ok 12 - admin cancela con nota
+ok 13 - stock restaurado (5 → 8)
+ok 14 - libro de movimientos: venta y reingreso
+ok 15 - solicitud de reembolso por el total ligada al pago aprobado
+ok 16 - cancelado es terminal: no se puede reembolsar de nuevo ni reingresar dos veces
+{"ok": true, "rows": [{"r": {"order_id": "09a9fcbd-4da6-4a14-b164-20091a089bea", "shortages": [], "to_status": "processing", "from_status": "paid", "order_number": "JM-001023", "lines_restocked": 0, "reservations_released": 0}}]}
+ok 17 - reembolso desde processing
+ok 18 - stock restaurado tras reembolso desde processing
+{"ok": true, "rows": [{"r": {"order_id": "4d749621-f75a-4767-9ba9-69df35e4e748", "shortages": [], "to_status": "processing", "from_status": "paid", "order_number": "JM-001024", "lines_restocked": 0, "reservations_released": 0}}]}
+{"ok": true, "rows": [{"r": {"order_id": "4d749621-f75a-4767-9ba9-69df35e4e748", "shortages": [], "to_status": "shipped", "from_status": "processing", "order_number": "JM-001024", "lines_restocked": 0, "reservations_released": 0}}]}
+{"ok": true, "rows": [{"r": {"order_id": "4d749621-f75a-4767-9ba9-69df35e4e748", "shortages": [], "to_status": "delivered", "from_status": "shipped", "order_number": "JM-001024", "lines_restocked": 0, "reservations_released": 0}}]}
+ok 19 - reembolso desde delivered
+ok 20 - entregado → reembolsado no reingresa stock automáticamente (mercancía en poder del cliente)
+ok 21 - reembolso registrado sin reingreso
+ok 22 - reingreso manual de la devolución con tipo return
+ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/60_coupons.test.sql ........ 
+1..23
+ok 1 - QA10: 10 % de 100.000
+ok 2 - código insensible a mayúsculas y espacios
+ok 3 - fijo bajo el mínimo: inválido
+ok 4 - fijo sobre el mínimo: 20.000
+ok 5 - envío gratis desde 150.000
+ok 6 - vencido
+ok 7 - aún no inicia
+ok 8 - usos agotados
+ok 9 - inexistente
+ok 10 - anon no puede listar cupones
+ok 11 - pedido con cupón vencido: rechazado con causa
+{"ok": true, "rows": [{"r": {"total": 260820, "status": "payment_pending", "currency": "COP", "order_id": "d4d90758-683c-4b87-a3c7-4734b25362c1", "subtotal": 289800, "is_duplicate": false, "order_number": "JM-001025", "public_token": "6b9adefc-e965-4954-9f66-f852eaa3eee8", "shipping_cost": 0, "discount_total": 28980, "amount_in_cents": 26082000, "payment_expires_at": "2026-11-06T02:29:06.654957-05:00"}}]}
+ok 12 - QA10 sobre 289.800 = 28.980; neto ≥ 200.000 → envío gratis
+ok 13 - descuento prorrateado en líneas cuadra con la cabecera
+{"ok": true, "rows": [{"r": {"total": 229900, "status": "payment_pending", "currency": "COP", "order_id": "50c6a506-4288-4883-b443-651121275c0d", "subtotal": 249900, "is_duplicate": false, "order_number": "JM-001026", "public_token": "fe66d999-ae73-4f9b-9beb-db320d7bb2a3", "shipping_cost": 0, "discount_total": 20000, "amount_in_cents": 22990000, "payment_expires_at": "2026-11-06T02:29:06.654957-05:00"}}]}
+ok 14 - QAFIJO20K: 249.900 − 20.000 = 229.900 (≥ 200.000, sin envío)
+{"ok": true, "rows": [{"r": {"total": 184900, "status": "payment_pending", "currency": "COP", "order_id": "86127a2a-d61c-43a7-940c-43460405a702", "subtotal": 189900, "is_duplicate": false, "order_number": "JM-001027", "public_token": "6d12b1df-11e9-4d1e-a251-0904629c16aa", "shipping_cost": 15000, "discount_total": 20000, "amount_in_cents": 18490000, "payment_expires_at": "2026-11-06T02:29:06.654957-05:00"}}]}
+ok 15 - QAFIJO20K: neto 169.900 < 200.000 → envío 15.000
+{"ok": true, "rows": [{"r": {"total": 189900, "status": "payment_pending", "currency": "COP", "order_id": "606cfbd0-6648-4be6-92ec-dfcb366dcbd9", "subtotal": 189900, "is_duplicate": false, "order_number": "JM-001028", "public_token": "30495e0b-1593-4091-b074-141ca12b8d49", "shipping_cost": 0, "discount_total": 0, "amount_in_cents": 18990000, "payment_expires_at": "2026-11-06T02:29:06.654957-05:00"}}]}
+ok 16 - QAENVIO: envío 0 con subtotal 189.900
+ok 17 - QAUNICO primer uso del correo
+ok 18 - QAUNICO segundo uso del mismo correo (otra capitalización): rechazado
+ok 19 - QAUNICO con otro correo: permitido
+{"ok": true, "rows": [{"r": {"total": 131910, "status": "payment_pending", "currency": "COP", "order_id": "5088df8e-757e-4b5f-8f05-0dec55ce714e", "subtotal": 129900, "is_duplicate": false, "order_number": "JM-001031", "public_token": "a750cd19-79b9-4e67-9193-ae63141f7e26", "shipping_cost": 15000, "discount_total": 12990, "amount_in_cents": 13191000, "payment_expires_at": "2026-11-06T02:29:06.654957-05:00"}}]}
+ok 20 - max_uses=1 con una reserva vigente: segundo pedido rechazado
+{"ok": true, "rows": [{"r": {"order_id": "5088df8e-757e-4b5f-8f05-0dec55ce714e", "shortages": [], "to_status": "cancelled", "from_status": "payment_pending", "order_number": "JM-001031", "lines_restocked": 0, "reservations_released": 1}}]}
+ok 21 - al cancelar se libera el uso y otro cliente puede usarlo
+ok 22 - used_count no aumenta mientras el pedido no se paga
+{"ok": true, "rows": [{"r": {"detail": "order_paid", "result": "applied", "reference": "JM-001032-1", "order_status": "paid", "attempt_status": "APPROVED"}}]}
+ok 23 - al pagar: used_count = 1 y redención confirmada
+ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/70_transitions.test.sql .... 
+1..26
+ok 1 - catálogo público: 8 estados
+ok 2 - catálogo público: 13 transiciones
+ok 3 - etiqueta de processing = "En preparación" (sustituye a preparing)
+{"ok": true, "rows": [{"r": {"total": 204900, "status": "payment_pending", "currency": "COP", "order_id": "ec570716-6744-4227-ad6f-86f20c14480f", "subtotal": 189900, "is_duplicate": false, "order_number": "JM-001033", "public_token": "ca3e1f2c-566a-4f44-951e-db405973565b", "shipping_cost": 15000, "discount_total": 0, "amount_in_cents": 20490000, "payment_expires_at": "2026-11-06T02:29:06.788388-05:00"}}]}
+ok 4 - admin no puede marcar pagado (solo webhook)
+ok 5 - payment_pending → shipped: inválida
+ok 6 - payment_pending → processing: inválida
+ok 7 - admin no puede vencer pedidos (solo system)
+ok 8 - un cliente no puede usar admin_transition_order
+ok 9 - admin cancela pendiente: nota obligatoria
+ok 10 - admin cancela pendiente con nota
+ok 11 - cancelled es terminal
+ok 12 - paid → delivered: inválida (sin saltos)
+ok 13 - paid → processing
+ok 14 - processing → shipped exige guía
+ok 15 - processing → shipped con guía
+ok 16 - guía y fecha de envío persistidas
+ok 17 - shipped → processing: inválida (no retrocede)
+ok 18 - shipped → delivered
+ok 19 - delivered_at asignado
+ok 20 - delivered → cancelled: inválida
+ok 21 - delivered → refunded exige nota
+ok 22 - eventos de estado con actor (webhook y admin)
+ok 23 - acciones admin registran el usuario
+ok 24 - pedido inexistente
+ok 25 - get_order_public con token correcto devuelve el estado
+ok 26 - get_order_public con token falso no devuelve nada (ni confirma que el número exista)
+ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/80_metrics.test.sql ........ 
+1..10
+ok 1 - ventas brutas = suma de pedidos pagados vigentes (excluye cancelados/reembolsados/pendientes)
+ok 2 - número de pedidos pagados vigentes
+ok 3 - ticket promedio
+ok 4 - unidades vendidas
+ok 5 - conteo por estado incluye los 8 estados
+ok 6 - pedidos vencidos contados (seed O5)
+ok 7 - variantes con stock bajo
+{"ok": true, "rows": [{"r": {"total": 249900, "status": "payment_pending", "currency": "COP", "order_id": "d793a34a-a442-4f94-baf6-c37d87fb058d", "subtotal": 249900, "is_duplicate": false, "order_number": "JM-001035", "public_token": "d24e3746-bc43-4050-9dba-5860e8e0bd2c", "shipping_cost": 0, "discount_total": 0, "amount_in_cents": 24990000, "payment_expires_at": "2026-11-06T02:29:06.883549-05:00"}}]}
+{"ok": true, "rows": [{"r": {"detail": "order_paid", "result": "applied", "reference": "JM-001035-1", "order_status": "paid", "attempt_status": "APPROVED"}}]}
+ok 8 - nueva venta de 249.900 sumada a las ventas
+ok 9 - cliente no accede a métricas
+ok 10 - anon no accede a métricas
+ok
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/90_rls.test.sql ............ 
+1..46
+ok 1 - anon ve solo los 6 productos activos (no borrador ni archivado)
+ok 2 - anon no ve variantes de productos en borrador
+ok 3 - anon ve solo imágenes de productos activos
+ok 4 - anon consulta disponibilidad (vista) de variantes activas
+ok 5 - anon ve solo reseñas aprobadas
+ok 6 - anon ve solo métodos de envío activos
+ok 7 - T9: anon no lee pedidos
+ok 8 - anon no lee inventario
+ok 9 - T13: anon no enumera cupones
+ok 10 - anon no lee perfiles
+ok 11 - T11: anon no inserta pedidos "paid" directamente
+ok 12 - anon no modifica productos
+ok 13 - T10: el cliente ve solo sus 3 pedidos
+ok 14 - T14: el cliente ve los ítems de sus pedidos (y solo esos)
+ok 15 - el cliente no ve un pedido ajeno por id
+ok 16 - el cliente ve solo los pagos de sus pedidos
+ok 17 - el cliente ve solo la línea de tiempo de sus pedidos
+ok 18 - T16: el cliente no puede modificar pagos
+ok 19 - el cliente no puede modificar pedidos
+ok 20 - el cliente no puede insertar eventos
+ok 21 - el cliente no ve inventario
+ok 22 - el cliente no ve cupones
+ok 23 - el cliente no ve eventos de pasarela
+ok 24 - el cliente no ve auditoría
+ok 25 - el cliente ve solo su perfil
+ok 26 - el cliente actualiza su nombre (solo su fila)
+ok 27 - el cliente no puede cambiar su rol
+ok 28 - el cliente ve solo sus direcciones
+ok 29 - el cliente no crea direcciones para otro usuario
+ok 30 - el cliente no crea productos
+ok 31 - favoritos: el cliente empieza sin favoritos
+ok 32 - favoritos: el cliente agrega a su lista
+ok 33 - admin ve todos los pedidos
+ok 34 - admin ve todo el inventario
+ok 35 - admin ve productos en borrador y archivados
+ok 36 - admin gestiona cupones
+ok 37 - ni el admin modifica inventario directamente (solo por RPC con movimiento)
+ok 38 - ni el admin cambia estados directamente (solo por la máquina de estados)
+ok 39 - admin no ve auditoría (solo super_admin)
+ok 40 - super_admin ve auditoría
+ok 41 - admin no puede asignar roles
+ok 42 - super_admin promueve a un cliente a admin
+ok 43 - no se puede retirar el último super_admin
+ok 44 - service_role (backend) omite RLS
+ok 45 - anon no sube imágenes al bucket
+ok 46 - admin sube imágenes al bucket product-images
+ok
+All tests successful.
+Files=10, Tests=278,  2 wallclock secs ( 0.06 usr  0.02 sys +  0.22 cusr  0.10 csys =  0.40 CPU)
+Result: PASS
+
+=== 4. Concurrencia real (2 conexiones, 1 unidad) ===
+psql:/home/user/unjuandice3333-star/j-m/supabase/tests/database/95_concurrency.test.sql:15: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/user/unjuandice3333-star/j-m/supabase/tests/database/95_concurrency.test.sql:57: NOTICE:  Stock insuficiente: Polo Piqué Edición Limitada (talla M, Beige): disponibles 0, solicitadas 1
+HINT:  JM_OUT_OF_STOCK
+/home/user/unjuandice3333-star/j-m/supabase/tests/database/95_concurrency.test.sql .. 
+1..12
+ok 1 - precondición: 1 unidad disponible
+OK
+OK
+SET
+SET
+BEGIN
+ok 2 - A crea su pedido dentro de una transacción abierta (bloquea la fila de inventario)
+ok 3 - B envía su pedido en paralelo
+ok 4 - B queda en espera del bloqueo de A (no lee un stock obsoleto)
+COMMIT
+ok 5 - B continúa al confirmar A
+ok 6 - B recibe "Stock insuficiente" tras el commit de A
+ok 7 - existe un solo pedido (el de A)
+ok 8 - stock 1, reservada 1: sin sobreventa
+SET
+SET
+BEGIN
+ok 9 - A procesa el evento (transacción abierta)
+1
+COMMIT
+ok 10 - B, con el mismo evento en paralelo, obtiene "duplicate"
+ok 11 - pedido pagado una sola vez con un solo movimiento de venta
+ok 12 - stock final 0, sin negativos
+OK
+OK
+ok
+All tests successful.
+Files=1, Tests=12,  2 wallclock secs ( 0.02 usr  0.00 sys +  0.02 cusr  0.00 csys =  0.04 CPU)
+Result: PASS
+
+=== 5. Determinismo de seeds (dos reconstrucciones) ===
+huella reconstrucción B: a6831f67264faae6df0dd55754a4add5
+huella reconstrucción C: a6831f67264faae6df0dd55754a4add5
+DETERMINISMO: OK
+
+=== Resumen ===
+pgTAP funcional: rc=0 | concurrencia: rc=0 | determinismo: rc=0
+Logs en /tmp/jm_ci_pg_22752/out
+pruebas pgTAP ejecutadas: 290 (mínimo 290)
+### fin: 2026-11-06T06:59:11Z exit=0

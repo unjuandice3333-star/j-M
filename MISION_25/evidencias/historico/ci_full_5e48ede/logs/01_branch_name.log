@@ -1,0 +1,6 @@
+### paso: 01_branch_name
+### comando: bash scripts/ci/check_branch_name.sh mission/m25-ci-governance 
+### commit: 5e48ede7c78375a284e5a8614f19ce744673501d
+### inicio: 2026-11-06T07:09:54Z
+rama válida: mission/m25-ci-governance
+### fin: 2026-11-06T07:09:54Z exit=0
