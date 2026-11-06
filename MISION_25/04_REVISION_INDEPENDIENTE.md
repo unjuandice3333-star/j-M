@@ -65,6 +65,18 @@ Cobertura de la regla 6: PARTIAL. Defectos nuevos D1-D4.
 | D4 | Menor | La rama por defecto borrada y recreada (before=000…) daba una base vacía | C+T | exit 2 si la rama del push es la rama por defecto y before=000…. Prueba "rama por defecto borrada y recreada" |
 | — | — | `psql "$PROD_DATABASE_URL"` | Fuera de alcance (documentado) | Indistinguible estáticamente de una conexión local; la fábrica no tiene credenciales |
 
+## Ronda 5 — re-revisión de 20a29c9
+Veredicto: **APROBADO CON OBSERVACIONES MENORES**. D1-D4 FIXED. Sin hallazgos bloqueantes ni mayores. Sin caminos de
+falso PASS en las compuertas que deciden un merge (evento PR + ci-gate). Cinco observaciones menores, todas corregidas:
+
+| # | Sev. | Hallazgo | Disposición | Corrección / prueba |
+|---|---|---|---|---|
+| M1 | Menor | Subcomandos que operan sobre el proyecto enlazado sin detectar: `migration list/fetch`, `inspect db`, `storage cp`, `functions download`, `postgres-config get` | C+T | Añadidos (nivel A los inequívocos; `storage` en el nivel B). 4 pruebas negativas |
+| M2 | Menor | `cmd=vercel; $cmd deploy` | C+T | Despliegue mediante variable (`$X deploy\|--prod\|promote\|alias`). Prueba negativa |
+| M3 | Menor | Falsos positivos: `'vercel'` entre comillas como valor, y `secrets list`, `projects list` o `domains list` en cadenas o comentarios | C+T | Vercel solo en posición de comando, dentro de exec/spawn o como valor de un script de package.json. Los subcomandos ambiguos (projects, branches, secrets list, storage, sso, domains, snippets, backups, orgs) solo cuentan justo después de una invocación de la CLI. El control positivo de código legítimo incluye esas líneas. **Se mantiene a propósito:** una URL `${projectRef}.supabase.co` construida en el código falla, porque el servidor debe usar `SUPABASE_URL` del entorno |
+| M4 | Menor | REF vacío se trataba como rama no protegida | C+T | REF vacío = protegida. Prueba negativa |
+| M5 | Menor | En el push de una mission/* rebasada se comparaba con main en lugar de develop | C+T | Las ramas de trabajo se comparan con `origin/develop` si existe. Prueba positiva; la autoprueba guarda y restaura la referencia real de origin/develop (las referencias se comparten entre worktrees) |
+
 ## Puntos que el revisor marcó como "sin verificar" y siguen así
 - La instalación de `postgresql-16-pgtap` y `postgresql-16-cron` en ubuntu-24.04, que `supabase/setup-cli` instale la 3.0.0
   y el comportamiento de gitleaks en el runner de GitHub. Verificarlos exige ejecutar el workflow en GitHub, es decir,

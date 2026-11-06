@@ -88,24 +88,28 @@ mapfile -t files < <(git ls-files -co --exclude-standard | grep -v '^node_module
     | grep -vE '^apps/web/(src|public)/|^packages/[^/]+/(src/|index\.)|\.test\.(ts|js|sql)$' \
     | grep -v '^scripts/ci/migrations_policy\.sh$' | while read -r f; do [[ -f "$f" ]] && echo "$f"; done)
 S='[[:space:]]+'
-# Nivel A — subcomandos y destinos inequívocamente remotos, en cualquier línea y con cualquier forma de invocación
-# (directa, npx, variable, envoltorio como sbr, banderas intermedias, espacios múltiples).
-A="\\bdb${S}(push|pull|dump)\\b|\\bfunctions${S}deploy\\b|\\bsecrets${S}(set|unset|list)\\b|\\bmigration${S}repair\\b"
-A+="|\\bconfig${S}push\\b|\\bprojects${S}(create|delete|list|api-keys)\\b|\\bbranches${S}(create|delete|update|list|get|disable)\\b"
-A+="|\\bpostgres-config${S}(update|delete)\\b|\\b(network-restrictions|ssl-enforcement|vanity-subdomains|network-bans)\\b"
-A+="|\\b(sso|domains|snippets|backups|orgs)${S}(add|remove|update|create|delete|list|get|activate|restore|download)\\b"
-A+="|--(project-ref|project-id|db-url|linked)\\b"
-# Destinos: API de gestión, pooler y hosts de proyecto con una referencia real (20 caracteres) o interpolada
-# (${ref}.supabase.co, $REF.supabase.co). Hosts ficticios de las pruebas (mock.supabase.co) no coinciden.
-A+="|api\\.supabase\\.(com|io)|pooler\\.supabase\\.com|(\\b[a-z0-9]{20}|\\}|\\\$[A-Za-z_][A-Za-z0-9_]*)\\.supabase\\.co\\b"
-A+="|[\"']db[\"'][[:space:],]+[\"'](push|pull|dump)[\"']|[\"']functions[\"'][[:space:],]+[\"']deploy[\"']"
-# Nivel B — link/login/logout SOLO justo después de una invocación de la CLI (supabase, sbr o una variable),
-# admitiendo banderas intermedias; y la forma de lista con "supabase" en la misma llamada.
+# Invocación de la CLI de Supabase: la palabra supabase, el envoltorio sbr (con su argumento de log) o una
+# variable ($X, ${X}, "$X", "${X[@]}"), seguida opcionalmente de banderas globales.
+CLI="(\\bsupabase|\\bsbr([[:space:]]+\"[^\"]*\")?|\"?\\\$\\{?[A-Za-z_][A-Za-z0-9_]*(\\[@\\])?\\}?\"?)"
 FLAGS="([[:space:]]+-[^[:space:]]+([[:space:]]+[^-[:space:]][^[:space:]]*)?)*"
-B="(\\bsupabase|\\bsbr([[:space:]]+\"[^\"]*\")?|\"?\\\$\\{?[A-Za-z_][A-Za-z0-9_]*(\\[@\\])?\\}?\"?)${FLAGS}[[:space:]]+(link|login|logout)\\b"
-B+="|[\"']supabase[\"'][^)]*[\"'](link|login)[\"']"
-# Vercel: el comando vercel en posición de comando (salvo `vercel dev`)
-V="(^|[;&|(\`]|\\bnpx|\\bpnpm([[:space:]]+dlx)?|\\bexec|\\bspawn\\(|[\"'])[[:space:]]*vercel([[:space:]\"']|$)"
+# Nivel A — subcomandos y destinos inequívocamente remotos, en cualquier línea y con cualquier forma de invocación.
+A="\\bdb${S}(push|pull|dump)\\b|\\bfunctions${S}(deploy|download)\\b|\\bsecrets${S}(set|unset)\\b|\\bmigration${S}(repair|list|fetch)\\b"
+A+="|\\bconfig${S}push\\b|\\binspect${S}db\\b|\\bpostgres-config${S}(get|update|delete)\\b"
+A+="|\\b(network-restrictions|ssl-enforcement|vanity-subdomains|network-bans)\\b"
+A+="|--(project-ref|project-id|db-url|linked)\\b"
+# Destinos: API de gestión, pooler y hosts de proyecto con referencia literal (20 caracteres) o interpolada.
+# Es intencional que una URL de proyecto construida en el código falle: el servidor debe usar SUPABASE_URL del entorno.
+A+="|api\\.supabase\\.(com|io)|pooler\\.supabase\\.com|(\\b[a-z0-9]{20}|\\}|\\\$[A-Za-z_][A-Za-z0-9_]*)\\.supabase\\.co\\b"
+A+="|[\"']db[\"'][[:space:],]+[\"'](push|pull|dump)[\"']|[\"']functions[\"'][[:space:],]+[\"'](deploy|download)[\"']"
+# Nivel B — subcomandos ambiguos (palabras comunes en texto) SOLO justo después de una invocación de la CLI
+B="${CLI}${FLAGS}[[:space:]]+((link|login|logout)\\b|(projects|branches|secrets|storage|sso|domains|snippets|backups|orgs)${S}[a-z-]+)"
+B+="|[\"']supabase[\"'][^)]*[\"'](link|login|projects|branches|secrets|storage)[\"']"
+# Vercel: el comando en posición de comando o como valor de un script de package.json (salvo `vercel dev`),
+# dentro de exec/spawn, o un despliegue invocado mediante una variable.
+V="(^|[;&|(\`]|\\bnpx|\\bpnpm([[:space:]]+dlx)?|\\bexec)[[:space:]]*vercel([[:space:]\"']|$)"
+V+="|\\b(spawn|spawnSync|exec|execSync|execFile|execFileSync)\\([\"'\`](npx[[:space:]]+)?vercel\\b"
+V+="|\":[[:space:]]*\"(npx[[:space:]]+)?vercel\\b"
+V+="|\"?\\\$\\{?[A-Za-z_][A-Za-z0-9_]*\\}?\"?${S}(deploy|--prod|promote|alias)\\b"
 remote=""
 if ((${#files[@]})); then
   remote=$(grep -nHE "$A|$B" "${files[@]}" || true)

@@ -141,8 +141,16 @@ expect_r6 "CLI de Vercel sin subcomando (despliega)" scripts/ci/__st_vc.sh 'npx 
 expect_r6 "host de proyecto interpolado" scripts/ci/__st_host.mjs 'fetch(`https://${ref}.supa%s.co/rest/v1/x`)\n' base
 expect_r6 "spawn con link" scripts/ci/__st_spawn.mjs 'spawn("supa%s", ["li%s", "--x", ref])\n' base nk
 
+expect_r6 "listado de migraciones del proyecto" scripts/ci/__st_ml.sh 'supa%s migration li%s\n' base st
+expect_r6 "escritura en Storage remoto" scripts/ci/__st_st.sh 'supa%s storage c%s ./x ss:///b/x --experimental\n' base p
+expect_r6 "inspección de la BD remota" scripts/ci/__st_in.sh 'supa%s inspect d%s bloat\n' base b
+expect_r6 "descarga de una función" scripts/ci/__st_fd.sh 'supa%s functions downlo%s wompi-webhook\n' base ad
+expect_r6 "secretos del proyecto vía sbr" scripts/ci/__st_sl.sh 'sbr "$OUT/x.log" secre%s list\n' ts
+expect_r6 "despliegue de Vercel mediante variable" scripts/ci/__st_vv.sh 'cmd=verc%s; $cmd depl%s --prod\n' el oy
+expect_r6 "script de package.json que despliega" apps/web/__st/package.json '{"scripts": {"deploy": "verc%s --prod"}}\n' el
+
 # Código legítimo que NO debe disparar la regla 6 (falsos positivos detectados en la revisión)
-printf 'res.redirect(`${origin}/login`);\nif (["login", "logout"].includes(action)) {}\nconst u = "https://mock.supabase.co";\n' > apps/web/api/__st_fp.js
+printf 'res.redirect(`${origin}/login`);\nif (["login", "logout"].includes(action)) {}\nconst u = "https://mock.supabase.co";\nconst platform = process.env.VERCEL ? %s : %s;\nif (req.headers["user-agent"] === %s) {}\nconsole.log("secrets list loaded"); // projects list, domains list\n' "'vercel'" "'local'" "'vercel'" > apps/web/api/__st_fp.js
 printf 'echo "Open $URL to link your account"\ngit submodule update --remote\nsupabase db reset\nsupabase test db\nnpx vercel dev\n' > scripts/ci/__st_fp.sh
 expect_pass "regla 6: código legítimo (redirección /login, lista de acciones, host ficticio, --remote de git, vercel dev)" env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
 reset_tree
@@ -184,6 +192,12 @@ expect_fail "resolve_base: before desconocido (historial reescrito)" "no existe 
 G commit -q --allow-empty -m "test: rewritten tip"; REWRITTEN=$(git rev-parse HEAD); git reset -q --hard HEAD~1
 expect_fail "resolve_base: push sin avance rápido a una rama protegida (main)" "sin avance rápido" env EVENT_NAME=push REF_NAME=main PUSH_BEFORE="$REWRITTEN" bash scripts/ci/resolve_base.sh
 expect_pass "resolve_base: push sin avance rápido a una mission/* (rebase) → merge-base" env EVENT_NAME=push REF_NAME=mission/m25-x PUSH_BEFORE="$REWRITTEN" DEFAULT_BRANCH=selftest-default bash scripts/ci/resolve_base.sh
+expect_fail "resolve_base: rama desconocida (REF vacío) sin avance rápido se trata como protegida" "sin avance rápido" env -u GITHUB_REF_NAME EVENT_NAME=push REF_NAME= PUSH_BEFORE="$REWRITTEN" bash scripts/ci/resolve_base.sh
+# Las referencias se comparten con el repositorio principal: se guarda y restaura el valor real de origin/develop.
+OLD_DEVELOP=$(git rev-parse -q --verify refs/remotes/origin/develop || true)
+git update-ref refs/remotes/origin/develop HEAD~1
+expect_pass "resolve_base: mission/* rebasada se compara con origin/develop" env EVENT_NAME=push REF_NAME=mission/m25-x PUSH_BEFORE="$REWRITTEN" bash -c '[[ "$(bash scripts/ci/resolve_base.sh 2>/dev/null)" == "$(git rev-parse HEAD~1)" ]]'
+if [[ -n "$OLD_DEVELOP" ]]; then git update-ref refs/remotes/origin/develop "$OLD_DEVELOP"; else git update-ref -d refs/remotes/origin/develop; fi
 expect_fail "resolve_base: rama por defecto borrada y recreada (before=000…)" "borrada y recreada" env EVENT_NAME=push REF_NAME=main DEFAULT_BRANCH=main PUSH_BEFORE=0000000000000000000000000000000000000000 bash scripts/ci/resolve_base.sh
 expect_fail "resolve_base: PR sin base conocida" "base del PR desconocida" env EVENT_NAME=pull_request PR_BASE_SHA=deadbeefdeadbeefdeadbeefdeadbeefdeadbeef bash scripts/ci/resolve_base.sh
 

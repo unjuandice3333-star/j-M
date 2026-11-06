@@ -20,7 +20,11 @@ is_zero() { [[ -z "$1" || "$1" =~ ^0+$ ]]; }
 known() { git rev-parse -q --verify "$1^{commit}" >/dev/null; }
 DEF="origin/${DEFAULT_BRANCH:-main}"
 REF="${REF_NAME:-${GITHUB_REF_NAME:-}}"
-protected() { [[ "$REF" == "${DEFAULT_BRANCH:-main}" || "$REF" == main || "$REF" == develop || "$REF" == release/* ]]; }
+# Una rama desconocida (REF vacío) se trata como protegida: ante la duda, fallar.
+protected() { [[ -z "$REF" || "$REF" == "${DEFAULT_BRANCH:-main}" || "$REF" == main || "$REF" == develop || "$REF" == release/* ]]; }
+# Rama de integración contra la que se comparan las ramas de trabajo: develop si existe (de ahí se crean), si no la por defecto.
+CMP="$DEF"
+if [[ "$REF" =~ ^(mission|agent|db|feat|fix|chore|docs|test|refactor|perf|ci)/ ]] && known origin/develop; then CMP=origin/develop; fi
 HEAD_SHA=$(git rev-parse HEAD)
 
 if [[ "${EVENT_NAME:-}" == pull_request ]]; then
@@ -35,13 +39,13 @@ if ! is_zero "$BEFORE"; then
   if protected; then
     echo "ERROR: push sin avance rápido a la rama protegida '$REF' ($BEFORE no es antecesor de HEAD): reescritura o retroceso de historial" >&2; exit 2
   fi
-  echo "AVISO: push sin avance rápido a '${REF:-?}' (rebase); se compara con $DEF" >&2
+  echo "AVISO: push sin avance rápido a '$REF' (rebase); se compara con $CMP" >&2
 elif [[ "${EVENT_NAME:-}" == push && -n "$REF" && "$REF" == "${DEFAULT_BRANCH:-main}" ]]; then
   echo "ERROR: la rama por defecto '$REF' aparece como nueva (before=000…): fue borrada y recreada; no hay base fiable" >&2; exit 2
 fi
 
-# Rama nueva, rama no protegida rebasada o ejecución manual: comparar con la rama por defecto
-known "$DEF" || { echo "ERROR: $DEF no existe en el clon (¿fetch-depth: 0?)" >&2; exit 2; }
-mb=$(git merge-base HEAD "$DEF") || { echo "ERROR: sin merge-base con $DEF" >&2; exit 2; }
-[[ "$mb" == "$HEAD_SHA" ]] && echo "AVISO: sin commits nuevos respecto a $DEF; se validan las reglas independientes de la base" >&2
+# Rama nueva, rama de trabajo rebasada o ejecución manual: comparar con la rama de integración
+known "$CMP" || { echo "ERROR: $CMP no existe en el clon (¿fetch-depth: 0?)" >&2; exit 2; }
+mb=$(git merge-base HEAD "$CMP") || { echo "ERROR: sin merge-base con $CMP" >&2; exit 2; }
+[[ "$mb" == "$HEAD_SHA" ]] && echo "AVISO: sin commits nuevos respecto a $CMP; se validan las reglas independientes de la base" >&2
 echo "$mb"
