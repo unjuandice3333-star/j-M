@@ -40,5 +40,21 @@ check('MAJ-2 positivo: production con su secreto de eventos', run({ APP_ENV: 'pr
 check('MIN-4 negativo: URL con ruta o fragmento', errs(run({ SUPABASE_URL: 'http://127.0.0.1:54321/x#y' })).some((e) => e.includes('solo el origen')));
 check('MIN-4: clean no quita una comilla suelta', clean('"abc') === '"abc' && clean('"abc"') === 'abc');
 
+// M26-R1.1 (MAJ-2): APP_ENV debe coincidir con el proyecto que inyecta Supabase (SUPABASE_URL)
+const QA_HOST = 'q'.repeat(20) + '.supa' + 'base.co';
+const PROD_HOST = 'v'.repeat(20) + '.supa' + 'base.co';
+const LIST = { local: ['127.0.0.1', 'localhost'], qa: [QA_HOST] };
+const runL = (over: Record<string, string | undefined>, list = LIST) => { const env = { ...base, ...over }; return readEdgeConfig((n) => env[n], list); };
+check('R1.1 positivo: qa en el proyecto de la lista de QA', runL({ APP_ENV: 'qa', SUPABASE_URL: 'https://' + QA_HOST }).ok);
+check('R1.1 negativo: qa en otro proyecto (p. ej. Production)', errs(runL({ APP_ENV: 'qa', SUPABASE_URL: 'https://' + PROD_HOST })).some((e) => e.includes('el proyecto no es el de QA')));
+check('R1.1 negativo: qa con la lista de QA vacía (versionada)', errs(runL({ APP_ENV: 'qa', SUPABASE_URL: 'https://' + QA_HOST }, { local: LIST.local, qa: [] })).some((e) => e.includes('qa no tiene hosts permitidos')));
+check('R1.1 positivo: production en un proyecto ajeno a la fábrica', runL({ APP_ENV: 'production', SUPABASE_URL: 'https://' + PROD_HOST, WOMPI_EVENTS_SECRET: EVT_PROD }).ok);
+check('R1.1 negativo: production en el proyecto QA (contradictorio)', errs(runL({ APP_ENV: 'production', SUPABASE_URL: 'https://' + QA_HOST, WOMPI_EVENTS_SECRET: EVT_PROD })).some((e) => e.includes('configuración contradictoria')));
+check('R1.1 negativo: production en el stack local (loopback o kong)', ['http://127.0.0.1:54321', 'http://kong:8000'].every((u) => errs(runL({ APP_ENV: 'production', SUPABASE_URL: u, WOMPI_EVENTS_SECRET: EVT_PROD })).some((e) => e.includes('contradictoria'))));
+check('R1.1 elusión: APP_ENV entre comillas y espacios se normaliza y se aplica la regla', errs(runL({ APP_ENV: ' "production" ', SUPABASE_URL: 'https://' + QA_HOST, WOMPI_EVENTS_SECRET: EVT_PROD })).some((e) => e.includes('contradictoria')));
+check('R1.1 negativo: production con secreto sandbox es coherente solo si el proyecto no es de la fábrica', errs(runL({ APP_ENV: 'production', SUPABASE_URL: 'https://' + QA_HOST })).length > 0);
+check('R1.1: la lista por defecto es la copia generada (versionada: QA vacía)', errs(readEdgeConfig((n) => ({ ...base, APP_ENV: 'qa', SUPABASE_URL: 'https://' + QA_HOST } as Record<string, string | undefined>)[n])).some((e) => e.includes('qa no tiene hosts permitidos')));
+check('R1.1 seguridad: los errores no revelan el host recibido', !errs(runL({ APP_ENV: 'qa', SUPABASE_URL: 'https://' + PROD_HOST })).join('').includes('v'.repeat(20)));
+
 console.log(`SUMMARY: ${passed}/${passed + failed} TESTS PASSED`);
 if (failed) Deno.exit(1);

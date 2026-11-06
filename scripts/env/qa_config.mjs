@@ -58,7 +58,9 @@ export function checkQaEnv(vars, cfg) {
 
   // Cliente (T1 + T2) y servidor (T3)
   errors.push(...checkEnv({ ...vars, VITE_APP_ENV: 'qa' }, cfg).map((e) => `cliente: ${e}`));
-  const server = readServerConfig(Object.keys(SERVER_VARS), vars);
+  // M26-R1.1: el servidor aplica la lista de QA en ejecución; aquí, la de la configuración validada (versionada o --config).
+  const server = readServerConfig(Object.keys(SERVER_VARS), vars, { allowedHosts: {
+    local: cfg.environments.local.supabase.allowed_hosts ?? [], qa: cfg.environments.qa.supabase.allowed_hosts ?? [] } });
   if (!server.ok) errors.push(...server.errors.map((e) => `servidor: ${e}`));
 
   // Mismo proyecto QA en cliente y servidor, y en la lista de permitidos de QA

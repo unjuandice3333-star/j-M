@@ -163,8 +163,10 @@ test('MAJ-2 build:qa incrusta la MISMA lista de permitidos que validó check:qa 
   const r = run('build', '--file', envFile('cfg.env', qaVars()), '--config', CFG);
   assert.equal(r.status, 0, r.stderr);
   const js = readdirSync(path.join(QA_OUT_DIR, 'assets')).filter((f) => f.endsWith('.js')).map((f) => readFileSync(path.join(QA_OUT_DIR, 'assets', f), 'utf8')).join('\n');
-  assert.ok(/allowed_hosts:\["w{20}\.supabase\.co"\]/.test(js) || js.includes(`"allowed_hosts":["${QA_REF}${SB}"]`) || js.includes(`allowed_hosts:["${QA_REF}${SB}"]`),
-    'la lista de QA incrustada contiene el host QA validado');
+  // M26-R1.1: el cliente incrusta la copia generada de la lista; Vite la reduce a constantes por clave
+  // (p. ej. `…=["127.0.0.1","localhost"],XY=["<host QA>"]`). Se exige el host QA validado como elemento de un array
+  // literal propio (no solo dentro de la cadena VITE_SUPABASE_URL "https://…").
+  assert.ok(js.includes(`=["${QA_REF}${SB}"]`), 'la lista de QA incrustada contiene el host QA validado');
 });
 test('MIN-2 un build QA rechazado por la verificación no deja artefactos en disco', async () => {
   const { buildQa } = await import('./qa_build.mjs');

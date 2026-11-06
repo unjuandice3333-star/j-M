@@ -20,6 +20,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REQUIRED_VARS as CLIENT_VARS } from '../env/check_env.mjs';
 import { SERVER_VARS } from '../../apps/web/api/_lib/serverConfig.js';
+// M26-R1.1: Production solo arranca si la plataforma expone VERCEL_ENV en ejecución (variables de sistema de Vercel).
+export const PLATFORM_REQUIRED = Object.freeze(['VERCEL_ENV']);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const DECLARATION = path.join(ROOT, 'config/production_readiness.json');
@@ -34,6 +36,7 @@ export function requiredFromCode(edgeSource = readFileSync(EDGE_CONFIG, 'utf8'))
   return {
     vercel: [...new Set([...CLIENT_VARS, ...Object.keys(SERVER_VARS)])].sort(),
     supabase_edge: edgeAll.filter((n) => !EDGE_INJECTED.includes(n)).sort(),
+    vercel_platform: [...PLATFORM_REQUIRED],
   };
 }
 

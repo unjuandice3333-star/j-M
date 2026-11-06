@@ -264,6 +264,20 @@ sed -i "s/if (c.confirmed !== true)/if (false)/" scripts/release/production_read
 expect_fail "release: regresión en la comprobación (acepta sin confirmar)" "# fail [1-9]" "${CLEAN[@]}" pnpm -s test:env
 reset_tree
 
+echo "-- M26-R1.1 (MAJ-2): separación estricta Preview / Production"
+sed -i "s/if (ctx === 'preview' \&\& appEnv !== 'qa') {/if (false) {/" apps/web/src/config/deployContext.js
+expect_fail "deploy: regresión en la regla de Preview (acepta production en Preview)" "# fail [1-9]" "${CLEAN[@]}" pnpm -s test:env
+reset_tree
+sed -i "s/  if (problems.length) throw new Error(/  if (false) throw new Error(/" apps/web/vite.config.js
+expect_fail "deploy: regresión en la guarda de build de Vite (el build de Vercel no se bloquea)" "# fail [1-9]" "${CLEAN[@]}" node --test --test-concurrency=1 scripts/env/deploy_build.test.mjs
+reset_tree
+python3 - <<'PY'
+import json; p='config/environments.json'; d=json.load(open(p))
+d['environments']['qa']['supabase']['allowed_hosts']=['q'*20+'.supa'+'base.co']; json.dump(d,open(p,'w'),indent=2)
+PY
+expect_fail "deploy: host QA añadido sin regenerar las copias de la lista (env:sync-allowlist)" "desincronizadas|# fail [1-9]" "${CLEAN[@]}" pnpm -s test:env
+reset_tree
+
 git update-ref -d refs/remotes/origin/selftest-default 2>/dev/null
 echo "controles correctos: $ok/$total"
 [[ $ok -eq $total ]]

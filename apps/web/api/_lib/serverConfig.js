@@ -12,7 +12,19 @@
 //   WOMPI_EVENTS_SECRET        test_events_… o prod_events_…       (ídem)
 //
 // Cada endpoint declara lo que necesita. Los errores nombran variables, nunca valores.
+//
+// M26-R1.1 (MAJ-2): APP_ENV se contrasta con las señales de despliegue de Vercel en EJECUCIÓN (VERCEL_ENV, …; ver
+// src/config/deployContext.js): un Preview solo funciona con qa y production solo en un despliegue identificado como
+// Production (sin señales → production rechazado). Con qa, SUPABASE_URL debe estar en la lista de QA (copia generada
+// de config/environments.json); con production, debe ser https y no un host de local o qa. Si existe VITE_APP_ENV
+// y contradice a APP_ENV, se rechaza (solo se compara; el servidor nunca usa variables de cliente como valor).
 // =============================================================================
+import { createRequire } from 'node:module';
+import { deployContextProblems, readDeploySignals } from '../../src/config/deployContext.js';
+
+const requireJson = createRequire(import.meta.url);
+/** Lista de permitidos (solo hosts públicos), copia generada dentro de apps/web: ver scripts/env/sync_allowlist.mjs. */
+export const ALLOWLIST = Object.freeze(requireJson('../../src/config/allowlist.generated.json'));
 
 export const SERVER_VARS = Object.freeze({
   // M26-R1 (MAJ-2): entorno del servidor (local | qa | production). Siempre obligatorio: sin él no se sabe si deben
@@ -64,7 +76,7 @@ export function originProblem(raw) {
   return null;
 }
 
-export function readServerConfig(required, env = process.env) {
+export function readServerConfig(required, env = process.env, { allowedHosts = ALLOWLIST } = {}) {
   const errors = [];
   const config = {};
   // APP_ENV se exige siempre, además de lo que pida cada endpoint.
@@ -83,6 +95,10 @@ export function readServerConfig(required, env = process.env) {
   const appEnv = config.APP_ENV;
   if (appEnv && !APP_ENVS.includes(appEnv)) errors.push('APP_ENV: debe ser local, qa o production');
   const sandboxOnly = appEnv === 'local' || appEnv === 'qa';
+  // Contexto de despliegue (señales de la plataforma en ejecución). Sin señales: local/CI → production rechazado.
+  errors.push(...deployContextProblems('APP_ENV', APP_ENVS.includes(appEnv) ? appEnv : '', readDeploySignals(env)));
+  const viteAppEnv = clean(env.VITE_APP_ENV);
+  if (appEnv && viteAppEnv && viteAppEnv !== appEnv) errors.push('APP_ENV y VITE_APP_ENV: contradictorias (servidor y cliente deben declarar el mismo entorno)');
 
   if (config.SUPABASE_URL) {
     const p = originProblem(config.SUPABASE_URL);
@@ -91,6 +107,14 @@ export function readServerConfig(required, env = process.env) {
       const u = new URL(config.SUPABASE_URL);
       if (appEnv === 'local' && !LOOPBACK.has(u.hostname)) errors.push('SUPABASE_URL: con APP_ENV=local solo se admite el stack local (loopback)');
       if (appEnv === 'qa' && (u.protocol !== 'https:' || LOOPBACK.has(u.hostname))) errors.push('SUPABASE_URL: con APP_ENV=qa debe ser https y no de loopback');
+      else if (appEnv === 'qa' && !(allowedHosts.qa ?? []).includes(u.hostname)) errors.push((allowedHosts.qa ?? []).length === 0
+        ? 'SUPABASE_URL: qa no tiene hosts permitidos (config/environments.json)'
+        : 'SUPABASE_URL: host no permitido para qa (config/environments.json)');
+      if (appEnv === 'production') {
+        const factoryHosts = new Set([...(allowedHosts.local ?? []), ...(allowedHosts.qa ?? []), ...LOOPBACK]);
+        if (u.protocol !== 'https:') errors.push('SUPABASE_URL: con APP_ENV=production debe ser https');
+        else if (factoryHosts.has(u.hostname)) errors.push('SUPABASE_URL: con APP_ENV=production no se admite un host de local o qa (configuración contradictoria)');
+      }
     }
   }
   if (config.SUPABASE_SERVICE_ROLE_KEY) {

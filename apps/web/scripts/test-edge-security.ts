@@ -10,8 +10,8 @@ import { capturedHandler } from './mock-server.ts';
 import { dbMock } from './mock-supabase.ts';
 
 // Configurar variables de entorno antes de importar
-Deno.env.set('SUPABASE_URL', 'https://mock.supabase.co');
-Deno.env.set('APP_ENV', 'qa'); // M26-R1: entorno obligatorio de la Edge Function
+Deno.env.set('SUPABASE_URL', 'http://127.0.0.1:54321'); // M26-R1.1: perfil local (qa exige un host de la lista de QA)
+Deno.env.set('APP_ENV', 'local'); // M26-R1: entorno obligatorio de la Edge Function
 Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'mock_service_key');
 Deno.env.set('WOMPI_EVENTS_SECRET', 'test_events_secret_secure_123');
 

@@ -49,8 +49,7 @@ Resultados detallados en el informe final de R1 (entregado al propietario), sobr
 - **MAJ-5 depende del propietario:** el control impide integrar en `main` sin confirmación, pero la confirmación es una
   declaración; la fábrica no puede verificar Vercel ni Supabase Production. La sugerencia de la revisión de mostrar una
   página de error en lugar de una pantalla en blanco no se implementó (cambio de interfaz fuera del alcance de R1).
-- **Builds de Vercel con `production`:** un Preview configurado expresamente con `VITE_APP_ENV=production`/`APP_ENV=production`
-  no se restringe (Production queda fuera de la lista por diseño). Depende de R-PREVIEW (pendiente).
+- **Builds de Vercel con `production`:** resuelto en M26-R1.1 (`10_R1_1_PREVIEW_PRODUCTION.md`): un Preview solo admite `qa`; production exige un despliegue identificado como Production.
 - **Evidencias de M24 redactadas:** `MISION_24D/evidencias/m24d_changes.patch` y los scripts de evidencia ya no
   reproducen literalmente lo ejecutado en M24 (la contraseña se sustituyó por un marcador).
 - **INC-M26-01** sigue abierta (tarea funcional posterior).

@@ -218,8 +218,8 @@ const results = [];
 async function runTest(name, fn) {
   totalTests++;
   dbMock.reset();
-  process.env.SUPABASE_URL = 'https://mock.supabase.co'; // M26-T3: el servidor solo lee variables de servidor
-  process.env.APP_ENV = 'qa'; // M26-R1: entorno del servidor obligatorio (host https no loopback, Wompi sandbox)
+  process.env.SUPABASE_URL = 'http://127.0.0.1:54321'; // M26-T3: el servidor solo lee variables de servidor (R1.1: perfil local)
+  process.env.APP_ENV = 'local'; // M26-R1.1: perfil local (loopback, Wompi sandbox); qa exige un host de la lista de QA
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock_service_key';
   process.env.WOMPI_EVENTS_SECRET = 'test_events_secret_secure_123';
 

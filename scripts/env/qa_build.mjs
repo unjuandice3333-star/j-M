@@ -24,6 +24,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { allowlistText } from './sync_allowlist.mjs';
 import { loadConfig } from './environments.mjs';
 import { checkQaEnv, checkEnvFileLocation, projectRefOf } from './qa_config.mjs';
 import { REQUIRED_VARS } from './check_env.mjs';
@@ -120,8 +121,16 @@ async function loadVite() {
  *  M26-R1 (MAJ-2): el cliente incrusta config/environments.json para aplicar la lista de permitidos en ejecución; aquí se
  *  sustituye por la MISMA configuración que validó check:qa (la versionada o la de --config), para que build y validación
  *  coincidan. */
+//  M26-R1.1: el cliente importa la copia generada (allowlist.generated.json); se sustituye por la copia derivada de la
+//  configuración validada, escrita en el directorio temporal (que solo se usa para esto y como envDir vacío: Vite solo
+//  lee de él archivos .env*).
 function qaViteConfig(emptyEnvDir, cfgFile, extra = {}) {
-  const alias = cfgFile ? [{ find: /^.*\/config\/environments\.json$/, replacement: cfgFile }] : [];
+  let alias = [];
+  if (cfgFile) {
+    const copy = path.join(emptyEnvDir, 'allowlist.validada.json');
+    writeFileSync(copy, allowlistText(loadConfig(cfgFile)));
+    alias = [{ find: /^.*\/allowlist\.generated\.json$/, replacement: copy }];
+  }
   return { root: WEB, configFile: path.join(WEB, 'vite.config.js'), mode: 'qa', envDir: emptyEnvDir, logLevel: 'warn', resolve: { alias }, ...extra };
 }
 

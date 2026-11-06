@@ -3,8 +3,14 @@
 // Solo variables de servidor (SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY las inyecta Supabase; WOMPI_EVENTS_SECRET
 // la define el propietario). Nunca recurre a VITE_SUPABASE_URL (variable de cliente). Sin valores por defecto.
 // Los errores nombran variables, nunca valores.
+//
+// M26-R1.1 (MAJ-2): en Supabase no hay señales de Vercel; la señal fiable del despliegue es SUPABASE_URL, que inyecta
+// la propia plataforma e identifica el proyecto. APP_ENV debe coincidir con él: qa solo en un proyecto de la lista de
+// QA; production nunca en un proyecto de la lista de local o qa ni en loopback (configuración contradictoria).
 // =============================================================================
+import ALLOWLIST from './allowlist.generated.json' with { type: 'json' };
 
+export type AllowedHosts = { local: string[]; qa: string[] };
 export type EdgeConfig = { appEnv: string; supabaseUrl: string; serviceRoleKey: string; eventsSecret: string };
 export type EdgeConfigResult = { ok: true; config: EdgeConfig } | { ok: false; errors: string[] };
 
@@ -27,7 +33,7 @@ function jwtRole(token: string): string | undefined {
 }
 
 /** @param get lector de variables (en producción, (n) => Deno.env.get(n)) */
-export function readEdgeConfig(get: (name: string) => string | undefined): EdgeConfigResult {
+export function readEdgeConfig(get: (name: string) => string | undefined, allowedHosts: AllowedHosts = ALLOWLIST as AllowedHosts): EdgeConfigResult {
   const errors: string[] = [];
   // M26-R1 (MAJ-2): APP_ENV (local | qa | production) obligatorio; en local y qa solo secretos de Wompi sandbox.
   const appEnv = clean(get('APP_ENV'));
@@ -46,6 +52,13 @@ export function readEdgeConfig(get: (name: string) => string | undefined): EdgeC
     // M26-R1 (MIN-4): mismo criterio de origen que el cliente y el servidor de Vercel
     else if (u.username || u.password || u.pathname !== '/' || u.search || u.hash) errors.push('SUPABASE_URL: debe ser solo el origen (sin credenciales, ruta, consulta ni fragmento)');
     else if (appEnv === 'qa' && (u.protocol !== 'https:' || ['127.0.0.1', 'localhost'].includes(u.hostname))) errors.push('SUPABASE_URL: con APP_ENV=qa debe ser https y no de loopback');
+    else if (appEnv === 'qa' && !(allowedHosts.qa ?? []).includes(u.hostname)) errors.push((allowedHosts.qa ?? []).length === 0
+      ? 'SUPABASE_URL: qa no tiene hosts permitidos (config/environments.json); APP_ENV no coincide con el proyecto'
+      : 'SUPABASE_URL: el proyecto no es el de QA; APP_ENV=qa no coincide con el proyecto');
+    else if (appEnv === 'production') {
+      const factory = [...(allowedHosts.local ?? []), ...(allowedHosts.qa ?? []), '127.0.0.1', 'localhost', 'kong'];
+      if (u.protocol !== 'https:' || factory.includes(u.hostname)) errors.push('SUPABASE_URL: APP_ENV=production en un proyecto de local o qa (configuración contradictoria)');
+    }
   }
   if (!serviceRoleKey) errors.push('SUPABASE_SERVICE_ROLE_KEY: obligatoria y ausente');
   else {

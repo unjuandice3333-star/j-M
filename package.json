@@ -12,7 +12,7 @@
     "prepare": "husky",
     "check:env": "node scripts/env/check_env.mjs",
     "build:factory": "node scripts/env/check_env.mjs && pnpm --filter @jm/web build",
-    "test:env": "node --test scripts/env/environments.test.mjs scripts/env/check_env.test.mjs scripts/env/runtime_config.test.mjs scripts/env/templates.test.mjs scripts/env/gen_local_env.test.mjs scripts/env/qa_config.test.mjs scripts/env/r1_regression.test.mjs scripts/release/production_readiness.test.mjs",
+    "test:env": "node --test scripts/env/environments.test.mjs scripts/env/check_env.test.mjs scripts/env/runtime_config.test.mjs scripts/env/templates.test.mjs scripts/env/gen_local_env.test.mjs scripts/env/qa_config.test.mjs scripts/env/r1_regression.test.mjs scripts/release/production_readiness.test.mjs scripts/env/r1_1_deploy_context.test.mjs",
     "check:templates": "node scripts/env/templates.mjs check",
     "env:local": "bash scripts/env/gen_local_env.sh",
     "smoke:env-local": "bash scripts/env/smoke_local_env.sh",
@@ -21,7 +21,8 @@
     "dev:qa": "node scripts/env/qa_build.mjs dev",
     "build:qa": "node scripts/env/qa_build.mjs build",
     "preview:qa": "node scripts/env/qa_build.mjs preview",
-    "test:qa-build": "node --test --test-concurrency=1 scripts/env/qa_build.test.mjs"
+    "env:sync-allowlist": "node scripts/env/sync_allowlist.mjs write",
+    "test:qa-build": "node --test --test-concurrency=1 scripts/env/qa_build.test.mjs scripts/env/deploy_build.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

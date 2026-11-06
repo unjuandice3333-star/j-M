@@ -115,8 +115,10 @@ test('MAJ-2 servidor: en qa y local se rechazan credenciales de producción de W
     assert.ok(srvErr({ APP_ENV: env, SUPABASE_URL: url, WOMPI_EVENTS_SECRET: EVT_PROD }).some((e) => /^WOMPI_EVENTS_SECRET: con APP_ENV/.test(e)), `${env}: secreto suelto`);
   }
 });
-test('MAJ-2 servidor: production acepta sus propias credenciales (la app debe poder liberarse)', () => {
-  assert.deepEqual(srvErr({ APP_ENV: 'production', WOMPI_PUBLIC_KEY: PUB_PROD, WOMPI_INTEGRITY_SECRET: INT_PROD, WOMPI_EVENTS_SECRET: EVT_PROD }), []);
+test('MAJ-2 servidor: production acepta sus propias credenciales en un despliegue Production identificado (R1.1)', () => {
+  const prod = { APP_ENV: 'production', SUPABASE_URL: `https://${OTHER_REF}.supa${'base.co'}`, WOMPI_PUBLIC_KEY: PUB_PROD, WOMPI_INTEGRITY_SECRET: INT_PROD, WOMPI_EVENTS_SECRET: EVT_PROD };
+  assert.deepEqual(srvErr({ ...prod, VERCEL: '1', VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'main' }), []);
+  assert.ok(srvErr(prod).some((e) => /^APP_ENV: production solo se admite/.test(e)), 'sin identificar el despliegue, falla cerrado');
 });
 test('MAJ-2 servidor: local exige loopback y qa exige https sin loopback; el origen no admite fragmento (MIN-4)', () => {
   assert.ok(srvErr({ APP_ENV: 'local' }).some((e) => /solo se admite el stack local/.test(e)));
@@ -136,8 +138,10 @@ test('MAJ-2 cliente: un build QA apuntando a otro proyecto (p. ej. Production) n
   assert.ok(cliErr(cli(), []).some((p) => /qa no tiene hosts permitidos/.test(p)));
   assert.ok(cliErr(cli({ VITE_APP_ENV: 'local' })).some((p) => /host no permitido para local/.test(p)), 'local con host remoto');
 });
-test('MAJ-2 cliente: production no se restringe por la lista de la fábrica', () => {
-  assert.deepEqual(cliErr(cli({ VITE_APP_ENV: 'production', VITE_SUPABASE_URL: `https://${OTHER_REF}.supa${'base.co'}`, VITE_WOMPI_PUBLIC_KEY: PUB_PROD, VITE_WOMPI_ENV: 'production' })), []);
+test('MAJ-2 cliente: production no se restringe por la lista de la fábrica, pero exige un despliegue Production identificado (R1.1)', () => {
+  const prod = cli({ VITE_APP_ENV: 'production', VITE_SUPABASE_URL: `https://${OTHER_REF}.supa${'base.co'}`, VITE_WOMPI_PUBLIC_KEY: PUB_PROD, VITE_WOMPI_ENV: 'production' });
+  assert.doesNotThrow(() => readClientConfig(prod, { allowedHosts: ALLOWED([QA_PROJECT_HOST]), deploy: { vercel: '1', env: 'production', ref: 'main' } }));
+  assert.ok(cliErr(prod).some((p) => /production solo se admite/.test(p)), 'sin identificar el despliegue, falla cerrado');
 });
 
 // ------------------------------------------------------------------ MAJ-4

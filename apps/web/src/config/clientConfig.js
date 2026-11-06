@@ -15,7 +15,13 @@
 // config/environments.json), en local y qa la URL de Supabase debe estar en la lista de su entorno: un build de QA
 // configurado con la URL de otro proyecto (p. ej. Production) no arranca. En production no se restringe el host: la
 // aplicación debe poder funcionar en Production cuando el propietario la libere (fuera del alcance de la fábrica).
+//
+// M26-R1.1 (MAJ-2): VITE_APP_ENV se contrasta con el contexto de DESPLIEGUE (opción `deploy`: señales de Vercel que
+// el build incrusta en el bundle; ver deployContext.js). Un Preview solo arranca con qa; production solo en un
+// despliegue identificado como Production (sin señales → production rechazado: falla cerrado). En production, la URL
+// de Supabase debe ser https y no puede ser un host de la lista de local o qa (configuración contradictoria).
 // =============================================================================
+import { deployContextProblems } from './deployContext.js';
 
 export class ConfigError extends Error {
   constructor(component, problems) {
@@ -45,10 +51,16 @@ export function jwtRole(token) {
 }
 
 const blank = (v) => typeof v !== 'string' || v.trim() === '';
+function cleanValue(value) {
+  const v = value.trim();
+  return (/^(["'])(.*)\1$/s.exec(v)?.[2] ?? v).trim();
+}
+const LOOPBACK = ['127.0.0.1', 'localhost', '::1', '[::1]'];
 
 /** Valida y normaliza la configuración del cliente. Lanza ConfigError con la lista de problemas. */
-export function readClientConfig(env, { allowedHosts } = {}) {
-  const e = env ?? {};
+export function readClientConfig(env, { allowedHosts, deploy } = {}) {
+  // Valores normalizados como en el servidor (espacios y comillas envolventes): no se puede eludir una regla con ellos.
+  const e = Object.fromEntries(Object.entries(env ?? {}).map(([k, v]) => [k, typeof v === 'string' ? cleanValue(v) : v]));
   const problems = [];
   const required = ['VITE_APP_ENV', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_WOMPI_PUBLIC_KEY', 'VITE_WOMPI_ENV'];
   for (const name of required) if (blank(e[name])) problems.push(`${name}: obligatoria y ausente (sin valores por defecto)`);
@@ -63,6 +75,11 @@ export function readClientConfig(env, { allowedHosts } = {}) {
       if (!list.includes(u.hostname)) problems.push(list.length === 0
         ? `VITE_SUPABASE_URL: ${e.VITE_APP_ENV} no tiene hosts permitidos (config/environments.json)`
         : `VITE_SUPABASE_URL: host no permitido para ${e.VITE_APP_ENV} (config/environments.json)`);
+    }
+    else if (e.VITE_APP_ENV === 'production') {
+      const factoryHosts = [...(allowedHosts?.local ?? []), ...(allowedHosts?.qa ?? []), ...LOOPBACK];
+      if (u.protocol !== 'https:') problems.push('VITE_SUPABASE_URL: en production debe ser https');
+      else if (factoryHosts.includes(u.hostname)) problems.push('VITE_SUPABASE_URL: en production no se admite un host de local o qa (configuración contradictoria)');
     }
   }
   if (!blank(e.VITE_SUPABASE_ANON_KEY)) {
@@ -86,6 +103,8 @@ export function readClientConfig(env, { allowedHosts } = {}) {
     if (!APP_ENVS.includes(e.VITE_APP_ENV)) problems.push('VITE_APP_ENV: debe ser local, qa o production');
     else if (e.VITE_APP_ENV !== 'production' && e.VITE_WOMPI_ENV && e.VITE_WOMPI_ENV !== 'sandbox') problems.push(`VITE_WOMPI_ENV: en ${e.VITE_APP_ENV} solo se admite sandbox`);
   }
+  // Contexto de despliegue (siempre: sin señales, el contexto es "local/CI" y production se rechaza).
+  problems.push(...deployContextProblems('VITE_APP_ENV', APP_ENVS.includes(e.VITE_APP_ENV) ? e.VITE_APP_ENV : '', deploy ?? {}));
 
   if (problems.length) throw new ConfigError('Configuración del cliente', problems);
   return Object.freeze({

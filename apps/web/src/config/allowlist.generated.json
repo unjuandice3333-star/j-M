@@ -1,0 +1,8 @@
+{
+  "_generado": "NO EDITAR. Generado desde config/environments.json con: node scripts/env/sync_allowlist.mjs write",
+  "local": [
+    "127.0.0.1",
+    "localhost"
+  ],
+  "qa": []
+}

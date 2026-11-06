@@ -16,6 +16,9 @@ const INT_PROD = k('prod_', 'integrity_', 'd'.repeat(24));
 const EVT_TEST = k('test_', 'events_', 'e'.repeat(24));
 const EVT_PROD = k('prod_', 'events_', 'f'.repeat(24));
 const HOST = 'r'.repeat(20) + '.supa' + 'base.co';
+// M26-R1.1 (MAJ-2): production solo en un despliegue identificado como Production (señales de la plataforma).
+const PROD_DEPLOY = { VERCEL: '1', VERCEL_ENV: 'production', VERCEL_TARGET_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'main' };
+const PROD_DEPLOY_CLIENT = { vercel: '1', env: 'production', targetEnv: 'production', ref: 'main' };
 
 const client = (over = {}) => ({
   VITE_APP_ENV: 'local', VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_SUPABASE_ANON_KEY: jwt('anon'),
@@ -32,7 +35,10 @@ const ALL = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'WOMPI_PUBLIC_KEY', 'W
 test('cliente positivo: local, QA y producción coherentes', () => {
   assert.equal(readClientConfig(client({ VITE_APP_ENV: 'local' })).wompi.env, 'sandbox');
   assert.deepEqual(problemsOf(client({ VITE_APP_ENV: 'qa', VITE_SUPABASE_URL: 'https://' + HOST })), []);
-  assert.deepEqual(problemsOf(client({ VITE_APP_ENV: 'production', VITE_SUPABASE_URL: 'https://' + HOST, VITE_WOMPI_PUBLIC_KEY: PUB_PROD, VITE_WOMPI_ENV: 'production' })), []);
+  const prodClient = client({ VITE_APP_ENV: 'production', VITE_SUPABASE_URL: 'https://' + HOST, VITE_WOMPI_PUBLIC_KEY: PUB_PROD, VITE_WOMPI_ENV: 'production' });
+  assert.doesNotThrow(() => readClientConfig(prodClient, { deploy: PROD_DEPLOY_CLIENT }));
+  // R1.1: la misma configuración sin un despliegue identificado como Production ya no arranca (antes sí)
+  assert.ok(problemsOf(prodClient).some((p) => /production solo se admite en un despliegue de Vercel identificado como Production/.test(p)));
   // M26-R1 (MAJ-2): VITE_APP_ENV pasa a ser obligatoria en ejecución
   assert.ok(problemsOf(client({ VITE_APP_ENV: undefined })).some((p) => /^VITE_APP_ENV: obligatoria/.test(p)));
 });
@@ -77,7 +83,10 @@ test('cliente: jwtRole decodifica sin dependencias y tolera basura', () => {
 // ============================================================ servidor (Vercel)
 test('servidor positivo: sandbox, producción y normalización de comillas/espacios', () => {
   assert.equal(readServerConfig(ALL, server()).ok, true);
-  assert.equal(readServerConfig(ALL, server({ APP_ENV: 'production', SUPABASE_URL: 'https://' + HOST, WOMPI_PUBLIC_KEY: PUB_PROD, WOMPI_INTEGRITY_SECRET: INT_PROD, WOMPI_EVENTS_SECRET: EVT_PROD })).ok, true);
+  const prodServer = server({ APP_ENV: 'production', SUPABASE_URL: 'https://' + HOST, WOMPI_PUBLIC_KEY: PUB_PROD, WOMPI_INTEGRITY_SECRET: INT_PROD, WOMPI_EVENTS_SECRET: EVT_PROD });
+  assert.equal(readServerConfig(ALL, { ...prodServer, ...PROD_DEPLOY }).ok, true);
+  // R1.1: sin señales de despliegue Production, production se rechaza (falla cerrado)
+  assert.ok(readServerConfig(ALL, prodServer).errors.some((e) => /^APP_ENV: production solo se admite/.test(e)));
   const r = readServerConfig(['WOMPI_EVENTS_SECRET'], { APP_ENV: 'local', WOMPI_EVENTS_SECRET: `  "${EVT_TEST}" ` });
   assert.equal(r.ok, true); assert.equal(r.config.WOMPI_EVENTS_SECRET, EVT_TEST);
   assert.equal(clean(undefined), '');
@@ -99,7 +108,7 @@ test('servidor negativo: la llave anon nunca sustituye a la de servicio', () => 
 });
 test('servidor negativo: sandbox y producción mezclados, prefijos desconocidos, URL inválida, nombre desconocido', () => {
   // Mezcla sandbox/producción: en production (en local/qa la regla MAJ-2 rechaza antes cualquier secreto de producción)
-  const prodEnv = { APP_ENV: 'production', SUPABASE_URL: 'https://' + HOST };
+  const prodEnv = { APP_ENV: 'production', SUPABASE_URL: 'https://' + HOST, ...PROD_DEPLOY };
   assert.ok(readServerConfig(ALL, server({ ...prodEnv, WOMPI_INTEGRITY_SECRET: INT_PROD })).errors.some((e) => /^WOMPI_INTEGRITY_SECRET: no coincide/.test(e)));
   assert.ok(readServerConfig(ALL, server({ ...prodEnv, WOMPI_EVENTS_SECRET: EVT_PROD })).errors.some((e) => /^WOMPI_EVENTS_SECRET: no coincide/.test(e)));
   assert.ok(readServerConfig(ALL, server({ WOMPI_INTEGRITY_SECRET: INT_PROD })).errors.some((e) => /^WOMPI_INTEGRITY_SECRET: con APP_ENV=local/.test(e)));

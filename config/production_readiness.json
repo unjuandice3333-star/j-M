@@ -64,6 +64,14 @@
           "note": "secreto de la función; prod_events_"
         }
       ]
+    },
+    "vercel_platform": {
+      "variables": [
+        {
+          "name": "VERCEL_ENV",
+          "note": "variable de SISTEMA de Vercel (no se define a mano): el proyecto debe tener activada la exposición automática de las variables de sistema; sin ella, Production falla cerrado (M26-R1.1)"
+        }
+      ]
     }
   },
   "owner_confirmation": {
