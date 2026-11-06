@@ -18,12 +18,12 @@ const EVT_PROD = k('prod_', 'events_', 'f'.repeat(24));
 const HOST = 'r'.repeat(20) + '.supa' + 'base.co';
 
 const client = (over = {}) => ({
-  VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_SUPABASE_ANON_KEY: jwt('anon'),
+  VITE_APP_ENV: 'local', VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_SUPABASE_ANON_KEY: jwt('anon'),
   VITE_WOMPI_PUBLIC_KEY: PUB_TEST, VITE_WOMPI_ENV: 'sandbox', ...over,
 });
 const problemsOf = (env) => { try { readClientConfig(env); return []; } catch (e) { assert.ok(e instanceof ConfigError); return e.problems; } };
 const server = (over = {}) => ({
-  SUPABASE_URL: 'http://127.0.0.1:54321', SUPABASE_SERVICE_ROLE_KEY: jwt('service_role'),
+  APP_ENV: 'local', SUPABASE_URL: 'http://127.0.0.1:54321', SUPABASE_SERVICE_ROLE_KEY: jwt('service_role'),
   WOMPI_PUBLIC_KEY: PUB_TEST, WOMPI_INTEGRITY_SECRET: INT_TEST, WOMPI_EVENTS_SECRET: EVT_TEST, ...over,
 });
 const ALL = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'WOMPI_PUBLIC_KEY', 'WOMPI_INTEGRITY_SECRET', 'WOMPI_EVENTS_SECRET'];
@@ -33,22 +33,23 @@ test('cliente positivo: local, QA y producción coherentes', () => {
   assert.equal(readClientConfig(client({ VITE_APP_ENV: 'local' })).wompi.env, 'sandbox');
   assert.deepEqual(problemsOf(client({ VITE_APP_ENV: 'qa', VITE_SUPABASE_URL: 'https://' + HOST })), []);
   assert.deepEqual(problemsOf(client({ VITE_APP_ENV: 'production', VITE_SUPABASE_URL: 'https://' + HOST, VITE_WOMPI_PUBLIC_KEY: PUB_PROD, VITE_WOMPI_ENV: 'production' })), []);
-  assert.deepEqual(problemsOf(client()), [], 'VITE_APP_ENV es opcional en ejecución');
+  // M26-R1 (MAJ-2): VITE_APP_ENV pasa a ser obligatoria en ejecución
+  assert.ok(problemsOf(client({ VITE_APP_ENV: undefined })).some((p) => /^VITE_APP_ENV: obligatoria/.test(p)));
 });
 test('cliente positivo: la configuración devuelta es inmutable y no inventa valores', () => {
   const c = readClientConfig(client());
   assert.ok(Object.isFrozen(c) && Object.isFrozen(c.wompi));
   assert.equal(c.wompi.publicKey, PUB_TEST);
-  assert.equal(c.appEnv, undefined);
+  assert.equal(c.appEnv, 'local');
 });
 test('cliente negativo: cada variable obligatoria ausente o vacía (sin valores por defecto de Wompi)', () => {
-  for (const n of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_WOMPI_PUBLIC_KEY', 'VITE_WOMPI_ENV']) {
+  for (const n of ['VITE_APP_ENV', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_WOMPI_PUBLIC_KEY', 'VITE_WOMPI_ENV']) {
     for (const v of [undefined, '', ' ']) {
       const env = client(); if (v === undefined) delete env[n]; else env[n] = v;
       assert.ok(problemsOf(env).some((p) => p.startsWith(`${n}: obligatoria`)), `${n}=${JSON.stringify(v)}`);
     }
   }
-  assert.ok(problemsOf(undefined).length === 4);
+  assert.ok(problemsOf(undefined).length === 5);
 });
 test('cliente negativo: llaves de servidor en el navegador', () => {
   assert.ok(problemsOf(client({ VITE_SUPABASE_ANON_KEY: jwt('service_role') })).some((p) => /rol distinto de anon/.test(p)));
@@ -76,8 +77,8 @@ test('cliente: jwtRole decodifica sin dependencias y tolera basura', () => {
 // ============================================================ servidor (Vercel)
 test('servidor positivo: sandbox, producción y normalización de comillas/espacios', () => {
   assert.equal(readServerConfig(ALL, server()).ok, true);
-  assert.equal(readServerConfig(ALL, server({ SUPABASE_URL: 'https://' + HOST, WOMPI_PUBLIC_KEY: PUB_PROD, WOMPI_INTEGRITY_SECRET: INT_PROD, WOMPI_EVENTS_SECRET: EVT_PROD })).ok, true);
-  const r = readServerConfig(['WOMPI_EVENTS_SECRET'], { WOMPI_EVENTS_SECRET: `  "${EVT_TEST}" ` });
+  assert.equal(readServerConfig(ALL, server({ APP_ENV: 'production', SUPABASE_URL: 'https://' + HOST, WOMPI_PUBLIC_KEY: PUB_PROD, WOMPI_INTEGRITY_SECRET: INT_PROD, WOMPI_EVENTS_SECRET: EVT_PROD })).ok, true);
+  const r = readServerConfig(['WOMPI_EVENTS_SECRET'], { APP_ENV: 'local', WOMPI_EVENTS_SECRET: `  "${EVT_TEST}" ` });
   assert.equal(r.ok, true); assert.equal(r.config.WOMPI_EVENTS_SECRET, EVT_TEST);
   assert.equal(clean(undefined), '');
 });
@@ -97,8 +98,11 @@ test('servidor negativo: la llave anon nunca sustituye a la de servicio', () => 
   assert.ok(readServerConfig(ALL, server({ SUPABASE_SERVICE_ROLE_KEY: k('sb_', 'publishable_', 'x'.repeat(20)) })).errors.some((e) => /publicable/.test(e)));
 });
 test('servidor negativo: sandbox y producción mezclados, prefijos desconocidos, URL inválida, nombre desconocido', () => {
-  assert.ok(readServerConfig(ALL, server({ WOMPI_INTEGRITY_SECRET: INT_PROD })).errors.some((e) => /^WOMPI_INTEGRITY_SECRET: no coincide/.test(e)));
-  assert.ok(readServerConfig(ALL, server({ WOMPI_EVENTS_SECRET: EVT_PROD })).errors.some((e) => /^WOMPI_EVENTS_SECRET: no coincide/.test(e)));
+  // Mezcla sandbox/producción: en production (en local/qa la regla MAJ-2 rechaza antes cualquier secreto de producción)
+  const prodEnv = { APP_ENV: 'production', SUPABASE_URL: 'https://' + HOST };
+  assert.ok(readServerConfig(ALL, server({ ...prodEnv, WOMPI_INTEGRITY_SECRET: INT_PROD })).errors.some((e) => /^WOMPI_INTEGRITY_SECRET: no coincide/.test(e)));
+  assert.ok(readServerConfig(ALL, server({ ...prodEnv, WOMPI_EVENTS_SECRET: EVT_PROD })).errors.some((e) => /^WOMPI_EVENTS_SECRET: no coincide/.test(e)));
+  assert.ok(readServerConfig(ALL, server({ WOMPI_INTEGRITY_SECRET: INT_PROD })).errors.some((e) => /^WOMPI_INTEGRITY_SECRET: con APP_ENV=local/.test(e)));
   assert.ok(readServerConfig(ALL, server({ WOMPI_EVENTS_SECRET: 'otro_' + 'x'.repeat(10) })).errors.some((e) => /debe empezar por test_events_/.test(e)));
   assert.ok(readServerConfig(ALL, server({ WOMPI_PUBLIC_KEY: 'pk_' + 'x'.repeat(10) })).errors.some((e) => /^WOMPI_PUBLIC_KEY/.test(e)));
   assert.ok(readServerConfig(ALL, server({ SUPABASE_URL: 'https://' + HOST + '/x' })).errors.some((e) => /^SUPABASE_URL/.test(e)));

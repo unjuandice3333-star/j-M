@@ -219,6 +219,7 @@ async function runTest(name, fn) {
   totalTests++;
   dbMock.reset();
   process.env.SUPABASE_URL = 'https://mock.supabase.co'; // M26-T3: el servidor solo lee variables de servidor
+  process.env.APP_ENV = 'qa'; // M26-R1: entorno del servidor obligatorio (host https no loopback, Wompi sandbox)
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock_service_key';
   process.env.WOMPI_EVENTS_SECRET = 'test_events_secret_secure_123';
 

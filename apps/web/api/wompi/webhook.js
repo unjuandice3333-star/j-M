@@ -58,7 +58,7 @@ export default async function handler(req, res) {
 
   try {
     // M26-T3: solo variables de servidor, validadas (SUPABASE_URL ya no cede ante VITE_SUPABASE_URL).
-    const cfg = requireServerConfig(res, 'Wompi Webhook', ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'WOMPI_EVENTS_SECRET']);
+    const cfg = requireServerConfig(res, 'Wompi Webhook', ['APP_ENV', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'WOMPI_EVENTS_SECRET']);
     if (!cfg) return;
     const supabaseUrl = cfg.SUPABASE_URL;
     const supabaseServiceKey = cfg.SUPABASE_SERVICE_ROLE_KEY;

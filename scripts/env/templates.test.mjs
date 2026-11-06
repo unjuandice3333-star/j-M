@@ -7,12 +7,13 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { ROOT, TEMPLATES, EXPECTED_VARS, parseEnv, findSecretShapedValues, checkTemplate, checkAllTemplates } from './templates.mjs';
 import { checkEnv } from './check_env.mjs';
-import { loadConfig } from './environments.mjs';
+import { configWithQaHosts } from './test_fixtures.mjs';
 import { readServerConfig, SERVER_VARS } from '../../apps/web/api/_lib/serverConfig.js';
 
 const read = (kind) => readFileSync(path.join(ROOT, TEMPLATES[kind]), 'utf8');
 const asObj = (text) => Object.fromEntries(parseEnv(text).entries.map((e) => [e.name, e.value]));
-const cfg = loadConfig(path.join(ROOT, 'config/environments.json'));
+// M26-R1 (MAJ-3): QA vacía declarada explícitamente.
+const cfg = configWithQaHosts([]);
 const j = (...p) => p.join('');
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const JWT = `${b64({ alg: 'HS256' })}.${b64({ role: 'anon' })}.${'s'.repeat(43)}`;
@@ -27,7 +28,7 @@ test('positivo: las tres plantillas versionadas pasan la verificación', () => {
   for (const [kind, r] of Object.entries(checkAllTemplates())) assert.deepEqual(r.problems, [], `${kind}: ${r.problems.join('; ')}`);
 });
 test('positivo: el conjunto de variables se deriva del código (guarda de build T2 + servidor T3)', () => {
-  assert.equal(EXPECTED_VARS.length, 10);
+  assert.equal(EXPECTED_VARS.length, 11); // M26-R1 (MAJ-2): + APP_ENV
   for (const n of Object.keys(SERVER_VARS)) assert.ok(EXPECTED_VARS.includes(n));
   for (const kind of Object.keys(TEMPLATES)) assert.deepEqual(Object.keys(asObj(read(kind))).sort(), [...EXPECTED_VARS]);
 });

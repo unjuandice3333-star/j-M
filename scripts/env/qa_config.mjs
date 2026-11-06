@@ -53,6 +53,8 @@ export function checkQaEnv(vars, cfg) {
   const errors = [];
   const manualChecks = [];
   if (vars.VITE_APP_ENV !== 'qa') errors.push('VITE_APP_ENV: debe ser "qa" en un archivo de entorno QA');
+  // M26-R1 (MAJ-2): el entorno del servidor también debe ser QA
+  if (vars.APP_ENV !== 'qa') errors.push('APP_ENV: debe ser "qa" en un archivo de entorno QA');
 
   // Cliente (T1 + T2) y servidor (T3)
   errors.push(...checkEnv({ ...vars, VITE_APP_ENV: 'qa' }, cfg).map((e) => `cliente: ${e}`));
@@ -110,12 +112,15 @@ if (isMain) {
   if (args[0] !== 'check' || i < 0 || !args[i + 1] || (c >= 0 && !args[c + 1])) { console.error('uso: node scripts/env/qa_config.mjs check --file <ruta> [--config <environments.json>]'); process.exit(2); }
   const loc = checkEnvFileLocation(args[i + 1]);
   if (!loc.ok) { console.error(`ERROR: ${loc.error}`); process.exit(loc.error === 'el archivo no existe' ? 2 : 1); }
-  let vars, cfg;
+  let vars, cfg, parsed;
   try {
-    vars = Object.fromEntries(parseEnv(readFileSync(loc.abs, 'utf8')).entries.map((e) => [e.name, e.value]));
+    parsed = parseEnv(readFileSync(loc.abs, 'utf8'));
+    vars = Object.fromEntries(parsed.entries.map((e) => [e.name, e.value]));
     cfg = loadConfig(c >= 0 ? path.resolve(args[c + 1]) : path.join(ROOT, 'config/environments.json'));
   } catch { console.error('ERROR: no se pudo leer el archivo de entorno o config/environments.json'); process.exit(2); }
-  const { errors, manualChecks } = checkQaEnv(vars, cfg);
+  // M26-R1 (MAJ-1): un archivo con líneas mal formadas (p. ej. comillas sin cerrar) nunca se da por válido.
+  const { errors: qaErrors, manualChecks } = checkQaEnv(vars, cfg);
+  const errors = [...parsed.problems.map((p) => `archivo: ${p}`), ...qaErrors];
   if (errors.length) { console.error('Entorno QA: INVÁLIDO'); errors.forEach((e) => console.error(`  ERROR ${e}`)); process.exit(1); }
   console.log('Entorno QA: VÁLIDO · exclusivamente QA (lista de permitidos, mismo proyecto en cliente/servidor, llaves del proyecto, Wompi sandbox)');
   manualChecks.forEach((m) => console.log(`  COMPROBACIÓN MANUAL: ${m}`));

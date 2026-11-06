@@ -15,6 +15,9 @@
 // =============================================================================
 
 export const SERVER_VARS = Object.freeze({
+  // M26-R1 (MAJ-2): entorno del servidor (local | qa | production). Siempre obligatorio: sin él no se sabe si deben
+  // rechazarse credenciales de producción.
+  APP_ENV: 'APP_ENV',
   SUPABASE_URL: 'SUPABASE_URL',
   SUPABASE_SERVICE_ROLE_KEY: 'SUPABASE_SERVICE_ROLE_KEY',
   WOMPI_PUBLIC_KEY: 'WOMPI_PUBLIC_KEY',
@@ -32,7 +35,9 @@ const SECRET_PREFIX = {
 /** Normaliza un valor de entorno: recorta espacios y comillas envolventes accidentales. */
 export function clean(value) {
   if (typeof value !== 'string') return '';
-  return value.trim().replace(/^["']|["']$/g, '').trim();
+  // M26-R1 (MIN-4): solo se retiran comillas envolventes EMPAREJADAS (antes se quitaba también una comilla suelta).
+  const v = value.trim();
+  return (/^(["'])(.*)\1$/s.exec(v)?.[2] ?? v).trim();
 }
 
 function jwtRole(token) {
@@ -47,10 +52,23 @@ function jwtRole(token) {
  * @param {Record<string,string|undefined>} env por defecto process.env
  * @returns {{ ok: true, config: Record<string,string> } | { ok: false, errors: string[] }}
  */
+const APP_ENVS = ['local', 'qa', 'production'];
+const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
+
+/** Validación común del origen de Supabase (M26-R1, MIN-4): http(s), sin credenciales, ruta, consulta ni fragmento. */
+export function originProblem(raw) {
+  let u;
+  try { u = new URL(raw); } catch { return 'debe ser una URL http(s) válida'; }
+  if (!['http:', 'https:'].includes(u.protocol)) return 'debe ser una URL http(s) válida';
+  if (u.username || u.password || u.pathname !== '/' || u.search || u.hash) return 'debe ser solo el origen (sin credenciales, ruta, consulta ni fragmento)';
+  return null;
+}
+
 export function readServerConfig(required, env = process.env) {
   const errors = [];
   const config = {};
-  for (const name of required) {
+  // APP_ENV se exige siempre, además de lo que pida cada endpoint.
+  for (const name of [...new Set(['APP_ENV', ...required])]) {
     if (!SERVER_VARS[name]) { errors.push(`${name}: no es una variable de servidor conocida`); continue; }
     const v = clean(env[name]);
     if (!v) {
@@ -62,11 +80,17 @@ export function readServerConfig(required, env = process.env) {
     config[name] = v;
   }
 
+  const appEnv = config.APP_ENV;
+  if (appEnv && !APP_ENVS.includes(appEnv)) errors.push('APP_ENV: debe ser local, qa o production');
+  const sandboxOnly = appEnv === 'local' || appEnv === 'qa';
+
   if (config.SUPABASE_URL) {
-    let u;
-    try { u = new URL(config.SUPABASE_URL); } catch { /* inválida */ }
-    if (!u || !['http:', 'https:'].includes(u.protocol) || u.username || u.password || u.pathname !== '/' || u.search) {
-      errors.push('SUPABASE_URL: debe ser una URL http(s) válida y solo el origen');
+    const p = originProblem(config.SUPABASE_URL);
+    if (p) errors.push(`SUPABASE_URL: ${p}`);
+    else {
+      const u = new URL(config.SUPABASE_URL);
+      if (appEnv === 'local' && !LOOPBACK.has(u.hostname)) errors.push('SUPABASE_URL: con APP_ENV=local solo se admite el stack local (loopback)');
+      if (appEnv === 'qa' && (u.protocol !== 'https:' || LOOPBACK.has(u.hostname))) errors.push('SUPABASE_URL: con APP_ENV=qa debe ser https y no de loopback');
     }
   }
   if (config.SUPABASE_SERVICE_ROLE_KEY) {
@@ -81,6 +105,7 @@ export function readServerConfig(required, env = process.env) {
     if (config.WOMPI_PUBLIC_KEY.startsWith('pub_test_')) mode = 'sandbox';
     else if (config.WOMPI_PUBLIC_KEY.startsWith('pub_prod_')) mode = 'production';
     else errors.push('WOMPI_PUBLIC_KEY: debe empezar por pub_test_ o pub_prod_');
+    if (sandboxOnly && mode === 'production') errors.push(`WOMPI_PUBLIC_KEY: con APP_ENV=${appEnv} solo se admite Wompi sandbox (pub_test_)`);
   }
   for (const name of ['WOMPI_INTEGRITY_SECRET', 'WOMPI_EVENTS_SECRET']) {
     const v = config[name];
@@ -88,6 +113,7 @@ export function readServerConfig(required, env = process.env) {
     const { sandbox, production } = SECRET_PREFIX[name];
     const secretMode = v.startsWith(sandbox) ? 'sandbox' : v.startsWith(production) ? 'production' : undefined;
     if (!secretMode) errors.push(`${name}: debe empezar por ${sandbox} o ${production}`);
+    else if (sandboxOnly && secretMode === 'production') errors.push(`${name}: con APP_ENV=${appEnv} solo se admiten secretos sandbox (${sandbox})`);
     else if (mode && secretMode !== mode) errors.push(`${name}: no coincide con el modo de WOMPI_PUBLIC_KEY (sandbox/production mezclados)`);
   }
 

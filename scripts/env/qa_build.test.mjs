@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ROOT, WEB, QA_OUT_DIR, QA_PORTS, verifyQaBundle, selectViteVars, loadQaFile } from './qa_build.mjs';
 import { loadConfig } from './environments.mjs';
+import { configFileWithQaHosts } from './test_fixtures.mjs';
 
 const SB = '.supa' + 'base.co';
 const QA_REF = 'w'.repeat(20);
@@ -20,7 +21,7 @@ const j = (...p) => p.join('');
 const PUB = j('pub_', 'test_', 'y'.repeat(24));
 const SECRET_VALUES = [jwt('service_role', QA_REF, 'z'), j('test_', 'integrity_', 'u'.repeat(24)), j('test_', 'events_', 'v'.repeat(24))];
 const qaVars = (over = {}) => ({
-  VITE_APP_ENV: 'qa', VITE_SUPABASE_URL: `https://${QA_REF}${SB}`, VITE_SUPABASE_ANON_KEY: jwt('anon', QA_REF, 'a'),
+  APP_ENV: 'qa', VITE_APP_ENV: 'qa', VITE_SUPABASE_URL: `https://${QA_REF}${SB}`, VITE_SUPABASE_ANON_KEY: jwt('anon', QA_REF, 'a'),
   VITE_WOMPI_PUBLIC_KEY: PUB, VITE_WOMPI_ENV: 'sandbox', SUPABASE_URL: `https://${QA_REF}${SB}`,
   SUPABASE_SERVICE_ROLE_KEY: SECRET_VALUES[0], WOMPI_PUBLIC_KEY: PUB, WOMPI_INTEGRITY_SECRET: SECRET_VALUES[1],
   WOMPI_EVENTS_SECRET: SECRET_VALUES[2], ...over,
@@ -30,6 +31,8 @@ const envFile = (name, vars) => { const f = path.join(dir, name); writeFileSync(
 const cfg = loadConfig(path.join(ROOT, 'config/environments.json'));
 cfg.environments.qa.supabase.allowed_hosts = [`${QA_REF}${SB}`];
 const CFG = path.join(dir, 'environments.fixture.json'); writeFileSync(CFG, JSON.stringify(cfg));
+// M26-R1 (MAJ-3): configuración con QA vacía explícita (no depende del archivo versionado).
+const CFG_EMPTY = configFileWithQaHosts([], dir);
 const CLI = path.join(ROOT, 'scripts/env/qa_build.mjs');
 // Entorno del proceso deliberadamente contaminado con configuración LOCAL: no debe llegar al bundle QA.
 const POLLUTED = { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8',
@@ -87,7 +90,7 @@ test('loadQaFile negativo: Production, otro proyecto o QA sin configurar; los me
     [qaVars({ VITE_APP_ENV: 'production' }), CFG, /VITE_APP_ENV/],
     [qaVars({ VITE_SUPABASE_ANON_KEY: jwt('anon', OTHER_REF, 'b') }), CFG, /otro proyecto/],
     [qaVars({ WOMPI_PUBLIC_KEY: j('pub_', 'prod_', 'q'.repeat(24)) }), CFG, /sandbox|WOMPI/],
-    [qaVars(), undefined, /aún no ha configurado/],
+    [qaVars(), CFG_EMPTY, /aún no ha configurado/],
   ]) {
     const r = loadQaFile(envFile('neg.env', vars), c);
     assert.equal(r.code, 1); assert.match(r.error, re); assert.ok(noLeak(r.error) && !r.error.includes(OTHER_REF));
@@ -101,7 +104,7 @@ test('build:qa negativo: configuración inválida → exit 1 ANTES de Vite (no s
   assert.equal(r.status, 1); assert.match(r.stderr, /QA: BLOQUEADO/);
   assert.equal(existsSync(QA_OUT_DIR), false);
   assert.ok(noLeak(r.stdout + r.stderr));
-  assert.equal(run('build', '--file', envFile('ok0.env', qaVars())).status, 1, 'sin --config: QA sin crear');
+  assert.equal(run('build', '--file', envFile('ok0.env', qaVars()), '--config', CFG_EMPTY).status, 1, 'QA sin configurar');
   assert.equal(run('build').status, 2); assert.equal(run('otro', '--file', 'x').status, 2);
 });
 test('preview:qa negativo: sin un build QA verificado → exit 1', () => {
@@ -144,9 +147,30 @@ test('preview:qa positivo: sirve el build QA en su propio puerto (127.0.0.1)', a
 test('dev:qa positivo: servidor de desarrollo QA con la configuración QA y sin variables locales', async () => {
   await serve('dev', QA_PORTS.dev, async (res) => {
     assert.equal(res.status, 200);
-    const mod = await (await fetch(`http://127.0.0.1:${QA_PORTS.dev}/src/config/clientConfig.js`)).text();
+    const mod = await (await fetch(`http://127.0.0.1:${QA_PORTS.dev}/src/config/runtimeConfig.js`)).text();
     assert.ok(mod.includes(`${QA_REF}${SB}`), 'import.meta.env con el host QA');
     assert.ok(!mod.includes('valor-sentinela') && !mod.includes('127.0.0.1:54321'), 'sin configuración local');
   });
   assert.equal(readFileSync(LOCAL_ENV, 'utf8'), localEnvBefore, '.env.local intacto');
+});
+
+// ============================================================ M26-R1
+test('MAJ-2 verifyQaBundle: VITE_SUPABASE_URL incrustada distinta de la del proyecto QA → rechazado', () => {
+  const env = envObj({ VITE_SUPABASE_URL: `https://${OTHER_REF}${SB}` }) + `"${QA_REF}${SB}"`;
+  assert.ok(verifyQaBundle(fakeBundle(env), QA_REF).some((e) => /VITE_SUPABASE_URL incrustada no es la del proyecto QA/.test(e)));
+});
+test('MAJ-2 build:qa incrusta la MISMA lista de permitidos que validó check:qa (--config)', () => {
+  const r = run('build', '--file', envFile('cfg.env', qaVars()), '--config', CFG);
+  assert.equal(r.status, 0, r.stderr);
+  const js = readdirSync(path.join(QA_OUT_DIR, 'assets')).filter((f) => f.endsWith('.js')).map((f) => readFileSync(path.join(QA_OUT_DIR, 'assets', f), 'utf8')).join('\n');
+  assert.ok(/allowed_hosts:\["w{20}\.supabase\.co"\]/.test(js) || js.includes(`"allowed_hosts":["${QA_REF}${SB}"]`) || js.includes(`allowed_hosts:["${QA_REF}${SB}"]`),
+    'la lista de QA incrustada contiene el host QA validado');
+});
+test('MIN-2 un build QA rechazado por la verificación no deja artefactos en disco', async () => {
+  const { buildQa } = await import('./qa_build.mjs');
+  const out = path.join(dir, 'dist-rechazado');
+  // ref distinto del de la URL → la verificación falla tras un build real
+  const errors = await buildQa(qaVars(), OTHER_REF, out, CFG);
+  assert.ok(errors.length > 0);
+  assert.equal(existsSync(out), false);
 });

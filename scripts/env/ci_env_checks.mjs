@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { checkEnv } from './check_env.mjs';
 import { loadConfig } from './environments.mjs';
 import { parseEnv } from './templates.mjs';
+import { configWithQaHosts } from './test_fixtures.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const QA_CLI = path.join(ROOT, 'scripts/env/qa_config.mjs');
@@ -38,7 +39,7 @@ const SECRETS = {
 const CI_PUB = parseEnv(readFileSync(path.join(ROOT, 'config/env/local-ci.env'), 'utf8')).entries.find((e) => e.name === 'VITE_WOMPI_PUBLIC_KEY').value;
 
 const qaVars = (over = {}) => ({
-  VITE_APP_ENV: 'qa', VITE_SUPABASE_URL: `https://${QA_REF}${SB}`, VITE_SUPABASE_ANON_KEY: SECRETS.qaAnon,
+  APP_ENV: 'qa', VITE_APP_ENV: 'qa', VITE_SUPABASE_URL: `https://${QA_REF}${SB}`, VITE_SUPABASE_ANON_KEY: SECRETS.qaAnon,
   VITE_WOMPI_PUBLIC_KEY: PUB, VITE_WOMPI_ENV: 'sandbox', SUPABASE_URL: `https://${QA_REF}${SB}`,
   SUPABASE_SERVICE_ROLE_KEY: SECRETS.qaService, WOMPI_PUBLIC_KEY: PUB, WOMPI_INTEGRITY_SECRET: SECRETS.integ,
   WOMPI_EVENTS_SECRET: SECRETS.events, ...over,
@@ -54,6 +55,8 @@ const run = (cli, args, extra) => spawnSync(process.execPath, [cli, ...args], { 
 const qaCfg = loadConfig(path.join(ROOT, 'config/environments.json'));
 qaCfg.environments.qa.supabase.allowed_hosts = [`${QA_REF}${SB}`];
 const qaCfgFile = file('environments.qa-fixture.json', JSON.stringify(qaCfg));
+// M26-R1 (MAJ-3): QA vacía explícita para QA-2 (no depende del archivo versionado).
+const emptyCfgFile = file('environments.vacia.json', JSON.stringify(configWithQaHosts([])));
 const realCfg = loadConfig(path.join(ROOT, 'config/environments.json'));
 
 let failures = 0;
@@ -73,8 +76,8 @@ try {
   const qa = (name, vars) => file(name, envText(vars));
   check('QA-1', 'entorno QA ficticio coherente + host QA permitido (fixture) → VÁLIDO',
     run(QA_CLI, ['check', '--file', qa('qa-ok.env', qaVars()), '--config', qaCfgFile]), 0, { out: /Entorno QA: VÁLIDO/ });
-  check('QA-2', 'mismo entorno con la configuración versionada (QA sin crear) → INVÁLIDO',
-    run(QA_CLI, ['check', '--file', qa('qa-ok2.env', qaVars())]), 1, { out: /aún no ha configurado/ });
+  check('QA-2', 'mismo entorno con QA sin configurar (lista vacía explícita) → INVÁLIDO',
+    run(QA_CLI, ['check', '--file', qa('qa-ok2.env', qaVars()), '--config', emptyCfgFile]), 1, { out: /aún no ha configurado/ });
   check('QA-3', 'llave anon de otro proyecto con la URL de QA → INVÁLIDO',
     run(QA_CLI, ['check', '--file', qa('qa-mix.env', qaVars({ VITE_SUPABASE_ANON_KEY: SECRETS.otherAnon })), '--config', qaCfgFile]), 1, { out: /pertenece a otro proyecto/ });
   check('QA-4', 'cliente y servidor en proyectos distintos → INVÁLIDO',

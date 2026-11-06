@@ -8,7 +8,7 @@
  * - Utiliza VITE_WOMPI_PUBLIC_KEY para instanciar el Checkout Widget oficial.
  */
 
-import { getClientConfig } from '../config/clientConfig.js';
+import { getClientConfig } from '../config/runtimeConfig.js';
 
 // M26-T3: sin valores por defecto fijos. La llave pública y el modo vienen de la configuración validada del
 // cliente (VITE_WOMPI_PUBLIC_KEY y VITE_WOMPI_ENV, obligatorias y coherentes entre sí).

@@ -9,10 +9,12 @@
 //   VITE_SUPABASE_ANON_KEY  obligatoria · nunca una llave secreta de Supabase ni un JWT con rol distinto de anon
 //   VITE_WOMPI_PUBLIC_KEY   obligatoria · pub_test_… (sandbox) o pub_prod_… (production)
 //   VITE_WOMPI_ENV          obligatoria · sandbox | production, coherente con el prefijo de la llave
-//   VITE_APP_ENV            opcional en ejecución · local | qa | production; en local y qa Wompi debe ser sandbox
+//   VITE_APP_ENV            obligatoria (M26-R1) · local | qa | production; en local y qa Wompi debe ser sandbox
 //
-// La restricción "la fábrica solo construye local/qa" la aplica la guarda de build (T2); en ejecución la
-// aplicación también debe poder funcionar en Production cuando el propietario la libere.
+// M26-R1 (MAJ-2): con la lista de permitidos (opción `allowedHosts`, que aporta runtimeConfig.js a partir de
+// config/environments.json), en local y qa la URL de Supabase debe estar en la lista de su entorno: un build de QA
+// configurado con la URL de otro proyecto (p. ej. Production) no arranca. En production no se restringe el host: la
+// aplicación debe poder funcionar en Production cuando el propietario la libere (fuera del alcance de la fábrica).
 // =============================================================================
 
 export class ConfigError extends Error {
@@ -45,10 +47,10 @@ export function jwtRole(token) {
 const blank = (v) => typeof v !== 'string' || v.trim() === '';
 
 /** Valida y normaliza la configuración del cliente. Lanza ConfigError con la lista de problemas. */
-export function readClientConfig(env) {
+export function readClientConfig(env, { allowedHosts } = {}) {
   const e = env ?? {};
   const problems = [];
-  const required = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_WOMPI_PUBLIC_KEY', 'VITE_WOMPI_ENV'];
+  const required = ['VITE_APP_ENV', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'VITE_WOMPI_PUBLIC_KEY', 'VITE_WOMPI_ENV'];
   for (const name of required) if (blank(e[name])) problems.push(`${name}: obligatoria y ausente (sin valores por defecto)`);
 
   if (!blank(e.VITE_SUPABASE_URL)) {
@@ -56,6 +58,12 @@ export function readClientConfig(env) {
     try { u = new URL(e.VITE_SUPABASE_URL); } catch { /* inválida */ }
     if (!u || !['http:', 'https:'].includes(u.protocol)) problems.push('VITE_SUPABASE_URL: debe ser una URL http(s) válida');
     else if (u.username || u.password || u.pathname !== '/' || u.search || u.hash) problems.push('VITE_SUPABASE_URL: debe ser solo el origen (sin credenciales, ruta ni consulta)');
+    else if (allowedHosts && (e.VITE_APP_ENV === 'local' || e.VITE_APP_ENV === 'qa')) {
+      const list = allowedHosts[e.VITE_APP_ENV] ?? [];
+      if (!list.includes(u.hostname)) problems.push(list.length === 0
+        ? `VITE_SUPABASE_URL: ${e.VITE_APP_ENV} no tiene hosts permitidos (config/environments.json)`
+        : `VITE_SUPABASE_URL: host no permitido para ${e.VITE_APP_ENV} (config/environments.json)`);
+    }
   }
   if (!blank(e.VITE_SUPABASE_ANON_KEY)) {
     const k = e.VITE_SUPABASE_ANON_KEY;
@@ -81,15 +89,11 @@ export function readClientConfig(env) {
 
   if (problems.length) throw new ConfigError('Configuración del cliente', problems);
   return Object.freeze({
-    appEnv: blank(e.VITE_APP_ENV) ? undefined : e.VITE_APP_ENV,
+    appEnv: e.VITE_APP_ENV,
     supabase: Object.freeze({ url: e.VITE_SUPABASE_URL, anonKey: e.VITE_SUPABASE_ANON_KEY }),
     wompi: Object.freeze({ publicKey: e.VITE_WOMPI_PUBLIC_KEY, env: e.VITE_WOMPI_ENV }),
   });
 }
 
-let cached;
-/** Configuración del cliente a partir de import.meta.env (se valida una sola vez, al primer uso en el arranque). */
-export function getClientConfig() {
-  if (!cached) cached = readClientConfig(import.meta.env);
-  return cached;
-}
+// La lectura de import.meta.env y de la lista de permitidos está en runtimeConfig.js (getClientConfig), para que este
+// módulo siga siendo puro y comprobable en Node.

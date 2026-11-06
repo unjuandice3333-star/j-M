@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ROOT, checkQaEnv, projectRefOf, checkEnvFileLocation } from './qa_config.mjs';
-import { loadConfig } from './environments.mjs';
+import { configWithQaHosts, configFileWithQaHosts } from './test_fixtures.mjs';
 
 const SB = '.supa' + 'base.co';
 const QA_REF = 'q'.repeat(20);
@@ -18,10 +18,11 @@ const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const jwt = (role, ref, fill) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64(ref ? { iss: 'supabase', ref, role } : { iss: 'supabase', role })}.${fill.repeat(43)}`;
 const j = (...p) => p.join('');
 const PUB = j('pub_', 'test_', 'a'.repeat(24));
-const baseCfg = loadConfig(path.join(ROOT, 'config/environments.json'));
+// M26-R1 (MAJ-3): QA vacía declarada explícitamente.
+const baseCfg = configWithQaHosts([]);
 const qaCfg = () => { const c = structuredClone(baseCfg); c.environments.qa.supabase.allowed_hosts = [`${QA_REF}${SB}`]; return c; };
 const qaVars = (over = {}) => ({
-  VITE_APP_ENV: 'qa', VITE_SUPABASE_URL: QA_URL, VITE_SUPABASE_ANON_KEY: jwt('anon', QA_REF, 'a'),
+  APP_ENV: 'qa', VITE_APP_ENV: 'qa', VITE_SUPABASE_URL: QA_URL, VITE_SUPABASE_ANON_KEY: jwt('anon', QA_REF, 'a'),
   VITE_WOMPI_PUBLIC_KEY: PUB, VITE_WOMPI_ENV: 'sandbox',
   SUPABASE_URL: QA_URL, SUPABASE_SERVICE_ROLE_KEY: jwt('service_role', QA_REF, 'z'), WOMPI_PUBLIC_KEY: PUB,
   WOMPI_INTEGRITY_SECRET: j('test_', 'integrity_', 'c'.repeat(24)), WOMPI_EVENTS_SECRET: j('test_', 'events_', 'e'.repeat(24)), ...over,
@@ -96,7 +97,7 @@ test('CLI: con la lista de permitidos versionada (QA sin crear) un entorno QA es
   const d = mkdtempSync(path.join(tmpdir(), 'jm-qacfg-'));
   try {
     const f = path.join(d, 'qa.env'); writeFileSync(f, envText(qaVars()));
-    const r = run('check', '--file', f);
+    const r = run('check', '--file', f, '--config', configFileWithQaHosts([], d));
     assert.equal(r.status, 1); assert.match(r.stderr, /aún no ha configurado/);
     assert.ok(![QA_REF, 'z'.repeat(43)].some((v) => (r.stdout + r.stderr).includes(v)), 'la salida no muestra valores');
     assert.equal(run('check').status, 2);

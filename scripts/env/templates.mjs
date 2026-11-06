@@ -38,16 +38,39 @@ const SECRET_VALUE_PATTERNS = [
   ['cadena aleatoria larga', /[A-Za-z0-9+/_-]{32,}/],
 ];
 
-/** Analiza un archivo de entorno: { entries: [{name, value, line}], problems: string[] } */
+/**
+ * Analiza un archivo de entorno: { entries: [{name, value, line, quoted}], problems: string[] }
+ * M26-R1 (MAJ-1): normaliza los valores igual que dotenv/Vite, para que TODAS las comprobaciones vean el valor real:
+ *   · prefijo opcional `export `;
+ *   · valor entre comillas dobles, simples o invertidas (las comillas se retiran; en dobles, \n → salto de línea);
+ *   · comentario en línea ` # …` en valores sin comillas.
+ * Unas comillas sin cerrar o texto tras la comilla de cierre son un problema (no se adivina el valor).
+ */
 export function parseEnv(text) {
   const entries = [];
   const problems = [];
   text.split(/\r?\n/).forEach((raw, i) => {
     const line = raw.trim();
     if (line === '' || line.startsWith('#')) return;
-    const m = /^([A-Z][A-Z0-9_]*)=(.*)$/.exec(line);
+    const m = /^(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line);
     if (!m) { problems.push(`línea ${i + 1}: formato no válido (se espera NOMBRE=valor)`); return; }
-    entries.push({ name: m[1], value: m[2].trim(), line: i + 1 });
+    let rest = m[2];
+    let value;
+    let quoted = false;
+    const q = rest[0];
+    if (q === '"' || q === "'" || q === '`') {
+      const end = rest.indexOf(q, 1);
+      if (end < 0) { problems.push(`línea ${i + 1}: ${m[1]} tiene comillas sin cerrar`); return; }
+      const after = rest.slice(end + 1).trim();
+      if (after !== '' && !after.startsWith('#')) { problems.push(`línea ${i + 1}: ${m[1]} tiene texto tras la comilla de cierre`); return; }
+      value = rest.slice(1, end);
+      if (q === '"') value = value.replace(/\\n/g, '\n');
+      quoted = true;
+    } else {
+      const hash = rest.search(/\s#/);
+      value = (hash >= 0 ? rest.slice(0, hash) : rest).trim();
+    }
+    entries.push({ name: m[1], value, line: i + 1, quoted });
   });
   return { entries, problems };
 }
@@ -80,7 +103,7 @@ export function checkTemplate(kind, text) {
     for (const e of entries) if (e.value) problems.push(`línea ${e.line}: ${e.name} debe ir sin valor en esta plantilla (solo nombres)`);
   }
   if (kind === 'local') {
-    const expected = { VITE_APP_ENV: 'local', VITE_WOMPI_ENV: 'sandbox', VITE_SUPABASE_URL: 'http://127.0.0.1:54321', SUPABASE_URL: 'http://127.0.0.1:54321' };
+    const expected = { VITE_APP_ENV: 'local', VITE_WOMPI_ENV: 'sandbox', VITE_SUPABASE_URL: 'http://127.0.0.1:54321', SUPABASE_URL: 'http://127.0.0.1:54321', APP_ENV: 'local' };
     for (const [n, v] of Object.entries(expected)) if (value(n) !== v) problems.push(`${n}: en la plantilla local debe ser el valor público del stack local`);
   }
   return { entries, problems };

@@ -8,12 +8,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkEnv, REQUIRED_VARS } from './check_env.mjs';
-import { loadConfig } from './environments.mjs';
+import { configWithQaHosts } from './test_fixtures.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
 const CLI = path.join(HERE, 'check_env.mjs');
-const cfg = () => structuredClone(loadConfig(path.join(ROOT, 'config/environments.json')));
+// M26-R1 (MAJ-3): QA vacía declarada explícitamente; no depende del archivo versionado.
+const cfg = () => configWithQaHosts([]);
 const SB = '.supa' + 'base.co';
 const QA_HOST = 'q'.repeat(20) + SB;
 const OTHER_HOST = 'p'.repeat(20) + SB;

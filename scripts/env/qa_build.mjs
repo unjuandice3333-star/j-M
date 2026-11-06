@@ -71,6 +71,8 @@ export function verifyQaBundle(dir, qaRef) {
         for (const k of keys) if (!REQUIRED_VARS.includes(k)) errors.push(`${rel}: variable ${k} incrustada que no procede del archivo QA (¿entorno local filtrado?)`);
         for (const k of REQUIRED_VARS) if (!keys.has(k)) errors.push(`${rel}: falta ${k} en la configuración incrustada`);
         for (const m of text.matchAll(/\b(VITE_[A-Z0-9_]+):"https?:\/\/(127\.0\.0\.1|localhost)[:/"]/g)) errors.push(`${rel}: ${m[1]} apunta a loopback (configuración local)`);
+        const url = /\bVITE_SUPABASE_URL:"([^"]*)"/.exec(text);
+        if (url && url[1] !== `https://${qaRef}${SB}`) errors.push(`${rel}: VITE_SUPABASE_URL incrustada no es la del proyecto QA`);
         const mode = /\bMODE:"([a-z]+)"/.exec(text);
         if (mode && mode[1] !== 'qa') errors.push(`${rel}: el modo del build no es "qa"`);
       }
@@ -81,6 +83,8 @@ export function verifyQaBundle(dir, qaRef) {
       if (role && role !== 'anon') errors.push(`${rel}: contiene un JWT con rol distinto de anon`);
     }
     for (const n of SERVER_SECRET_NAMES) if (text.includes(n)) errors.push(`${rel}: contiene el nombre de un secreto de servidor (${n})`);
+    // M26-R1 (MAJ-1): llaves secretas de Supabase de formato nuevo (no son JWT y no las detecta la regla anterior)
+    if (/\bsb_secret_[A-Za-z0-9_-]{8,}/.test(text)) errors.push(`${rel}: contiene una llave secreta de Supabase`);
   }
   if (!foundQaHost) errors.push('el bundle no contiene el host del proyecto QA (¿se usó otra configuración?)');
   if (!envObjects) errors.push('no se encontró la configuración incrustada por Vite en el bundle');
@@ -91,14 +95,17 @@ export function verifyQaBundle(dir, qaRef) {
 export function loadQaFile(file, cfgPath) {
   const loc = checkEnvFileLocation(file);
   if (!loc.ok) return { error: loc.error, code: loc.error === 'el archivo no existe' ? 2 : 1 };
-  let vars, cfg;
+  let vars, cfg, parsed, cfgFile;
   try {
-    vars = Object.fromEntries(parseEnv(readFileSync(loc.abs, 'utf8')).entries.map((e) => [e.name, e.value]));
-    cfg = loadConfig(cfgPath ? path.resolve(cfgPath) : path.join(ROOT, 'config/environments.json'));
+    parsed = parseEnv(readFileSync(loc.abs, 'utf8'));
+    vars = Object.fromEntries(parsed.entries.map((e) => [e.name, e.value]));
+    cfgFile = cfgPath ? path.resolve(cfgPath) : path.join(ROOT, 'config/environments.json');
+    cfg = loadConfig(cfgFile);
   } catch { return { error: 'no se pudo leer el archivo QA o la configuración de entornos', code: 2 }; }
-  const { errors, manualChecks } = checkQaEnv(vars, cfg);
+  const { errors: qaErrors, manualChecks } = checkQaEnv(vars, cfg);
+  const errors = [...parsed.problems.map((p) => `archivo: ${p}`), ...qaErrors];
   if (errors.length) return { error: `entorno QA inválido:\n  - ${errors.join('\n  - ')}`, code: 1 };
-  return { vars, qaRef: projectRefOf(vars.VITE_SUPABASE_URL), manualChecks };
+  return { vars, qaRef: projectRefOf(vars.VITE_SUPABASE_URL), manualChecks, cfgFile };
 }
 
 async function loadVite() {
@@ -109,9 +116,13 @@ async function loadVite() {
   return import(pathToFileURL(path.join(path.dirname(pkgFile), typeof imp === 'string' ? imp : imp.default)).href);
 }
 
-/** Configuración común de Vite para QA: envDir vacío (aislamiento) y modo "qa". */
-function qaViteConfig(emptyEnvDir, extra = {}) {
-  return { root: WEB, configFile: path.join(WEB, 'vite.config.js'), mode: 'qa', envDir: emptyEnvDir, logLevel: 'warn', ...extra };
+/** Configuración común de Vite para QA: envDir vacío (aislamiento) y modo "qa".
+ *  M26-R1 (MAJ-2): el cliente incrusta config/environments.json para aplicar la lista de permitidos en ejecución; aquí se
+ *  sustituye por la MISMA configuración que validó check:qa (la versionada o la de --config), para que build y validación
+ *  coincidan. */
+function qaViteConfig(emptyEnvDir, cfgFile, extra = {}) {
+  const alias = cfgFile ? [{ find: /^.*\/config\/environments\.json$/, replacement: cfgFile }] : [];
+  return { root: WEB, configFile: path.join(WEB, 'vite.config.js'), mode: 'qa', envDir: emptyEnvDir, logLevel: 'warn', resolve: { alias }, ...extra };
 }
 
 /** Expone a Vite solo las variables VITE_* del archivo QA (y retira cualquier VITE_* del proceso). */
@@ -123,13 +134,15 @@ function withQaProcessEnv(vars, fn) {
   return Promise.resolve().then(fn).finally(restore);
 }
 
-export async function buildQa(vars, qaRef, outDir = QA_OUT_DIR) {
+export async function buildQa(vars, qaRef, outDir = QA_OUT_DIR, cfgFile = undefined) {
   const emptyEnvDir = mkdtempSync(path.join(tmpdir(), 'jm-qa-envdir-'));
   try {
     const { build } = await loadVite();
-    await withQaProcessEnv(vars, () => build(qaViteConfig(emptyEnvDir, { build: { outDir, emptyOutDir: true } })));
+    await withQaProcessEnv(vars, () => build(qaViteConfig(emptyEnvDir, cfgFile, { build: { outDir, emptyOutDir: true } })));
   } finally { rmSync(emptyEnvDir, { recursive: true, force: true }); }
   const errors = verifyQaBundle(outDir, qaRef);
+  // M26-R1 (MIN-2): un build rechazado no se deja en disco (podría contener el valor rechazado).
+  if (errors.length) rmSync(outDir, { recursive: true, force: true });
   if (!errors.length) writeFileSync(path.join(outDir, MANIFEST), JSON.stringify({ profile: 'qa', projectRef: qaRef, builtBy: 'scripts/env/qa_build.mjs' }, null, 2));
   return errors;
 }
@@ -148,7 +161,7 @@ if (isMain) {
 
   try {
     if (cmd === 'build') {
-      const errors = await buildQa(qa.vars, qa.qaRef);
+      const errors = await buildQa(qa.vars, qa.qaRef, QA_OUT_DIR, qa.cfgFile);
       if (errors.length) { console.error('QA: build generado pero RECHAZADO por la verificación del bundle:'); errors.forEach((e) => console.error(`  ERROR ${e}`)); process.exit(1); }
       console.log(`QA: build OK en ${path.relative(ROOT, QA_OUT_DIR)} · bundle verificado (solo el proyecto QA; sin loopback, sin JWT privilegiados ni nombres de secretos)`);
     } else if (cmd === 'preview') {
@@ -157,7 +170,7 @@ if (isMain) {
       if (JSON.parse(readFileSync(manifest, 'utf8')).projectRef !== qa.qaRef) { console.error('QA: el build QA existente es de otro proyecto; vuelva a ejecutar build:qa'); process.exit(1); }
       const { preview } = await loadVite();
       const emptyEnvDir = mkdtempSync(path.join(tmpdir(), 'jm-qa-envdir-'));
-      const server = await preview(qaViteConfig(emptyEnvDir, { build: { outDir: QA_OUT_DIR }, preview: { host: '127.0.0.1', port: QA_PORTS.preview, strictPort: true } }));
+      const server = await preview(qaViteConfig(emptyEnvDir, qa.cfgFile, { build: { outDir: QA_OUT_DIR }, preview: { host: '127.0.0.1', port: QA_PORTS.preview, strictPort: true } }));
       console.log(`QA: preview en http://127.0.0.1:${QA_PORTS.preview}/ (Ctrl+C para terminar)`);
       const stop = () => { rmSync(emptyEnvDir, { recursive: true, force: true }); server.httpServer.close(() => process.exit(0)); };
       process.on('SIGINT', stop); process.on('SIGTERM', stop);
@@ -165,7 +178,7 @@ if (isMain) {
       const { createServer } = await loadVite();
       const emptyEnvDir = mkdtempSync(path.join(tmpdir(), 'jm-qa-envdir-'));
       const server = await withQaProcessEnv(qa.vars, async () => {
-        const s = await createServer(qaViteConfig(emptyEnvDir, { server: { host: '127.0.0.1', port: QA_PORTS.dev, strictPort: true } }));
+        const s = await createServer(qaViteConfig(emptyEnvDir, qa.cfgFile, { server: { host: '127.0.0.1', port: QA_PORTS.dev, strictPort: true } }));
         await s.listen();
         return s;
       });

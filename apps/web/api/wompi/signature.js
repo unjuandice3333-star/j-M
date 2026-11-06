@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     }
 
     // M26-T3: solo variables de servidor, validadas; sin respaldo a VITE_* ni a la llave anon.
-    const cfg = requireServerConfig(res, 'Wompi Signature', ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'WOMPI_INTEGRITY_SECRET', 'WOMPI_PUBLIC_KEY']);
+    const cfg = requireServerConfig(res, 'Wompi Signature', ['APP_ENV', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'WOMPI_INTEGRITY_SECRET', 'WOMPI_PUBLIC_KEY']);
     if (!cfg) return;
     const supabaseUrl = cfg.SUPABASE_URL;
     const supabaseServiceKey = cfg.SUPABASE_SERVICE_ROLE_KEY;

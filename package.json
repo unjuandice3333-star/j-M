@@ -12,7 +12,7 @@
     "prepare": "husky",
     "check:env": "node scripts/env/check_env.mjs",
     "build:factory": "node scripts/env/check_env.mjs && pnpm --filter @jm/web build",
-    "test:env": "node --test scripts/env/environments.test.mjs scripts/env/check_env.test.mjs scripts/env/runtime_config.test.mjs scripts/env/templates.test.mjs scripts/env/gen_local_env.test.mjs scripts/env/qa_config.test.mjs",
+    "test:env": "node --test scripts/env/environments.test.mjs scripts/env/check_env.test.mjs scripts/env/runtime_config.test.mjs scripts/env/templates.test.mjs scripts/env/gen_local_env.test.mjs scripts/env/qa_config.test.mjs scripts/env/r1_regression.test.mjs",
     "check:templates": "node scripts/env/templates.mjs check",
     "env:local": "bash scripts/env/gen_local_env.sh",
     "smoke:env-local": "bash scripts/env/smoke_local_env.sh",

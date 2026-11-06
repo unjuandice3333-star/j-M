@@ -84,7 +84,7 @@ test('positivo: URLs permitidas', () => {
 });
 
 test('negativo: QA sin configurar rechaza toda URL', () => {
-  const r = isSupabaseUrlAllowed(base(), 'qa', 'https://' + QA_HOST);
+  const r = isSupabaseUrlAllowed(withQa(), 'qa', 'https://' + QA_HOST);
   assert.equal(r.ok, false); assert.match(r.error, /aún no ha configurado/);
 });
 
