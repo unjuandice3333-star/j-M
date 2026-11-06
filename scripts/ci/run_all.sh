@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# =============================================================================
+# CI — J&M FASHION STORE (M25). Único punto de entrada de las compuertas, en local y en GitHub Actions.
+#
+#   CI_PROFILE=full  (por defecto) | quick (omite las etapas de BD: SKIPPED, veredicto "PASS PARCIAL")
+#   CI_STAGES="governance quality security db-local db-supabase"  (subconjunto; cada job de GitHub ejecuta una)
+#   BASE_REF=<rama|commit>   base para commits y migraciones (por defecto origin/develop u origin/main)
+#   PR_TITLE, TARGET_BRANCH  (opcionales, en PRs: título del squash y rama destino)
+#   REQUIRE_CLEAN=1          falla si el árbol de trabajo tiene cambios sin commit
+#
+# Trazabilidad: el informe registra SHA, rama, estado del árbol de trabajo y, si hay cambios sin commit,
+# su lista y diff (worktree_status.txt, worktree_diff.patch). Un resultado obtenido con el árbol sucio
+# NUNCA se atribuye al SHA: el veredicto lo indica y evidence_valid=no.
+# =============================================================================
+set -uo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+source "$HERE/lib/common.sh"
+cd "$CI_ROOT"
+PROFILE="${CI_PROFILE:-full}"
+STAGES=" ${CI_STAGES:-governance quality security db-local db-supabase} "
+want() { [[ "$STAGES" == *" $1 "* ]]; }
+STAGES_TXT=$(echo $STAGES)
+if [[ -z "${BASE_REF:-}" ]]; then
+  for r in origin/develop origin/main; do git rev-parse -q --verify "$r" >/dev/null && { BASE_REF=$r; break; }; done
+fi
+BASE_REF="${BASE_REF:-}"
+rm -f "$CI_OUT/results.tsv"; printf 'step\tstatus\texit_code\tseconds\tcommand\n' > "$CI_OUT/results.tsv"
+rm -rf "${CI_OUT:?}/logs"; mkdir -p "$CI_OUT/logs"
+
+# --- Trazabilidad del código probado (antes de ejecutar nada) ----------------------
+SHA=$(git rev-parse HEAD); BRANCH=$(git rev-parse --abbrev-ref HEAD)
+git status --porcelain=v1 --untracked-files=all | grep -vE '^\?\? ci-artifacts/' > "$CI_OUT/worktree_status.txt" || true
+DIRTY=$(wc -l < "$CI_OUT/worktree_status.txt" | tr -d ' ')
+if [[ "$DIRTY" -gt 0 ]]; then
+  TREE="SUCIO ($DIRTY rutas con cambios sin commit)"; EVIDENCE_VALID=no
+  git diff HEAD --stat > "$CI_OUT/worktree_diff.stat"; git diff HEAD > "$CI_OUT/worktree_diff.patch"
+else
+  TREE="LIMPIO"; EVIDENCE_VALID=yes; rm -f "$CI_OUT/worktree_diff.stat" "$CI_OUT/worktree_diff.patch"
+fi
+echo "== CI J&M · perfil=$PROFILE · etapas=[$STAGES_TXT] · commit=${SHA:0:12} · rama=$BRANCH · árbol=$TREE · base=${BASE_REF:-ninguna}"
+if [[ "${REQUIRE_CLEAN:-0}" == 1 && "$DIRTY" -gt 0 ]]; then record_fail 00_clean_tree "REQUIRE_CLEAN=1 y el árbol tiene $DIRTY cambios"; fi
+
+# --- Gobierno ---------------------------------------------------------------------
+if want governance; then
+  run_step 01_branch_name bash scripts/ci/check_branch_name.sh "${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-$BRANCH}}" "${TARGET_BRANCH:-}"
+  if [[ -n "$BASE_REF" ]] && MB=$(git merge-base HEAD "$BASE_REF" 2>/dev/null); then
+    run_step 02_commit_messages env PR_TITLE="${PR_TITLE:-}" bash scripts/ci/check_commits.sh "$MB" HEAD
+  else record_fail 02_commit_messages "base '$BASE_REF' no resoluble"; fi
+fi
+
+# --- Calidad ----------------------------------------------------------------------
+if want quality; then
+  run_step 10_install       pnpm install --frozen-lockfile
+  run_step 11_lint          npx --no-install eslint .
+  run_step 12_typecheck     npx --no-install tsc -p tsconfig.ci.json
+  run_step 13_unit_tests    npx --no-install vitest run --dir packages
+  run_step 14_webhook_tests node --experimental-test-module-mocks apps/web/scripts/test-webhook-security.mjs
+  if have "${DENO_BIN:-deno}"; then run_step 15_edge_tests bash scripts/ci/edge_tests.sh
+  else record_blocked 15_edge_tests "deno no disponible (DENO_BIN)"; fi
+  run_step 16_build         bash scripts/ci/build.sh
+fi
+
+# --- Seguridad y migraciones -----------------------------------------------------
+if want security; then
+  if [[ -n "$BASE_REF" ]]; then BASE_REF="$BASE_REF" run_step 20_migrations_policy bash scripts/ci/migrations_policy.sh
+  else record_fail 20_migrations_policy "sin BASE_REF"; fi
+  if have gitleaks || docker info >/dev/null 2>&1; then run_step 21_secrets_scan bash scripts/ci/secrets_scan.sh
+  else record_blocked 21_secrets_scan "ni gitleaks ni Docker disponibles"; fi
+fi
+
+# --- Base de datos ----------------------------------------------------------------
+for st in db-local db-supabase; do
+  want "$st" || continue
+  name=$([[ $st == db-local ]] && echo 30_db_local_pg16 || echo 31_db_supabase)
+  if [[ "$PROFILE" == quick ]]; then record_skipped "$name" "perfil quick"; continue; fi
+  if [[ $st == db-local ]]; then
+    if [[ "$(id -u)" -ne 0 ]]; then run_step "$name" bash scripts/ci/db_local.sh
+    elif id postgres >/dev/null 2>&1; then
+      run_step "$name" su postgres -s /bin/bash -c "WORKDIR=/tmp/jm_ci_pg_\$\$ bash '$CI_ROOT/scripts/ci/db_local.sh'"
+    else record_blocked "$name" "se requiere usuario no root para initdb"; fi
+  else
+    if docker info >/dev/null 2>&1 && have "${SUPABASE_BIN:-supabase}"; then run_step "$name" bash scripts/ci/db_supabase.sh
+    else record_blocked "$name" "Docker o Supabase CLI no disponibles"; fi
+  fi
+done
+
+# --- Versiones (después de instalar dependencias) ---------------------------------
+bash "$HERE/env_report.sh" > "$CI_OUT/logs/99_environment.log" 2>&1
+
+# --- Informe ----------------------------------------------------------------------
+fails=$(awk -F'\t' 'NR>1 && ($2=="FAIL" || $2=="BLOCKED")' "$RESULTS_TSV" | wc -l | tr -d ' ')
+skips=$(awk -F'\t' 'NR>1 && $2=="SKIPPED"' "$RESULTS_TSV" | wc -l | tr -d ' ')
+if   [[ $fails -gt 0 ]]; then verdict=FAIL
+elif [[ $skips -gt 0 ]]; then verdict="PASS PARCIAL ($skips compuertas SKIPPED)"
+else verdict=PASS; fi
+[[ "$EVIDENCE_VALID" == no && $fails -eq 0 ]] && verdict="$verdict — ÁRBOL SUCIO: no es evidencia del commit ${SHA:0:12}"
+{
+  echo "# Informe de CI — J&M FASHION STORE"
+  echo
+  echo "- **Veredicto:** $verdict"
+  echo "- **Perfil / etapas:** \`$PROFILE\` / \`$STAGES_TXT\`"
+  echo "- **Commit (HEAD):** \`$SHA\` · **Rama:** \`$BRANCH\`"
+  echo "- **Árbol de trabajo:** $TREE · **evidence_valid:** $EVIDENCE_VALID"
+  [[ "$DIRTY" -gt 0 ]] && echo "- **Código probado = HEAD + cambios sin commit** (ver \`worktree_status.txt\`, \`worktree_diff.stat\`, \`worktree_diff.patch\`)"
+  echo "- **Base:** \`${BASE_REF:-ninguna}\`$( [[ -n "$BASE_REF" ]] && echo " (merge-base \`$(git merge-base HEAD "$BASE_REF" 2>/dev/null || echo ?)\`)")"
+  echo "- **Fecha (UTC):** $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo
+  echo "| Paso | Estado | Exit | Segundos | Comando |"
+  echo "|---|---|---|---|---|"
+  awk -F'\t' 'NR>1 {printf "| %s | %s | %s | %s | `%s` |\n", $1, $2, $3, $4, $5}' "$RESULTS_TSV"
+  if [[ "$DIRTY" -gt 0 ]]; then echo; echo "## Cambios sin commit incluidos en la prueba"; echo '```'; cat "$CI_OUT/worktree_diff.stat"; grep '^??' "$CI_OUT/worktree_status.txt"; echo '```'; fi
+  echo
+  echo "## Entorno y versiones"
+  echo '```'; cat "$CI_OUT/environment.txt" 2>/dev/null; echo '```'
+  echo
+  echo "Logs completos: \`logs/\`. Un paso BLOCKED cuenta como fallo; SKIPPED nunca cuenta como aprobado."
+} > "$CI_OUT/REPORT.md"
+printf 'verdict=%s\nsha=%s\nbranch=%s\ntree=%s\nevidence_valid=%s\nprofile=%s\nstages=%s\nbase_ref=%s\n' \
+  "$verdict" "$SHA" "$BRANCH" "$TREE" "$EVIDENCE_VALID" "$PROFILE" "$STAGES_TXT" "${BASE_REF:-}" > "$CI_OUT/verdict.txt"
+echo "== VEREDICTO: $verdict · informe: $CI_OUT/REPORT.md"
+[[ $fails -eq 0 ]]

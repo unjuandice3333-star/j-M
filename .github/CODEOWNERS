@@ -1,0 +1,10 @@
+# Propietarios obligatorios de revisión (M25). Requiere la protección de ramas con
+# "Require review from Code Owners" (ver MISION_25/governance/branch-protection.*.json).
+*                         @unjuandice3333-star
+/supabase/                @unjuandice3333-star
+/.github/                 @unjuandice3333-star
+/scripts/ci/              @unjuandice3333-star
+/apps/web/api/            @unjuandice3333-star
+/supabase/functions/      @unjuandice3333-star
+/.gitleaks.toml           @unjuandice3333-star
+/CONTRIBUTING.md          @unjuandice3333-star

@@ -50,7 +50,7 @@ export const dbMock = {
 
 // Mock de @supabase/supabase-js inyectado antes de importar el handler real
 mock.module('@supabase/supabase-js', {
-  exports: {
+  namedExports: {   // M25: opción soportada por Node 22 (la anterior "exports" no existe en Node 22)
     createClient: () => ({
       from: (table) => {
         if (table === 'payment_transactions') {

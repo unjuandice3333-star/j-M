@@ -1,0 +1,15 @@
+{
+  "//": "M25 — typecheck de CI para los paquetes TypeScript del monorepo (sin emitir archivos).",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "types": []
+  },
+  "include": ["packages/shared/index.ts", "packages/types/index.ts", "packages/utils/index.ts", "packages/utils/index.test.ts"]
+}

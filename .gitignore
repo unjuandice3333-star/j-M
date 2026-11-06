@@ -60,3 +60,7 @@ android/app/src/main/assets/public
 
 .vercel
 .env*
+
+# CI / Supabase CLI local (M25)
+ci-artifacts/
+supabase/.temp/

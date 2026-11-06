@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git push)",
+      "Bash(git remote add:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh api:*)",
+      "Bash(gh secret:*)",
+      "Bash(gh workflow run:*)",
+      "Bash(gh repo edit:*)",
+      "Bash(supabase link:*)",
+      "Bash(supabase db push:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(supabase secrets:*)",
+      "Bash(supabase login:*)",
+      "Bash(npx supabase link:*)",
+      "Bash(npx supabase db push:*)",
+      "Bash(npx supabase functions deploy:*)",
+      "Bash(vercel:*)",
+      "Bash(npx vercel:*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Read(./supabase/.temp/**)"
+    ]
+  }
+}

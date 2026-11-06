@@ -1,0 +1,13 @@
+# Configuración de gitleaks (M25): reglas por defecto + exclusión de directorios generados.
+# ci-artifacts/ es salida de la CI (ignorada por git); sus evidencias se redactan en origen
+# y db_supabase.sh verifica que no contengan llaves. node_modules/ es código de terceros.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Directorios generados, no versionados"
+paths = [
+  '''(^|/)ci-artifacts/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)apps/web/dist/''',
+]

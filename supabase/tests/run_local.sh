@@ -108,4 +108,5 @@ if [[ "$FP_1" == "$FP_2" ]]; then DET_RC=0; echo "DETERMINISMO: OK"; else DET_RC
 step "Resumen"
 echo "pgTAP funcional: rc=$PGTAP_RC | concurrencia: rc=$CONC_RC | determinismo: rc=$DET_RC"
 echo "Logs en $OUTDIR"
-exit $(( PGTAP_RC + CONC_RC + DET_RC ))
+# Cualquier código distinto de cero es fallo (la suma podría desbordar módulo 256 y dar 0)
+exit $(( (PGTAP_RC | CONC_RC | DET_RC) != 0 ))

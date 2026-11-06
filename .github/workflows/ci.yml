@@ -1,0 +1,185 @@
+# =============================================================================
+# CI — J&M FASHION STORE (M25)
+# Cada job ejecuta scripts/ci/run_all.sh con su etapa (CI_STAGES): las mismas compuertas que en local,
+# con el mismo informe (REPORT.md, results.tsv, verdict.txt, environment.txt, logs) subido como artefacto.
+# Sin secretos, sin entornos, sin despliegues y sin operaciones remotas de Supabase: la BD se prueba solo en
+# contenedores efímeros del runner. Production es inalcanzable desde aquí (la regla 6 de
+# migrations_policy.sh falla si este archivo usa secretos, entornos o permisos de escritura).
+# Acciones fijadas por SHA de commit (etiqueta en el comentario).
+# =============================================================================
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop, 'release/**', 'mission/**', 'db/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  SUPABASE_CLI_VERSION: '3.0.0'
+  CI_OUT: ${{ github.workspace }}/ci-artifacts
+  # Entradas del evento: se pasan por entorno, nunca interpoladas en scripts
+  EVENT_NAME: ${{ github.event_name }}
+  PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+  PUSH_BEFORE: ${{ github.event.before }}
+  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+jobs:
+  governance:
+    name: Gobierno (rama, flujo, commits, título del PR)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Base de comparación
+        run: echo "BASE_REF=$(bash scripts/ci/resolve_base.sh)" >> "$GITHUB_ENV"
+      - name: Compuertas de gobierno
+        env:
+          CI_STAGES: governance
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          TARGET_BRANCH: ${{ github.base_ref }}
+        run: bash scripts/ci/run_all.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ci-governance-${{ github.sha }}
+          path: ci-artifacts/
+          retention-days: 30
+
+  quality:
+    name: Calidad (install, lint, typecheck, unit, webhook, edge, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (versión desde packageManager)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+      - name: Compuertas de calidad
+        env:
+          CI_STAGES: quality
+        run: bash scripts/ci/run_all.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ci-quality-${{ github.sha }}
+          path: ci-artifacts/
+          retention-days: 30
+
+  security:
+    name: Seguridad (política de migraciones y secretos)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Base de comparación
+        run: echo "BASE_REF=$(bash scripts/ci/resolve_base.sh)" >> "$GITHUB_ENV"
+      - name: Compuertas de seguridad
+        env:
+          CI_STAGES: security
+        run: bash scripts/ci/run_all.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ci-security-${{ github.sha }}
+          path: ci-artifacts/
+          retention-days: 30
+
+  trusted-policy:
+    # Ejecuta la política de migraciones de la RAMA BASE (copia confiable) sobre el código del PR,
+    # para que un PR no pueda desactivar la compuerta modificando su propia copia del script.
+    name: Política de migraciones (copia confiable de la base)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Política de la base aplicada al PR
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/trusted" "$PR_BASE_SHA"
+          if [[ -f "$RUNNER_TEMP/trusted/scripts/ci/migrations_policy.sh" ]]; then
+            POLICY_ROOT="$GITHUB_WORKSPACE" BASE_REF="$PR_BASE_SHA" bash "$RUNNER_TEMP/trusted/scripts/ci/migrations_policy.sh"
+          else
+            echo "::warning::La rama base aún no contiene la política (PR que la introduce); se aplica la copia del PR"
+            BASE_REF="$PR_BASE_SHA" bash scripts/ci/migrations_policy.sh
+          fi
+
+  db-local:
+    name: BD en PostgreSQL 16 (pgTAP ≥290 + concurrencia + determinismo)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: PostgreSQL 16 + pgTAP + pg_cron
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-16 postgresql-16-pgtap postgresql-16-cron libtap-parser-sourcehandler-pgtap-perl
+          sudo systemctl stop postgresql || true
+      - name: Reconstrucción y pruebas
+        env:
+          CI_STAGES: db-local
+          PG_BIN: /usr/lib/postgresql/16/bin
+          OUTDIR: ${{ github.workspace }}/ci-artifacts/db_local
+        run: bash scripts/ci/run_all.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ci-db-local-${{ github.sha }}
+          path: ci-artifacts/
+          retention-days: 30
+
+  db-supabase:
+    name: BD en Supabase oficial local (start, reset, test db, HTTP, determinismo)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Stack local, pruebas y reconstrucción doble
+        env:
+          CI_STAGES: db-supabase
+        run: bash scripts/ci/run_all.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ci-db-supabase-${{ github.sha }}
+          path: ci-artifacts/
+          retention-days: 30
+
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs: [governance, quality, security, trusted-policy, db-local, db-supabase]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Todas las compuertas deben terminar en success
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          REQUIRED_JOBS="governance quality security db-local db-supabase"
+          [[ "$EVENT_NAME" == pull_request ]] && REQUIRED_JOBS="$REQUIRED_JOBS trusted-policy"
+          REQUIRED_JOBS="$REQUIRED_JOBS" bash scripts/ci/ci_gate.sh
