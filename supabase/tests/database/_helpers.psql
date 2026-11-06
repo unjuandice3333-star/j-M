@@ -1,0 +1,110 @@
+-- Utilidades compartidas por las pruebas pgTAP (se incluyen con \ir dentro de la transacción de cada prueba).
+SET LOCAL search_path = public, extensions;
+
+-- Ejecutan una consulta con un rol y un JWT simulados dentro de una subtransacción y devuelven
+-- {ok, rows, sqlstate, hint, message}; las aserciones pgTAP siempre corren como postgres.
+
+CREATE SCHEMA IF NOT EXISTS tests;
+
+CREATE OR REPLACE FUNCTION tests.uid(p_name text) RETURNS uuid LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE p_name
+    WHEN 'superadmin' THEN '00000000-0000-4000-8000-00000000a001'
+    WHEN 'admin'      THEN '00000000-0000-4000-8000-00000000a002'
+    WHEN 'c1'         THEN '00000000-0000-4000-8000-00000000a003'
+    WHEN 'c2'         THEN '00000000-0000-4000-8000-00000000a004'
+  END::uuid
+$$;
+
+-- p_who: 'anon' | 'service' | 'superadmin' | 'admin' | 'c1' | 'c2' | 'postgres'
+CREATE OR REPLACE FUNCTION tests.exec_as(p_who text, p_sql text) RETURNS jsonb LANGUAGE plpgsql AS $$
+DECLARE
+  v_rows jsonb;
+  v_state text; v_hint text; v_msg text;
+  v_role text := CASE p_who WHEN 'anon' THEN 'anon' WHEN 'service' THEN 'service_role'
+                            WHEN 'postgres' THEN NULL ELSE 'authenticated' END;
+  v_claims text := CASE
+    WHEN p_who IN ('anon', 'postgres') THEN ''
+    WHEN p_who = 'service' THEN '{"role":"service_role"}'
+    ELSE json_build_object('sub', tests.uid(p_who), 'role', 'authenticated')::text END;
+BEGIN
+  BEGIN
+    PERFORM set_config('request.jwt.claims', v_claims, true);
+    IF v_role IS NOT NULL THEN EXECUTE format('SET LOCAL ROLE %I', v_role); END IF;
+    -- CTE de nivel superior: admite SELECT y también INSERT/UPDATE/DELETE ... RETURNING
+    EXECUTE 'WITH t AS (' || p_sql || ') SELECT COALESCE(jsonb_agg(to_jsonb(t.*)), ''[]''::jsonb) FROM t' INTO v_rows;
+    RESET ROLE;
+    PERFORM set_config('request.jwt.claims', '', true);
+    RETURN jsonb_build_object('ok', true, 'rows', v_rows);
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_state = RETURNED_SQLSTATE, v_hint = PG_EXCEPTION_HINT, v_msg = MESSAGE_TEXT;
+    RETURN jsonb_build_object('ok', false, 'sqlstate', v_state, 'hint', v_hint, 'message', v_msg);
+  END;
+END $$;
+
+-- Primer valor de la primera fila (como jsonb)
+CREATE OR REPLACE FUNCTION tests.val(p_res jsonb) RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
+  SELECT (SELECT value FROM jsonb_each(p_res -> 'rows' -> 0) LIMIT 1)
+$$;
+
+-- Número de filas devueltas
+CREATE OR REPLACE FUNCTION tests.nrows(p_res jsonb) RETURNS int LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE WHEN (p_res ->> 'ok')::boolean THEN jsonb_array_length(p_res -> 'rows') END
+$$;
+
+-- Ítems de carrito a partir de pares (sku, cantidad)
+CREATE OR REPLACE FUNCTION tests.items(VARIADIC p text[]) RETURNS jsonb LANGUAGE plpgsql STABLE AS $$
+DECLARE r jsonb := '[]'; i int := 1;
+BEGIN
+  WHILE i < array_length(p, 1) LOOP
+    r := r || jsonb_build_object('variant_id', (SELECT id FROM public.variants WHERE sku = p[i]), 'quantity', p[i + 1]::int);
+    i := i + 2;
+  END LOOP;
+  RETURN r;
+END $$;
+
+CREATE OR REPLACE FUNCTION tests.customer(p_email text DEFAULT 'prueba@qa.jm.test') RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
+  SELECT jsonb_build_object('name', 'Comprador Prueba', 'email', p_email, 'phone', '3001234567')
+$$;
+CREATE OR REPLACE FUNCTION tests.shipping() RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
+  SELECT jsonb_build_object('department', 'Cundinamarca', 'city', 'Bogotá D.C.', 'address', 'Calle de Prueba 9 # 9-9')
+$$;
+
+-- SQL de create_order listo para exec_as
+CREATE OR REPLACE FUNCTION tests.order_sql(p_items jsonb, p_key text, p_coupon text DEFAULT NULL,
+                                           p_email text DEFAULT 'prueba@qa.jm.test', p_method text DEFAULT 'standard')
+RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT format('SELECT public.create_order(%L::jsonb, %L::jsonb, %L::jsonb, %L, %L, %L) AS r',
+                tests.customer(p_email), tests.shipping(), p_items, p_coupon, p_method, p_key)
+$$;
+
+CREATE OR REPLACE FUNCTION tests.stock(p_sku text) RETURNS TABLE (stock int, reserved int) LANGUAGE sql STABLE AS $$
+  SELECT i.stock, i.reserved FROM public.inventories i JOIN public.variants v ON v.id = i.variant_id WHERE v.sku = p_sku
+$$;
+
+CREATE OR REPLACE FUNCTION tests.order_by_number(p_number text) RETURNS public.online_orders LANGUAGE sql STABLE AS $$
+  SELECT * FROM public.online_orders WHERE order_number = p_number
+$$;
+
+-- Evento sintético de Wompi para una referencia de intento
+CREATE OR REPLACE FUNCTION tests.wompi_event(p_reference text, p_status text, p_amount bigint,
+                                             p_tx_id text DEFAULT NULL, p_currency text DEFAULT 'COP',
+                                             p_event text DEFAULT 'transaction.updated')
+RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
+  SELECT jsonb_build_object('event', p_event, 'environment', 'test', 'data', jsonb_build_object('transaction',
+    jsonb_build_object('id', COALESCE(p_tx_id, 'tx-' || p_reference), 'reference', p_reference, 'status', p_status,
+                       'amount_in_cents', p_amount, 'currency', p_currency, 'payment_method_type', 'CARD')))
+$$;
+
+-- Crea intento (service_role) y devuelve el jsonb del intento
+CREATE OR REPLACE FUNCTION tests.attempt(p_idempotency_key text) RETURNS jsonb LANGUAGE sql AS $$
+  SELECT tests.val(tests.exec_as('service',
+    format('SELECT public.create_payment_attempt(%L::uuid, %L::uuid) AS r', o.id, o.public_token)))
+  FROM public.online_orders o WHERE o.idempotency_key = p_idempotency_key
+$$;
+
+CREATE OR REPLACE FUNCTION tests.apply(p_event jsonb, p_checksum text) RETURNS jsonb LANGUAGE sql AS $$
+  SELECT tests.exec_as('service', format('SELECT public.apply_payment_event(%L::jsonb, %L) AS r', p_event, p_checksum))
+$$;
+
+GRANT USAGE ON SCHEMA tests TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tests TO anon, authenticated, service_role;

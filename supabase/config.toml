@@ -1,0 +1,42 @@
+# Configuración local de Supabase CLI para J&M FASHION STORE (M24B).
+# Solo afecta al entorno local (`supabase start` / `supabase db reset`). No contiene secretos.
+# NOTA: no se pudo ejecutar con Supabase CLI en M24B (sin Docker); la línea base se validó con
+# PostgreSQL 16 + shim (supabase/tests/run_local.sh). Verificar en la primera ejecución con Docker.
+
+project_id = "jm-fashion-store"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+# Debe coincidir con la versión mayor del proyecto remoto (confirmar en el diagnóstico M24-DIAG).
+major_version = 15
+
+[db.seed]
+# Seeds de QA: solo local / CI / QA. Nunca se aplican a Production.
+enabled = true
+sql_paths = ["./seeds/*.sql"]
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/admin", "http://localhost:3000/cuenta"]
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+[storage]
+enabled = true
+file_size_limit = "5MiB"

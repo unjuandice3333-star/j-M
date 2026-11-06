@@ -1,0 +1,290 @@
+pgtap.log:ok 1 - el esquema public contiene exactamente las 34 tablas del diseño (sin objetos POS)
+pgtap.log:ok 2 - RLS activa en todas las tablas de public
+pgtap.log:ok 3 - objeto POS eliminado: employees
+pgtap.log:ok 4 - objeto POS eliminado: shifts
+pgtap.log:ok 5 - objeto POS eliminado: sales
+pgtap.log:ok 6 - objeto POS eliminado: sale_items
+pgtap.log:ok 7 - objeto POS eliminado: transfers
+pgtap.log:ok 8 - objeto POS eliminado: transfer_items
+pgtap.log:ok 9 - objeto POS eliminado: customers
+pgtap.log:ok 10 - objeto POS eliminado: role_permissions
+pgtap.log:ok 11 - objeto POS eliminado: carts
+preparing)
+pgtap.log:ok 13 - catálogo de estados alineado con el enum
+pgtap.log:ok 14 - toda función SECURITY DEFINER fija search_path
+pgtap.log:ok 15 - anon solo puede ejecutar las RPC públicas de tienda
+pgtap.log:ok 16 - authenticated: RPC de tienda + RPC admin (que validan el rol internamente)
+pgtap.log:ok 17 - apply_payment_event solo para service_role
+pgtap.log:ok 18 - create_payment_attempt y expire_pending_orders no expuestas a clientes
+authenticated
+pgtap.log:ok 20 - sin privilegios de escritura directa en pedidos, pagos e inventario
+pgtap.log:ok 21 - perfil: el cliente puede editar su nombre pero no su rol
+pgtap.log:ok 22 - una sola bodega por defecto
+pgtap.log:ok 23 - envío estándar $15.000, gratis desde $200.000; express inactivo
+pgtap.log:ok 24 - 13 transiciones de estado definidas
+pgtap.log:ok 25 - UUID de datos de referencia y variantes pasan la validación del frontend (v1-5, variante 8-b)
+pgtap.log:ok 26 - imagen con color no declarado en el producto: rechazada
+pgtap.log:ok 27 - reservado > stock: rechazado
+pgtap.log:ok 28 - total inconsistente: rechazado
+pgtap.log:ok 29 - inventory_movements es append-only
+pgtap.log:ok 30 - order_events es append-only
+pgtap.log:ok 1 - admin crea producto completo en una llamada
+pgtap.log:ok 2 - producto nuevo queda en borrador
+pgtap.log:ok 3 - referencia normalizada a mayúsculas
+pgtap.log:ok 4 - SKU generados REFERENCIA-COLOR-TALLA
+pgtap.log:ok 5 - color por defecto respetado
+pgtap.log:ok 6 - galería por color con orden y una imagen general
+pgtap.log:ok 7 - stock inicial cargado
+pgtap.log:ok 8 - movimientos initial_load solo para stock > 0
+pgtap.log:ok 9 - anon no ve productos en borrador
+pgtap.log:ok 10 - admin publica el producto
+pgtap.log:ok 11 - published_at asignado al publicar
+pgtap.log:ok 12 - anon ve las variantes del producto publicado
+pgtap.log:ok 13 - vista de disponibilidad pública
+pgtap.log:ok 14 - admin actualiza producto
+pgtap.log:ok 15 - variante no listada queda desactivada (no se borra)
+pgtap.log:ok 16 - actualizar no altera el stock existente
+pgtap.log:ok 17 - no se puede quitar un color que tiene variantes
+pgtap.log:ok 18 - variante con color no declarado: rechazada
+pgtap.log:ok 19 - talla alfabética en categoría de tallas numéricas: rechazada
+pgtap.log:ok 20 - no se publica un producto sin imágenes
+pgtap.log:ok 21 - cliente no puede crear productos
+pgtap.log:ok 22 - cliente no puede ajustar inventario
+pgtap.log:ok 23 - restock suma al stock
+pgtap.log:ok 24 - signo incoherente con el tipo de movimiento: rechazado
+pgtap.log:ok 1 - cotización: 129.900 + envío 15.000 = 144.900 (subtotal < 200.000)
+pgtap.log:ok 2 - cotización: envío gratis con subtotal 319.800
+pgtap.log:ok 3 - cotización: 199.800 (< 200.000) paga envío
+pgtap.log:ok 4 - cotización: 249.900 (>= 200.000) envío gratis
+pgtap.log:ok 5 - cotización marca falta de stock (2 pedidas, 1 disponible)
+pgtap.log:ok 6 - anon crea pedido con campos manipulados en el payload
+pgtap.log:ok 7 - cabecera con precios de BD (2 × 129.900) y envío gratis
+color del cliente)
+pgtap.log:ok 9 - imagen de la línea = primera imagen del color comprado
+pgtap.log:ok 10 - pedido de invitado sin user_id
+pgtap.log:ok 11 - número de pedido secuencial JM-NNNNNN
+pgtap.log:ok 12 - ventana de pago de 30 minutos
+pgtap.log:ok 13 - evento ORDER_CREATED registrado
+pgtap.log:ok 14 - email normalizado
+pgtap.log:ok 15 - cliente autenticado crea pedido
+pgtap.log:ok 16 - user_id = auth.uid() del JWT
+pgtap.log:ok 17 - create_order no expone un parámetro p_user_id
+pgtap.log:ok 18 - pedido con la misma variante repetida
+pgtap.log:ok 19 - una sola línea con cantidad 3
+pgtap.log:ok 20 - misma clave de idempotencia devuelve el pedido existente
+pgtap.log:ok 21 - no se crea un segundo pedido
+pgtap.log:ok 22 - reservas: 2 (invitado) + 1 (cliente), sin duplicar por el reintento
+pgtap.log:ok 23 - email inválido rechazado
+pgtap.log:ok 24 - teléfono inválido rechazado
+pgtap.log:ok 25 - dirección incompleta rechazada
+pgtap.log:ok 26 - carrito vacío rechazado
+pgtap.log:ok 27 - cantidad 0 rechazada
+pgtap.log:ok 28 - cantidad 21 rechazada
+pgtap.log:ok 29 - variante inexistente rechazada
+pgtap.log:ok 30 - producto en borrador no se puede comprar
+pgtap.log:ok 31 - producto agotado rechazado con mensaje de stock
+pgtap.log:ok 32 - envío express inactivo rechazado
+pgtap.log:ok 33 - clave de idempotencia demasiado corta rechazada
+pgtap.log:ok 34 - las solicitudes rechazadas no dejaron pedidos
+pgtap.log:ok 1 - estado inicial: 1 unidad, 0 reservadas
+pgtap.log:ok 2 - comprador A reserva la última unidad
+pgtap.log:ok 3 - stock físico intacto y 1 reservada
+pgtap.log:ok 4 - disponibilidad pública = 0
+pgtap.log:ok 5 - reserva activa registrada
+pgtap.log:ok 6 - comprador B no puede comprar una unidad reservada
+pgtap.log:ok 7 - expire_pending_orders no afecta pedidos dentro de la ventana
+pgtap.log:ok 8 - expire_pending_orders vence 1 pedido
+pgtap.log:ok 9 - pedido pasa a expired
+pgtap.log:ok 10 - reserva liberada: 1 unidad disponible otra vez
+pgtap.log:ok 11 - reserva marcada expired
+expirar no genera movimientos de stock físico
+pgtap.log:ok 13 - tras la expiración, comprador B sí puede reservar
+pgtap.log:ok 14 - no se crean intentos de pago para pedidos vencidos
+pgtap.log:ok 15 - no se crean intentos fuera de la ventana aunque el job no haya corrido
+pgtap.log:ok 16 - token público incorrecto: pedido no encontrado
+pgtap.log:ok 17 - anon no puede ejecutar expire_pending_orders
+pgtap.log:ok 18 - cliente no puede ejecutar expire_pending_orders
+pgtap.log:ok 19 - job pg_cron de expiración programado cada 5 minutos (si pg_cron está disponible)
+pgtap.log:ok 1 - pedido A creado
+pgtap.log:ok 2 - intento 1 con referencia NUMERO-1
+pgtap.log:ok 3 - monto del intento = total × 100 (pesos enteros → centavos)
+pgtap.log:ok 4 - anon no puede crear intentos
+pgtap.log:ok 5 - evento APPROVED aplicado
+pgtap.log:ok 6 - pedido pagado con paid_at
+pgtap.log:ok 7 - stock descontado 5 → 3 y reserva consumida
+pgtap.log:ok 8 - movimiento de venta con aritmética correcta
+pgtap.log:ok 9 - reserva consumida
+pgtap.log:ok 10 - intento aprobado con id de Wompi
+pgtap.log:ok 11 - mismo evento: duplicado sin efectos
+pgtap.log:ok 12 - reentrega con otro checksum: ignorada
+pgtap.log:ok 13 - sigue habiendo un solo movimiento de venta
+pgtap.log:ok 14 - stock no se descuenta dos veces
+pgtap.log:ok 15 - bandeja de webhooks registra los 2 eventos distintos (el duplicado no se reinserta)
+pgtap.log:ok 16 - DECLINED después de APPROVED: ignorado
+pgtap.log:ok 17 - pedido sigue pagado
+pgtap.log:ok 18 - pedido B creado
+pgtap.log:ok 19 - pago rechazado registrado
+pgtap.log:ok 20 - tras el rechazo el pedido sigue pendiente y conserva la reserva
+pgtap.log:ok 21 - reintento con nueva referencia NUMERO-2
+pgtap.log:ok 22 - segundo intento aprobado
+pgtap.log:ok 23 - historial de intentos conservado
+pgtap.log:ok 24 - evento PAYMENT_ATTEMPT_FAILED registrado
+pgtap.log:ok 25 - pedido C creado
+pgtap.log:ok 26 - monto distinto: rechazado
+pgtap.log:ok 27 - moneda distinta: rechazada
+pgtap.log:ok 28 - referencia desconocida: rechazada
+pgtap.log:ok 29 - id de transacción de otro pedido: rechazado
+pgtap.log:ok 30 - tipo de evento no soportado: ignorado
+pgtap.log:ok 31 - evento malformado: rechazado
+pgtap.log:ok 32 - ningún evento rechazado modificó el pedido C
+pgtap.log:ok 33 - eventos rechazados quedan registrados para auditoría
+pgtap.log:ok 34 - pedido C vencido
+pgtap.log:ok 35 - aprobación tardía con stock disponible: expired → paid
+pgtap.log:ok 36 - stock descontado directamente (sin reserva vigente)
+pgtap.log:ok 37 - pedido D (última unidad)
+pgtap.log:ok 38 - aprobación tardía sin stock: el pago se respeta (paid)
+pgtap.log:ok 39 - pedido marcado para atención con evento PAID_WITHOUT_STOCK
+pgtap.log:ok 40 - el inventario nunca queda negativo
+pgtap.log:ok 41 - segundo pago aprobado del mismo pedido: marcado para reembolso
+pgtap.log:ok 42 - dos aprobados, uno a reembolsar, stock descontado una sola vez
+pgtap.log:ok 43 - pago aprobado sobre pedido cancelado: el pedido sigue cancelado y el pago queda para reembolso
+pgtap.log:ok 44 - anulación posterior al pago: pedido marcado para revisión
+pgtap.log:ok 1 - reserva de 2 unidades
+pgtap.log:ok 2 - otro cliente no puede cancelar el pedido
+pgtap.log:ok 3 - token incorrecto no permite cancelar
+pgtap.log:ok 4 - el propietario cancela
+pgtap.log:ok 5 - pedido cancelado
+pgtap.log:ok 6 - reserva liberada sin tocar el stock físico
+pgtap.log:ok 7 - redención del cupón liberada; used_count no aumenta (1 = uso del seed O3)
+pgtap.log:ok 8 - invitado cancela con su token público
+pgtap.log:ok 9 - pago aprobado descuenta 3
+pgtap.log:ok 10 - el cliente no puede cancelar un pedido pagado
+pgtap.log:ok 11 - cancelar un pedido pagado exige nota
+pgtap.log:ok 12 - admin cancela con nota
+pgtap.log:ok 13 - stock restaurado (5 → 8)
+pgtap.log:ok 14 - libro de movimientos: venta y reingreso
+pgtap.log:ok 15 - solicitud de reembolso por el total ligada al pago aprobado
+pgtap.log:ok 16 - cancelado es terminal: no se puede reembolsar de nuevo ni reingresar dos veces
+pgtap.log:ok 17 - reembolso desde processing
+pgtap.log:ok 18 - stock restaurado tras reembolso desde processing
+pgtap.log:ok 19 - reembolso desde delivered
+pgtap.log:ok 20 - entregado → reembolsado no reingresa stock automáticamente (mercancía en poder del cliente)
+pgtap.log:ok 21 - reembolso registrado sin reingreso
+pgtap.log:ok 22 - reingreso manual de la devolución con tipo return
+pgtap.log:ok 1 - QA10: 10 % de 100.000
+pgtap.log:ok 2 - código insensible a mayúsculas y espacios
+pgtap.log:ok 3 - fijo bajo el mínimo: inválido
+pgtap.log:ok 4 - fijo sobre el mínimo: 20.000
+pgtap.log:ok 5 - envío gratis desde 150.000
+pgtap.log:ok 6 - vencido
+pgtap.log:ok 7 - aún no inicia
+pgtap.log:ok 8 - usos agotados
+pgtap.log:ok 9 - inexistente
+pgtap.log:ok 10 - anon no puede listar cupones
+pgtap.log:ok 11 - pedido con cupón vencido: rechazado con causa
+pgtap.log:ok 12 - QA10 sobre 289.800 = 28.980; neto ≥ 200.000 → envío gratis
+pgtap.log:ok 13 - descuento prorrateado en líneas cuadra con la cabecera
+pgtap.log:ok 14 - QAFIJO20K: 249.900 − 20.000 = 229.900 (≥ 200.000, sin envío)
+pgtap.log:ok 15 - QAFIJO20K: neto 169.900 < 200.000 → envío 15.000
+pgtap.log:ok 16 - QAENVIO: envío 0 con subtotal 189.900
+pgtap.log:ok 17 - QAUNICO primer uso del correo
+pgtap.log:ok 18 - QAUNICO segundo uso del mismo correo (otra capitalización): rechazado
+pgtap.log:ok 19 - QAUNICO con otro correo: permitido
+pgtap.log:ok 20 - max_uses=1 con una reserva vigente: segundo pedido rechazado
+pgtap.log:ok 21 - al cancelar se libera el uso y otro cliente puede usarlo
+pgtap.log:ok 22 - used_count no aumenta mientras el pedido no se paga
+pgtap.log:ok 23 - al pagar: used_count = 1 y redención confirmada
+pgtap.log:ok 1 - catálogo público: 8 estados
+pgtap.log:ok 2 - catálogo público: 13 transiciones
+pgtap.log:ok 3 - etiqueta de processing = "En preparación" (sustituye a preparing)
+pgtap.log:ok 4 - admin no puede marcar pagado (solo webhook)
+pgtap.log:ok 5 - payment_pending → shipped: inválida
+pgtap.log:ok 6 - payment_pending → processing: inválida
+pgtap.log:ok 7 - admin no puede vencer pedidos (solo system)
+pgtap.log:ok 8 - un cliente no puede usar admin_transition_order
+pgtap.log:ok 9 - admin cancela pendiente: nota obligatoria
+pgtap.log:ok 10 - admin cancela pendiente con nota
+pgtap.log:ok 11 - cancelled es terminal
+pgtap.log:ok 12 - paid → delivered: inválida (sin saltos)
+pgtap.log:ok 13 - paid → processing
+pgtap.log:ok 14 - processing → shipped exige guía
+pgtap.log:ok 15 - processing → shipped con guía
+pgtap.log:ok 16 - guía y fecha de envío persistidas
+pgtap.log:ok 17 - shipped → processing: inválida (no retrocede)
+pgtap.log:ok 18 - shipped → delivered
+pgtap.log:ok 19 - delivered_at asignado
+pgtap.log:ok 20 - delivered → cancelled: inválida
+pgtap.log:ok 21 - delivered → refunded exige nota
+pgtap.log:ok 22 - eventos de estado con actor (webhook y admin)
+pgtap.log:ok 23 - acciones admin registran el usuario
+pgtap.log:ok 24 - pedido inexistente
+pgtap.log:ok 25 - get_order_public con token correcto devuelve el estado
+pgtap.log:ok 26 - get_order_public con token falso no devuelve nada (ni confirma que el número exista)
+pendientes)
+pgtap.log:ok 2 - número de pedidos pagados vigentes
+pgtap.log:ok 3 - ticket promedio
+pgtap.log:ok 4 - unidades vendidas
+pgtap.log:ok 5 - conteo por estado incluye los 8 estados
+pgtap.log:ok 6 - pedidos vencidos contados (seed O5)
+pgtap.log:ok 7 - variantes con stock bajo
+pgtap.log:ok 8 - nueva venta de 249.900 sumada a las ventas
+pgtap.log:ok 9 - cliente no accede a métricas
+pgtap.log:ok 10 - anon no accede a métricas
+pgtap.log:ok 1 - anon ve solo los 6 productos activos (no borrador ni archivado)
+pgtap.log:ok 2 - anon no ve variantes de productos en borrador
+pgtap.log:ok 3 - anon ve solo imágenes de productos activos
+pgtap.log:ok 4 - anon consulta disponibilidad (vista) de variantes activas
+pgtap.log:ok 5 - anon ve solo reseñas aprobadas
+pgtap.log:ok 6 - anon ve solo métodos de envío activos
+pgtap.log:ok 7 - T9: anon no lee pedidos
+pgtap.log:ok 8 - anon no lee inventario
+pgtap.log:ok 9 - T13: anon no enumera cupones
+pgtap.log:ok 10 - anon no lee perfiles
+pgtap.log:ok 11 - T11: anon no inserta pedidos "paid" directamente
+pgtap.log:ok 12 - anon no modifica productos
+pgtap.log:ok 13 - T10: el cliente ve solo sus 3 pedidos
+pgtap.log:ok 14 - T14: el cliente ve los ítems de sus pedidos (y solo esos)
+pgtap.log:ok 15 - el cliente no ve un pedido ajeno por id
+pgtap.log:ok 16 - el cliente ve solo los pagos de sus pedidos
+pgtap.log:ok 17 - el cliente ve solo la línea de tiempo de sus pedidos
+pgtap.log:ok 18 - T16: el cliente no puede modificar pagos
+pgtap.log:ok 19 - el cliente no puede modificar pedidos
+pgtap.log:ok 20 - el cliente no puede insertar eventos
+pgtap.log:ok 21 - el cliente no ve inventario
+pgtap.log:ok 22 - el cliente no ve cupones
+pgtap.log:ok 23 - el cliente no ve eventos de pasarela
+pgtap.log:ok 24 - el cliente no ve auditoría
+pgtap.log:ok 25 - el cliente ve solo su perfil
+pgtap.log:ok 26 - el cliente actualiza su nombre (solo su fila)
+pgtap.log:ok 27 - el cliente no puede cambiar su rol
+pgtap.log:ok 28 - el cliente ve solo sus direcciones
+pgtap.log:ok 29 - el cliente no crea direcciones para otro usuario
+pgtap.log:ok 30 - el cliente no crea productos
+pgtap.log:ok 31 - favoritos: el cliente empieza sin favoritos
+pgtap.log:ok 32 - favoritos: el cliente agrega a su lista
+pgtap.log:ok 33 - admin ve todos los pedidos
+pgtap.log:ok 34 - admin ve todo el inventario
+pgtap.log:ok 35 - admin ve productos en borrador y archivados
+pgtap.log:ok 36 - admin gestiona cupones
+pgtap.log:ok 37 - ni el admin modifica inventario directamente (solo por RPC con movimiento)
+pgtap.log:ok 38 - ni el admin cambia estados directamente (solo por la máquina de estados)
+pgtap.log:ok 39 - admin no ve auditoría (solo super_admin)
+pgtap.log:ok 40 - super_admin ve auditoría
+pgtap.log:ok 41 - admin no puede asignar roles
+pgtap.log:ok 42 - super_admin promueve a un cliente a admin
+pgtap.log:ok 43 - no se puede retirar el último super_admin
+pgtap.log:ok 44 - service_role (backend) omite RLS
+pgtap.log:ok 45 - anon no sube imágenes al bucket
+pgtap.log:ok 46 - admin sube imágenes al bucket product-images
+concurrency.log:ok 1 - precondición: 1 unidad disponible
+concurrency.log:ok 2 - A crea su pedido dentro de una transacción abierta (bloquea la fila de inventario)
+concurrency.log:ok 3 - B envía su pedido en paralelo
+concurrency.log:ok 4 - B queda en espera del bloqueo de A (no lee un stock obsoleto)
+concurrency.log:ok 5 - B continúa al confirmar A
+concurrency.log:ok 6 - B recibe "Stock insuficiente" tras el commit de A
+concurrency.log:ok 7 - existe un solo pedido (el de A)
+concurrency.log:ok 8 - stock 1, reservada 1: sin sobreventa
+concurrency.log:ok 9 - A procesa el evento (transacción abierta)
+concurrency.log:ok 10 - B, con el mismo evento en paralelo, obtiene "duplicate"
+concurrency.log:ok 11 - pedido pagado una sola vez con un solo movimiento de venta
+concurrency.log:ok 12 - stock final 0, sin negativos
