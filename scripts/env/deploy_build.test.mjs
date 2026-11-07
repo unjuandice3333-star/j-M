@@ -33,8 +33,13 @@ function viteBuild(env) {
   const out = mkdtempSync(path.join(tmpdir(), 'jm-deploy-build-'));
   const envDir = mkdtempSync(path.join(tmpdir(), 'jm-deploy-envdir-'));
   const vitePath = pathToFileURL(path.join(WEB, 'node_modules/vite/dist/node/index.js')).href;
-  const r = spawnSync(process.execPath, ['--input-type=module', '-e', BUILD_SCRIPT, vitePath, WEB, out, envDir],
-    { cwd: WEB, encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env } });
+  // M35: el build de Vite se cuelga de forma intermitente bajo carga (visto en GitHub Actions y en local: el job `quality`
+  // quedaba >12 min). Límite de tiempo + UN reintento solo si el proceso se agota (no si el build falla con un estado):
+  // así un cuelgue no bloquea la CI y un fallo real de la guarda sigue fallando.
+  const run = () => spawnSync(process.execPath, ['--input-type=module', '-e', BUILD_SCRIPT, vitePath, WEB, out, envDir],
+    { cwd: WEB, encoding: 'utf8', timeout: 90_000, killSignal: 'SIGKILL', env: { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8', ...env } });
+  let r = run();
+  if (r.error?.code === 'ETIMEDOUT') r = run();
   const files = existsSync(path.join(out, 'assets')) ? readdirSync(path.join(out, 'assets')).filter((f) => f.endsWith('.js')) : [];
   const bundle = files.map((f) => readFileSync(path.join(out, 'assets', f), 'utf8')).join('\n');
   rmSync(out, { recursive: true, force: true }); rmSync(envDir, { recursive: true, force: true });

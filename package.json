@@ -24,7 +24,7 @@
     "build:qa": "node scripts/env/qa_build.mjs build",
     "preview:qa": "node scripts/env/qa_build.mjs preview",
     "env:sync-allowlist": "node scripts/env/sync_allowlist.mjs write",
-    "test:qa-build": "node --test --test-concurrency=1 scripts/env/qa_build.test.mjs scripts/env/deploy_build.test.mjs"
+    "test:qa-build": "node --test --test-timeout=300000 --test-concurrency=1 scripts/env/qa_build.test.mjs scripts/env/deploy_build.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

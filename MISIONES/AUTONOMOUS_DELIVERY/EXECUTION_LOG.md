@@ -51,3 +51,8 @@
 - e2e-supabase (workflow nuevo, primera ejecución real): Supabase oficial local arrancó, `db reset` aplicó migraciones y seeds, Vite con variables de servidor funcionó. Recorridos CON BACKEND REAL: e2e_site_content ✔, e2e_wishlist ✔, e2e_cart_variant ✔; e2e_session ✘ y e2e_commercial ✘ (ambos no llegan a /checkout/confirmacion); además el escaneo de llaves detectó el propio `.status.json` (artefacto del script, no una fuga: se borra antes de subir).
 - Diagnóstico de los dos ✘: hipótesis principal = el runner tiene internet y carga el widget REAL de Wompi (checkout.wompi.co), por lo que no navega a la confirmación. Mitigación aplicada: bloquear ese dominio en /etc/hosts del job. NO verificada hasta la siguiente ejecución.
 - Run 10 (`6fd9df3`): `quality` se mantuvo «in_progress» >7 min y se canceló al empujar; en el run 11 (`0a82bee`) `quality` pasó en minutos. Causa del retraso no determinada (posible lentitud del runner); no reproducible.
+
+### Resultado final de la ejecución 6 (M35), leído de GitHub Actions
+- `cef5fe4` (run `ci` nº 13): success en TODOS los jobs (governance, quality, e2e-synthetic, security, db-local, db-supabase, ci-gate). `e2e-supabase` nº 3: success (2.ª verde consecutiva tras `0cd1867`).
+- `quality` del run 12 quedó colgado 12,5 min en `19b_qa_profile_tests` hasta que lo cancelé al empujar; su log lo mostró. Reproducido en local bajo carga: build de Vite sin timeout en las pruebas de deploy. Mitigado (límite + 1 reintento); pendiente de confirmar en Actions.
+- Errores propios de la ejecución: commit con coma en el ámbito, commit con descripción de 107 caracteres, y dos condiciones de carrera en mis pruebas E2E sintéticas (recorridos 8 y 10). Todos corregidos.

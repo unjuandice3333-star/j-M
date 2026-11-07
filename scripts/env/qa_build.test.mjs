@@ -37,7 +37,12 @@ const CLI = path.join(ROOT, 'scripts/env/qa_build.mjs');
 // Entorno del proceso deliberadamente contaminado con configuración LOCAL: no debe llegar al bundle QA.
 const POLLUTED = { PATH: process.env.PATH, HOME: process.env.HOME, LANG: 'C.UTF-8',
   VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_APP_ENV: 'local', VITE_SENTINELA_PROCESO: 'valor-sentinela-proceso' };
-const run = (...args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env: POLLUTED, cwd: ROOT });
+// M35: límite de tiempo + un reintento solo si el proceso se agota (cuelgues intermitentes del build de Vite bajo carga).
+const run = (...args) => {
+  const go = () => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env: POLLUTED, cwd: ROOT, timeout: 150_000, killSignal: 'SIGKILL' });
+  const r = go();
+  return r.error?.code === 'ETIMEDOUT' ? go() : r;
+};
 const noLeak = (text) => [...SECRET_VALUES, 'valor-sentinela'].every((v) => !text.includes(v));
 
 // Estado local que no debe alterarse
