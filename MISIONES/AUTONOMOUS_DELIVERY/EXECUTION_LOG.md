@@ -35,3 +35,4 @@
 - No verificado: ejecución del workflow en GitHub, Supabase real local, Wompi Sandbox, Vercel.
 - Bloqueos reales: Docker; credenciales Wompi/Vercel; acceso a Vercel.
 - Siguiente: revisar resultado de Actions; job E2E contra Supabase local; cuando el propietario cargue credenciales, ejecutar OWNER_CHECKLIST.
+- Corrección posterior (M34): el CI de GitHub sobre `801c658` falló en `quality` → `13_unit_tests`: mi `vitest.config.js` (M32) hacía que `vitest run --dir packages` no encontrara pruebas. Corregido: `run_all.sh` usa `vitest run` y `gate_selftest.sh` usa `vitest run packages`. Los jobs `db-local` y `db-supabase` (Supabase real con Docker) SÍ pasaron en ese commit.

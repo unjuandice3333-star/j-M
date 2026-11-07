@@ -47,7 +47,7 @@ git update-ref refs/remotes/origin/selftest-default HEAD~1 2>/dev/null || git up
 echo "-- controles positivos (árbol sin defectos)"
 expect_pass "lint"                 npx --no-install eslint .
 expect_pass "typecheck"            npx --no-install tsc -p tsconfig.ci.json
-expect_pass "unit"                 npx --no-install vitest run --dir packages
+expect_pass "unit"                 npx --no-install vitest run packages
 expect_pass "webhook"              node --experimental-test-module-mocks apps/web/scripts/test-webhook-security.mjs
 expect_pass "build"                bash scripts/ci/build.sh
 expect_pass "migraciones"          env BASE_REF=HEAD bash scripts/ci/migrations_policy.sh
@@ -71,7 +71,7 @@ expect_fail "typecheck: error de tipos" "TS2322" npx --no-install tsc -p tsconfi
 reset_tree
 
 sed -i "s/toBe('POLOCLASS01-M-NEG')/toBe('VALOR-INCORRECTO')/" packages/utils/index.test.ts
-expect_fail "unit: regresión" "VALOR-INCORRECTO|failed" npx --no-install vitest run --dir packages
+expect_fail "unit: regresión" "VALOR-INCORRECTO|failed" npx --no-install vitest run packages
 reset_tree
 
 echo 'console.log("SUPABASE_SERVICE_ROLE_KEY");' >> apps/web/src/main.jsx
