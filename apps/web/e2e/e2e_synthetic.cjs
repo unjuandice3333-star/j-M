@@ -224,8 +224,8 @@ async function main() {
       await row.locator('input').first().fill('7');
       await row.locator('input').nth(1).fill('Llegó mercancía del proveedor');
       await row.getByRole('button').first().click();
-      await p.waitForFunction(async () => true);
-      const inv = (await state()).inventories.find((i) => i.sku === 'POL-M-NEG');
+      // el ajuste es asíncrono: sondear la BD sintética (hasta 10 s) en vez de leer justo tras el clic
+      let inv; for (let i = 0; i < 50; i++) { inv = (await state()).inventories.find((x) => x.sku === 'POL-M-NEG'); if (inv.stock === 16) break; await new Promise((r) => setTimeout(r, 200)); }
       if (inv.stock !== 16) throw new Error(`stock tras el ajuste ${inv.stock} ≠ 16 (10 − 1 vendida + 7)`);
       // pedidos: pagado → procesando → enviado (con guía)
       await p.goto(`${BASE}/admin/pedidos`); await expectText(p, num);

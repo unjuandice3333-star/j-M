@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-07 (ejecución 5, M34)
+Última actualización: 2026-11-07 (ejecución 6, M35)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -29,10 +29,23 @@ Defectos reales encontrados y corregidos en esta ejecución: (1) `applyCoupon` p
 - E2E contra Supabase REAL local (`e2e_checkout.cjs`, `e2e_admin.cjs`, …): requieren Docker. Los E2E sintéticos (arriba) los complementan, no los sustituyen.
 - Wompi Sandbox real y Vercel Preview: faltan credenciales (ver abajo).
 
-## CI (M34)
-`.github/workflows/ci.yml` ahora incluye el job `e2e-synthetic` (Chromium + Vite + backend sintético, 10 recorridos) y `quality` ejecuta las 92 pruebas unitarias completas (`vitest run`, antes solo `packages`); `ci-gate` exige todos los jobs. Ya existían `db-local` (PostgreSQL 16 + pgTAP) y `db-supabase` (Supabase oficial local con Docker: migraciones, `db reset`, pgTAP 290, 39 comprobaciones HTTP de auth/RLS/RPC, flujo pedido+pago con los handlers reales de Wompi, determinismo). Verificado LOCALMENTE: etapa e2e-synthetic PASS (15 s), vitest 92/92, tsc OK, política de migraciones OK, `test:qa-build` 23/23. **El workflow NO se ha ejecutado aún en GitHub Actions** (el push lo dispara: revisar el resultado en la pestaña Actions). Exigirlo como check de PR a `main` es una configuración del ruleset que hace el propietario (añadir `ci-gate`).
+## Matriz de validación (qué se ejecutó y DÓNDE)
+| Componente | Local (este contenedor) | GitHub Actions | Supabase local (Docker) | Supabase QA remoto | Wompi Sandbox | Vercel Preview |
+|---|---|---|---|---|---|---|
+| Build, ESLint, tsc | ✔ | ✔ (`quality`, run 11) | — | — | — | — |
+| 103 pruebas unitarias | ✔ 103/103 | ✔ (dentro de `quality`, run 11) | — | — | — | — |
+| 142 pruebas de entorno | ✔ | ✔ (`quality`, run 11) | — | — | — | — |
+| E2E sintético (backend en memoria, 10 recorridos) | ✔ 10/10 (13 ejecuciones seguidas, también bajo carga) | ✘ en runs 11 y 12 por dos condiciones de carrera de MI prueba (recorridos 8 y 10), ya corregidas pero **aún sin ejecución verde confirmada tras la corrección**; ✔ en run 10 | — | — | — | — |
+| PostgreSQL 16 + pgTAP (db-local) | ✔ 278/278 (M32) | ✔ runs 10, 11 y 12 | — | — | — | — |
+| Supabase oficial local: migraciones, `db reset`, pgTAP 290, HTTP (auth/RLS/RPC), pedido+pago con handlers reales, determinismo | — | ✔ runs 10, 11 y 12 (`db-supabase`) | ✔ | — | — | — |
+| **E2E de navegador con Supabase local REAL** (`e2e_site_content`, `e2e_wishlist`, `e2e_cart_variant`, `e2e_session`, `e2e_commercial`) | — | ✔ **1 ejecución verde** (workflow `e2e-supabase`, commit `0cd1867`); antes ✘ (2 de 5) por el widget real de Wompi cargándose desde internet → dominio bloqueado | ✔ | — | — | — |
+| Webhook Wompi (timestamp, firma, idempotencia) | ✔ 16/16 | ✔ (`quality` paso 14) y flujo de pago real contra Supabase local en `db-supabase` | ✔ | — | ✘ no probado | — |
+| Límite de tasa `/api/wompi/signature` | ✔ 4 pruebas con el handler real | ✔ (vitest en `quality`) | — | — | — | — |
+| Supabase QA remoto (`yomgxdjgfjnrjaqiarvw`) | ✘ no ejecutado | ✘ | — | ✘ NO VALIDADO | — | — |
+| Wompi Sandbox real | ✘ | ✘ | — | — | ✘ NO VALIDADO | — |
+| Vercel Preview (`jym-web`) | ✘ | ✘ | — | — | — | ✘ NO VALIDADO |
 
-Clasificación honesta de E2E: sintéticos = backend en memoria (10/10, CI); con Supabase REAL = scripts `apps/web/e2e/e2e_*.cjs` (manuales, requieren `supabase start`; NO ejecutados en este entorno por falta de Docker; sin job de CI todavía); con Wompi Sandbox = `wompi_sandbox.cjs` (NO ejecutado, faltan credenciales). Nada de lo que depende de Supabase real o Wompi se declara validado por E2E.
+Estado del CI sobre `0cd1867` (run 12), leído de GitHub: security ✔ · db-local ✔ · db-supabase ✔ · e2e-synthetic ✘ (carrera en recorrido 10, corregida después) · governance ✘ (mi descripción de commit de 107 caracteres, límite 100) · quality: ver EXECUTION_LOG. `ci-gate` por tanto en ✘. El workflow `e2e-supabase` **no** forma parte de `ci-gate` ni debe hacerlo hasta acumular al menos 3 ejecuciones verdes consecutivas.
 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
