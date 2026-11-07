@@ -58,3 +58,9 @@
 - Errores propios de la ejecución: commit con coma en el ámbito, commit con descripción de 107 caracteres, y dos condiciones de carrera en mis pruebas E2E sintéticas (recorridos 8 y 10). Todos corregidos.
 - Commit `725e3bd` (mitigación de timeouts): `ci` nº 14 success (todos los jobs, `quality` en ~3 min) y `e2e-supabase` nº 4 success (3.ª verde seguida). Cierre de la ejecución: publicado y verificado el hash remoto; solo queda pendiente el run de este último commit de documentación.
 - Siguiente: decidir si `e2e-supabase` entra en `ci-gate`; con credenciales del propietario, ejecutar `OWNER_CHECKLIST.md` contra QA/Preview/Wompi Sandbox.
+
+## 2026-11-07 — Ejecución 7 (M36)
+- Estado inicial: rama = `117f96a` = remoto; CI `ci` nº 15 success sobre ese commit.
+- Implementado: Playwright (config, fixtures de diagnóstico, 7 smoke, `pw.mjs`, scripts `test:pw*`/`e2e:*`, etapa CI 41), `PLAYWRIGHT.md`, plan de fase 2.
+- Pruebas locales: Edge 157 7/7; Chromium 7/7; verificado que un fallo genera captura, vídeo, traza y adjunta console.log; etapa CI como la ejecuta run_all (env -i, CI=1): PASS.
+- Preview: sin URL ni acceso → NO probado. Windows: NO probado.

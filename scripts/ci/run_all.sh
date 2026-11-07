@@ -82,6 +82,8 @@ fi
 if want e2e-synthetic; then
   run_step 10_install      pnpm install --frozen-lockfile
   run_step 40_e2e_synthetic env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" node apps/web/e2e/e2e_synthetic.cjs
+  # M36: smoke de Playwright (Chromium, backend sintético local; Edge es el navegador del propietario en Windows y no está en el runner)
+  run_step 41_playwright_smoke env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 CI=1 PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" node apps/web/scripts/pw.mjs local --project=chromium
 fi
 
 # --- Seguridad y migraciones -----------------------------------------------------

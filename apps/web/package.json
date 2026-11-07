@@ -6,22 +6,30 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/postbuild.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "e2e:local": "node scripts/pw.mjs local",
+    "e2e:local:edge": "node scripts/pw.mjs local --project=edge",
+    "e2e:local:chromium": "node scripts/pw.mjs local --project=chromium",
+    "e2e:preview": "node scripts/pw.mjs preview --project=edge",
+    "e2e:preview:chromium": "node scripts/pw.mjs preview --project=chromium",
+    "e2e:report": "playwright show-report playwright-report",
+    "e2e:install": "playwright install chromium"
   },
   "dependencies": {
+    "@jm/shared": "workspace:*",
+    "@jm/types": "workspace:*",
+    "@jm/ui": "workspace:*",
+    "@jm/utils": "workspace:*",
     "@supabase/supabase-js": "^2.43.2",
     "@tanstack/react-query": "^5.32.0",
+    "lucide-react": "^0.378.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.23.0",
-    "zustand": "^4.5.2",
-    "lucide-react": "^0.378.0",
-    "@jm/ui": "workspace:*",
-    "@jm/types": "workspace:*",
-    "@jm/utils": "workspace:*",
-    "@jm/shared": "workspace:*"
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.2.1",

@@ -120,6 +120,8 @@ jobs:
             ci-artifacts/
             apps/web/e2e/fail-*.png
             apps/web/e2e/last-synthetic-result.json
+            apps/web/playwright-report/
+            apps/web/test-results/
           retention-days: 14
 
   security:
