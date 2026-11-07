@@ -67,5 +67,5 @@ Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que
 2. Cobertura de UI de páginas (Cart/Checkout con testing-library) y de `adminService.upsertProduct`/`productService.normalizeProduct`.
 3. Job de CI que ejecute los E2E de navegador contra Supabase local real (`e2e_*.cjs`) tras `supabase start` en `db-supabase`.
 4. Aviso `MODULE_TYPELESS_PACKAGE_JSON` de eslint.config.js.
-5. Revisar UX: `alert()` nativo tras crear cuenta en `Login.jsx`.
+5. ~~UX: `alert()` nativo en `Login.jsx`~~ (hecho en ejecución 9: aviso en pantalla `role=status`).
 6. Wompi Sandbox / Vercel Preview cuando existan credenciales.

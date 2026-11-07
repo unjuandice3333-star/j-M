@@ -9,6 +9,7 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [notice, setNotice] = useState('');
   const { login, signUp, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,10 +19,11 @@ export const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) return;
+    setNotice('');
     try {
       if (isRegistering) {
         await signUp(email, password, fullName);
-        alert('Cuenta creada exitosamente. Si tu correo requiere verificación, por favor revisa tu bandeja de entrada.');
+        setNotice('Cuenta creada exitosamente. Si tu correo requiere verificación, por favor revisa tu bandeja de entrada.');
       } else {
         await login(email, password);
         const currentProfile = useAuthStore.getState().profile;
@@ -46,6 +48,7 @@ export const Login = () => {
 
         <form onSubmit={handleSubmit} className={styles.form}>
           {error && <div className={styles.errorBanner}>{error}</div>}
+          {notice && !error && <div className={styles.noticeBanner} role="status">{notice}</div>}
 
           {isRegistering && (
             <Input

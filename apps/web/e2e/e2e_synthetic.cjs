@@ -170,7 +170,7 @@ async function main() {
       await p.getByRole('button', { name: 'Crear cuenta' }).click();
       await p.getByPlaceholder(/Juan/i).first().fill('Ana Gómez');
       await p.locator('input[type=email]').fill('ana@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
-      const aviso = p.waitForEvent('dialog'); // la pantalla avisa con alert() tras crear la cuenta
+      const aviso = p.getByRole('status').filter({ hasText: 'Cuenta creada' }).waitFor(); // aviso en pantalla tras crear la cuenta
       await p.locator('button[type=submit]').click(); await aviso; await p.waitForTimeout(300);
       await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
       // compra con sesión
@@ -199,7 +199,7 @@ async function main() {
       // un cliente registrado NO entra al panel
       await p.goto(`${BASE}/login`); await p.getByRole('button', { name: 'Crear cuenta' }).click();
       await p.getByPlaceholder(/Juan/i).first().fill('Cliente'); await p.locator('input[type=email]').fill('c@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
-      const aviso = p.waitForEvent('dialog'); // la pantalla avisa con alert() tras crear la cuenta
+      const aviso = p.getByRole('status').filter({ hasText: 'Cuenta creada' }).waitFor(); // aviso en pantalla tras crear la cuenta
       await p.locator('button[type=submit]').click(); await aviso; await p.waitForTimeout(300);
       await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
       await p.goto(`${BASE}/admin/dashboard`);

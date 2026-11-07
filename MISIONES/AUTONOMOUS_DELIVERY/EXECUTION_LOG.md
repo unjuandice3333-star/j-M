@@ -73,3 +73,10 @@
 - Prioridad 2 (parcial, bloqueada): sesión sin acceso a QA (proxy 403 hacia `api.supabase.com`/`*.supabase.co`, sin token); no se intentó eludir. Se entrega análisis con la evidencia de M29 + herramientas de captura exacta (`[3]` en Playwright y `pnpm qa:diagnose`, 8 pruebas). Códigos exactos NO capturados.
 - Prioridad 3 (hecha): `00-health.spec.js` con capas [1] [2] [3]; las 7 pruebas originales intactas; diagnóstico de respuestas Supabase (código/mensaje/detalle/pista, sin tokens ni correos). Validado con backend sintético en modo esquema heredado (`SYNTH_LEGACY_SCHEMA=1`): reproduce el patrón del Preview.
 - Hallazgo: el Preview no puede pasar mientras QA no tenga el baseline M24; es decisión del propietario (A3-R/A3-M + backup restaurable verificado).
+
+## 2026-11-07 — Ejecución 9
+- Estado inicial: sesión arrancó en rama `claude/gracious-pasteur-mcm3jz` (main); se cambió a la rama autorizada = remoto `e142ab2`.
+- Tarea: reemplazar `alert()` de registro por aviso en pantalla (`Login.jsx`, `Login.module.css`); E2E sintético 8 y 9 actualizados (`e2e_synthetic.cjs`).
+- Pruebas: build OK; vitest 131/131; E2E sintético 10/10; eslint sin errores.
+- Bloqueos reales (sin cambio): Supabase QA sin baseline M24 (decisión del propietario), credenciales Wompi Sandbox, acceso a Vercel.
+- Siguiente: cobertura UI de Cart/Checkout con testing-library; con credenciales, OWNER_CHECKLIST.
