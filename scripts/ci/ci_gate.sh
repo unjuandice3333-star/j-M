@@ -3,7 +3,7 @@
 # y falla salvo que TODOS los jobs requeridos existan y terminen en "success".
 # skipped, failure, cancelled o un job ausente → fallo. Probado en gate_selftest.sh.
 set -uo pipefail
-REQUIRED="${REQUIRED_JOBS:-governance quality security db-local db-supabase}"
+REQUIRED="${REQUIRED_JOBS:-governance quality e2e-synthetic security db-local db-supabase}"
 python3 -I - "$REQUIRED" <<'PY'
 import json, os, sys
 needs = json.loads(os.environ.get("NEEDS_JSON") or "{}")

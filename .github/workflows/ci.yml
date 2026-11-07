@@ -90,6 +90,35 @@ jobs:
           path: ci-artifacts/
           retention-days: 30
 
+  e2e-synthetic:
+    name: e2e-synthetic   # E2E de navegador con backend SINTÉTICO (Chromium + Vite real; no valida RLS ni Wompi) — el nombre es el check exigido por la protección de ramas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (versión desde packageManager)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+      - name: Chromium de Playwright
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Recorridos E2E sintéticos
+        env:
+          CI_STAGES: e2e-synthetic
+        run: bash scripts/ci/run_all.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ci-e2e-synthetic-${{ github.sha }}
+          path: |
+            ci-artifacts/
+            apps/web/e2e/fail-*.png
+            apps/web/e2e/last-synthetic-result.json
+          retention-days: 14
+
   security:
     name: security   # Seguridad (política de migraciones y secretos) — el nombre es el check exigido por la protección de ramas
     runs-on: ubuntu-24.04
@@ -193,7 +222,7 @@ jobs:
   ci-gate:
     name: ci-gate
     if: always()
-    needs: [governance, quality, security, trusted-policy, db-local, db-supabase]
+    needs: [governance, quality, e2e-synthetic, security, trusted-policy, db-local, db-supabase]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -201,6 +230,6 @@ jobs:
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
-          REQUIRED_JOBS="governance quality security db-local db-supabase"
+          REQUIRED_JOBS="governance quality e2e-synthetic security db-local db-supabase"
           [[ "$EVENT_NAME" == pull_request ]] && REQUIRED_JOBS="$REQUIRED_JOBS trusted-policy"
           REQUIRED_JOBS="$REQUIRED_JOBS" bash scripts/ci/ci_gate.sh

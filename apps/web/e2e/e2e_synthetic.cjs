@@ -10,7 +10,7 @@ const backend = require('./synthetic/backend.cjs');
 
 const ROOT = path.resolve(__dirname, '../../..');
 const WEB = path.join(ROOT, 'apps/web');
-const API = 54321; const APP = Number(process.env.E2E_PORT || 3100);
+const API = 54321; const APP = Number(process.env.E2E_PORT || 3110);
 const BASE = `http://127.0.0.1:${APP}`; const API_URL = `http://127.0.0.1:${API}`;
 
 // Variables del fixture público de CI (config/env/local-ci.env: valores ficticios, no son credenciales).

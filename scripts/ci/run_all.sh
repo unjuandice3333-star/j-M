@@ -3,7 +3,7 @@
 # CI — J&M FASHION STORE (M25). Único punto de entrada de las compuertas, en local y en GitHub Actions.
 #
 #   CI_PROFILE=full  (por defecto) | quick (omite las etapas de BD: SKIPPED, veredicto "PASS PARCIAL")
-#   CI_STAGES="governance quality security db-local db-supabase"  (subconjunto; cada job de GitHub ejecuta una)
+#   CI_STAGES="governance quality e2e-synthetic security db-local db-supabase"  (subconjunto; cada job de GitHub ejecuta una)
 #   La etapa quality incluye las guardas de entorno de M26 (17_env_tests, 18_env_templates, 19_env_cli_checks,
 #   19b_qa_profile_tests).
 #   BASE_REF=<rama|commit>   base para commits y migraciones (por defecto origin/develop u origin/main)
@@ -19,7 +19,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/lib/common.sh"
 cd "$CI_ROOT"
 PROFILE="${CI_PROFILE:-full}"
-STAGES=" ${CI_STAGES:-governance quality security db-local db-supabase} "
+STAGES=" ${CI_STAGES:-governance quality e2e-synthetic security db-local db-supabase} "
 want() { [[ "$STAGES" == *" $1 "* ]]; }
 STAGES_TXT=$(echo $STAGES)
 # En GitHub Actions la base la fija resolve_base.sh y es obligatoria: sin ella no se recurre a ninguna rama
@@ -61,7 +61,8 @@ if want quality; then
   run_step 10_install       pnpm install --frozen-lockfile
   run_step 11_lint          npx --no-install eslint .
   run_step 12_typecheck     npx --no-install tsc -p tsconfig.ci.json
-  run_step 13_unit_tests    npx --no-install vitest run --dir packages
+  # M34: incluye las pruebas unitarias de la tienda (apps/web/src/__tests__) además de packages (vitest.config.js)
+  run_step 13_unit_tests    npx --no-install vitest run
   run_step 14_webhook_tests node --experimental-test-module-mocks apps/web/scripts/test-webhook-security.mjs
   if have "${DENO_BIN:-deno}"; then run_step 15_edge_tests bash scripts/ci/edge_tests.sh
   else record_blocked 15_edge_tests "deno no disponible (DENO_BIN)"; fi
@@ -73,6 +74,14 @@ if want quality; then
   # M26-T8: comandos del perfil QA (build/preview/dev con Vite real y fixtures ficticios). Secuencial y fuera de test:env:
   # usa puertos fijos (4174, 3100) y comprueba el aislamiento frente a apps/web/.env.local.
   run_step 19b_qa_profile_tests env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 pnpm -s test:qa-build
+fi
+
+# --- E2E de navegador SINTÉTICO (M34) ----------------------------------------------
+# Vite + Chromium reales contra un backend sintético en memoria (apps/web/e2e/synthetic). NO valida RLS, la BD real ni
+# Wompi: eso lo cubren db-local/db-supabase. Requiere Chromium (el job lo instala con `playwright install`).
+if want e2e-synthetic; then
+  run_step 10_install      pnpm install --frozen-lockfile
+  run_step 40_e2e_synthetic env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" node apps/web/e2e/e2e_synthetic.cjs
 fi
 
 # --- Seguridad y migraciones -----------------------------------------------------

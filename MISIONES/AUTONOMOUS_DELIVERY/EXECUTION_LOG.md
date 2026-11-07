@@ -25,3 +25,13 @@
 - Errores encontrados y corregidos: ver MASTER_STATUS (3 defectos).
 - Bloqueos reales: credenciales Wompi/Vercel/Supabase QA; Docker.
 - Siguiente: llevar unit + E2E sintético al CI; E2E con Supabase real en CI; cobertura de UI.
+
+## 2026-11-07 — Ejecución 5 (M34)
+- Estado inicial: rama = `1eb5c77` = remoto, árbol limpio.
+- Tarea: CI, revisión Wompi, preparación Preview.
+- Archivos: `.github/workflows/ci.yml`, `scripts/ci/run_all.sh`, `scripts/ci/ci_gate.sh`, `package.json`/`pnpm-lock.yaml` (playwright), `apps/web/e2e/e2e_synthetic.cjs` (puerto), `WOMPI_REVIEW.md`, `OWNER_CHECKLIST.md`.
+- Pruebas locales: etapa e2e-synthetic PASS; vitest 92/92; tsc OK; migrations_policy OK; test:qa-build 23/23 (había 3 procesos vite míos huérfanos ocupando 3100; terminados); webhook Wompi 13/13.
+- Hallazgo: db-local y db-supabase (Supabase local con Docker) ya existían desde M25–M30; no se duplicaron.
+- No verificado: ejecución del workflow en GitHub, Supabase real local, Wompi Sandbox, Vercel.
+- Bloqueos reales: Docker; credenciales Wompi/Vercel; acceso a Vercel.
+- Siguiente: revisar resultado de Actions; job E2E contra Supabase local; cuando el propietario cargue credenciales, ejecutar OWNER_CHECKLIST.

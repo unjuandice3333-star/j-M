@@ -9,3 +9,5 @@
 - D8 (M33): E2E sin Docker = Vite + Chromium reales contra un backend sintético local (127.0.0.1:54321). No sustituye los E2E contra Supabase real; Wompi no se simula como real.
 - D9 (M33): `test:env` usa un envDir temporal sin archivos `.env` por defecto; solo la prueba de lectura de archivos usa `apps/web` a propósito. No se relajó ninguna expectativa de seguridad.
 - D10 (M33): jsdom@25 añadido como devDependency raíz para probar `AuthGuard` con render de cliente (el render de servidor de zustand ignora el estado actual).
+- D11 (M34): E2E sintético como job propio `e2e-synthetic` (necesita instalar Chromium; no ralentiza `quality`). `quality` pasa de `vitest run --dir packages` a `vitest run` (92 pruebas). playwright@1.63.0 como devDependency raíz. Puerto E2E por defecto 3110 (3100 lo usan las pruebas de QA).
+- D12 (M34): NO se añadió a ciegas un job de E2E contra Supabase real: no se puede probar aquí (sin Docker) y un job roto bloquearía `ci-gate`. Queda como pendiente documentado.
