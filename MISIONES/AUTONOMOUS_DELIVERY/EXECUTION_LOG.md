@@ -102,3 +102,11 @@
 - No ejecutado esta vez: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión sobre gitleaks (`security`).
 - Siguiente: UI de `CheckoutPage` y `adminService.upsertProduct`/`productService.normalizeProduct`; con credenciales, OWNER_CHECKLIST.
+
+## 2026-11-07 — Ejecución 11 (cobertura UI checkout + servicios)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-pv7t7w` (= main); se avanzó (ff) al remoto de `mission/m26-dev-qa-environments` (`c1371f3`). La rama de sesión asignada por el arnés es `claude/gracious-pasteur-pv7t7w`: el trabajo se publica ahí (no existe permiso de push a la rama de misión desde esta sesión); el propietario puede integrarlo a la rama de misión.
+- Tarea: `checkoutPage.test.jsx` (5: carrito vacío, validación sin pedido, pedido válido con idempotencia + Wompi, fallo de Wompi → confirmación con reintento, fallo de create_order), `productService.test.js` (6), `adminService.test.js` (8).
+- Pruebas: vitest 178/178 (14 archivos); ESLint de los archivos nuevos sin errores; build OK.
+- No ejecutado: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL Vercel Preview, decisión gitleaks.
+- Siguiente: UI de ProductDetailPage/AccountPage/admin; con credenciales, OWNER_CHECKLIST.
