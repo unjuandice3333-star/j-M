@@ -1,0 +1,325 @@
+From 06d8ad374b5b942dd16b16c20fc4b9fd99b20563 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 7 Nov 2026 05:09:47 +0000
+Subject: [PATCH 1/2] chore(delivery): vitest config, test:unit script and
+ autonomous delivery status docs
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FPwMVHoKWguCQNNYmW1upL
+---
+ MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md     |  4 ++++
+ MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md |  9 ++++++++
+ MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md | 23 +++++++++++++++++++
+ package.json                                  |  1 +
+ vitest.config.js                              | 10 ++++++++
+ 5 files changed, 47 insertions(+)
+ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md
+ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md
+ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md
+ create mode 100644 vitest.config.js
+
+diff --git a/MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md b/MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md
+new file mode 100644
+index 0000000..9567ff5
+--- /dev/null
++++ b/MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md
+@@ -0,0 +1,4 @@
++# DECISIONS
++- D1 (2026-11-07): Rama de trabajo = `mission/m26-dev-qa-environments`. La rama de sesión `claude/gracious-pasteur-rb0qht` estaba en main sin el trabajo M24–M30.
++- D2: Vitest solo ejecuta paquetes/src; `scripts/**/*.test.mjs` usan node:test (`pnpm test:env`).
++- D3: Production, pagos reales, `db reset --linked`, POS y merge a main quedan fuera de alcance.
+diff --git a/MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md b/MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md
+new file mode 100644
+index 0000000..7067d72
+--- /dev/null
++++ b/MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md
+@@ -0,0 +1,9 @@
++# EXECUTION LOG
++## 2026-11-07 — Ejecución 1
++- Estado inicial: rama mission/m26 en b5b70d5, árbol limpio; no existía MISIONES/AUTONOMOUS_DELIVERY.
++- Tarea: reproducibilidad local y pruebas unitarias.
++- Archivos: vitest.config.js (nuevo), package.json (script test:unit), MISIONES/AUTONOMOUS_DELIVERY/*.
++- Pruebas: build OK; test:env 141/141; vitest 6/6; eslint 0 errores / 9 warnings.
++- Bloqueos reales: ninguno para código; Wompi/Vercel requieren credenciales del propietario.
++- Push: el push a `mission/m26-dev-qa-environments` fue denegado por el entorno (la sesión solo autoriza `claude/gracious-pasteur-rb0qht`); commit local.
++- Siguiente: limpiar warnings ESLint; intentar Supabase local para E2E.
+diff --git a/MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md b/MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md
+new file mode 100644
+index 0000000..0b92972
+--- /dev/null
++++ b/MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md
+@@ -0,0 +1,23 @@
++# MASTER STATUS — J&M Autonomous Delivery
++
++Última actualización: 2026-11-07 (ejecución 1)
++Rama autorizada: `mission/m26-dev-qa-environments`
++
++## Estado verificado (ejecutado, no supuesto)
++| Comprobación | Resultado |
++|---|---|
++| `pnpm install --frozen-lockfile` | OK |
++| `pnpm build` (apps/web, Vite) | OK |
++| `pnpm test:env` (node:test) | 141/141 |
++| `pnpm test:unit` (vitest) | 6/6 (corregido: antes fallaban 11 archivos node:test) |
++| `eslint .` | 0 errores, 9 warnings (variables sin usar) |
++
++## NO verificado en este entorno
++- Stack local Supabase (`supabase start`), pgTAP, E2E Playwright (requieren Docker/Supabase local).
++- Wompi Sandbox real y Vercel Preview (requieren credenciales del propietario).
++
++## Pendiente (prioridad)
++1. Limpiar los 9 warnings de ESLint.
++2. Verificar si el entorno permite Docker/Supabase local para correr los E2E de `apps/web/e2e`.
++3. Revisar autenticación/carrito/checkout con pruebas unitarias donde no haya cobertura.
++4. Wompi Sandbox y Vercel Preview: bloqueados por credenciales (ver DECISIONS.md).
+diff --git a/package.json b/package.json
+index d970c08..21cc009 100644
+--- a/package.json
++++ b/package.json
+@@ -12,6 +12,7 @@
+     "prepare": "husky",
+     "check:env": "node scripts/env/check_env.mjs",
+     "build:factory": "node scripts/env/check_env.mjs && pnpm --filter @jm/web build",
++    "test:unit": "vitest run",
+     "test:env": "node --test scripts/env/environments.test.mjs scripts/env/check_env.test.mjs scripts/env/runtime_config.test.mjs scripts/env/templates.test.mjs scripts/env/gen_local_env.test.mjs scripts/env/qa_config.test.mjs scripts/env/r1_regression.test.mjs scripts/release/production_readiness.test.mjs scripts/env/r1_1_deploy_context.test.mjs",
+     "check:templates": "node scripts/env/templates.mjs check",
+     "env:local": "bash scripts/env/gen_local_env.sh",
+diff --git a/vitest.config.js b/vitest.config.js
+new file mode 100644
+index 0000000..286fee3
+--- /dev/null
++++ b/vitest.config.js
+@@ -0,0 +1,10 @@
++import { defineConfig } from 'vitest/config'
++
++// Vitest solo ejecuta las pruebas unitarias TypeScript/JS de los paquetes.
++// Los archivos *.test.mjs de scripts/ usan node:test y se ejecutan con `pnpm test:env`.
++export default defineConfig({
++  test: {
++    include: ['packages/**/*.test.{ts,tsx,js}', 'apps/web/src/**/*.test.{ts,tsx,js,jsx}'],
++    exclude: ['**/node_modules/**', '**/dist/**', 'scripts/**'],
++  },
++})
+-- 
+2.43.0
+
+
+From 52d4aac6b68feacdb9f8ddb6536f60e2ab61c222 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 7 Nov 2026 05:12:56 +0000
+Subject: [PATCH 2/2] docs(delivery): recovery patch, bundle and procedure for
+ cycle 1
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FPwMVHoKWguCQNNYmW1upL
+---
+ .../RECOVERY/0001-delivery-cycle1.patch       | 105 ++++++++++++++++++
+ .../AUTONOMOUS_DELIVERY/RECOVERY/RECOVERY.md  |   8 ++
+ .../AUTONOMOUS_DELIVERY/RECOVERY/SHA256SUMS   |   2 +
+ .../RECOVERY/cycle1.bundle                    | Bin 0 -> 2822 bytes
+ 4 files changed, 115 insertions(+)
+ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/0001-delivery-cycle1.patch
+ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/RECOVERY.md
+ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/SHA256SUMS
+ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/cycle1.bundle
+
+diff --git a/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/0001-delivery-cycle1.patch b/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/0001-delivery-cycle1.patch
+new file mode 100644
+index 0000000..573f98c
+--- /dev/null
++++ b/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/0001-delivery-cycle1.patch
+@@ -0,0 +1,105 @@
++From 06d8ad374b5b942dd16b16c20fc4b9fd99b20563 Mon Sep 17 00:00:00 2001
++From: Claude <noreply@anthropic.com>
++Date: Sat, 7 Nov 2026 05:09:47 +0000
++Subject: [PATCH] chore(delivery): vitest config, test:unit script and
++ autonomous delivery status docs
++
++Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
++Claude-Session: https://claude.ai/code/session_01FPwMVHoKWguCQNNYmW1upL
++---
++ MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md     |  4 ++++
++ MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md |  9 ++++++++
++ MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md | 23 +++++++++++++++++++
++ package.json                                  |  1 +
++ vitest.config.js                              | 10 ++++++++
++ 5 files changed, 47 insertions(+)
++ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md
++ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md
++ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md
++ create mode 100644 vitest.config.js
++
++diff --git a/MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md b/MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md
++new file mode 100644
++index 0000000..9567ff5
++--- /dev/null
+++++ b/MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md
++@@ -0,0 +1,4 @@
+++# DECISIONS
+++- D1 (2026-11-07): Rama de trabajo = `mission/m26-dev-qa-environments`. La rama de sesión `claude/gracious-pasteur-rb0qht` estaba en main sin el trabajo M24–M30.
+++- D2: Vitest solo ejecuta paquetes/src; `scripts/**/*.test.mjs` usan node:test (`pnpm test:env`).
+++- D3: Production, pagos reales, `db reset --linked`, POS y merge a main quedan fuera de alcance.
++diff --git a/MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md b/MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md
++new file mode 100644
++index 0000000..7067d72
++--- /dev/null
+++++ b/MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md
++@@ -0,0 +1,9 @@
+++# EXECUTION LOG
+++## 2026-11-07 — Ejecución 1
+++- Estado inicial: rama mission/m26 en b5b70d5, árbol limpio; no existía MISIONES/AUTONOMOUS_DELIVERY.
+++- Tarea: reproducibilidad local y pruebas unitarias.
+++- Archivos: vitest.config.js (nuevo), package.json (script test:unit), MISIONES/AUTONOMOUS_DELIVERY/*.
+++- Pruebas: build OK; test:env 141/141; vitest 6/6; eslint 0 errores / 9 warnings.
+++- Bloqueos reales: ninguno para código; Wompi/Vercel requieren credenciales del propietario.
+++- Push: el push a `mission/m26-dev-qa-environments` fue denegado por el entorno (la sesión solo autoriza `claude/gracious-pasteur-rb0qht`); commit local.
+++- Siguiente: limpiar warnings ESLint; intentar Supabase local para E2E.
++diff --git a/MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md b/MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md
++new file mode 100644
++index 0000000..0b92972
++--- /dev/null
+++++ b/MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md
++@@ -0,0 +1,23 @@
+++# MASTER STATUS — J&M Autonomous Delivery
+++
+++Última actualización: 2026-11-07 (ejecución 1)
+++Rama autorizada: `mission/m26-dev-qa-environments`
+++
+++## Estado verificado (ejecutado, no supuesto)
+++| Comprobación | Resultado |
+++|---|---|
+++| `pnpm install --frozen-lockfile` | OK |
+++| `pnpm build` (apps/web, Vite) | OK |
+++| `pnpm test:env` (node:test) | 141/141 |
+++| `pnpm test:unit` (vitest) | 6/6 (corregido: antes fallaban 11 archivos node:test) |
+++| `eslint .` | 0 errores, 9 warnings (variables sin usar) |
+++
+++## NO verificado en este entorno
+++- Stack local Supabase (`supabase start`), pgTAP, E2E Playwright (requieren Docker/Supabase local).
+++- Wompi Sandbox real y Vercel Preview (requieren credenciales del propietario).
+++
+++## Pendiente (prioridad)
+++1. Limpiar los 9 warnings de ESLint.
+++2. Verificar si el entorno permite Docker/Supabase local para correr los E2E de `apps/web/e2e`.
+++3. Revisar autenticación/carrito/checkout con pruebas unitarias donde no haya cobertura.
+++4. Wompi Sandbox y Vercel Preview: bloqueados por credenciales (ver DECISIONS.md).
++diff --git a/package.json b/package.json
++index d970c08..21cc009 100644
++--- a/package.json
+++++ b/package.json
++@@ -12,6 +12,7 @@
++     "prepare": "husky",
++     "check:env": "node scripts/env/check_env.mjs",
++     "build:factory": "node scripts/env/check_env.mjs && pnpm --filter @jm/web build",
+++    "test:unit": "vitest run",
++     "test:env": "node --test scripts/env/environments.test.mjs scripts/env/check_env.test.mjs scripts/env/runtime_config.test.mjs scripts/env/templates.test.mjs scripts/env/gen_local_env.test.mjs scripts/env/qa_config.test.mjs scripts/env/r1_regression.test.mjs scripts/release/production_readiness.test.mjs scripts/env/r1_1_deploy_context.test.mjs",
++     "check:templates": "node scripts/env/templates.mjs check",
++     "env:local": "bash scripts/env/gen_local_env.sh",
++diff --git a/vitest.config.js b/vitest.config.js
++new file mode 100644
++index 0000000..286fee3
++--- /dev/null
+++++ b/vitest.config.js
++@@ -0,0 +1,10 @@
+++import { defineConfig } from 'vitest/config'
+++
+++// Vitest solo ejecuta las pruebas unitarias TypeScript/JS de los paquetes.
+++// Los archivos *.test.mjs de scripts/ usan node:test y se ejecutan con `pnpm test:env`.
+++export default defineConfig({
+++  test: {
+++    include: ['packages/**/*.test.{ts,tsx,js}', 'apps/web/src/**/*.test.{ts,tsx,js,jsx}'],
+++    exclude: ['**/node_modules/**', '**/dist/**', 'scripts/**'],
+++  },
+++})
++-- 
++2.43.0
++
+diff --git a/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/RECOVERY.md b/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/RECOVERY.md
+new file mode 100644
+index 0000000..d5efe4d
+--- /dev/null
++++ b/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/RECOVERY.md
+@@ -0,0 +1,8 @@
++# Recuperación del ciclo 1
++
++- Commit: `06d8ad374b5b942dd16b16c20fc4b9fd99b20563` (padre `b5b70d5d95c240dc0b9c00b226486f3a904950b0`)
++- Rama local: `mission/m26-dev-qa-environments`. NO está en GitHub (push denegado por el entorno).
++- Archivos: package.json (+1), vitest.config.js (nuevo), MISIONES/AUTONOMOUS_DELIVERY/{MASTER_STATUS,DECISIONS,EXECUTION_LOG}.md (nuevos).
++- `0001-delivery-cycle1.patch`: `git checkout -b mission/m26-dev-qa-environments origin/mission/m26-dev-qa-environments && git am 0001-delivery-cycle1.patch`
++- `cycle1.bundle`: `git fetch cycle1.bundle mission/m26-dev-qa-environments:recovered-cycle1`
++- Hashes SHA-256 en SHA256SUMS.
+diff --git a/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/SHA256SUMS b/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/SHA256SUMS
+new file mode 100644
+index 0000000..aab67d3
+--- /dev/null
++++ b/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/SHA256SUMS
+@@ -0,0 +1,2 @@
++a085d5a1551de1ef5f073e061ae5442f03e0738e978a48bf23af92fbdf9923d2  0001-delivery-cycle1.patch
++d5f2ca96b3e9c651dd4cc30f65f98e70a8f16af98c223ec4f6db52e9d063718d  cycle1.bundle
+diff --git a/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/cycle1.bundle b/MISIONES/AUTONOMOUS_DELIVERY/RECOVERY/cycle1.bundle
+new file mode 100644
+index 0000000000000000000000000000000000000000..992540509bf9a22592817ab7331eef3b145685f5
+GIT binary patch
+literal 2822
+zcmV+h3;FaTAa*h!XK8dGVs&n0Y-I{9Vl`qnFl04kIW=Q4G%#diFk(4lFfd{=GBz|g
+zHfA$nIWROiH85f@AY*ALZ8I<_Iv{Cob97;BY#>f=WMv>^WpHI~WMyt+X=QUDX>K5N
+zXk{Q|Vl8uZaA9I$b7dfEZ(<5CHe@(qWHUE3Vl`qpG%{plF*af`He)g{W@9vBIc8)z
+zIbt#}H8wLKa%E<7FKA_9WOFZVX>)UFZ*DJbGBzz_Wp*ubVJ&5Dc4=~NZf#|5baM&{
+zP(edW0000200009nk{&om61`CnlKcF-}5W-*p5{Lih$F0DvB$sFiR1wzH~wokQEb_
+z1g-x1g3k7-edw9V%)KW$cQW@=6=N{L)HDqnQA90!l#Eg|pu{wZk!pldHb{*`Pnd0h
+z5?72Xm>7wPs6lOm=tD#aN^F8qqU)ofHA)BAMnl^`2?DrQ2T{Rkfosa(XD%vM7T0f>
+zt3xHqob-q|eTAB750P$ZmI*tk5op{~t`z(KWL9P}&tSKe<34!-jG_gMyr*EYj=#Hi
+zAHY}(yciXWNvp6qGrz4?WDtnec60P!W6fV5TQ93tH<`}8Xg*A?R@j*@Z@RfFk4r6%
+zq~ml>0OC`vg~w-}%w(IG?ezjp{%C*0Pi`~KYieiRI@3XL!&9x;&pa(yyT<(!{??Tj
+zD+G{QowKn!PS5jnU%Zh{zV;74uCHY=5a#9C(W{FRo6OzBeV#7yS>`<S&eHWt56vw1
+z1tp95M&m<w>-fI_JWjGN;IR%jnEh=TfHZ{I2g-{4%&P0hF+AsrNd<}EX`X$8Z8NTU
+zuAn4UUMh$=g$-E2#Yxl>z9*qnShc+%5`d}bPVVp-?K;=-JIF|I&J;9y#=n??$IEWS
+zq|5~$!-G<#9QXU=?)PxsCxWuReBA#;+Wh6>Zx&*?&FX0w1iRB#tIHMm4U`7vLHh>I
+z?{-S1*jX@r5<h2En{qXp=y5A}oB?Y9l>f5~f(@`H0vAP70E;;;DJprq@1917TySol
+zHai92&$Ai=@d6Yf%mAKZcSOnN15j}5!bZS?#&aOE9|aTvEHN-JHZ(LKc4>5Fb963a
+zZ*FF3XD(`U04Q(nFx7o)$Ad_x!u;*_rG)h3MTKQ7Ypw!#oHH>10tLs=5Pv^^U;ohH
+zco$b6&oI}ZNCtz*11@`%+E+{$;hebAsOe>@<AcipKXVXppa^)JGc+(TGci$cadq|#
+z_Vo7)*2_&{n411ST*YaNR_H4m!KK$U_Db8VUt<VS=NjSa92x>t81Lin4pLi?eqDLf
+zmdrUx+b&Lex5ex5BBn1}p=x~{gF{?{;)6pRLqfska!;DBlps1efp1NW%H!mWKY_gb
+zKL9&(E`GEZc$_^@OHRWu5Z!Z%C$VX(I!RLmQV=W3q7tPQl~{Y448<k3Q;$=L9e3a;
+z9D$o~65N7VjPx{m^FDKq+1>4YJzqYo&lF}849cRsRFjD+u7(vJ$r2hy478!0#|^YK
+zBF4MiCR)P>wI{{yV1jp+T@;<+o)G@-gvES)I_SEkzTtcus5ZVA)saN*g9@8s{}MG=
+zVsZdGSTYWhhTDJJMS1c4{;`-A*)e2U;mO2w0r9N|@3`(Gp`(4zX`M@`uc4(5ri+q~
+zM)@c^vNO9Ajb6yX`G%{L!a#SfvpC`^)zHI}!?eOG_@=L8YC2BJTQ3MqEz20X*(59+
+zp;T+!D>r(K)pCtDSPokT{dP!cn&kD|b2$Bi+L~O=+1U@;n|*|~EO?xKl1+}&KoEuZ
+zIYmj?WY9QHA|@m3)c_WX$V?DP23V1DyT+-Z-R<;G_*roXF2Dg;%@J}FPC_{uAyzCb
+zSzXodz5c5DP`oc*tXH$e4a^s>di_33Mw4kW9w(zq`2GC{6!)Z};=_Z1aW8?w2dpfx
+zVa2F3aM&O;>^)nPHj^okf%2lf990+RaQNv;t3h+qvdzI*pfBvh;TOX7Y$=|_GQC=_
+z7B`FQ#d`ViWig-K7H>Zc#b<?%P~@p~wi5r6HCI@HwhA?Th1NwX(L*#G&@uY%(v?$N
+z-dmr+o&)(XRMy;aJ-qiYFp>85>>OHDpRgu5vjzrUIc@`V%~>ZU4gX7)KIv@UoV+tA
+zBkKwluk(`tnLUi3j#K&a#{@7<r#X<<YyymcoU@KRr0@(rqcd#kWANwN?jl()??p|b
+z+*P9RYSAI6!$ZZj0DNZ!WO_?Zk(Sn7WOBk=IjYEX^APDuO2VvV>bTfr-sra(bm#H|
+z2%CTAl~lA(c9=+ZcGfgxg5SVhBoQ)Hce8G->n=;hI*ByU2%h|LBfQlXFiL^HiLTNZ
+zD@tpJif!~si#||vi7Q9DZP=XUpls7{I8CvOw&YqKVFG2REkXB}3lz(_P|Ic4f^<k_
+z8Cw+Y^tc2^HpQeE_Wl5m;Ph~~L3o^Plh1D2KoG|7eu|MIRUlzI&?;5Ap@c)){6R5I
+zuU^{&Otao~W_O{9IP@WU>TC27@+N(f&XT63s0RzPeEa)mz8Q|-a#GBvH&Dzc^N$7m
+z{Q3>vzq*7;@YdMY1_x)TX^s4lBv0S9r&fWgeNdVnRZUMn%os+;qmy(vOpo6}4?kla
+zcIPncCpRj}g~g(7)ELT^oFi-UR<1O-PVZHUW=(8Oi^jV$Nsf+S>bz<!h$}6qj<3($
+zcsc-M!G$iM^R}OC;ncPr+v>R(*uo9Epm+DT$u>>X-6OiPGhGX0gsnBC>4NPenpE5R
+zZb2GLxqAHp{wk|Lx+$Tjy3XYrtOjsP9{YzfFLjKi1yLH?;5dGdqT!oiF3+Jd81f=r
+z(~IsTKY?CtnQ=*t9fLCR3oN8YRVfK^2#V_!t*wK7ex#z)WISZC^kYC~%jgF14mOGn
+znWYmS#iS}NL`MdKQylNcjIXZu^F;%~MfsFj8Jna~cvatlq@y$xp_5`9La%f$uM#8s
+zvOj=sIiJi1Fda={rq#oSX}R*yW4sT9EZ{Rq7&-p~*)jW>czlx45fsWamHh&YV)X#G
+z$Te!1F|G+W`=FY!K~s~8{WPMHxp#z82wCC9u4ZT&k|w0oPEMH`)%25L1{Wk&ipAXR
+z2h<=;iwj9HOGa6=-UY&v76|`$8qguPGO+)50-a(7y9qwyV-mtGUlu3F5tdo<I+N90
+zlZ+t#BLpo*yPeI&kjdM;USWM_gBO^Q-U5mV#D$4Nlv=G3tdz4-57Dqf_JLKFyvYud
+zJPdIRmA3Z*Wzr5h%l{_XlRbd5>FIfKetlJBZ6jI!0<w8(&i?_~aKMiuQ6JfNaSD&5
+zs;M{?x~fHZocqAn&%eQyNvJe0vqZ^CL8&aWB(=Cip{O)(vjvj{D*&vn3PQgbc${sJ
+zK~KaW5QXpk6?3aLO}X#YoAI`0FUGhmovu_0$UyC;>3?@%T@w=%5@sHcZ+Pg*yAWZ8
+z9tUml!P!BdVS^#K3F=u#q$pHT>#7n04n+cT#sQ9~Qj}mMfe#5!yeF%p44SLwi^shR
+z+DGxYXFeFmHu;&530-DAu^@wb*E1JQm%-gMQub20NCFZ`3)c0xD|0VEc$;g19|lKn
+z{RH`Nhju=86)q(b2a?IeKf&(S3a(bj6@a$NBxb`)?WOvVXC%=y;^!@Eq&Cvhj<nS+
+z)Y5wrUw9G})W0rX%T~X(1&zxun!P!}+vNIW%7lz#wb%T+*X|aWy8_tSYP+w#0pvM~
+Y<ot|B+|H|R$TC^|;q0Qa;XWHe7XJ%5#{d8T
+
+literal 0
+HcmV?d00001
+
+-- 
+2.43.0
+
