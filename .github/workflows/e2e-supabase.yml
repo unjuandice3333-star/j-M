@@ -45,6 +45,10 @@ jobs:
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
           version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Aislar Wompi (estos E2E nunca deben contactarlo)
+        # Sin esto el runner (con internet) carga el widget real desde checkout.wompi.co y la página no navega a la
+        # confirmación. Al bloquear el dominio, el pedido se crea y el pago queda «no disponible», como en local.
+        run: echo "0.0.0.0 checkout.wompi.co sandbox.wompi.co production.wompi.co" | sudo tee -a /etc/hosts
       - name: Supabase local + recorridos E2E
         run: bash scripts/ci/e2e_supabase.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

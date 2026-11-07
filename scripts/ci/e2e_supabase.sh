@@ -66,9 +66,10 @@ for t in e2e_site_content e2e_wishlist e2e_cart_variant e2e_session e2e_commerci
   echo "== $t"
   timeout 300 node "apps/web/e2e/$t.cjs" 2>&1 | redact > "$OUT/$t.log"; rc=${PIPESTATUS[0]}
   printf '%s\t%s\n' "$t" "$rc" >> "$OUT/results.tsv"
-  tail -4 "$OUT/$t.log"
-  [[ $rc -eq 0 ]] || fail=1
+  if [[ $rc -eq 0 ]]; then tail -2 "$OUT/$t.log"; else echo "--- $t FALLÓ (rc=$rc); últimas 60 líneas (redactadas) ---"; tail -60 "$OUT/$t.log"; echo "--- fin ---"; fail=1; fi
 done
 echo "== resultados"; cat "$OUT/results.tsv"
+rm -f "$STATUS"   # contiene las llaves locales: fuera antes del escaneo y de subir evidencias
+if [[ $fail -ne 0 ]]; then echo "--- vite (últimas 30 líneas, redactadas) ---"; tail -30 "$OUT/03_vite.log"; fi
 grep -rlE "eyJhbGci[A-Za-z0-9_-]{20,}|sb_secret_|sb_publishable_|super-secret-jwt-token" "$OUT" && { echo "ERROR: llaves en evidencias"; fail=1; }
 exit $fail

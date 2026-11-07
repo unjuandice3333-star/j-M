@@ -43,3 +43,11 @@
 - Implementado: `scripts/ci/e2e_supabase.sh` + `.github/workflows/e2e-supabase.yml` (workflow independiente, NO en ci-gate); Wompi: ventana de timestamp del webhook y límite de tasa de `/api/wompi/signature` (`api/_lib/eventFreshness.js`, `api/_lib/rateLimit.js`); pruebas: `wompiGuards.test.js` (11) y 3 escenarios nuevos en `test-webhook-security.mjs` (fixture con timestamp actual).
 - Pruebas locales: vitest 103/103; webhook 16/16; test:env 142/142; build OK; ESLint 0/0; E2E sintético 10/10.
 - No verificado: workflow e2e-supabase (no ejecutable aquí: sin Docker); su primera ejecución real es en GitHub.
+
+### Resultados de GitHub Actions sobre `0a82bee` (leídos de los jobs, no de local)
+- ci (run 11): quality ✔ · db-local ✔ · db-supabase ✔ · security ✔ · governance ✘ · e2e-synthetic ✘ · ci-gate ✘ (por esos dos).
+- governance ✘: mi mensaje `feat(ci,wompi): …` usa una coma en el ámbito; la regla (`check_commits.sh`) solo admite `[a-z0-9._-]`. Error mío; no se reescribe historia publicada. Efecto: un PR hacia main que incluya ese commit lo marcará; se resuelve con título de PR/squash conforme. Los commits siguientes sí cumplen.
+- e2e-synthetic ✘: intermitente, causada por una condición de carrera de MI prueba (navegaba antes de terminar el login en el recorrido 8). Reproducido en local 1 de 3; corregido; 6/6 después.
+- e2e-supabase (workflow nuevo, primera ejecución real): Supabase oficial local arrancó, `db reset` aplicó migraciones y seeds, Vite con variables de servidor funcionó. Recorridos CON BACKEND REAL: e2e_site_content ✔, e2e_wishlist ✔, e2e_cart_variant ✔; e2e_session ✘ y e2e_commercial ✘ (ambos no llegan a /checkout/confirmacion); además el escaneo de llaves detectó el propio `.status.json` (artefacto del script, no una fuga: se borra antes de subir).
+- Diagnóstico de los dos ✘: hipótesis principal = el runner tiene internet y carga el widget REAL de Wompi (checkout.wompi.co), por lo que no navega a la confirmación. Mitigación aplicada: bloquear ese dominio en /etc/hosts del job. NO verificada hasta la siguiente ejecución.
+- Run 10 (`6fd9df3`): `quality` se mantuvo «in_progress» >7 min y se canceló al empujar; en el run 11 (`0a82bee`) `quality` pasó en minutos. Causa del retraso no determinada (posible lentitud del runner); no reproducible.

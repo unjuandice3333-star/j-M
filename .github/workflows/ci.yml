@@ -109,6 +109,9 @@ jobs:
         env:
           CI_STAGES: e2e-synthetic
         run: bash scripts/ci/run_all.sh
+      - name: Detalle del fallo (log del E2E sintético; sin secretos, backend ficticio)
+        if: failure()
+        run: tail -n 80 ci-artifacts/logs/40_e2e_synthetic.log || true
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

@@ -186,6 +186,8 @@ async function main() {
       await p.goto(`${BASE}/cuenta`);
       await p.locator('input[type=email]').fill('ana@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
       await p.getByRole('button', { name: 'Iniciar sesión' }).first().click();
+      // esperar a que el login termine (sesión guardada) antes de navegar: si no, la navegación interrumpe la petición
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
       await p.goto(`${BASE}/cuenta/pedidos`); await expectText(p, num);
     }, browser);
 
