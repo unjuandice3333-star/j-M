@@ -9,7 +9,7 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
-  const { login, signUp, isLoading, error, profile } = useAuthStore();
+  const { login, signUp, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 

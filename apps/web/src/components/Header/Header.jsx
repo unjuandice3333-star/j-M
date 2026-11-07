@@ -671,15 +671,6 @@ const getNavLinkStyle = (isActive, type = 'category') => {
   };
 };
 
-const navLinkStyle = {
-  fontSize: '0.82rem',
-  fontWeight: 600,
-  letterSpacing: '0.08em',
-  color: '#27272A',
-  textTransform: 'uppercase',
-  transition: 'color 0.15s'
-};
-
 const iconBtnStyle = {
   display: 'flex',
   alignItems: 'center',

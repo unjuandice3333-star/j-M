@@ -186,7 +186,9 @@ export const AdminDashboardPage = () => {
   );
 };
 
-const KpiCard = ({ title, value, change, isPositive, icon: Icon }) => (
+const KpiCard = ({ title, value, change, isPositive, icon }) => {
+  const Icon = icon;
+  return (
   <div style={{ backgroundColor: '#FFFFFF', padding: '1.35rem', borderRadius: '10px', border: '1px solid #E4E4E7', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#71717A', letterSpacing: '0.08em' }}>{title}</span>
@@ -198,6 +200,7 @@ const KpiCard = ({ title, value, change, isPositive, icon: Icon }) => (
     </div>
   </div>
 );
+};
 
 const thAdmin = {
   padding: '0.75rem',

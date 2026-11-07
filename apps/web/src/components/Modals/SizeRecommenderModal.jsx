@@ -18,8 +18,6 @@ export const SizeRecommenderModal = () => {
     let recSize = 'M';
     let explanation = '';
 
-    const bmi = weight / Math.pow(height / 100, 2);
-
     if (weight < 65 || (height > 175 && weight < 68)) {
       recSize = fitPreference === 'loose' ? 'M' : 'S';
     } else if (weight >= 65 && weight <= 78) {

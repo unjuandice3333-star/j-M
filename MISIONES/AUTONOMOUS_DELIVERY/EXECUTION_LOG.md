@@ -7,3 +7,12 @@
 - Bloqueos reales: ninguno para código; Wompi/Vercel requieren credenciales del propietario.
 - Push: el push a `mission/m26-dev-qa-environments` fue denegado por el entorno (la sesión solo autoriza `claude/gracious-pasteur-rb0qht`); commit local.
 - Siguiente: limpiar warnings ESLint; intentar Supabase local para E2E.
+
+## 2026-11-07 — Ejecución 3 (M32)
+- Estado inicial: contenedor nuevo; rama `mission/m26-dev-qa-environments` en `1cb1b4e` = remoto (`git ls-remote`), árbol limpio, documentos de continuidad presentes: recuperación desde GitHub confirmada.
+- Tarea: 9 avisos de ESLint, Docker/Supabase local, BD local, estado Wompi/Vercel.
+- Archivos: Footer.jsx, Header.jsx, SizeRecommenderModal.jsx, ProductCard.jsx, Login.jsx, AdminDashboardPage.jsx, AdminInventoryPage.jsx (búsqueda de inventario), test-checkout-invariants.mjs, documentos de continuidad.
+- Pruebas: ESLint 0/0; build OK; vitest 6/6; test:env 140/141 (fallo de entorno, ver MASTER_STATUS); checkout invariants 10/10; pgTAP 278/278, concurrencia 12/12, determinismo OK.
+- Bloqueos reales: Docker sin demonio (sin Supabase local ni E2E); credenciales Wompi/Vercel/Supabase QA.
+- No se leyó ni modificó ningún `.env`.
+- Siguiente: E2E sin Docker, pruebas unitarias de carrito/checkout/auth.

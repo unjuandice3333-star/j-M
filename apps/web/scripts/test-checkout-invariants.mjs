@@ -216,7 +216,7 @@ test('6. Actualizar página de confirmación (F5): no duplica órdenes ni vacía
   assert.strictEqual(store.get().activeCheckoutOrderId, null, 'No hay checkout activo para la orden antigua');
 
   // Usuario recarga F5 la URL de confirmación de la orden antigua (ord-uuid-005)
-  const isPaid = true; // La orden antigua en DB está pagada
+  // La orden antigua en DB está pagada; finalizePaidOrder debe rechazarla igualmente.
   const finalizeResult = store.finalizePaidOrder('ord-uuid-005');
 
   assert.strictEqual(finalizeResult, false, 'No debe autorizar limpieza si la orden no corresponde a la sesión activa');

@@ -160,16 +160,4 @@ const linkStyle = {
   transition: 'color 0.15s'
 };
 
-const socialIconStyle = {
-  width: '36px',
-  height: '36px',
-  borderRadius: '50%',
-  backgroundColor: '#18181B',
-  color: '#FFFFFF',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  transition: 'background 0.15s'
-};
-
 export default Footer;

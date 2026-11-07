@@ -99,6 +99,16 @@ export const AdminInventoryPage = () => {
         </div>
       </div>
 
+      {/* SEARCH */}
+      <input
+        type="search"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Buscar por nombre o SKU"
+        aria-label="Buscar en inventario"
+        style={{ padding: '0.7rem 0.9rem', border: '1px solid #E4E4E7', borderRadius: '8px', fontSize: '0.9rem', maxWidth: '420px', width: '100%' }}
+      />
+
       {/* INVENTORY TABLE */}
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
         {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600, padding: '1rem' }}>{loadError}</div>}

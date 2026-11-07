@@ -10,7 +10,6 @@ import { getProductImage } from '../../utils/productUtils';
 export const ProductCard = ({ product }) => {
   const { toggleWishlist, isInWishlist, addItem } = useECommerceStore();
   const [isHovered, setIsHovered] = useState(false);
-  const [selectedSize, setSelectedSize] = useState(null);
   const inWishlist = isInWishlist(product.id);
 
   const mainImage = getProductImage(product, 0);
