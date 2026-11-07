@@ -94,3 +94,11 @@
 - Hallazgo adicional: la cookie aparecía en las trazas de fallo (reportes, capturas y vídeos limpios); saneado verificado (0 rastros, `unzip -t` OK, JSON válido).
 - Pruebas locales: vitest 155/155; ESLint 0/0; test:env 142/142; build OK; E2E sintético 10/10; Playwright local Edge 9✔+1 omitida y Chromium 9✔+1 omitida; autoprueba preview Chromium y Edge OK.
 - No verificado: Windows, Vercel real, Supabase QA, visor de trazas.
+
+## 2026-11-07 — Ejecución 10
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-yp4o02` (main); avance rápido a `origin/mission/m26-dev-qa-environments` (`af64c56`). Se publica en la rama designada por el entorno (`claude/gracious-pasteur-yp4o02`), no en la de la misión (decisión: la instrucción de sesión prohíbe empujar a otra rama; el propietario puede fusionar).
+- Tarea: pendiente #2 — cobertura de `productService.normalizeProduct` y `adminService` (upsertProduct, adminError, slugify/toReference).
+- Archivos: `apps/web/src/__tests__/catalogAdmin.test.js` (14 pruebas nuevas).
+- Pruebas: vitest 169/169 (antes 155); ESLint del archivo nuevo sin errores. No se tocó código de producción; no hubo defectos nuevos.
+- Bloqueos reales (sin cambio): Supabase QA sin baseline M24 (decisión del propietario), credenciales Wompi Sandbox, acceso a Vercel, gitleaks-allowlist del historial (`security` ✘).
+- Siguiente: cobertura UI de Cart/Checkout con testing-library; con credenciales, OWNER_CHECKLIST.
