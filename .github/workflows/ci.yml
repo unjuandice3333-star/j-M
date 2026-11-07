@@ -167,6 +167,15 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # M30.2: la etapa incluye la prueba de integración de pedido y pago (apps/web/scripts/test-payment-flow.mjs,
+      # M27), que importa @supabase/supabase-js: Node y dependencias con la misma estrategia que el job quality.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (versión desde packageManager)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
           version: ${{ env.SUPABASE_CLI_VERSION }}
