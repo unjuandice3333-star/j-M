@@ -56,3 +56,5 @@
 - `cef5fe4` (run `ci` nº 13): success en TODOS los jobs (governance, quality, e2e-synthetic, security, db-local, db-supabase, ci-gate). `e2e-supabase` nº 3: success (2.ª verde consecutiva tras `0cd1867`).
 - `quality` del run 12 quedó colgado 12,5 min en `19b_qa_profile_tests` hasta que lo cancelé al empujar; su log lo mostró. Reproducido en local bajo carga: build de Vite sin timeout en las pruebas de deploy. Mitigado (límite + 1 reintento); pendiente de confirmar en Actions.
 - Errores propios de la ejecución: commit con coma en el ámbito, commit con descripción de 107 caracteres, y dos condiciones de carrera en mis pruebas E2E sintéticas (recorridos 8 y 10). Todos corregidos.
+- Commit `725e3bd` (mitigación de timeouts): `ci` nº 14 success (todos los jobs, `quality` en ~3 min) y `e2e-supabase` nº 4 success (3.ª verde seguida). Cierre de la ejecución: publicado y verificado el hash remoto; solo queda pendiente el run de este último commit de documentación.
+- Siguiente: decidir si `e2e-supabase` entra en `ci-gate`; con credenciales del propietario, ejecutar `OWNER_CHECKLIST.md` contra QA/Preview/Wompi Sandbox.

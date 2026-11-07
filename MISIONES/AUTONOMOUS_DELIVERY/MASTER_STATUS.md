@@ -30,7 +30,7 @@ Defectos reales encontrados y corregidos en esta ejecución: (1) `applyCoupon` p
 - Wompi Sandbox real y Vercel Preview: faltan credenciales (ver abajo).
 
 ## Matriz de validación (qué se ejecutó y DÓNDE)
-Fuente de «GitHub Actions»: jobs leídos en la API de Actions, ejecución nº 13 del workflow `ci` y nº 3 de `e2e-supabase`, ambas sobre el commit `cef5fe42` (hash remoto = HEAD de entonces): **todos los jobs en success, incluido `ci-gate`**.
+Fuente de «GitHub Actions»: jobs leídos en la API de Actions, ejecuciones nº 13 y nº 14 del workflow `ci` (commits `cef5fe42` y `725e3bde`): **todos los jobs en success, incluido `ci-gate`**, y el workflow `e2e-supabase` en success en `0cd1867`, `cef5fe42` y `725e3bde` (3 seguidas).
 
 | Componente | Local (este contenedor) | GitHub Actions | Supabase local (Docker) | Supabase QA remoto | Wompi Sandbox | Vercel Preview |
 |---|---|---|---|---|---|---|
@@ -40,16 +40,16 @@ Fuente de «GitHub Actions»: jobs leídos en la API de Actions, ejecución nº 
 | E2E sintético (backend en memoria, 10 recorridos) | ✔ 10/10 (también bajo carga) | ✔ run 13 (antes ✘ en runs 11–12 por carreras de MI prueba, corregidas) | — | — | — | — |
 | PostgreSQL 16 + pgTAP (`db-local`) | ✔ 278/278 | ✔ runs 10–13 | — | — | — | — |
 | Supabase oficial local: migraciones, `db reset`, pgTAP 290, 39 comprobaciones HTTP (auth/RLS/RPC), pedido+pago con handlers reales de Wompi, determinismo (`db-supabase`) | — | ✔ runs 10–13 | ✔ | — | — | — |
-| **E2E de navegador con Supabase local REAL** (`e2e_site_content`, `e2e_wishlist`, `e2e_cart_variant`, `e2e_session`, `e2e_commercial`) | — | ✔ **2 ejecuciones verdes seguidas** (commits `0cd1867` y `cef5fe4`); la primera (`0a82bee`) falló 2 de 5 por el widget REAL de Wompi cargándose desde internet → dominio bloqueado en el job | ✔ | — | — | — |
+| **E2E de navegador con Supabase local REAL** (`e2e_site_content`, `e2e_wishlist`, `e2e_cart_variant`, `e2e_session`, `e2e_commercial`) | — | ✔ **3 ejecuciones verdes seguidas** (commits `0cd1867`, `cef5fe4` y `725e3bd`); la primera (`0a82bee`) falló 2 de 5 por el widget REAL de Wompi cargándose desde internet → dominio bloqueado en el job | ✔ | — | — | — |
 | Webhook Wompi (timestamp, firma, idempotencia, rechazos) | ✔ 16/16 | ✔ (`quality` paso 14) | ✔ flujo real en `db-supabase` | — | ✘ no probado | — |
 | Límite de tasa de `/api/wompi/signature` | ✔ 4 pruebas con el handler real | ✔ (vitest en `quality`) | — | — | — | — |
 | Supabase QA remoto (`yomgxdjgfjnrjaqiarvw`) | ✘ | ✘ | — | ✘ **NO VALIDADO** | — | — |
 | Wompi Sandbox real | ✘ | ✘ | — | — | ✘ **NO VALIDADO** | — |
 | Vercel Preview (`jym-web`) | ✘ | ✘ | — | — | — | ✘ **NO VALIDADO** |
 
-Reglas de gobernanza del CI: `e2e-supabase` NO es parte de `ci-gate`; candidato a hacerlo tras ≥3 ejecuciones verdes consecutivas (lleva 2). Un commit de esta misión (`0a82bee`, mensaje con coma en el ámbito) y otro (`0cd1867`, descripción de 107 caracteres) incumplen la convención; ya están publicados y su job `governance` falló solo en esas ejecuciones; un PR hacia `main` los marcará salvo título/squash conforme.
+Reglas de gobernanza del CI: `e2e-supabase` NO es parte de `ci-gate`; ya cumple el umbral de ≥3 ejecuciones verdes consecutivas (lleva 3): incorporarlo a `ci-gate` es una decisión pendiente del propietario (conviene observar alguna ejecución más, porque corre Docker y red). Un commit de esta misión (`0a82bee`, mensaje con coma en el ámbito) y otro (`0cd1867`, descripción de 107 caracteres) incumplen la convención; ya están publicados y su job `governance` falló solo en esas ejecuciones; un PR hacia `main` los marcará salvo título/squash conforme.
 
-Flakiness conocida y mitigada (M35): el job `quality` se colgó >12 min en 2 de 4 ejecuciones. Causa localizada: el build de Vite lanzado con `spawnSync` sin límite de tiempo en `scripts/env/deploy_build.test.mjs` (y en `qa_build.test.mjs`); reproducido en local bajo carga de CPU. Mitigación: límite de 90 s/150 s con un reintento solo ante timeout + `--test-timeout=300000`. Verificada localmente (23/23 bajo carga); **pendiente de confirmar en GitHub tras el próximo push**.
+Flakiness conocida y mitigada (M35): el job `quality` se colgó >12 min en 2 de 4 ejecuciones. Causa localizada: el build de Vite lanzado con `spawnSync` sin límite de tiempo en `scripts/env/deploy_build.test.mjs` (y en `qa_build.test.mjs`); reproducido en local bajo carga de CPU. Mitigación: límite de 90 s/150 s con un reintento solo ante timeout + `--test-timeout=300000`. Verificada localmente (23/23 bajo carga); en GitHub, la primera ejecución con la mitigación (run 14) terminó en success en ~3 min; **una sola ejecución no demuestra que el cuelgue esté resuelto**: vigilar `quality` en las próximas.
 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
