@@ -102,3 +102,10 @@
 - No ejecutado esta vez: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión sobre gitleaks (`security`).
 - Siguiente: UI de `CheckoutPage` y `adminService.upsertProduct`/`productService.normalizeProduct`; con credenciales, OWNER_CHECKLIST.
+
+## 2026-11-07 — Ejecución 11 (cobertura checkout + catálogo/admin)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-ignhmg` (= `2661f2a`, atrás 60 commits); se avanzó por fast-forward a `origin/mission/m26-dev-qa-environments` (`c1371f3`). La rama de empuje designada por el entorno es `claude/gracious-pasteur-ignhmg`; la rama de misión no se tocó.
+- Tareas: `apps/web/src/__tests__/checkoutPage.test.jsx` (5 pruebas UI: carrito vacío, formulario incompleto sin pedido, pedido válido + apertura de pago, fallo de pago → confirmación `pago=error`, error al crear pedido) y `catalogAdmin.test.js` (12 pruebas: `normalizeProduct`, `imageUrl`, `slugify`/`toReference`, `adminError`, RPC de `adminService`).
+- Pruebas: vitest 176/176 (13 archivos); ESLint de los 2 archivos sin errores; build OK. No ejecutado: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, URL/acceso Vercel Preview, decisión gitleaks (`security`).
+- Siguiente: UI de ProductPage/Confirmation y pantallas admin; con credenciales, OWNER_CHECKLIST.
