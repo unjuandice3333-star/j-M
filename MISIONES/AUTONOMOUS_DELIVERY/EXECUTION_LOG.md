@@ -118,3 +118,11 @@
 - No ejecutado: test:env, pgTAP (sin cambios en esas áreas). Nada contra Supabase QA, Wompi ni Vercel.
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, URL/acceso de Vercel Preview, decisión gitleaks (`security`).
 - Siguiente: job de CI para los `e2e_*.cjs` contra Supabase local; aviso MODULE_TYPELESS_PACKAGE_JSON; con credenciales, OWNER_CHECKLIST.
+
+## 2026-11-07 — Ejecución 13 (aviso de ESLint)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-vvgffn` (= main); se cambió a la rama autorizada = remoto `5a87d53`, árbol limpio.
+- Tarea: pendiente nº 4 — `eslint.config.js` → `eslint.config.mjs` (evita el aviso `MODULE_TYPELESS_PACKAGE_JSON` sin tocar el `package.json` raíz, que afectaría a otros scripts). Sin referencias a la ruta antigua en el repo.
+- Pruebas: ESLint 0 errores y sin aviso; build OK; vitest 179/179.
+- No ejecutado: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, URL/acceso de Vercel Preview, decisión gitleaks (`security`).
+- Siguiente: job de CI para los `e2e_*.cjs` contra Supabase local; con credenciales, OWNER_CHECKLIST.
