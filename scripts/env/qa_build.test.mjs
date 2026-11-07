@@ -135,11 +135,20 @@ const portFree = (port) => new Promise((resolve) => { import('node:net').then(({
   const s = createServer(); s.once('error', () => resolve(false)); s.once('listening', () => s.close(() => resolve(true))); s.listen(port, '127.0.0.1'); }); });
 async function serve(cmd, port, check) {
   assert.equal(await portFree(port), true, `el puerto ${port} está ocupado antes de la prueba`);
-  const p = spawn(process.execPath, [CLI, cmd, '--file', envFile(`${cmd}.env`, qaVars()), '--config', CFG], { env: POLLUTED, cwd: ROOT });
+  // M35: el servidor (Vite) cuelga de un proceso intermedio que puede dejar las tuberías abiertas tras un SIGTERM; el evento
+  // 'close' no llegaba nunca y la prueba (y el job de CI) se quedaba colgada. Se lanza en su propio grupo de procesos
+  // (POSIX), se mata el grupo entero (SIGTERM y, si no sale en 8 s, SIGKILL) y la espera del cierre tiene tope.
+  const group = process.platform !== 'win32';
+  const p = spawn(process.execPath, [CLI, cmd, '--file', envFile(`${cmd}.env`, qaVars()), '--config', CFG], { env: POLLUTED, cwd: ROOT, detached: group });
   let out = ''; p.stdout.on('data', (d) => { out += d; }); p.stderr.on('data', (d) => { out += d; });
   // 'close' (no 'exit'): garantiza que la salida del proceso se ha leído completa.
   const closed = new Promise((s) => p.on('close', s));
-  try { await check(await waitFor(`http://127.0.0.1:${port}/`)); } finally { p.kill('SIGTERM'); await closed; }
+  const killGroup = (sig) => { try { group ? process.kill(-p.pid, sig) : p.kill(sig); } catch { /* ya terminó */ } };
+  try { await check(await waitFor(`http://127.0.0.1:${port}/`)); } finally {
+    killGroup('SIGTERM');
+    const done = await Promise.race([closed.then(() => true), new Promise((r) => setTimeout(() => r(false), 8000))]);
+    if (!done) { killGroup('SIGKILL'); p.stdout.destroy(); p.stderr.destroy(); await Promise.race([closed, new Promise((r) => setTimeout(r, 3000))]); }
+  }
   assert.ok(noLeak(out), 'la salida del servidor no muestra valores');
   return out;
 }

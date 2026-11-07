@@ -73,7 +73,8 @@ if want quality; then
   run_step 19_env_cli_checks env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 node scripts/env/ci_env_checks.mjs
   # M26-T8: comandos del perfil QA (build/preview/dev con Vite real y fixtures ficticios). Secuencial y fuera de test:env:
   # usa puertos fijos (4174, 3100) y comprueba el aislamiento frente a apps/web/.env.local.
-  run_step 19b_qa_profile_tests env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 pnpm -s test:qa-build
+  # M35: tope de 8 min (kill a los 10 s más): un cuelgue intermitente de los servidores de Vite debe FALLAR con log, no agotar el job
+  run_step 19b_qa_profile_tests timeout --kill-after=10 480 env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 pnpm -s test:qa-build
 fi
 
 # --- E2E de navegador SINTÉTICO (M34) ----------------------------------------------
