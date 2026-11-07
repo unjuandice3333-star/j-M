@@ -7,6 +7,7 @@
     "dev:web": "pnpm --filter @jm/web dev",
     "dev:mobile": "pnpm --filter @jm/mobile dev",
     "build": "pnpm --filter @jm/web build",
+    "test": "vitest run",
     "lint": "pnpm --recursive lint",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css,json,md,sql}\"",
     "prepare": "husky"
@@ -15,7 +16,8 @@
     "eslint": "^9.2.0",
     "husky": "^9.0.11",
     "lint-staged": "^15.2.2",
-    "prettier": "^3.2.5"
+    "prettier": "^3.2.5",
+    "vitest": "^2.1.9"
   },
   "packageManager": "pnpm@11.0.8"
 }
