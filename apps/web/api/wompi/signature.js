@@ -1,6 +1,11 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { requireServerConfig } from '../_lib/serverConfig.js';
+import { createRateLimiter, clientIp } from '../_lib/rateLimit.js';
+
+// M35: ráfagas por IP (30/min) y por pedido (6/min). Mejor esfuerzo por instancia; el límite duradero es el de la BD.
+const byIp = createRateLimiter({ limit: 30, windowMs: 60_000 });
+const byOrder = createRateLimiter({ limit: 6, windowMs: 60_000 });
 
 // Vercel Serverless Function: Generador Server-Side de Firma de Integridad Wompi Colombia
 // Endpoint: POST /api/wompi/signature
@@ -33,6 +38,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Parámetros incompletos: se requieren order_id y public_token.' });
     }
 
+
+    for (const [name, limiter, key] of [['ip', byIp, clientIp(req)], ['order', byOrder, String(orderId).toLowerCase()]]) {
+      const r = limiter(key);
+      if (!r.allowed) {
+        res.setHeader('Retry-After', String(r.retryAfterSeconds));
+        return res.status(429).json({ error: 'Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.', code: `RATE_LIMIT_${name.toUpperCase()}` });
+      }
+    }
 
     const supabase = createClient(cfg.SUPABASE_URL, cfg.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: attempt, error } = await supabase.rpc('create_payment_attempt', { p_order_id: orderId, p_public_token: publicToken });

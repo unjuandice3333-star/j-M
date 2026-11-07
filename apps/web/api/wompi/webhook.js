@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { requireServerConfig } from '../_lib/serverConfig.js';
+import { eventTimestampProblem } from '../_lib/eventFreshness.js';
 
 // Vercel Serverless Function: Webhook Oficial de Transacciones Wompi Colombia (Hardened & Audited)
 // Endpoint: POST /api/wompi/webhook
@@ -119,6 +120,14 @@ export default async function handler(req, res) {
     if (expectedBuf.length !== incomingBuf.length || !crypto.timingSafeEqual(expectedBuf, incomingBuf)) {
       console.error('[Wompi Webhook Security Error]: Checksum SHA-256 no coincide.');
       return res.status(401).json({ error: 'Firma de integridad de evento inválida.' });
+    }
+
+    // 3b. ANTIGÜEDAD DEL EVENTO (M35): tras verificar la firma. Futuro > 5 min o más de 72 h → rechazado; los reintentos
+    //     legítimos de Wompi (mismo payload, horas después) entran dentro de la ventana.
+    const staleness = eventTimestampProblem(timestamp);
+    if (staleness) {
+      console.error(`[Wompi Webhook Security Error]: timestamp del evento fuera de ventana (${staleness}).`);
+      return res.status(400).json({ error: 'Timestamp del evento fuera de la ventana permitida.', detail: staleness });
     }
 
     // 4. VALIDAR ESTRUCTURA DEL PAYLOAD DE LA TRANSACCIÓN

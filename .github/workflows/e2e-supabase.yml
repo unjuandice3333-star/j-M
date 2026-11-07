@@ -1,0 +1,55 @@
+# =============================================================================
+# E2E de navegador contra Supabase LOCAL (M35) — workflow INDEPENDIENTE y NO exigido por ci-gate.
+# Motivo: es una prueba nueva y aún no demostrada en GitHub Actions; hasta que pase de forma estable no debe bloquear
+# integraciones. Sin secretos, sin entornos y sin permisos de escritura (regla 6 de migrations_policy.sh): Supabase se
+# levanta en contenedores efímeros del runner y se destruye al terminar. Production es inalcanzable desde aquí.
+# Acciones fijadas por SHA de commit (las mismas que ci.yml).
+# =============================================================================
+name: e2e-supabase
+
+on:
+  push:
+    branches: ['mission/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-supabase-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  SUPABASE_CLI_VERSION: '3.0.0'
+  CI_OUT: ${{ github.workspace }}/ci-artifacts
+
+jobs:
+  e2e-supabase:
+    name: e2e-supabase   # E2E de navegador con Supabase local (informativo; no es requisito de ci-gate)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (versión desde packageManager)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - name: Dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+      - name: Chromium de Playwright
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Cliente psql
+        run: sudo apt-get update -q && sudo apt-get install -y -q postgresql-client
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Supabase local + recorridos E2E
+        run: bash scripts/ci/e2e_supabase.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: e2e-supabase-${{ github.sha }}
+          path: ci-artifacts/e2e_supabase/
+          retention-days: 14

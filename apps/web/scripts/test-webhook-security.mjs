@@ -66,7 +66,7 @@ function generateWompiEventPayload({
   amountInCents = 18990000,
   currency = 'COP',
   status = 'APPROVED',
-  timestamp = 1728800000,
+  timestamp = Math.floor(Date.now() / 1000), // M35: el webhook valida la antigüedad del evento
   secret = 'test_events_secret_secure_123',
   tamperChecksum = false,
   omitSignature = false,
@@ -162,6 +162,20 @@ await runTest('Evento válido → una sola llamada a apply_payment_event con el 
   assert.strictEqual(rpcMock.calls[0].fn, 'apply_payment_event');
   assert.deepStrictEqual(rpcMock.calls[0].args, { p_event: payload, p_event_checksum: payload.signature.checksum });
   assert.strictEqual(r.bodyData.order_status, 'paid');
+});
+const NOW_S = () => Math.floor(Date.now() / 1000);
+await runTest('M35 · timestamp: reintento legítimo de Wompi (2 h) y desfase de reloj de +2 min → 200', async () => {
+  assert.strictEqual((await send(ev({ timestamp: NOW_S() - 2 * 3600 }))).statusCode, 200);
+  assert.strictEqual((await send(ev({ timestamp: NOW_S() + 120 }))).statusCode, 200);
+});
+await runTest('M35 · timestamp: evento de hace más de 72 h, del futuro (> 5 min) o no numérico → 400 y la BD no se toca (aunque la firma sea válida)', async () => {
+  assert.strictEqual((await send(ev({ timestamp: NOW_S() - 73 * 3600 }))).statusCode, 400);
+  assert.strictEqual((await send(ev({ timestamp: NOW_S() + 600 }))).statusCode, 400);
+  assert.strictEqual((await send(ev({ timestamp: 'ayer' }))).statusCode, 400);
+  assert.strictEqual(rpcMock.calls.length, 0);
+});
+await runTest('M35 · timestamp en milisegundos (robustez) → 200', async () => {
+  assert.strictEqual((await send(ev({ timestamp: Date.now() }))).statusCode, 200);
 });
 await runTest('Evento duplicado (la BD responde duplicate) → 200 idempotente', async () => {
   rpcMock.response = { data: { result: 'duplicate', reference: 'JM-001001-1' }, error: null };

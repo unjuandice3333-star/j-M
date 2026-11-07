@@ -36,3 +36,10 @@
 - Bloqueos reales: Docker; credenciales Wompi/Vercel; acceso a Vercel.
 - Siguiente: revisar resultado de Actions; job E2E contra Supabase local; cuando el propietario cargue credenciales, ejecutar OWNER_CHECKLIST.
 - Corrección posterior (M34): el CI de GitHub sobre `801c658` falló en `quality` → `13_unit_tests`: mi `vitest.config.js` (M32) hacía que `vitest run --dir packages` no encontrara pruebas. Corregido: `run_all.sh` usa `vitest run` y `gate_selftest.sh` usa `vitest run packages`. Los jobs `db-local` y `db-supabase` (Supabase real con Docker) SÍ pasaron en ese commit.
+
+## 2026-11-07 — Ejecución 6 (M35)
+- Estado inicial: rama = `6fd9df3` = remoto, árbol limpio.
+- GitHub Actions sobre `6fd9df3` (run 10): e2e-synthetic ✔, db-local ✔, db-supabase ✔ (Supabase oficial local con Docker), security ✔, governance ✔; `quality` quedó «in_progress» más de 10 min (anómalo: localmente la etapa dura ~40 s) y `ci-gate` pendiente. Se canceló al empujar M35 para obtener su log; ver resultado en la sección siguiente.
+- Implementado: `scripts/ci/e2e_supabase.sh` + `.github/workflows/e2e-supabase.yml` (workflow independiente, NO en ci-gate); Wompi: ventana de timestamp del webhook y límite de tasa de `/api/wompi/signature` (`api/_lib/eventFreshness.js`, `api/_lib/rateLimit.js`); pruebas: `wompiGuards.test.js` (11) y 3 escenarios nuevos en `test-webhook-security.mjs` (fixture con timestamp actual).
+- Pruebas locales: vitest 103/103; webhook 16/16; test:env 142/142; build OK; ESLint 0/0; E2E sintético 10/10.
+- No verificado: workflow e2e-supabase (no ejecutable aquí: sin Docker); su primera ejecución real es en GitHub.
