@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-07 (ejecución 10, UI del carrito: vitest 159/159)
+Última actualización: 2026-11-07 (ejecución 11, UI de checkout y servicios: vitest 172/172)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -69,7 +69,7 @@ Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que
 
 ## Pendiente (prioridad)
 1. Revisar la primera ejecución real del CI en GitHub (job `e2e-synthetic` y `quality` ampliado).
-2. Cobertura de UI de páginas (Cart/Checkout con testing-library) y de `adminService.upsertProduct`/`productService.normalizeProduct`.
+2. ~~Cobertura de UI Cart/Checkout y normalizeProduct~~ (hecho en ejecuciones 10–11); queda `adminService.upsertProduct`.
 3. Job de CI que ejecute los E2E de navegador contra Supabase local real (`e2e_*.cjs`) tras `supabase start` en `db-supabase`.
 4. Aviso `MODULE_TYPELESS_PACKAGE_JSON` de eslint.config.js.
 5. ~~UX: `alert()` nativo en `Login.jsx`~~ (hecho en ejecución 9: aviso en pantalla `role=status`).

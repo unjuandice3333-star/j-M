@@ -102,3 +102,11 @@
 - No ejecutado esta vez: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión sobre gitleaks (`security`).
 - Siguiente: UI de `CheckoutPage` y `adminService.upsertProduct`/`productService.normalizeProduct`; con credenciales, OWNER_CHECKLIST.
+
+## 2026-11-07 — Ejecución 11 (cobertura UI de checkout y servicios)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-my4y97` (= main); se cambió a la rama autorizada = remoto `c1371f3`, árbol limpio.
+- Tarea: pendiente nº 2 — `checkoutPage.test.jsx` (4 pruebas: carrito vacío, validación sin crear pedido, pedido válido con cliente/envío/idempotencia y apertura del pago, fallo del widget conserva el pedido y muestra el error) y `catalogAdminServices.test.js` (9 pruebas: `normalizeProduct`, `imageUrl`, `slugify`, `toReference`, `adminError`).
+- Pruebas: vitest 172/172 (13 archivos); ESLint de los archivos nuevos sin errores; build OK. Wompi mockeado: no valida el widget real.
+- No ejecutado: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, URL/acceso de Vercel Preview, decisión gitleaks (`security`).
+- Siguiente: `adminService.upsertProduct` con Supabase simulado; job de CI para los `e2e_*.cjs` contra Supabase local; con credenciales, OWNER_CHECKLIST.
