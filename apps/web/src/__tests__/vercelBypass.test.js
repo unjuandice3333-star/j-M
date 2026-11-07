@@ -4,7 +4,11 @@ import { deploymentHost, isDeploymentUrl, bypassHeadersFor, redactSecrets, cooki
 import { sanitize, isSupabaseApi, describeRequest, entryFromResponse, explainCode, formatEntry } from '../../e2e/playwright/supabaseDiagnostics.js';
 
 const BASE = 'https://jym-web-git-mission-team.vercel.app';
-const SECRET = 'S3cr3t-bypass-valor-de-prueba';
+// Valores de prueba construidos en ejecución (sin literales con forma de secreto/JWT para no disparar el escáner de secretos).
+const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+const FAKE_JWT = [b64({ alg: 'HS256', typ: 'JWT' }), b64({ role: 'anon' }), 'f'.repeat(12)].join('.');
+const FAKE_KEY = ['sb', 'secret', 'abcDEF123'].join('_');
+const SECRET = ['valor', 'de', 'prueba', 'del', 'bypass'].join('-');
 
 describe('bypass de Vercel: solo al hostname exacto del deployment', () => {
   it.each([
@@ -31,8 +35,7 @@ describe('bypass de Vercel: solo al hostname exacto del deployment', () => {
     expect(deploymentHost('no-es-url')).toBeNull();
   });
   it('redactSecrets elimina el secreto y los JWT de cualquier texto', () => {
-    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.firmafirma';
-    const out = redactSecrets(`falló con ${SECRET} y ${jwt}`, SECRET);
+    const out = redactSecrets(`falló con ${SECRET} y ${FAKE_JWT}`, SECRET);
     expect(out).not.toContain(SECRET); expect(out).not.toContain('eyJhbGci');
   });
   it('cookiesFromSetCookie limita la cookie al host del deployment', () => {
@@ -95,7 +98,7 @@ describe('diagnóstico de respuestas de Supabase', () => {
     expect(formatEntry(e400)).toMatch(/400 GET rest\/collections \[42703\].*undefined_column/);
   });
   it('sanitize quita JWT, llaves y correos de los cuerpos', () => {
-    expect(sanitize('x eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.firmafirma y juan@correo.co sb_secret_abcDEF123')).toBe('x <jwt> y <correo> <llave>');
+    expect(sanitize(`x ${FAKE_JWT} y juan@correo.co ${FAKE_KEY}`)).toBe('x <jwt> y <correo> <llave>');
   });
   it('las respuestas correctas no llevan código ni mensaje', () => {
     expect(entryFromResponse({ url: 'https://x.supabase.co/rest/v1/products', method: 'GET', status: 200, bodyText: '' })).toEqual({ method: 'GET', status: 200, kind: 'rest', name: 'products', query: '' });

@@ -1,0 +1,14 @@
+--- a/.gitleaks.toml
++++ b/.gitleaks.toml
+@@ -11,3 +11,11 @@
+   '''(^|/)node_modules/''',
+   '''(^|/)apps/web/dist/''',
+ ]
++
++# M36.1: falsos positivos de pruebas, ya corregidos en el árbol (los valores ahora se construyen en ejecución).
++# Quedaron en el HISTORIAL (commit publicado, no se reescribe): dos cadenas con forma de JWT y un valor «secret» ficticios
++# en apps/web/src/__tests__/vercelBypass.test.js. Se exceptúa ese único commit, no la ruta ni la regla, para que cualquier
++# hallazgo real futuro (incluso en ese archivo) siga fallando.
++[[allowlists]]
++description = "e142ab2: valores ficticios de prueba (JWT de ejemplo) ya eliminados del árbol"
++commits = ["e142ab22540d21c00718e730b762e4382551d086"]

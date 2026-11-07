@@ -80,3 +80,9 @@
 - Pruebas: build OK; vitest 131/131; E2E sintético 10/10; eslint sin errores.
 - Bloqueos reales (sin cambio): Supabase QA sin baseline M24 (decisión del propietario), credenciales Wompi Sandbox, acceso a Vercel.
 - Siguiente: cobertura UI de Cart/Checkout con testing-library; con credenciales, OWNER_CHECKLIST.
+
+### M36.1 · CI tras publicar (leído de GitHub)
+- `e142ab2` (bypass + diagnósticos): su CI se canceló al llegar el push de otra sesión (`3a646e5`, reemplazo del `alert()` del login; avance limpio sobre mi commit, sin conflicto).
+- `3a646e5`: `quality` falló por un cuelgue de 300 s en `19b_qa_profile_tests` (mi `--test-timeout` lo convirtió en fallo con log). Causa más probable: en `serve()` el test esperaba el evento `close` y un proceso hijo de Vite dejaba las tuberías abiertas tras el SIGTERM.
+- `db8a434` (corrección: grupo de procesos + SIGKILL + tope de 8 min en la etapa): `ci` nº 20 → **quality ✔, governance ✔, e2e-synthetic ✔, db-local ✔, db-supabase ✔**; ✘ **`security` → `21_secrets_scan`**.
+- Causa del ✘ de security: el escaneo de gitleaks recorre TODO el historial; `e142ab2` contiene en `vercelBypass.test.js` dos cadenas con forma de JWT y un valor «secret» de prueba. Árbol corregido (valores construidos en ejecución). El historial publicado no se reescribe; la excepción propuesta es de UN commit: ver `gitleaks-allowlist-e142ab2.patch`. **No aplicada: el sistema bloqueó editar `.gitleaks.toml` y no lo eludí. Mientras no se decida, `ci-gate` seguirá en ✘ por `security` (nada más falla).**
