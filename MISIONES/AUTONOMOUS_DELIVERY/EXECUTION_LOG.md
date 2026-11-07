@@ -94,3 +94,11 @@
 - Hallazgo adicional: la cookie aparecía en las trazas de fallo (reportes, capturas y vídeos limpios); saneado verificado (0 rastros, `unzip -t` OK, JSON válido).
 - Pruebas locales: vitest 155/155; ESLint 0/0; test:env 142/142; build OK; E2E sintético 10/10; Playwright local Edge 9✔+1 omitida y Chromium 9✔+1 omitida; autoprueba preview Chromium y Edge OK.
 - No verificado: Windows, Vercel real, Supabase QA, visor de trazas.
+
+## 2026-11-07 — Ejecución 10 (cobertura UI del carrito)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-y1nhif` (= main); se cambió a la rama autorizada = remoto `af64c56`, árbol limpio.
+- Tarea: pendiente nº 2 — pruebas de UI de `CartPage` con el store real y Supabase simulado (`apps/web/src/__tests__/cartPage.test.jsx`, 4 pruebas: carrito vacío, artículos/total, aumentar/disminuir cantidad, aviso descartable).
+- Pruebas: vitest 159/159 (11 archivos); ESLint del archivo nuevo sin errores; build OK.
+- No ejecutado esta vez: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión sobre gitleaks (`security`).
+- Siguiente: UI de `CheckoutPage` y `adminService.upsertProduct`/`productService.normalizeProduct`; con credenciales, OWNER_CHECKLIST.
