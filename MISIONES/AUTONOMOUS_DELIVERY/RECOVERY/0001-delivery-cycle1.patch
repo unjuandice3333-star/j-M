@@ -1,0 +1,105 @@
+From 06d8ad374b5b942dd16b16c20fc4b9fd99b20563 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 7 Nov 2026 05:09:47 +0000
+Subject: [PATCH] chore(delivery): vitest config, test:unit script and
+ autonomous delivery status docs
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FPwMVHoKWguCQNNYmW1upL
+---
+ MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md     |  4 ++++
+ MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md |  9 ++++++++
+ MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md | 23 +++++++++++++++++++
+ package.json                                  |  1 +
+ vitest.config.js                              | 10 ++++++++
+ 5 files changed, 47 insertions(+)
+ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md
+ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md
+ create mode 100644 MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md
+ create mode 100644 vitest.config.js
+
+diff --git a/MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md b/MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md
+new file mode 100644
+index 0000000..9567ff5
+--- /dev/null
++++ b/MISIONES/AUTONOMOUS_DELIVERY/DECISIONS.md
+@@ -0,0 +1,4 @@
++# DECISIONS
++- D1 (2026-11-07): Rama de trabajo = `mission/m26-dev-qa-environments`. La rama de sesión `claude/gracious-pasteur-rb0qht` estaba en main sin el trabajo M24–M30.
++- D2: Vitest solo ejecuta paquetes/src; `scripts/**/*.test.mjs` usan node:test (`pnpm test:env`).
++- D3: Production, pagos reales, `db reset --linked`, POS y merge a main quedan fuera de alcance.
+diff --git a/MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md b/MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md
+new file mode 100644
+index 0000000..7067d72
+--- /dev/null
++++ b/MISIONES/AUTONOMOUS_DELIVERY/EXECUTION_LOG.md
+@@ -0,0 +1,9 @@
++# EXECUTION LOG
++## 2026-11-07 — Ejecución 1
++- Estado inicial: rama mission/m26 en b5b70d5, árbol limpio; no existía MISIONES/AUTONOMOUS_DELIVERY.
++- Tarea: reproducibilidad local y pruebas unitarias.
++- Archivos: vitest.config.js (nuevo), package.json (script test:unit), MISIONES/AUTONOMOUS_DELIVERY/*.
++- Pruebas: build OK; test:env 141/141; vitest 6/6; eslint 0 errores / 9 warnings.
++- Bloqueos reales: ninguno para código; Wompi/Vercel requieren credenciales del propietario.
++- Push: el push a `mission/m26-dev-qa-environments` fue denegado por el entorno (la sesión solo autoriza `claude/gracious-pasteur-rb0qht`); commit local.
++- Siguiente: limpiar warnings ESLint; intentar Supabase local para E2E.
+diff --git a/MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md b/MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md
+new file mode 100644
+index 0000000..0b92972
+--- /dev/null
++++ b/MISIONES/AUTONOMOUS_DELIVERY/MASTER_STATUS.md
+@@ -0,0 +1,23 @@
++# MASTER STATUS — J&M Autonomous Delivery
++
++Última actualización: 2026-11-07 (ejecución 1)
++Rama autorizada: `mission/m26-dev-qa-environments`
++
++## Estado verificado (ejecutado, no supuesto)
++| Comprobación | Resultado |
++|---|---|
++| `pnpm install --frozen-lockfile` | OK |
++| `pnpm build` (apps/web, Vite) | OK |
++| `pnpm test:env` (node:test) | 141/141 |
++| `pnpm test:unit` (vitest) | 6/6 (corregido: antes fallaban 11 archivos node:test) |
++| `eslint .` | 0 errores, 9 warnings (variables sin usar) |
++
++## NO verificado en este entorno
++- Stack local Supabase (`supabase start`), pgTAP, E2E Playwright (requieren Docker/Supabase local).
++- Wompi Sandbox real y Vercel Preview (requieren credenciales del propietario).
++
++## Pendiente (prioridad)
++1. Limpiar los 9 warnings de ESLint.
++2. Verificar si el entorno permite Docker/Supabase local para correr los E2E de `apps/web/e2e`.
++3. Revisar autenticación/carrito/checkout con pruebas unitarias donde no haya cobertura.
++4. Wompi Sandbox y Vercel Preview: bloqueados por credenciales (ver DECISIONS.md).
+diff --git a/package.json b/package.json
+index d970c08..21cc009 100644
+--- a/package.json
++++ b/package.json
+@@ -12,6 +12,7 @@
+     "prepare": "husky",
+     "check:env": "node scripts/env/check_env.mjs",
+     "build:factory": "node scripts/env/check_env.mjs && pnpm --filter @jm/web build",
++    "test:unit": "vitest run",
+     "test:env": "node --test scripts/env/environments.test.mjs scripts/env/check_env.test.mjs scripts/env/runtime_config.test.mjs scripts/env/templates.test.mjs scripts/env/gen_local_env.test.mjs scripts/env/qa_config.test.mjs scripts/env/r1_regression.test.mjs scripts/release/production_readiness.test.mjs scripts/env/r1_1_deploy_context.test.mjs",
+     "check:templates": "node scripts/env/templates.mjs check",
+     "env:local": "bash scripts/env/gen_local_env.sh",
+diff --git a/vitest.config.js b/vitest.config.js
+new file mode 100644
+index 0000000..286fee3
+--- /dev/null
++++ b/vitest.config.js
+@@ -0,0 +1,10 @@
++import { defineConfig } from 'vitest/config'
++
++// Vitest solo ejecuta las pruebas unitarias TypeScript/JS de los paquetes.
++// Los archivos *.test.mjs de scripts/ usan node:test y se ejecutan con `pnpm test:env`.
++export default defineConfig({
++  test: {
++    include: ['packages/**/*.test.{ts,tsx,js}', 'apps/web/src/**/*.test.{ts,tsx,js,jsx}'],
++    exclude: ['**/node_modules/**', '**/dist/**', 'scripts/**'],
++  },
++})
+-- 
+2.43.0
+
