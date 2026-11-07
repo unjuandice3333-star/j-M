@@ -110,3 +110,10 @@
 - No ejecutado: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, URL/acceso de Vercel Preview, decisión gitleaks (`security`).
 - Siguiente: `adminService.upsertProduct` con Supabase simulado; job de CI para los `e2e_*.cjs` contra Supabase local; con credenciales, OWNER_CHECKLIST.
+
+## 2026-11-07 — Ejecución 12 (cobertura de servicios admin)
+- Estado inicial: sesión en `claude/gracious-pasteur-xys5lq` (= main); trabajo basado en `origin/mission/m26-dev-qa-environments` (`b96c916`). Por instrucción del entorno se publica en la rama de sesión, no en la de misión; el propietario puede integrar con fast-forward.
+- Tarea: `adminServiceCalls.test.js` (10 pruebas): upsertProduct, adjustInventory, transitionOrder, setProductStatus, dashboardMetrics; parámetros RPC y traducción de errores (JM_*, 23505, 42501). Supabase simulado.
+- Pruebas: `pnpm test:unit` 182/182 (14 archivos); ESLint del archivo nuevo OK. No ejecutado: E2E, pgTAP, test:env (sin cambios).
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, URL/acceso Vercel Preview, decisión gitleaks (`security`).
+- Siguiente: job de CI para los `e2e_*.cjs` contra Supabase local; con credenciales, OWNER_CHECKLIST.
