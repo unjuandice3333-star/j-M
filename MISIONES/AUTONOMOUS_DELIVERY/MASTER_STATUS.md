@@ -31,7 +31,7 @@ Defectos reales encontrados y corregidos en esta ejecución: (1) `applyCoupon` p
 
 ## Playwright (M36) — ver `PLAYWRIGHT.md`
 Implementado en `apps/web` (`playwright.config.js`, `e2e/playwright/`, `scripts/pw.mjs`): proyectos `edge` (channel msedge) y `chromium`; destinos `local` (backend sintético) y `preview` (BASE_URL + bypass de Deployment Protection, que NO se desactiva); reporte HTML; captura/vídeo/traza en fallos; consola, red y errores de página adjuntos.
-- **Edge (Linux, v157) · local sintético: 7/7.** **Chromium · local: 7/7.** Chromium también corre como etapa `41_playwright_smoke` del job `e2e-synthetic` (resultado en GitHub: ver EXECUTION_LOG).
+- **Edge (Linux, v157) · local sintético: 7/7.** **Chromium · local: 7/7.** Chromium también corre como etapa `41_playwright_smoke` del job `e2e-synthetic` (GitHub: `ci` nº 16 sobre `91f0653` en success en todos los jobs, incluido `e2e-synthetic`; el log del job no muestra la línea individual de la etapa 41, pero `run_all.sh` falla el job si cualquier etapa falla).
 - **Windows local: NO PROBADO. Vercel Preview: NO PROBADO** (no hay URL en el repo; sin acceso a Vercel). Supabase QA: NO VALIDADO.
 - Fase 2 preparada en `apps/web/e2e/playwright/phase2/README.md`.
 
