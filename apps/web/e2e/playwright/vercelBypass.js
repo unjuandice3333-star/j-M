@@ -47,7 +47,8 @@ export function cookiesFromSetCookie(setCookies, baseURL) {
     const [pair, ...attrs] = raw.split(';').map((s) => s.trim());
     const i = pair.indexOf('=');
     if (i <= 0) continue;
-    const cookie = { name: pair.slice(0, i), value: pair.slice(i + 1), domain: u.hostname, path: '/', httpOnly: false, secure: u.protocol === 'https:', sameSite: 'Lax' };
+    // expires = -1 (cookie de sesión) por omisión: el formato de storage state de Playwright exige el campo
+    const cookie = { name: pair.slice(0, i), value: pair.slice(i + 1), domain: u.hostname, path: '/', expires: -1, httpOnly: false, secure: u.protocol === 'https:', sameSite: 'Lax' };
     for (const a of attrs) {
       const [k, v = ''] = a.split('=');
       const key = k.toLowerCase();
@@ -55,6 +56,7 @@ export function cookiesFromSetCookie(setCookies, baseURL) {
       else if (key === 'httponly') cookie.httpOnly = true;
       else if (key === 'samesite') cookie.sameSite = /^none$/i.test(v) ? 'None' : /^strict$/i.test(v) ? 'Strict' : 'Lax';
       else if (key === 'max-age' && /^\d+$/.test(v)) cookie.expires = Math.floor(Date.now() / 1000) + Number(v);
+      else if (key === 'expires' && cookie.expires === -1 && Number.isFinite(Date.parse(v))) cookie.expires = Math.floor(Date.parse(v) / 1000);
     }
     if (cookie.sameSite === 'None') cookie.secure = true;
     out.push(cookie);
@@ -89,4 +91,16 @@ export async function fetchBypassCookies({ baseURL, secret, fetchImpl = fetch })
   const hasVercelCookie = jar.some((c) => c.name === '_vercel_jwt');
   if (status === 401 || status === 403) return { ok: false, status, cookies: jar, reason: 'el deployment rechazó el secreto de bypass (revise «Protection Bypass for Automation»)' };
   return { ok: status > 0 && status < 400, status, cookies: jar, hasVercelCookie, reason: hasVercelCookie ? undefined : 'el deployment no emitió la cookie _vercel_jwt (¿la protección está desactivada o el secreto no corresponde?)' };
+}
+
+/**
+ * Comprueba que las cookies persistidas autorizan el acceso SIN el secreto: una petición desde Node al deployment, solo con
+ * la cabecera Cookie. Devuelve { ok, status, reason? }; nunca incluye valores de cookies ni el secreto.
+ */
+export async function verifyCookieAccess({ baseURL, cookies, fetchImpl = fetch }) {
+  const header = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+  let res;
+  try { res = await fetchImpl(baseURL, { redirect: 'manual', headers: { cookie: header } }); } catch (e) { return { ok: false, status: 0, reason: `sin conexión al verificar la cookie (${e.message})` }; }
+  if (res.status === 401 || res.status === 403) return { ok: false, status: res.status, reason: 'la cookie guardada no autoriza el acceso al deployment (HTTP ' + res.status + ')' };
+  return { ok: res.status < 400, status: res.status, reason: res.status < 400 ? undefined : `el deployment respondió HTTP ${res.status} con la cookie guardada` };
 }

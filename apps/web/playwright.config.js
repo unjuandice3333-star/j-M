@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deploymentHost } from './e2e/playwright/vercelBypass.js';
+import { AUTH_STATE_FILE } from './e2e/playwright/authState.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -27,7 +28,7 @@ if (TARGET === 'preview') {
   // Deployment Protection se mantiene ACTIVA. Con VERCEL_AUTOMATION_BYPASS_SECRET, global-setup obtiene la cookie de Vercel
   // desde Node y solo esa cookie (scoped al host del deployment) llega al navegador: ninguna cabecera de bypass se envía
   // a terceros (Google Fonts, Supabase…) y el secreto no aparece en trazas, capturas, vídeos ni reportes.
-  if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) storageState = path.join(HERE, '.auth', 'vercel.json');
+  if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) storageState = AUTH_STATE_FILE; // ruta absoluta única, la misma que escribe global-setup
 } else {
   baseURL = `http://127.0.0.1:${WEB_PORT}`;
   // Variables del fixture público de CI (config/env/local-ci.env: valores ficticios, no son credenciales).
@@ -70,7 +71,8 @@ export default defineConfig({
     storageState,
     locale: 'es-CO',
     timezoneId: 'America/Bogota',
-    trace: 'retain-on-failure',
+    // Con el bypass de Vercel, la traza registra la cookie de sesión: solo se graba si se ejecuta con scripts/pw.mjs, que la sanea.
+    trace: storageState && !process.env.PW_TRACE_SCRUBBED ? 'off' : 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },

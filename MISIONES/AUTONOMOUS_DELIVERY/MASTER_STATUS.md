@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-07 (ejecución 8, M36.1)
+Última actualización: 2026-11-07 (ejecución 9, M36.2.1)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -35,6 +35,9 @@ Defectos reales encontrados y corregidos en esta ejecución: (1) `applyCoupon` p
 - **Supabase QA (NO corregido: decisión del propietario):** 400 en `collections`, 404 en `shipping_methods` y `site_content` y catálogo vacío son consecuencia de que QA conserva el esquema heredado y no tiene el baseline M24 (inventario M29). **Los códigos exactos NO fueron capturados por mí** (la sesión no puede llegar a QA); esperados: `PGRST205` (tablas ausentes) y `PGRST200`/`42703` (`collections`). Quedan instrumentados para la próxima ejecución: prueba `[3] datos de Supabase` (código, mensaje, detalle y pista de cada respuesta ≥ 400) y `pnpm qa:diagnose` (solo lectura, llave anon).
 - **Pruebas separadas por capa:** `[1] aplicación accesible`, `[2] bypass de Vercel`, `[3] datos de Supabase`, luego las 7 de smoke (originales, sin tocar).
 - **Resultados verificados por mí (Linux, backend sintético):** Edge 157 y Chromium pasan; con el esquema heredado simulado fallan [3] y los 7 smoke con los códigos esperados (mismo patrón que el Preview real). **Preview aprobado: NO. Vercel Preview: NO PROBADO tras la corrección. Supabase QA: NO VALIDADO.**
+
+## M36.2.1 — storage state de Vercel (ENOENT) · ver `PLAYWRIGHT_GUIDE.md`
+Reproducido de forma determinista con un deployment protegido simulado (misma salida que el propietario: «cookie obtenida» y luego ENOENT). Causa: `global-setup` escribía en `config.rootDir` (= `testDir`) y la config leía otra carpeta; la carpeta tampoco estaba ignorada por git. Corregido con ruta única absoluta, carpeta recursiva, escritura atómica, validación estricta y verificación de acceso solo con cookie; saneado de trazas (la cookie aparecía en `trace.network`). **Validado:** 25 pruebas unitarias nuevas (155 en total), autoprueba del modo preview en Chromium y Edge 157 (Linux), Playwright local Edge/Chromium 9 pasan + 1 omitida. **NO validado: Windows+Edge (lo ejecutará el propietario), Vercel Preview real, Supabase QA.** Qué ejecutará el propietario: `pnpm test:pw:selftest` (debe dar `[selftest] OK`) y después `pnpm test:pw:preview`.
 
 ## Matriz de validación (qué se ejecutó y DÓNDE)
 Fuente de «GitHub Actions»: jobs leídos en la API de Actions, ejecuciones nº 13 y nº 14 del workflow `ci` (commits `cef5fe42` y `725e3bde`): **todos los jobs en success, incluido `ci-gate`**, y el workflow `e2e-supabase` en success en `0cd1867`, `cef5fe42` y `725e3bde` (3 seguidas).

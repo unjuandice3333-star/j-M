@@ -14,6 +14,9 @@ export default [
       'apps/web/public/**',
       'supabase/**',            // SQL / Deno: validados por pgTAP y deno test
       'ci-artifacts/**',
+      '**/playwright-report/**',   // artefactos generados por Playwright (M36.2.1), no código fuente
+      '**/test-results/**',
+      '**/.auth/**',
       '**/*.min.js',
       '**/*.d.ts',
       'packages/shared/index.js' // artefacto compilado de index.ts

@@ -13,7 +13,8 @@
     "e2e:preview": "node scripts/pw.mjs preview --project=edge",
     "e2e:preview:chromium": "node scripts/pw.mjs preview --project=chromium",
     "e2e:report": "playwright show-report playwright-report",
-    "e2e:install": "playwright install chromium"
+    "e2e:install": "playwright install chromium",
+    "e2e:preview-selftest": "node scripts/pw-preview-selftest.mjs"
   },
   "dependencies": {
     "@jm/shared": "workspace:*",

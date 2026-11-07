@@ -86,3 +86,11 @@
 - `3a646e5`: `quality` falló por un cuelgue de 300 s en `19b_qa_profile_tests` (mi `--test-timeout` lo convirtió en fallo con log). Causa más probable: en `serve()` el test esperaba el evento `close` y un proceso hijo de Vite dejaba las tuberías abiertas tras el SIGTERM.
 - `db8a434` (corrección: grupo de procesos + SIGKILL + tope de 8 min en la etapa): `ci` nº 20 → **quality ✔, governance ✔, e2e-synthetic ✔, db-local ✔, db-supabase ✔**; ✘ **`security` → `21_secrets_scan`**.
 - Causa del ✘ de security: el escaneo de gitleaks recorre TODO el historial; `e142ab2` contiene en `vercelBypass.test.js` dos cadenas con forma de JWT y un valor «secret» de prueba. Árbol corregido (valores construidos en ejecución). El historial publicado no se reescribe; la excepción propuesta es de UN commit: ver `gitleaks-allowlist-e142ab2.patch`. **No aplicada: el sistema bloqueó editar `.gitleaks.toml` y no lo eludí. Mientras no se decida, `ci-gate` seguirá en ✘ por `security` (nada más falla).**
+
+## 2026-11-07 — Ejecución 9 (M36.2.1)
+- Estado inicial: rama = `a493c93` = remoto; CI sobre `a493c93`: todo ✔ excepto `security` (historial gitleaks, pendiente de decisión del propietario).
+- Reproducción: autoprueba con deployment protegido simulado → `[bypass] … obtenida` + `ENOENT apps/web/.auth/vercel.json`; el archivo estaba en `e2e/playwright/.auth/` (no ignorado por git).
+- Corrección: `authState.js` (ruta única, escritura atómica recursiva, validación), `global-setup.js` (verificación previa a los workers y acceso solo con cookie), `vercelBypass.js` (`expires` obligatorio; `verifyCookieAccess`), `scrubZip.js` + `pw.mjs` (saneado de trazas), `pw-preview-selftest.mjs` + `fake-vercel.cjs`, `.gitignore`, `eslint.config.js`, etapa CI 42.
+- Hallazgo adicional: la cookie aparecía en las trazas de fallo (reportes, capturas y vídeos limpios); saneado verificado (0 rastros, `unzip -t` OK, JSON válido).
+- Pruebas locales: vitest 155/155; ESLint 0/0; test:env 142/142; build OK; E2E sintético 10/10; Playwright local Edge 9✔+1 omitida y Chromium 9✔+1 omitida; autoprueba preview Chromium y Edge OK.
+- No verificado: Windows, Vercel real, Supabase QA, visor de trazas.

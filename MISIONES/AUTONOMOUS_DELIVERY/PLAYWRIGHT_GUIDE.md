@@ -24,6 +24,19 @@ Ahora (`e2e/playwright/vercelBypass.js` + `global-setup.js`):
 5. Deployment Protection **no se desactiva**.
 Verificado con 22 pruebas unitarias (hosts de terceros y parecidos reciben `{}`, el deployment recibe las cabeceras, el secreto no aparece en resultados ni errores, redirección a otro host no se sigue) y con un servidor local que imita un deployment protegido. **No probado contra un deployment real de Vercel desde este entorno.**
 
+### Persistencia del storage state (corregida en M36.2.1)
+**Error reproducido (Windows y Linux):** `[bypass] HTTP 200 · cookie de Vercel: obtenida` y a continuación `ENOENT … apps/web/.auth/vercel.json`.
+**Causa:** `global-setup` escribía en `config.rootDir`, que en Playwright vale el **`testDir`** cuando está definido (`apps/web/e2e/playwright/`), mientras la configuración leía `apps/web/.auth/` → el archivo se guardaba en una carpeta y se buscaba en otra. Además esa carpeta no estaba en `.gitignore` (la cookie podía acabar en un commit).
+**Corrección:**
+- Ruta **única y absoluta** (`e2e/playwright/authState.js`: `AUTH_STATE_FILE`), calculada con `path.resolve` + `fileURLToPath` desde la ubicación del propio módulo (no depende de `rootDir` ni del directorio de trabajo; válida en Windows y Linux). Config y setup importan la misma constante.
+- `global-setup` crea la carpeta de forma **recursiva**, escribe de forma **atómica** (archivo temporal + renombrado, permisos 0600 en POSIX) y **relee y valida** antes de que arranque ningún worker (Playwright espera a que termine): archivo existente, legible y no vacío; JSON con `cookies` y `origins`; cada cookie con los campos que exige Playwright (`name`, `value`, `domain`, `path`, `expires`, `httpOnly`, `secure`, `sameSite`); incluye `_vercel_jwt`; **dominio exacto del Preview** (sin punto inicial ni otros dominios); `secure` en https.
+- Después comprueba que la cookie **por sí sola** (sin el secreto) da acceso al deployment (una petición desde Node solo con la cabecera `Cookie`).
+- Si algo falla, el error dice qué (ruta, causa) y **no se crea un estado vacío ni se inventan cookies**.
+- `.gitignore`: `**/.auth/`. ESLint ignora `playwright-report/`, `test-results/` y `.auth/`.
+**Seguridad (verificado):** el secreto no se guarda; la cabecera de bypass se envía **una sola vez** (la petición de Node al host exacto) y el navegador usa solo la cookie; ni el secreto ni la cookie aparecen en logs, capturas, vídeos ni reportes.
+**Trazas:** Playwright registra la cabecera `Cookie` en `trace.network`/`trace.trace`, así que con el bypass activo `scripts/pw.mjs` **sanea las trazas** al terminar (`test-results/` y la copia en `playwright-report/data/`: sustituye la cookie y el secreto por `<redactado>`, comprueba que no queda rastro y falla si queda). Si se invoca `playwright test` directamente con el bypass activo, **las trazas se desactivan** (defensa en profundidad). Comprobado con `unzip -t` y validando que todas las líneas JSON siguen siendo válidas; **no abierto en el visor de trazas de Playwright** (no hay interfaz gráfica aquí).
+**Autoprueba sin Vercel real:** `pnpm test:pw:selftest` levanta el backend sintético, la tienda y un deployment protegido simulado (`e2e/synthetic/fake-vercel.cjs`), ejecuta el modo `preview` con un secreto aleatorio y verifica: archivo persistido, cookie del dominio exacto, permisos, el navegador entra por cookie, 1 sola cabecera de bypass, sin secreto en el archivo. Corre también en el CI (etapa 42).
+
 ### Resultados separados por capa (`e2e/playwright/00-health.spec.js`, después `smoke.spec.js`)
 1. `[1] aplicación accesible`: HTTP 200, HTML de la tienda y no la pantalla de autenticación de Vercel.
 2. `[2] bypass de Vercel correcto` (solo preview): ninguna petición a terceros lleva cabeceras de bypass.
@@ -37,6 +50,7 @@ Con el esquema heredado simulado (`SYNTH_LEGACY_SCHEMA=1` en el backend sintéti
 | `pnpm test:pw` | local · Chromium |
 | `pnpm test:pw:edge` | local · Microsoft Edge |
 | `pnpm test:pw:preview` | Preview · Edge (necesita `PLAYWRIGHT_BASE_URL`) |
+| `pnpm test:pw:selftest` | autoprueba del modo preview con un deployment protegido simulado (sin Vercel real) |
 | `pnpm qa:diagnose` | diagnóstico de SOLO LECTURA de Supabase QA con la llave anon (ver `QA_DIAGNOSTICO_M36_1.md`) |
 | `pnpm --filter @jm/web e2e:preview:chromium` | Preview · Chromium |
 | `pnpm --filter @jm/web e2e:report` | abre el reporte HTML |

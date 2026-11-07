@@ -85,6 +85,9 @@ if want e2e-synthetic; then
   run_step 40_e2e_synthetic env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" node apps/web/e2e/e2e_synthetic.cjs
   # M36: smoke de Playwright (Chromium, backend sintético local; Edge es el navegador del propietario en Windows y no está en el runner)
   run_step 41_playwright_smoke env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 CI=1 PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" node apps/web/scripts/pw.mjs local --project=chromium
+  # M36.2.1: autoprueba del modo preview (deployment protegido simulado): persistencia/lectura del storage state, bypass solo desde Node,
+  # cookie en el navegador, saneado de trazas. Regresión del ENOENT de apps/web/.auth/vercel.json.
+  run_step 42_pw_preview_selftest env -i PATH="$PATH" HOME="$HOME" LANG=C.UTF-8 CI=1 PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" node apps/web/scripts/pw-preview-selftest.mjs --project=chromium
 fi
 
 # --- Seguridad y migraciones -----------------------------------------------------
