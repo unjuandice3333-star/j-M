@@ -6,6 +6,7 @@ import { formatCOP } from '../data/mockData';
 import { analyticsService } from '../services/analytics';
 import { wompiService } from '../services/wompi';
 import { newIdempotencyKey } from '../services/orderService';
+import { validateCheckout, cartKeyOf, EMAIL_RE } from '../utils/checkoutRules';
 import { useAuthStore } from '../store/authStore';
 import supabase from '../config/supabase';
 
@@ -17,7 +18,6 @@ const DEPARTMENTS = [
   'Sucre', 'Tolima', 'Valle del Cauca', 'Vaupés', 'Vichada'
 ];
 
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 // M28: borrador del envío en sessionStorage (se borra al cerrar la pestaña y al crear el pedido) para no perder lo
 // escrito si hay que volver a iniciar sesión a mitad del checkout.
@@ -27,20 +27,6 @@ const readDraft = () => { try { return JSON.parse(sessionStorage.getItem(DRAFT_K
 const writeDraft = (f) => { try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(Object.fromEntries(DRAFT_FIELDS.map((k) => [k, f[k]])))); } catch { /* sin almacenamiento */ } };
 const clearDraft = () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* sin almacenamiento */ } };
 
-/** Validación en el navegador (la BD vuelve a validar todo en create_order). */
-function validate(f) {
-  const e = {};
-  if (f.firstName.trim().length < 2) e.firstName = 'Escribe tu nombre.';
-  if (f.lastName.trim().length < 2) e.lastName = 'Escribe tu apellido.';
-  if (!EMAIL_RE.test(f.email.trim())) e.email = 'Escribe un correo válido.';
-  const digits = f.phone.replace(/[^0-9]/g, '');
-  if (digits.length < 7 || digits.length > 15) e.phone = 'Escribe un teléfono de 7 a 15 dígitos.';
-  if (!f.department) e.department = 'Elige el departamento.';
-  if (f.city.trim().length < 2) e.city = 'Escribe la ciudad o municipio.';
-  if (f.address.trim().length < 4) e.address = 'Escribe la dirección completa.';
-  return e;
-}
-
 export const CheckoutPage = () => {
   const navigate = useNavigate();
   const { items, getTotals, createOrder, refreshQuote, appliedCoupon, shippingMethods, loadProducts } = useECommerceStore();
@@ -49,7 +35,7 @@ export const CheckoutPage = () => {
 
   // Clave de idempotencia por contenido del carrito: un doble clic o un reintento del mismo carrito devuelve el MISMO
   // pedido (create_order es idempotente); si el carrito cambia, es un pedido nuevo.
-  const cartKey = items.map((i) => `${i.variantId}x${i.quantity}`).sort().join(',') + `|${appliedCoupon?.code ?? ''}`;
+  const cartKey = cartKeyOf(items, appliedCoupon);
   const [idem, setIdem] = useState(() => ({ cartKey, key: newIdempotencyKey() }));
   const idempotencyKey = idem.cartKey === cartKey ? idem.key : null;
   useEffect(() => { if (idem.cartKey !== cartKey) setIdem({ cartKey, key: newIdempotencyKey() }); }, [cartKey, idem.cartKey]);
@@ -115,7 +101,7 @@ export const CheckoutPage = () => {
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
     if (isProcessing || !idempotencyKey) return;
-    const errs = validate(formData);
+    const errs = validateCheckout(formData);
     setFieldErrors(errs);
     if (Object.keys(errs).length) { setErrorMessage('Revisa los campos marcados.'); return; }
     if (totals.canCheckout === false) { setErrorMessage('Hay productos sin stock suficiente. Ajusta tu carrito.'); return; }

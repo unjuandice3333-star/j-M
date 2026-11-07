@@ -5,3 +5,7 @@
 - D4 (2026-11-07): `.claude/settings.json` v2.1 aplicado: push permitido solo con los comandos exactos a `mission/m26-dev-qa-environments`; se retiró `Bash(git push origin :*)` porque como prefijo habría anulado el allow.
 - D5: Avisos de ESLint corregidos sin desactivar reglas: se eliminó código muerto; `KpiCard` usa `const Icon = icon` (el lint no detecta el uso en JSX); en Inventario se añadió el campo de búsqueda que faltaba (`setSearchQuery` nunca se usaba).
 - D6: Las dependencias de pruebas de BD (postgresql-16-pgtap, postgresql-16-cron, pgtap-perl) se instalan con apt en cada contenedor nuevo; no forman parte del repo.
+- D7 (M33): Las pruebas unitarias importan los stores/servicios REALES y solo simulan `config/supabase` (dependencia externa). Las reglas de checkout (`validateCheckout`, `cartKeyOf`) se extrajeron de `CheckoutPage` a `utils/checkoutRules.js` sin cambiar su comportamiento, para poder probarlas.
+- D8 (M33): E2E sin Docker = Vite + Chromium reales contra un backend sintético local (127.0.0.1:54321). No sustituye los E2E contra Supabase real; Wompi no se simula como real.
+- D9 (M33): `test:env` usa un envDir temporal sin archivos `.env` por defecto; solo la prueba de lectura de archivos usa `apps/web` a propósito. No se relajó ninguna expectativa de seguridad.
+- D10 (M33): jsdom@25 añadido como devDependency raíz para probar `AuthGuard` con render de cliente (el render de servidor de zustand ignora el estado actual).

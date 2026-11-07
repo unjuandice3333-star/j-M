@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -91,7 +91,17 @@ test('seguridad: ningún mensaje contiene los valores recibidos', () => {
 
 // ------------------------------------------------- CLI real (loadEnv de Vite)
 // Entorno limpio: solo PATH/HOME; las variables VITE_ llegan como Vite las lee del proceso.
-const run = (vars, ...args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, ...vars } });
+// Determinismo: la CLI lee los .env del envDir como Vite, y apps/web puede tener un .env.local propio de cada máquina
+// (ignorado por git) que contaminaba estas pruebas. Por defecto se usa un envDir temporal SIN archivos .env (con vite
+// resoluble vía enlace a node_modules); solo la prueba de lectura de archivos usa apps/web a propósito.
+const HERMETIC = mkdtempSync(path.join(tmpdir(), 'jm-hermetic-env-'));
+writeFileSync(path.join(HERMETIC, 'package.json'), '{}');
+symlinkSync(path.join(ROOT, 'apps/web/node_modules'), path.join(HERMETIC, 'node_modules'), 'dir');
+process.on('exit', () => rmSync(HERMETIC, { recursive: true, force: true }));
+const run = (vars, ...args) => {
+  const argv = args.includes('--env-dir') ? args : ['--env-dir', HERMETIC, ...args];
+  return spawnSync(process.execPath, [CLI, ...argv], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, ...vars } });
+};
 
 test('CLI: entorno local válido → exit 0', () => {
   const r = run(localVars());
@@ -120,9 +130,15 @@ test('CLI: lee los archivos .env del envDir como Vite y el proceso tiene priorid
   const f = path.join(web, '.env.selftest');
   writeFileSync(f, Object.entries(localVars()).map(([k, v]) => `${k}=${v}`).join('\n') + '\n');
   try {
-    assert.equal(run({}, '--mode', 'selftest').status, 0, 'el modo selftest debería leer apps/web/.env.selftest');
-    assert.equal(run({ VITE_APP_ENV: 'production' }, '--mode', 'selftest').status, 1, 'el entorno del proceso tiene prioridad, como en Vite');
+    assert.equal(run({}, '--mode', 'selftest', '--env-dir', web).status, 0, 'el modo selftest debería leer apps/web/.env.selftest');
+    assert.equal(run({ VITE_APP_ENV: 'production' }, '--mode', 'selftest', '--env-dir', web).status, 1, 'el entorno del proceso tiene prioridad, como en Vite');
   } finally { rmSync(f, { force: true }); }
+});
+test('CLI: el resultado no depende de archivos .env locales ignorados (envDir hermético)', () => {
+  // Con un envDir sin archivos .env, sin variables en el proceso siempre falla igual en cualquier máquina.
+  const r = run({});
+  assert.equal(r.status, 1);
+  for (const n of REQUIRED_VARS) assert.match(r.stderr, new RegExp(n));
 });
 test('CLI: opción desconocida → exit 2', () => assert.equal(run(localVars(), '--prod').status, 2));
 

@@ -16,3 +16,12 @@
 - Bloqueos reales: Docker sin demonio (sin Supabase local ni E2E); credenciales Wompi/Vercel/Supabase QA.
 - No se leyó ni modificó ningún `.env`.
 - Siguiente: E2E sin Docker, pruebas unitarias de carrito/checkout/auth.
+
+## 2026-11-07 — Ejecución 4 (M33)
+- Estado inicial: rama = `801c658` = remoto, árbol limpio.
+- Tarea: pruebas unitarias reales, E2E sin Docker, corrección de test:env, revisión Wompi/Vercel.
+- Archivos: `apps/web/src/__tests__/*` (5 archivos nuevos), `utils/checkoutRules.js`, `CheckoutPage.jsx`, `orderService.js` (fix), `Login.module.css` (contraste), `apps/web/e2e/e2e_synthetic.cjs` + `synthetic/backend.cjs`, `scripts/env/check_env.test.mjs`, `vitest.config.js`/`package.json`/`pnpm-lock.yaml` (jsdom), `OWNER_STEPS.md`.
+- Pruebas: build OK; ESLint 0/0; vitest 92/92; test:env 142/142; invariants 10/10; E2E sintético 10/10. Mutaciones manuales (quitar el check de rol y el de stock) hicieron fallar 4 pruebas → las pruebas detectan defectos; revertidas.
+- Errores encontrados y corregidos: ver MASTER_STATUS (3 defectos).
+- Bloqueos reales: credenciales Wompi/Vercel/Supabase QA; Docker.
+- Siguiente: llevar unit + E2E sintético al CI; E2E con Supabase real en CI; cobertura de UI.

@@ -71,3 +71,7 @@ apps/web/dist-qa/
 # M26-R1: bytecode de Python (nunca se versiona)
 __pycache__/
 *.pyc
+
+# Resultados locales de E2E (cada ejecución los regenera)
+apps/web/e2e/last-synthetic-result.json
+apps/web/e2e/fail-*.png

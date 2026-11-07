@@ -48,6 +48,7 @@ export class OrderError extends Error {
 
 export function toOrderError(error, fallback = 'No se pudo completar la operación. Inténtalo de nuevo.') {
   if (!error) return new OrderError(fallback);
+  if (error instanceof OrderError) return error; // ya traducido: no volver a envolver (perdería el mensaje)
   const hint = error.hint || '';
   if (hint.startsWith('JM_COUPON_')) return new OrderError(COUPON_REASONS[hint.slice('JM_COUPON_'.length)] || 'El cupón no es válido.', { hint, cause: error });
   if (hint === 'JM_OUT_OF_STOCK' && error.message) return new OrderError(error.message.replace(/^Stock insuficiente: /, 'Stock insuficiente: '), { hint, cause: error });

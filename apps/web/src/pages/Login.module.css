@@ -47,6 +47,12 @@
   gap: 1.25rem;
 }
 
+/* Las etiquetas del componente Input usan el color de texto del tema claro (#09090b): sobre esta tarjeta oscura
+   quedaban ilegibles. Se fuerza un color claro con contraste suficiente (≈15:1 sobre #18181b). */
+.form label {
+  color: #e4e4e7;
+}
+
 .errorBanner {
   background-color: rgba(239, 68, 68, 0.1);
   color: #ef4444;
@@ -54,6 +60,13 @@
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+.form .submitBtn {
+  /* El botón primario del tema era negro sobre la tarjeta oscura (#18181b): casi invisible. */
+  background-color: #fafafa;
+  color: #09090b;
+  border: 1px solid #fafafa;
 }
 
 .submitBtn {
