@@ -211,6 +211,14 @@ function start(port = 54321) {
         }
         if (p.startsWith('/rest/v1/')) {
           const table = p.split('/').pop();
+          // SYNTH_LEGACY_SCHEMA=1 imita un Supabase con el esquema HEREDADO (sin el baseline M24), como el QA real (M29):
+          // tablas inexistentes → 404 PGRST205; selects con relaciones que no existen → 400 PGRST200. Solo para probar diagnósticos.
+          if (process.env.SYNTH_LEGACY_SCHEMA && !p.includes('/rpc/')) {
+            const sel = q.select || '';
+            if (['shipping_methods', 'site_content', 'v_variant_availability', 'v_product_rating'].includes(table)) return send(res, 404, { code: 'PGRST205', message: `Could not find the table 'public.${table}' in the schema cache`, details: null, hint: null });
+            const rel = table === 'collections' && /collection_products/.test(sel) ? 'collection_products' : table === 'products' && /product_images/.test(sel) ? 'product_images' : null;
+            if (rel) return send(res, 400, { code: 'PGRST200', message: `Could not find a relationship between '${table}' and '${rel}' in the schema cache`, details: `Searched for a foreign key relationship between '${table}' and '${rel}' in the schema 'public', but no matches were found.`, hint: null });
+          }
           if (req.method === 'GET' || req.method === 'HEAD') {
             let data = rows(table, q, ctx);
             if (table === 'online_orders' || table === 'inventories') data = [...data];

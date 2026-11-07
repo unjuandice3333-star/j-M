@@ -77,3 +77,4 @@ apps/web/e2e/last-synthetic-result.json
 apps/web/e2e/fail-*.png
 apps/web/playwright-report/
 apps/web/test-results/
+apps/web/.auth/

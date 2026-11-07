@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-07 (ejecución 7, M36)
+Última actualización: 2026-11-07 (ejecución 8, M36.1)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -29,11 +29,12 @@ Defectos reales encontrados y corregidos en esta ejecución: (1) `applyCoupon` p
 - E2E contra Supabase REAL local (`e2e_checkout.cjs`, `e2e_admin.cjs`, …): requieren Docker. Los E2E sintéticos (arriba) los complementan, no los sustituyen.
 - Wompi Sandbox real y Vercel Preview: faltan credenciales (ver abajo).
 
-## Playwright (M36) — ver `PLAYWRIGHT.md`
-Implementado en `apps/web` (`playwright.config.js`, `e2e/playwright/`, `scripts/pw.mjs`): proyectos `edge` (channel msedge) y `chromium`; destinos `local` (backend sintético) y `preview` (BASE_URL + bypass de Deployment Protection, que NO se desactiva); reporte HTML; captura/vídeo/traza en fallos; consola, red y errores de página adjuntos.
-- **Edge (Linux, v157) · local sintético: 7/7.** **Chromium · local: 7/7.** Chromium también corre como etapa `41_playwright_smoke` del job `e2e-synthetic` (GitHub: `ci` nº 16 sobre `91f0653` en success en todos los jobs, incluido `e2e-synthetic`; el log del job no muestra la línea individual de la etapa 41, pero `run_all.sh` falla el job si cualquier etapa falla).
-- **Windows local: NO PROBADO. Vercel Preview: NO PROBADO** (no hay URL en el repo; sin acceso a Vercel). Supabase QA: NO VALIDADO.
-- Fase 2 preparada en `apps/web/e2e/playwright/phase2/README.md`.
+## Playwright (M36 → M36.1) — ver `PLAYWRIGHT_GUIDE.md` y `QA_DIAGNOSTICO_M36_1.md`
+**Resultado real del propietario (Windows + Edge contra el Preview): 7/7 FALLARON.** No son 7 defectos independientes:
+- **Autorización de Vercel (corregido en M36.1):** el bypass se enviaba como cabecera a todos los orígenes (rompió Google Fonts por CORS y exponía el secreto a terceros). Ahora el secreto solo lo usa Node, solo hacia el hostname exacto de `PLAYWRIGHT_BASE_URL`, y el navegador recibe únicamente la cookie de sesión de Vercel. Verificado con pruebas unitarias y un servidor local que imita un deployment protegido; **no probado contra Vercel real**.
+- **Supabase QA (NO corregido: decisión del propietario):** 400 en `collections`, 404 en `shipping_methods` y `site_content` y catálogo vacío son consecuencia de que QA conserva el esquema heredado y no tiene el baseline M24 (inventario M29). **Los códigos exactos NO fueron capturados por mí** (la sesión no puede llegar a QA); esperados: `PGRST205` (tablas ausentes) y `PGRST200`/`42703` (`collections`). Quedan instrumentados para la próxima ejecución: prueba `[3] datos de Supabase` (código, mensaje, detalle y pista de cada respuesta ≥ 400) y `pnpm qa:diagnose` (solo lectura, llave anon).
+- **Pruebas separadas por capa:** `[1] aplicación accesible`, `[2] bypass de Vercel`, `[3] datos de Supabase`, luego las 7 de smoke (originales, sin tocar).
+- **Resultados verificados por mí (Linux, backend sintético):** Edge 157 y Chromium pasan; con el esquema heredado simulado fallan [3] y los 7 smoke con los códigos esperados (mismo patrón que el Preview real). **Preview aprobado: NO. Vercel Preview: NO PROBADO tras la corrección. Supabase QA: NO VALIDADO.**
 
 ## Matriz de validación (qué se ejecutó y DÓNDE)
 Fuente de «GitHub Actions»: jobs leídos en la API de Actions, ejecuciones nº 13 y nº 14 del workflow `ci` (commits `cef5fe42` y `725e3bde`): **todos los jobs en success, incluido `ci-gate`**, y el workflow `e2e-supabase` en success en `0cd1867`, `cef5fe42` y `725e3bde` (3 seguidas).
@@ -41,9 +42,9 @@ Fuente de «GitHub Actions»: jobs leídos en la API de Actions, ejecuciones nº
 | Componente | Local (este contenedor) | GitHub Actions | Supabase local (Docker) | Supabase QA remoto | Wompi Sandbox | Vercel Preview |
 |---|---|---|---|---|---|---|
 | Build, ESLint, tsc | ✔ | ✔ (`quality`, run 13) | — | — | — | — |
-| 103 pruebas unitarias | ✔ 103/103 | ✔ (`quality`, run 13) | — | — | — | — |
+| 131 pruebas unitarias (incl. bypass, diagnósticos y `qa:diagnose`) | ✔ 103/103 | ✔ (`quality`, run 13) | — | — | — | — |
 | 142 pruebas de entorno + 23 de perfil QA | ✔ | ✔ (`quality`, run 13) | — | — | — | — |
-| E2E sintético (backend en memoria, 10 recorridos) + smoke Playwright (7) | ✔ 10/10 (también bajo carga) | ✔ run 13 (antes ✘ en runs 11–12 por carreras de MI prueba, corregidas) | — | — | — | — |
+| E2E sintético (backend en memoria, 10 recorridos) + Playwright (3 de salud + 7 smoke) | ✔ 10/10 (también bajo carga) | ✔ run 13 (antes ✘ en runs 11–12 por carreras de MI prueba, corregidas) | — | — | — | — |
 | PostgreSQL 16 + pgTAP (`db-local`) | ✔ 278/278 | ✔ runs 10–13 | — | — | — | — |
 | Supabase oficial local: migraciones, `db reset`, pgTAP 290, 39 comprobaciones HTTP (auth/RLS/RPC), pedido+pago con handlers reales de Wompi, determinismo (`db-supabase`) | — | ✔ runs 10–13 | ✔ | — | — | — |
 | **E2E de navegador con Supabase local REAL** (`e2e_site_content`, `e2e_wishlist`, `e2e_cart_variant`, `e2e_session`, `e2e_commercial`) | — | ✔ **3 ejecuciones verdes seguidas** (commits `0cd1867`, `cef5fe4` y `725e3bd`); la primera (`0a82bee`) falló 2 de 5 por el widget REAL de Wompi cargándose desde internet → dominio bloqueado en el job | ✔ | — | — | — |

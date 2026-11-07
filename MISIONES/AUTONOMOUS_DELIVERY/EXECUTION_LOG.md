@@ -61,8 +61,15 @@
 
 ## 2026-11-07 — Ejecución 7 (M36)
 - Estado inicial: rama = `117f96a` = remoto; CI `ci` nº 15 success sobre ese commit.
-- Implementado: Playwright (config, fixtures de diagnóstico, 7 smoke, `pw.mjs`, scripts `test:pw*`/`e2e:*`, etapa CI 41), `PLAYWRIGHT.md`, plan de fase 2.
+- Implementado: Playwright (config, fixtures de diagnóstico, 7 smoke, `pw.mjs`, scripts `test:pw*`/`e2e:*`, etapa CI 41), `PLAYWRIGHT_GUIDE.md`, plan de fase 2.
 - Pruebas locales: Edge 157 7/7; Chromium 7/7; verificado que un fallo genera captura, vídeo, traza y adjunta console.log; etapa CI como la ejecuta run_all (env -i, CI=1): PASS.
 - Preview: sin URL ni acceso → NO probado. Windows: NO probado.
 - GitHub tras publicar `91f0653`: `ci` nº 16 success (governance, quality, e2e-synthetic con la etapa 41, security, db-local, db-supabase, ci-gate). `e2e-supabase` nº 6 en curso al cerrar. Hash remoto = HEAD verificado.
 - Bloqueos para el propietario: (1) URL del Preview de `jym-web` y, si Deployment Protection está activa, el secreto «Protection Bypass for Automation»; (2) una ejecución en Windows con Edge (`pnpm test:pw:edge`) para confirmar ese entorno; (3) proyecto Supabase QA y credenciales de Wompi Sandbox para la fase 2.
+
+## 2026-11-07 — Ejecución 8 (M36.1)
+- Estado inicial: rama = `1b44ea2` = remoto, árbol limpio. Entrada: el propietario ejecutó Playwright en Windows+Edge contra el Preview y los 7 smoke fallaron.
+- Prioridad 1 (hecha): bypass de Vercel por cookie y limitado al host exacto (`vercelBypass.js`, `global-setup.js`); `extraHTTPHeaders` eliminado; 22 pruebas unitarias nuevas + servidor local que imita un deployment protegido. No probado contra Vercel real.
+- Prioridad 2 (parcial, bloqueada): sesión sin acceso a QA (proxy 403 hacia `api.supabase.com`/`*.supabase.co`, sin token); no se intentó eludir. Se entrega análisis con la evidencia de M29 + herramientas de captura exacta (`[3]` en Playwright y `pnpm qa:diagnose`, 8 pruebas). Códigos exactos NO capturados.
+- Prioridad 3 (hecha): `00-health.spec.js` con capas [1] [2] [3]; las 7 pruebas originales intactas; diagnóstico de respuestas Supabase (código/mensaje/detalle/pista, sin tokens ni correos). Validado con backend sintético en modo esquema heredado (`SYNTH_LEGACY_SCHEMA=1`): reproduce el patrón del Preview.
+- Hallazgo: el Preview no puede pasar mientras QA no tenga el baseline M24; es decisión del propietario (A3-R/A3-M + backup restaurable verificado).
