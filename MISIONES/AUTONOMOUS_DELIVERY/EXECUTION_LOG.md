@@ -134,3 +134,11 @@
 - No ejecutado: test:env, pgTAP (sin cambios).
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks (`security` → `ci-gate`).
 - Siguiente: con credenciales, `OWNER_CHECKLIST.md` (Wompi Sandbox, Preview); decisión del propietario sobre `gitleaks-allowlist-e142ab2.patch` y sobre incorporar `e2e-supabase` a `ci-gate`.
+
+## 2026-11-08 — Ejecución 15 (verificación de línea base)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-8xo82k` (= main, rama asignada por el sistema); avance rápido (fast-forward) a `origin/mission/m26-dev-qa-environments` = `09d7a98`, árbol limpio.
+- Tarea: re-verificar la línea base; no hay trabajo desbloqueado que no dependa del propietario.
+- Pruebas: install OK; build OK; vitest 179/179 (14 archivos); E2E sintético 10/10.
+- No ejecutado: test:env, pgTAP (sin cambios), nada contra Supabase QA, Wompi ni Vercel.
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks (`security` → `ci-gate`).
+- Siguiente: con credenciales, `OWNER_CHECKLIST.md`; decisión del propietario sobre `gitleaks-allowlist-e142ab2.patch`.
