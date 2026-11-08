@@ -134,3 +134,10 @@
 - No ejecutado: test:env, pgTAP (sin cambios).
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks (`security` → `ci-gate`).
 - Siguiente: con credenciales, `OWNER_CHECKLIST.md` (Wompi Sandbox, Preview); decisión del propietario sobre `gitleaks-allowlist-e142ab2.patch` y sobre incorporar `e2e-supabase` a `ci-gate`.
+
+## 2026-11-08 — Ejecución 15 (verificación de línea base)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-rd7y9v` (= main, sin MISIONES); fast-forward a `origin/mission/m26-dev-qa-environments` = `09d7a98`. Por instrucción de la sesión, el push va a `claude/gracious-pasteur-rd7y9v` (no a la rama de misión, cuyo permiso de push no está disponible en esta sesión).
+- Tarea: sin trabajo desbloqueado nuevo; re-verificación. `pnpm install --frozen-lockfile` OK; build OK; vitest 179/179 (14 archivos).
+- No ejecutado: E2E sintético, test:env, pgTAP (sin cambios).
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL Vercel Preview, decisión gitleaks, incorporar `e2e-supabase` a `ci-gate`.
+- Siguiente: OWNER_CHECKLIST.md cuando existan credenciales; reconciliar la rama de misión con la rama de sesión.
