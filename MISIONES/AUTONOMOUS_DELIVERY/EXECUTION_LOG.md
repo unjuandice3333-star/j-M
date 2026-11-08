@@ -134,3 +134,10 @@
 - No ejecutado: test:env, pgTAP (sin cambios).
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks (`security` → `ci-gate`).
 - Siguiente: con credenciales, `OWNER_CHECKLIST.md` (Wompi Sandbox, Preview); decisión del propietario sobre `gitleaks-allowlist-e142ab2.patch` y sobre incorporar `e2e-supabase` a `ci-gate`.
+
+## 2026-11-08 — Ejecución 15 (sin trabajo desbloqueado)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-pq6ykc` (= main); se cambió a la rama autorizada = remoto `09d7a98`, árbol limpio.
+- Tarea: comprobación de línea base: `pnpm install --frozen-lockfile` OK; vitest 179/179 (14 archivos). No se escribió código: todo el trabajo restante depende del propietario.
+- No ejecutado: build, E2E sintético, test:env, pgTAP (sin cambios).
+- Bloqueos reales: decisión A3-R/A3-M y backup para aplicar baseline M24 en Supabase QA; credenciales Wompi Sandbox; acceso/URL de Vercel Preview; decisión gitleaks (`security` → `ci-gate`); incorporar `e2e-supabase` a `ci-gate`.
+- Siguiente: con las credenciales, ejecutar `OWNER_CHECKLIST.md`.
