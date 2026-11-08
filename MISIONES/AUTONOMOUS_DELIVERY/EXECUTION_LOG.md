@@ -141,3 +141,10 @@
 - No ejecutado: build, E2E sintético, test:env, pgTAP (sin cambios).
 - Bloqueos reales: decisión A3-R/A3-M y backup para aplicar baseline M24 en Supabase QA; credenciales Wompi Sandbox; acceso/URL de Vercel Preview; decisión gitleaks (`security` → `ci-gate`); incorporar `e2e-supabase` a `ci-gate`.
 - Siguiente: con las credenciales, ejecutar `OWNER_CHECKLIST.md`.
+
+## 2026-11-08 — Ejecución 16 (sin trabajo desbloqueado)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-8w7d6n` (= main); se cambió a la rama autorizada = remoto `24a1f77`, árbol limpio.
+- Tarea: comprobación de línea base: `pnpm install --frozen-lockfile` OK; `pnpm test:unit` 179/179 (14 archivos). Nota: `vitest run` lanzado desde `apps/web` recoge los specs de Playwright (`e2e/playwright/*`) y reporta 2 archivos fallidos; es un uso incorrecto, el comando oficial (desde la raíz) pasa.
+- No se escribió código: todo lo restante depende del propietario.
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA (A3-R/A3-M + backup), credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks (`security` → `ci-gate`), incorporar `e2e-supabase` a `ci-gate`.
+- Siguiente: con las credenciales, ejecutar `OWNER_CHECKLIST.md`.
