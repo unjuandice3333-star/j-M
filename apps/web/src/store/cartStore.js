@@ -1,8 +1,9 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { DEFAULT_TAX_RATE } from '@jm/shared';
 
 // Cart store focused specifically on cart management, inline discounts, and totals
-export const useCartStore = create((set, get) => ({
+export const useCartStore = create(persist((set, get) => ({
   cart: [],
   globalDiscount: 0, // Descuento global aplicado al total
   globalDiscountType: 'fixed', // 'fixed' o 'percentage'
@@ -107,6 +108,12 @@ export const useCartStore = create((set, get) => ({
       total,
     };
   },
+}), {
+  name: 'jm-cart-v1',
+  storage: createJSONStorage(() => (typeof localStorage !== 'undefined' ? localStorage : {
+    getItem: () => null, setItem: () => {}, removeItem: () => {},
+  })),
+  partialize: (s) => ({ cart: s.cart, globalDiscount: s.globalDiscount, globalDiscountType: s.globalDiscountType }),
 }));
 
 export default useCartStore;

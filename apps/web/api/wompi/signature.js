@@ -26,9 +26,14 @@ export default async function handler(req, res) {
     }
 
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const integritySecret = process.env.WOMPI_INTEGRITY_SECRET;
     const publicKey = process.env.VITE_WOMPI_PUBLIC_KEY || process.env.WOMPI_PUBLIC_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('[Wompi Signature Error]: faltan credenciales de servicio de Supabase.');
+      return res.status(500).json({ error: 'Configuración de servidor incompleta (Supabase).' });
+    }
 
     if (!integritySecret) {
       console.error('[Wompi Signature Error]: WOMPI_INTEGRITY_SECRET no está configurado en las variables de entorno.');
@@ -57,7 +62,7 @@ export default async function handler(req, res) {
     const { data: order, error: orderError } = await orderQuery.single();
 
     if (orderError || !order) {
-      return res.status(444).json({ error: 'La orden indicada no existe en el sistema.' });
+      return res.status(404).json({ error: 'La orden indicada no existe en el sistema.' });
     }
 
     const orderReference = order.order_number;
