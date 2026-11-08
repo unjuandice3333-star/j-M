@@ -126,3 +126,11 @@
 - No ejecutado: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, URL/acceso de Vercel Preview, decisión gitleaks (`security`).
 - Siguiente: job de CI para los `e2e_*.cjs` contra Supabase local; con credenciales, OWNER_CHECKLIST.
+
+## 2026-11-08 — Ejecución 14 (verificación de línea base)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-cjjfod` (= main); se cambió a la rama autorizada = remoto `5f84068`, árbol limpio.
+- Tarea: re-verificar la línea base (sin código nuevo: no queda trabajo desbloqueado que no dependa del propietario; el job `e2e-supabase` ya existe en `.github/workflows`, por lo que el pendiente nº 3 queda cubierto).
+- Pruebas: `pnpm install --frozen-lockfile` OK; build OK; vitest 179/179 (14 archivos); E2E sintético 10/10; ESLint sin salida de errores.
+- No ejecutado: test:env, pgTAP (sin cambios).
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks (`security` → `ci-gate`).
+- Siguiente: con credenciales, `OWNER_CHECKLIST.md` (Wompi Sandbox, Preview); decisión del propietario sobre `gitleaks-allowlist-e142ab2.patch` y sobre incorporar `e2e-supabase` a `ci-gate`.

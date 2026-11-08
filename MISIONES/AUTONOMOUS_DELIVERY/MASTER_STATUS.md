@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-07 (ejecución 12, servicio admin: vitest 179/179)
+Última actualización: 2026-11-08 (ejecución 14, línea base re-verificada: vitest 179/179, E2E sintético 10/10)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
