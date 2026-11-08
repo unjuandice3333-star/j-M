@@ -17,7 +17,7 @@ export function memoryStorage() {
 export function makeSupabaseMock() {
   const state = { rpc: {}, tables: {}, auth: {} };
   const chain = (rows) => {
-    const q = { select: () => q, eq: () => q, order: () => q, single: async () => ({ data: Array.isArray(rows) ? rows[0] ?? null : rows, error: null }),
+    const q = { select: () => q, eq: () => q, order: () => q, limit: () => q, single: async () => ({ data: Array.isArray(rows) ? rows[0] ?? null : rows, error: null }),
       then: (res) => res({ data: rows, error: null }) };
     return q;
   };

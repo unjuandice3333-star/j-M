@@ -126,3 +126,11 @@
 - No ejecutado: E2E sintético, test:env, pgTAP (sin cambios en esas áreas).
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, URL/acceso de Vercel Preview, decisión gitleaks (`security`).
 - Siguiente: job de CI para los `e2e_*.cjs` contra Supabase local; con credenciales, OWNER_CHECKLIST.
+
+## 2026-11-08 — Ejecución 14 (UI de la página de producto)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-9qp8t6` (= main); se llevó a `origin/mission/m26-dev-qa-environments` (`5f84068`), árbol limpio. El entorno de la sesión designa la rama `claude/gracious-pasteur-9qp8t6` para publicar; el trabajo se hizo sobre el contenido de la rama de misión y se publica en la rama designada (sin tocar `main` ni la rama de misión).
+- Tarea: `productDetailPage.test.jsx` (6 pruebas: slug inexistente sin producto sustituto, talla agotada deshabilitada, agregar sin talla no toca el carrito, agregar con talla, tope de cantidad = stock de la variante, «comprar ahora» → `/checkout`). `helpers.js`: el mock de Supabase admite `.limit()`.
+- Pruebas: vitest 185/185 (15 archivos); ESLint de pruebas sin errores; build OK. Supabase simulado: no valida RLS ni datos reales.
+- Nota: el pendiente nº 3 de MASTER_STATUS (CI `e2e_*.cjs` contra Supabase local) ya existe como workflow `e2e-supabase` (3 ejecuciones verdes); queda desactualizado.
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA (decisión del propietario), credenciales Wompi Sandbox, URL/acceso de Vercel Preview, decisión gitleaks (`security`).
+- Siguiente: UI de `CatalogPage`/`Login`; con credenciales, OWNER_CHECKLIST.

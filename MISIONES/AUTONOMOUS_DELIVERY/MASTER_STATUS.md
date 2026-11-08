@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-07 (ejecución 12, servicio admin: vitest 179/179)
+Última actualización: 2026-11-08 (ejecución 14, UI de producto: vitest 185/185)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -70,7 +70,7 @@ Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que
 ## Pendiente (prioridad)
 1. Revisar la primera ejecución real del CI en GitHub (job `e2e-synthetic` y `quality` ampliado).
 2. ~~Cobertura de UI Cart/Checkout y normalizeProduct~~ (hecho en ejecuciones 10–11); `adminService` (RPC admin_*) cubierto en la ejecución 12.
-3. Job de CI que ejecute los E2E de navegador contra Supabase local real (`e2e_*.cjs`) tras `supabase start` en `db-supabase`.
+3. ~~Job de CI para los E2E con Supabase local~~ (existe: workflow `e2e-supabase`, 3 verdes). Siguiente cobertura UI: CatalogPage, Login.
 4. ~~Aviso `MODULE_TYPELESS_PACKAGE_JSON`~~ (hecho en ejecución 13: `eslint.config.mjs`).
 5. ~~UX: `alert()` nativo en `Login.jsx`~~ (hecho en ejecución 9: aviso en pantalla `role=status`).
 6. Wompi Sandbox / Vercel Preview cuando existan credenciales.
