@@ -9,13 +9,16 @@
     "build": "pnpm --filter @jm/web build",
     "lint": "pnpm --recursive lint",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css,json,md,sql}\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "vitest run",
+    "test:api": "vitest run apps/web/api"
   },
   "devDependencies": {
     "eslint": "^9.2.0",
     "husky": "^9.0.11",
     "lint-staged": "^15.2.2",
-    "prettier": "^3.2.5"
+    "prettier": "^3.2.5",
+    "vitest": "^2.1.9"
   },
   "packageManager": "pnpm@11.0.8"
 }
