@@ -186,3 +186,10 @@
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA (A3-R/A3-M + backup), credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks (`security` → `ci-gate`), incorporar `e2e-supabase` a `ci-gate`.
 - Notificación: no enviada (ya se avisó en la ejecución 21; sin cambios desde entonces).
 - Siguiente: con las credenciales, ejecutar `OWNER_CHECKLIST.md`.
+
+## 2026-11-08 — Ejecución 23 (sin trabajo desbloqueado)
+- Estado inicial: sesión arrancó en `claude/gracious-pasteur-78js4w` (= main); se cambió a la rama autorizada = remoto `a11b684`, árbol limpio.
+- Tarea: comprobación de línea base: `pnpm install --frozen-lockfile` OK; `pnpm test:unit` 179/179 (14 archivos). No se escribió código.
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA (A3-R/A3-M + backup), credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks (`security` → `ci-gate`), incorporar `e2e-supabase` a `ci-gate`.
+- Notificación: no enviada (ya se avisó en la ejecución 21; sin cambios).
+- Siguiente: con las credenciales, ejecutar `OWNER_CHECKLIST.md`.
