@@ -248,11 +248,11 @@ export const useECommerceStore = create(
 
         let updatedItems = [];
         if (existingIndex >= 0) {
-          updatedItems = [...items];
-          updatedItems[existingIndex].quantity += quantity;
-          if (resolvedVariantId) {
-            updatedItems[existingIndex].variantId = resolvedVariantId;
-          }
+          updatedItems = items.map((it, idx) =>
+            idx === existingIndex
+              ? { ...it, quantity: it.quantity + quantity, ...(resolvedVariantId ? { variantId: resolvedVariantId } : {}) }
+              : it
+          );
         } else {
           const newItem = {
             id: itemId,
