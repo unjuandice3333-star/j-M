@@ -1,7 +1,7 @@
 -- 90 · Acceso diferenciado por roles (RLS + privilegios). Incluye las regresiones T9–T16 de la auditoría M23.
 BEGIN;
 \ir _helpers.psql
-SELECT plan(53);
+SELECT plan(59);
 
 CREATE FUNCTION pg_temp.n(p_who text, p_sql text) RETURNS int LANGUAGE sql AS $$ SELECT tests.nrows(tests.exec_as(p_who, p_sql)) $$;
 CREATE FUNCTION pg_temp.err(p_who text, p_sql text) RETURNS text LANGUAGE sql AS $$ SELECT tests.exec_as(p_who, p_sql) ->> 'sqlstate' $$;
@@ -103,6 +103,20 @@ SELECT is(pg_temp.n('anon', $q$SELECT id FROM public.collections WHERE slug = 'l
 SELECT is(pg_temp.n('c1', $q$DELETE FROM public.collection_products RETURNING product_id$q$), 0, 'el cliente no borra productos de colecciones');
 SELECT is(pg_temp.n('admin', $q$DELETE FROM public.collections WHERE slug = 'look-rls' RETURNING id$q$), 1,
           'admin elimina la colección (sus productos se borran en cascada)');
+
+-- ===================== métodos de envío (panel /admin/configuracion) =====================
+SELECT is(pg_temp.err('anon', $q$UPDATE public.shipping_methods SET cost = 1 WHERE code = 'standard' RETURNING code$q$), '42501',
+          'anon no cambia tarifas de envío (sin privilegio UPDATE)');
+SELECT is(pg_temp.n('c1', $q$UPDATE public.shipping_methods SET free_over_subtotal = 1 WHERE code = 'standard' RETURNING code$q$), 0,
+          'el cliente no cambia el umbral de envío gratis');
+SELECT is(pg_temp.err('c1', $q$INSERT INTO public.shipping_methods (code, name, cost) VALUES ('hack', 'Hack', 1) RETURNING code$q$), '42501',
+          'el cliente no crea métodos de envío');
+SELECT is(pg_temp.n('admin', $q$UPDATE public.shipping_methods SET cost = 18000 WHERE code = 'standard' RETURNING code$q$), 1,
+          'admin cambia la tarifa estándar');
+SELECT is(pg_temp.n('admin', $q$INSERT INTO public.shipping_methods (code, name, cost, is_active) VALUES ('pickup_rls', 'Recogida', 0, false) RETURNING code$q$), 1,
+          'admin crea un método inactivo con tarifa 0');
+SELECT is(pg_temp.err('admin', $q$UPDATE public.shipping_methods SET is_active = true WHERE code = 'pickup_rls' RETURNING code$q$), '23514',
+          'un método activo exige tarifa > 0 (CHECK, igual que la validación del panel)');
 
 -- ===================== service_role y storage =====================
 SELECT is(pg_temp.n('service', 'SELECT id FROM public.online_orders'), (SELECT count(*)::int FROM public.online_orders),

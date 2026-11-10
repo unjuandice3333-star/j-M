@@ -363,3 +363,11 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Siguiente: revisar el resto del admin por datos/acciones simuladas (ver punto 0 de Pendiente en MASTER_STATUS).
 
+## 2026-11-10 18:20 UTC — Ejecución 48 (trabajo de código: configuración de envíos)
+- Estado inicial: sesión en `claude/gracious-pasteur-4dwxl3` (= main); se cambió a la rama autorizada = remoto `51f8f87`, árbol limpio.
+- Tarea: punto 0 de Pendiente. `/admin/configuracion` redirigía al dashboard → panel real de métodos/tarifas de envío. Eliminadas 3 páginas heredadas sin referencias (+2 CSS).
+- Archivos: `apps/web/src/services/shippingAdminService.js` (nuevo), `apps/web/src/pages/admin/AdminSettingsPage.jsx` (nuevo), `apps/web/src/routes/AppRoutes.jsx`, `apps/web/src/__tests__/adminShipping.test.jsx` (nuevo, 13 pruebas), `supabase/tests/database/90_rls.test.sql` (+6 aserciones, plan 59), borrados `apps/web/src/pages/{Customers,Dashboard,Inventory}.jsx` y `{Dashboard,Inventory}.module.css`.
+- Pruebas (ejecutadas aquí): ESLint 0 errores; `pnpm build` OK; `pnpm test:unit` 205/205 (16 archivos); `pnpm test:e2e-synthetic` 10/10; `supabase/tests/run_local.sh` (como usuario `postgres`, tras instalar `postgresql-16-cron` y `postgresql-16-pgtap` en el contenedor) pgTAP 291/291, concurrencia 12/12, determinismo OK. Primer intento falló 1 aserción (anon recibe 42501 por falta de privilegio UPDATE, no 0 filas) → aserción corregida.
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Nota de entorno: `run_local.sh` necesita pg_cron y pgTAP y no puede correr como root (`runuser -u postgres -- env WORKDIR=<dir propiedad de postgres> bash supabase/tests/run_local.sh`).
+- Siguiente: punto 0 de Pendiente en MASTER_STATUS (umbral de envío gratis dinámico en textos de la tienda).

@@ -30,6 +30,7 @@ const AdminReviewsPage = lazy(() => import('../pages/admin/AdminReviewsPage.jsx'
 const AdminAnalyticsPage = lazy(() => import('../pages/admin/AdminAnalyticsPage.jsx'));
 const AdminCollectionsPage = lazy(() => import('../pages/admin/AdminCollectionsPage.jsx'));
 const AdminEditorialImagesPage = lazy(() => import('../pages/admin/AdminEditorialImagesPage.jsx'));
+const AdminSettingsPage = lazy(() => import('../pages/admin/AdminSettingsPage.jsx'));
 
 const AdminLogin = lazy(() => import('../pages/admin/AdminLogin.jsx'));
 
@@ -125,7 +126,7 @@ export const AppRoutes = () => {
           <Route path="/admin/descuentos" element={<AdminDiscountsPage />} />
           <Route path="/admin/reviews" element={<AdminReviewsPage />} />
           <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
-          <Route path="/admin/configuracion" element={<AdminDashboardPage />} />
+          <Route path="/admin/configuracion" element={<AdminSettingsPage />} />
         </Route>
 
         {/* AUTH & POS ROUTES */}

@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-10 (ejecución 47: panel de colecciones/looks real; vitest 192/192, pgTAP 285/285, E2E sintético 10/10)
+Última actualización: 2026-11-10 (ejecución 48: configuración de envíos real en /admin/configuracion; vitest 205/205, pgTAP 291/291, E2E sintético 10/10)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -70,8 +70,11 @@ Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que
 ## Ejecución 47 — Admin: colecciones y looks (antes simulado)
 `/admin/colecciones` mostraba ocasiones de `mockData` con botones sin acción. Ahora es un CRUD real sobre `collections` + `collection_products` (crear, editar, activar, ordenar productos, eliminar), con validación (`services/collectionsAdminService.js`). Los looks activos alimentan «Completa el look» de la ficha de producto, que ya leía la BD. **Verificado:** 13 pruebas vitest nuevas (servicio + UI) y 7 aserciones pgTAP nuevas de RLS (anon/cliente no escriben; admin crea, hace upsert y elimina en cascada). **No verificado:** contra Supabase QA ni Preview (bloqueados).
 
+## Ejecución 48 — Admin: configuración de envíos (antes redirigía al dashboard)
+`/admin/configuracion` ahora gestiona `shipping_methods` (tarifa, umbral de envío gratis, tiempo de entrega, orden, activo; alta de métodos nuevos). La BD ya calculaba el envío con esa tabla (`private.shipping_cost`), así que el cambio se aplica a cotizaciones y pedidos nuevos sin desplegar. Reglas: `standard` no se puede desactivar (el checkout lo usa siempre); activo exige tarifa > 0 (igual que el CHECK); sin borrado (FK de pedidos). Eliminado código muerto sin referencias: `pages/Customers.jsx`, `Dashboard.jsx`, `Inventory.jsx` y sus `.module.css` (maquetas con cifras inventadas). **Verificado:** 13 pruebas vitest nuevas (servicio + UI), 6 aserciones pgTAP de RLS/CHECK (anon y cliente no escriben; admin edita y crea; activo con tarifa 0 → 23514). **No verificado:** contra Supabase QA ni Preview (bloqueados). Limitación conocida: los textos fijos «gratis desde $200.000» (cabecera, pie, InfoPage, ficha) no se actualizan solos; la página lo advierte.
+
 ## Pendiente (prioridad)
-0. Siguiente trabajo de código sin credenciales: revisar el resto de páginas admin por datos/acciones simuladas (`/admin/configuracion` hoy redirige al dashboard; `AdminEditorialImagesPage`, `Customers.jsx`/`Inventory.jsx`/`Dashboard.jsx` heredados en `pages/` — confirmar si siguen en uso o son código muerto).
+0. Siguiente trabajo de código sin credenciales: (a) leer el umbral de envío gratis de `shipping_methods` (ya se carga en `eCommerceStore`) en cabecera/pie/ficha/InfoPage en vez del texto fijo $200.000; (b) revisar `AdminEditorialImagesPage` y `AdminDiscountsPage` por acciones incompletas; (c) checkout con selector de método de envío si hay más de uno activo.
 1. Revisar la primera ejecución real del CI en GitHub (job `e2e-synthetic` y `quality` ampliado).
 2. ~~Cobertura de UI Cart/Checkout y normalizeProduct~~ (hecho en ejecuciones 10–11); `adminService` (RPC admin_*) cubierto en la ejecución 12.
 3. Job de CI que ejecute los E2E de navegador contra Supabase local real (`e2e_*.cjs`) tras `supabase start` en `db-supabase`.
