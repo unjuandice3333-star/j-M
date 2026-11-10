@@ -6,6 +6,7 @@ import { adminService } from '../../services/adminService';
 import { orderService } from '../../services/orderService';
 import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
+import { ADMIN_ORDERS_LIMIT, filterAdminOrders, shippingMethodOptions } from '../../utils/adminLists';
 
 export const STATUS_LABEL = { payment_pending: 'Pago pendiente', paid: 'Pagado', processing: 'En preparación', shipped: 'Enviado',
   delivered: 'Entregado', cancelled: 'Cancelado', expired: 'Vencido', refunded: 'Reembolsado' };
@@ -20,6 +21,7 @@ export const AdminOrdersPage = () => {
   const [loadError, setLoadError] = useState(null);
   const [selectedStatusTab, setSelectedStatusTab] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [methodFilter, setMethodFilter] = useState('todos');
   const [transitions, setTransitions] = useState([]);
   const [shippingMethods, setShippingMethods] = useState([]);
 
@@ -43,7 +45,7 @@ export const AdminOrdersPage = () => {
         online_order_items ( product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
         payment_transactions ( reference, status, amount_in_cents, payment_method_type, created_at ),
         order_events ( event_type, from_status, to_status, actor, note, created_at )`)
-      .order('created_at', { ascending: false }).limit(200);
+      .order('created_at', { ascending: false }).limit(ADMIN_ORDERS_LIMIT);
     if (error) { setLoadError('No se pudieron cargar los pedidos.'); setIsLoading(false); return; }
     setDbOrders(data.map((o) => ({
       ...o, id: o.order_number, rawId: o.id, date: new Date(o.created_at).toLocaleString('es-CO'),
@@ -62,12 +64,9 @@ export const AdminOrdersPage = () => {
   }, []);
 
   const displayOrders = dbOrders;
-  const q = searchQuery.trim().toLowerCase();
-  const filteredOrders = displayOrders.filter((ord) => {
-    if (selectedStatusTab !== 'todos' && ord.status !== selectedStatusTab) return false;
-    if (q && ![ord.order_number, ord.customer_name, ord.customer_email, ord.customer_phone].some((v) => String(v ?? '').toLowerCase().includes(q))) return false;
-    return true;
-  });
+  const filteredOrders = filterAdminOrders(displayOrders, { status: selectedStatusTab, method: methodFilter, query: searchQuery });
+  const methodOptions = shippingMethodOptions(displayOrders, shippingMethods);
+  const truncated = displayOrders.length >= ADMIN_ORDERS_LIMIT;
 
   const allowedNext = (status) => transitions.filter((t) => t.from === status);
   const handleOpenModal = (ord) => {
@@ -117,19 +116,27 @@ export const AdminOrdersPage = () => {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        flexWrap: 'wrap',
         gap: '1rem'
       }}>
         {/* Search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', width: '320px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', width: '320px', maxWidth: '100%' }}>
           <Search size={16} color="#71717A" />
           <input
             type="text"
-            placeholder="Buscar por # Orden, Cliente..."
+            aria-label="Buscar pedidos"
+            placeholder="Orden, cliente, correo, teléfono o guía"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.85rem' }}
           />
         </div>
+
+        <select aria-label="Filtrar por método de envío" value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)}
+          style={{ padding: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem' }}>
+          <option value="todos">Todos los envíos</option>
+          {methodOptions.map((c) => <option key={c} value={c}>{shippingMethodLabel(c, shippingMethods)}</option>)}
+        </select>
 
         {/* Status Tabs */}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -155,6 +162,7 @@ export const AdminOrdersPage = () => {
         </div>
       </div>
       {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{loadError}</div>}
+      {truncated && <div data-testid="orders-truncated" style={{ color: '#92400E', fontSize: '0.85rem' }}>Se muestran los {ADMIN_ORDERS_LIMIT} pedidos más recientes; los conteos y filtros se aplican solo sobre ellos.</div>}
       {notice && <div role="status" style={{ color: '#065F46', fontWeight: 600 }}>{notice}</div>}
 
       {/* ORDERS TABLE */}
@@ -175,6 +183,7 @@ export const AdminOrdersPage = () => {
                 <th style={thOrder}>FECHA</th>
                 <th style={thOrder}>CLIENTE</th>
                 <th style={thOrder}>MÉTODO PAGO</th>
+                <th style={thOrder}>ENVÍO</th>
                 <th style={thOrder}>TOTAL</th>
                 <th style={thOrder}>ESTADO</th>
                 <th style={{ ...thOrder, textAlign: 'right' }}>DETALLE / ACCIÓN</th>
@@ -192,6 +201,9 @@ export const AdminOrdersPage = () => {
                   </td>
                   <td style={{ ...tdOrder, fontSize: '0.78rem', color: '#27272A' }}>
                     {ord.paymentMethod}
+                  </td>
+                  <td data-testid="order-row-shipping" style={{ ...tdOrder, fontSize: '0.78rem', color: '#27272A' }}>
+                    {shippingMethodLabel(ord.shipping_method_code, shippingMethods) ?? '—'}
                   </td>
                   <td style={{ ...tdOrder, fontWeight: 900, fontSize: '0.95rem' }}>
                     {formatCOP(ord.total)}

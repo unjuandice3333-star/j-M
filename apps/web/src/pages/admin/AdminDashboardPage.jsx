@@ -3,11 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   DollarSign,
   ShoppingBag,
-  TrendingUp,
-  Users,
+  Truck,
   CreditCard,
-  ArrowUpRight,
-  ArrowDownRight,
   ChevronRight,
   AlertTriangle
 } from 'lucide-react';
@@ -102,11 +99,12 @@ export const AdminDashboardPage = () => {
       {/* KPI METRIC CARDS GRID */}
       {metrics && (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-        <KpiCard title="VENTAS PAGADAS" value={formatCOP(metrics.gross_sales)} change={`${metrics.paid_orders} pedido(s) pagado(s)`} isPositive icon={DollarSign} />
-        <KpiCard title="PEDIDOS DEL PERIODO" value={`${totalOrders} pedidos`} change={`${byStatus.payment_pending ?? 0} con pago pendiente`} isPositive icon={ShoppingBag} />
-        <KpiCard title="TICKET PROMEDIO" value={formatCOP(metrics.average_ticket)} change={`${metrics.units_sold} unidades vendidas`} isPositive icon={CreditCard} />
-        <KpiCard title="POR PREPARAR / ENVIAR" value={`${(byStatus.paid ?? 0) + (byStatus.processing ?? 0)} pedidos`} change={`${byStatus.shipped ?? 0} en camino`} isPositive icon={TrendingUp} />
-        <KpiCard title="ALERTAS" value={`${metrics.low_stock_variants} variantes`} change={`stock bajo · ${metrics.needs_attention} pedido(s) por revisar`} isPositive={false} icon={AlertTriangle} />
+        <KpiCard title="VENTAS PAGADAS" value={formatCOP(metrics.gross_sales)} detail={`${metrics.paid_orders} pedido(s) pagado(s)`} icon={DollarSign} />
+        <KpiCard title="PEDIDOS DEL PERIODO" value={`${totalOrders} pedidos`} detail={`${byStatus.payment_pending ?? 0} con pago pendiente`} icon={ShoppingBag} />
+        <KpiCard title="TICKET PROMEDIO" value={formatCOP(metrics.average_ticket)} detail={`${metrics.units_sold} unidades vendidas`} icon={CreditCard} />
+        <KpiCard title="POR PREPARAR / ENVIAR" value={`${(byStatus.paid ?? 0) + (byStatus.processing ?? 0)} pedidos`} detail={`${byStatus.shipped ?? 0} en camino`} icon={Truck} />
+        <KpiCard title="ALERTAS" value={`${metrics.low_stock_variants} variantes`} detail={`stock bajo · ${metrics.needs_attention} pedido(s) por revisar`}
+          warn={Number(metrics.low_stock_variants) > 0 || Number(metrics.needs_attention) > 0} icon={AlertTriangle} />
       </div>
       )}
 
@@ -186,7 +184,8 @@ export const AdminDashboardPage = () => {
   );
 };
 
-const KpiCard = ({ title, value, change, isPositive, icon }) => {
+// Sin flechas de tendencia: el detalle es un dato del periodo, no una variación frente a otro periodo.
+const KpiCard = ({ title, value, detail, warn = false, icon }) => {
   const Icon = icon;
   return (
   <div style={{ backgroundColor: '#FFFFFF', padding: '1.35rem', borderRadius: '10px', border: '1px solid #E4E4E7', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -195,8 +194,8 @@ const KpiCard = ({ title, value, change, isPositive, icon }) => {
       <Icon size={20} color="#09090B" />
     </div>
     <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#09090B' }}>{value}</div>
-    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: isPositive ? '#10B981' : '#E11D48', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-      {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {change}
+    <div data-warn={warn ? 'true' : 'false'} style={{ fontSize: '0.75rem', fontWeight: 700, color: warn ? '#B91C1C' : '#52525B' }}>
+      {detail}
     </div>
   </div>
 );

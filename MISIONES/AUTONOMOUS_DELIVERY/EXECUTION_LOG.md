@@ -407,3 +407,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(e) de Pendiente (revisar `AdminCustomersPage`/`AdminDashboardPage` por datos simulados).
+
+## 2026-11-10 23:10 UTC — Ejecución 53 (trabajo de código: admin pedidos, clientes y dashboard)
+- Estado inicial: sesión en `claude/gracious-pasteur-1nrel0` (= main); se cambió a la rama autorizada = remoto `04f3685`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(e) de Pendiente. Clientes/dashboard ya reales; corregidos doble atribución de pedidos por correo, error de direcciones oculto y flechas de tendencia inventadas en KPIs. Pedidos: columna y filtro de método de envío, búsqueda por guía, aviso de límite de 200.
+- Archivos: `apps/web/src/utils/adminLists.js` (nuevo), `pages/admin/AdminOrdersPage.jsx`, `pages/admin/AdminCustomersPage.jsx`, `pages/admin/AdminDashboardPage.jsx`, `src/__tests__/adminLists.test.jsx` (nuevo, 8 pruebas).
+- Pruebas (ejecutadas aquí): 4 pruebas de UI nuevas fallan sin el cambio en las páginas (comprobado con `git stash`); `pnpm test:unit` 246/246 (21 archivos); ESLint 0 errores en los archivos tocados; `pnpm build` OK; `pnpm test:e2e-synthetic` 10/10. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(f) de Pendiente (paginación real en admin de pedidos/clientes).

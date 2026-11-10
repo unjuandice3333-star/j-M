@@ -8,8 +8,8 @@ import { Search, X } from 'lucide-react';
 import { formatCOP } from '../../data/mockData';
 import supabase from '../../config/supabase';
 import { STATUS_LABEL } from './AdminOrdersPage';
+import { buildCustomers } from '../../utils/adminLists';
 
-const PAID = new Set(['paid', 'processing', 'shipped', 'delivered']);
 const ROLE_LABEL = { customer: 'Cliente', admin: 'Administrador', super_admin: 'Super administrador' };
 
 export const AdminCustomersPage = () => {
@@ -21,6 +21,7 @@ export const AdminCustomersPage = () => {
   const [roleFilter, setRoleFilter] = useState('customer');
   const [selected, setSelected] = useState(null);
   const [addresses, setAddresses] = useState([]);
+  const [addressError, setAddressError] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -34,22 +35,17 @@ export const AdminCustomersPage = () => {
     })();
   }, []);
 
-  const customers = useMemo(() => profiles.map((p) => {
-    const mine = orders.filter((o) => o.user_id === p.id || (p.email && o.customer_email === p.email.toLowerCase()));
-    const paid = mine.filter((o) => PAID.has(o.status));
-    const spent = paid.reduce((n, o) => n + Number(o.total), 0);
-    return { ...p, orders: mine, ordersCount: paid.length, totalSpent: spent, avgTicket: paid.length ? Math.round(spent / paid.length) : 0,
-      lastPurchase: paid[0]?.created_at ?? null, city: mine[0]?.shipping_city ?? '—' };
-  }), [profiles, orders]);
+  const customers = useMemo(() => buildCustomers(profiles, orders), [profiles, orders]);
 
   const q = searchQuery.trim().toLowerCase();
   const filtered = customers.filter((c) => (roleFilter === 'todos' || c.role === roleFilter)
     && (!q || [c.full_name, c.email, c.phone].some((v) => String(v ?? '').toLowerCase().includes(q))));
 
   const open = async (c) => {
-    setSelected(c); setAddresses([]);
-    const { data } = await supabase.from('customer_addresses').select('recipient_name, phone, department, city, address_line, neighborhood, is_default').eq('user_id', c.id);
-    setAddresses(data ?? []);
+    setSelected(c); setAddresses([]); setAddressError(null);
+    const { data, error } = await supabase.from('customer_addresses').select('recipient_name, phone, department, city, address_line, neighborhood, is_default').eq('user_id', c.id);
+    if (error) setAddressError('No se pudieron cargar las direcciones.');
+    else setAddresses(data ?? []);
   };
 
   return (
@@ -117,7 +113,7 @@ export const AdminCustomersPage = () => {
               </ul>
             )}
             <h3 style={{ fontSize: '0.9rem', fontWeight: 800, margin: '1rem 0 0.4rem' }}>Direcciones guardadas</h3>
-            {addresses.length === 0 ? <div style={{ color: '#71717A', fontSize: '0.85rem' }}>Sin direcciones guardadas.</div> : (
+            {addressError ? <div role="alert" style={{ color: '#B91C1C', fontSize: '0.85rem' }}>{addressError}</div> : addresses.length === 0 ? <div style={{ color: '#71717A', fontSize: '0.85rem' }}>Sin direcciones guardadas.</div> : (
               <ul style={{ fontSize: '0.85rem', display: 'grid', gap: '0.3rem' }}>
                 {addresses.map((a, i) => <li key={i}>{a.recipient_name} · {a.address_line}{a.neighborhood ? `, ${a.neighborhood}` : ''}, {a.city} ({a.department}){a.is_default ? ' · principal' : ''}</li>)}
               </ul>
