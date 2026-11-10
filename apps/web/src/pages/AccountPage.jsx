@@ -17,6 +17,7 @@ import { formatCOP } from '../data/mockData';
 import supabase from '../config/supabase';
 import { orderService } from '../services/orderService';
 import { useECommerceStore } from '../store/eCommerceStore';
+import { shippingMethodLabel } from '../utils/shippingPolicy';
 
 export const AccountPage = () => {
   const navigate = useNavigate();
@@ -36,6 +37,7 @@ export const AccountPage = () => {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [ordersError, setOrdersError] = useState(null);
   const rememberOrder = useECommerceStore((st) => st.rememberOrder);
+  const shippingMethods = useECommerceStore((st) => st.shippingMethods);
   const [resetInfo, setResetInfo] = useState(null);
   const trackUrl = (o) => `/checkout/confirmacion?order=${encodeURIComponent(o.order_number)}&token=${encodeURIComponent(o.public_token)}`;
   const openOrder = (o) => { rememberOrder(o); navigate(trackUrl(o)); };
@@ -423,6 +425,11 @@ export const AccountPage = () => {
                           <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#09090B' }}>
                             {formatCOP(Number(ord.total))}
                           </span>
+                          {shippingMethodLabel(ord.shipping_method_code, shippingMethods) && (
+                            <span data-testid="order-shipping-method" style={{ fontSize: '0.78rem', color: '#71717A', display: 'block', marginTop: '0.15rem' }}>
+                              {shippingMethodLabel(ord.shipping_method_code, shippingMethods)} · {Number(ord.shipping_cost) === 0 ? 'Envío gratis' : formatCOP(Number(ord.shipping_cost))}
+                            </span>
+                          )}
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.75rem' }}>

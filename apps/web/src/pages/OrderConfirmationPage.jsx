@@ -11,6 +11,7 @@ import { formatCOP } from '../data/mockData';
 import { analyticsService } from '../services/analytics';
 import { orderService } from '../services/orderService';
 import { wompiService } from '../services/wompi';
+import { shippingMethodLabel } from '../utils/shippingPolicy';
 
 const POLL_MS = 5000;
 const POLL_MAX = 36; // ~3 minutos
@@ -29,7 +30,7 @@ export const OrderConfirmationPage = () => {
   const orderNumber = searchParams.get('order');
   const token = searchParams.get('token');
   const payError = searchParams.get('pago') === 'error';
-  const { orders, finalizePaidOrder } = useECommerceStore();
+  const { orders, finalizePaidOrder, shippingMethods } = useECommerceStore();
 
   const [order, setOrder] = useState(null);
   const [state, setState] = useState('loading'); // loading | ready | notfound | error
@@ -123,6 +124,7 @@ export const OrderConfirmationPage = () => {
   const isClosed = ['cancelled', 'expired', 'refunded'].includes(st);
   const expiresAt = order.payment_expires_at ? new Date(order.payment_expires_at) : null;
   const reached = new Set((order.timeline ?? []).map((t) => t.to_status));
+  const methodLabel = shippingMethodLabel(order.shipping?.method, shippingMethods);
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
@@ -200,7 +202,7 @@ export const OrderConfirmationPage = () => {
           <div style={{ display: 'grid', gap: '0.35rem', marginTop: '1rem', fontSize: '0.9rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal</span><span>{formatCOP(order.subtotal)}</span></div>
             {Number(order.discount_total) > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10B981' }}><span>Descuento{order.coupon_code ? ` (${order.coupon_code})` : ''}</span><span>-{formatCOP(order.discount_total)}</span></div>}
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Envío</span><span>{Number(order.shipping_cost) === 0 ? 'GRATIS' : formatCOP(order.shipping_cost)}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Envío{methodLabel ? ` (${methodLabel})` : ''}</span><span>{Number(order.shipping_cost) === 0 ? 'GRATIS' : formatCOP(order.shipping_cost)}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1.1rem' }}><span>Total</span><span>{formatCOP(order.total)}</span></div>
           </div>
         </section>
@@ -210,6 +212,7 @@ export const OrderConfirmationPage = () => {
           <div>{order.customer_name}</div>
           <div>{order.shipping?.address}{order.shipping?.neighborhood ? `, ${order.shipping.neighborhood}` : ''}</div>
           <div>{order.shipping?.city}, {order.shipping?.department}</div>
+          {methodLabel && <div data-testid="order-shipping-method" style={{ marginTop: '0.5rem', color: '#52525B' }}>Método: <strong>{methodLabel}</strong></div>}
         </section>
 
         {isPending && !local && (

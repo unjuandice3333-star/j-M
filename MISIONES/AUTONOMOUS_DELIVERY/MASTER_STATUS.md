@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-10 (ejecución 51: método de envío en checkout — totales, carreras e idempotencia por método; vitest 232/232, E2E sintético 10/10)
+Última actualización: 2026-11-10 (ejecución 52: método de envío visible en confirmación, «Mis pedidos» y admin; vitest 238/238, E2E sintético 10/10)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -82,8 +82,11 @@ Cabecera, pie, ficha de producto e InfoPage (`/envios`, FAQ) ya no tienen «$200
 ## Ejecución 51 — Checkout: método de envío (tres defectos reales)
 El selector de método ya existía (la BD acepta `p_shipping_method` en `quote_cart`/`create_order`), pero con dos o más métodos activos fallaba: (1) `getTotals` reutilizaba la cotización del método anterior → el método recién elegido mostraba la tarifa del otro y el total no cuadraba; la estimación local usaba siempre `standard`; (2) una cotización lenta podía llegar después de otra más reciente y pisarla; (3) la clave de idempotencia no incluía el método → reintentar tras cambiar de método devolvía el pedido anterior con el envío viejo. Corregido: `getTotals(shippingMethod)` solo usa la cotización si coincide carrito Y método; secuencia de solicitudes en `refreshQuote`; clave = carrito+cupón+método; si el admin desactiva el método elegido se vuelve a `standard`. **Verificado:** 7 pruebas vitest nuevas (6 fallan sin el arreglo), suite 232/232, ESLint, build, E2E sintético 10/10. pgTAP no re-ejecutado (sin cambios SQL). **No verificado:** contra Supabase QA ni Preview (bloqueados).
 
+## Ejecución 52 — Método de envío visible en el pedido
+Confirmación (`get_order_public` ya devolvía `shipping.method`), «Mis pedidos» (la consulta no pedía `shipping_method_code`; ahora sí) y detalle del admin de pedidos muestran el nombre del método (`utils/shippingPolicy.js` → `shippingMethodLabel`). Nombre desde `shipping_methods`; el admin carga también los inactivos (pedidos antiguos conservan su nombre); en la tienda, si el método ya no está activo, nombre de respaldo o código. El backend sintético devolvía un `get_order_public` incompleto (sin `shipping`, nombre ni correo) → alineado con el contrato de la migración. **Verificado:** 6 pruebas vitest nuevas (5 fallan sin el cambio), suite 238/238, ESLint, build, E2E sintético 10/10 (recorridos 5 y 8 comprueban el método en Chromium). pgTAP no re-ejecutado (sin cambios SQL). **No verificado:** contra Supabase QA ni Preview (bloqueados).
+
 ## Pendiente (prioridad)
-0. Siguiente trabajo de código sin credenciales: (a) ~~umbral de envío gratis dinámico~~ (hecho en ejecución 49); (b) ~~revisar `AdminEditorialImagesPage` y `AdminDiscountsPage`~~ (hecho en ejecución 50); ~~(c) checkout con selector de método de envío~~ (hecho en ejecución 51); (d) mostrar el método de envío del pedido en confirmación, «Mis pedidos» y admin de pedidos (hoy solo el coste).
+0. Siguiente trabajo de código sin credenciales: (a) ~~umbral de envío gratis dinámico~~ (hecho en ejecución 49); (b) ~~revisar `AdminEditorialImagesPage` y `AdminDiscountsPage`~~ (hecho en ejecución 50); ~~(c) checkout con selector de método de envío~~ (hecho en ejecución 51); ~~(d) método de envío en confirmación, «Mis pedidos» y admin~~ (hecho en ejecución 52); (e) siguiente: revisar `AdminCustomersPage` y `AdminDashboardPage` por cifras/acciones simuladas y la columna de método en la tabla de pedidos del admin con filtro.
 1. Revisar la primera ejecución real del CI en GitHub (job `e2e-synthetic` y `quality` ampliado).
 2. ~~Cobertura de UI Cart/Checkout y normalizeProduct~~ (hecho en ejecuciones 10–11); `adminService` (RPC admin_*) cubierto en la ejecución 12.
 3. Job de CI que ejecute los E2E de navegador contra Supabase local real (`e2e_*.cjs`) tras `supabase start` en `db-supabase`.

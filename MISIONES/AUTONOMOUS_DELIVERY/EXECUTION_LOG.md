@@ -398,3 +398,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(d) de Pendiente (mostrar el método de envío del pedido en confirmación, «Mis pedidos» y admin).
+
+## 2026-11-10 22:13 UTC — Ejecución 52 (trabajo de código: método de envío en pedidos)
+- Estado inicial: sesión en `claude/gracious-pasteur-q3xnvj` (= main); se partió de la rama autorizada = remoto `0925741`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(d) de Pendiente. Nombre del método de envío en confirmación, «Mis pedidos» y detalle del admin; `getMyOrders` ahora pide `shipping_method_code`; backend sintético con `get_order_public` completo (shipping/nombre/correo).
+- Archivos: `apps/web/src/utils/shippingPolicy.js`, `services/orderService.js`, `pages/OrderConfirmationPage.jsx`, `pages/AccountPage.jsx`, `pages/admin/AdminOrdersPage.jsx`, `src/__tests__/orderShippingMethod.test.jsx` (nuevo, 6 pruebas), `e2e/e2e_synthetic.cjs` (recorridos 5 y 8), `e2e/synthetic/backend.cjs`.
+- Pruebas (ejecutadas aquí): 5 de las 6 nuevas fallan sin el cambio (comprobado con `git stash`); `pnpm test:unit` 238/238 (20 archivos); ESLint 0 errores en los archivos tocados; `pnpm build` OK; `pnpm test:e2e-synthetic` 10/10. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(e) de Pendiente (revisar `AdminCustomersPage`/`AdminDashboardPage` por datos simulados).

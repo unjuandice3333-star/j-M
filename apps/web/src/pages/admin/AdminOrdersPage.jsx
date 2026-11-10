@@ -4,6 +4,8 @@ import { formatCOP } from '../../data/mockData';
 import supabase from '../../config/supabase';
 import { adminService } from '../../services/adminService';
 import { orderService } from '../../services/orderService';
+import { shippingAdminService } from '../../services/shippingAdminService';
+import { shippingMethodLabel } from '../../utils/shippingPolicy';
 
 export const STATUS_LABEL = { payment_pending: 'Pago pendiente', paid: 'Pagado', processing: 'En preparación', shipped: 'Enviado',
   delivered: 'Entregado', cancelled: 'Cancelado', expired: 'Vencido', refunded: 'Reembolsado' };
@@ -19,6 +21,7 @@ export const AdminOrdersPage = () => {
   const [selectedStatusTab, setSelectedStatusTab] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [transitions, setTransitions] = useState([]);
+  const [shippingMethods, setShippingMethods] = useState([]);
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [modalStatus, setModalStatus] = useState('');
@@ -54,6 +57,8 @@ export const AdminOrdersPage = () => {
   useEffect(() => {
     fetchDbOrders();
     orderService.getStatusCatalog().then((c) => setTransitions((c.transitions ?? []).filter((t) => t.actor === 'admin'))).catch(() => setTransitions([]));
+    // Incluye métodos inactivos (el admin los lee todos): los pedidos antiguos conservan su nombre.
+    shippingAdminService.list().then(setShippingMethods).catch(() => setShippingMethods([]));
   }, []);
 
   const displayOrders = dbOrders;
@@ -254,6 +259,7 @@ export const AdminOrdersPage = () => {
               <div><strong>Estado:</strong> {STATUS_LABEL[selectedOrder.status]} · <strong>Creado:</strong> {selectedOrder.date}</div>
               <div><strong>Cliente:</strong> {selectedOrder.customer_name} · {selectedOrder.customer_email} · {selectedOrder.customer_phone}</div>
               <div><strong>Envío:</strong> {selectedOrder.shippingAddress}{selectedOrder.shipping_notes ? ` · Nota: ${selectedOrder.shipping_notes}` : ''}</div>
+              {selectedOrder.shipping_method_code && <div data-testid="order-shipping-method"><strong>Método de envío:</strong> {shippingMethodLabel(selectedOrder.shipping_method_code, shippingMethods)} · {Number(selectedOrder.shipping_cost) === 0 ? 'gratis' : formatCOP(Number(selectedOrder.shipping_cost))}</div>}
               <div><strong>Pago:</strong> {(selectedOrder.payment_transactions ?? []).map((t) => `${t.reference} ${t.status}`).join(' · ') || 'sin intentos de pago'}</div>
               {selectedOrder.tracking_number && <div><strong>Guía:</strong> {selectedOrder.carrier} {selectedOrder.tracking_number}</div>}
             </div>
@@ -303,7 +309,7 @@ export const AdminOrdersPage = () => {
               <div style={{ fontSize: '0.85rem', textAlign: 'right' }}>
                 Subtotal {formatCOP(Number(selectedOrder.subtotal))}
                 {Number(selectedOrder.discount_total) > 0 && ` · Descuento -${formatCOP(Number(selectedOrder.discount_total))}${selectedOrder.coupon_code ? ` (${selectedOrder.coupon_code})` : ''}`}
-                {` · Envío ${formatCOP(Number(selectedOrder.shipping_cost))} · `}<strong>Total {formatCOP(selectedOrder.total)}</strong>
+                {` · Envío${selectedOrder.shipping_method_code ? ` (${shippingMethodLabel(selectedOrder.shipping_method_code, shippingMethods)})` : ''} ${formatCOP(Number(selectedOrder.shipping_cost))} · `}<strong>Total {formatCOP(selectedOrder.total)}</strong>
               </div>
             </div>
 

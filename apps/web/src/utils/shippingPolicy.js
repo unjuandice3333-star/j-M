@@ -20,3 +20,22 @@ export function getShippingPolicy(shippingMethods) {
     costLabel: cost != null ? `${formatCOP(cost)} COP` : null,
   };
 }
+
+// Nombres de respaldo para pedidos cuyo método ya no está en la lista pública (RLS: solo se leen los activos).
+const FALLBACK_METHOD_NAMES = { standard: 'Envío estándar', express: 'Envío express' };
+
+/**
+ * Nombre legible del método de envío de un pedido (online_orders.shipping_method_code).
+ * Usa el nombre configurado en shipping_methods si está cargado; si no, un nombre de respaldo o el código.
+ * @param {string|null|undefined} code
+ * @param {Array<{code:string,name?:string|null}>} [shippingMethods]
+ * @returns {string|null} null si el pedido no trae método
+ */
+export function shippingMethodLabel(code, shippingMethods) {
+  const c = typeof code === 'string' ? code.trim() : '';
+  if (!c) return null;
+  const list = Array.isArray(shippingMethods) ? shippingMethods : [];
+  const name = list.find((m) => m?.code === c)?.name;
+  if (typeof name === 'string' && name.trim()) return name.trim();
+  return FALLBACK_METHOD_NAMES[c] || c;
+}
