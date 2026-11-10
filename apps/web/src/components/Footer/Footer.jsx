@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Instagram, Facebook, MapPin, Phone, Mail, ShieldCheck, Truck, RefreshCw, CreditCard } from 'lucide-react';
+import { useShippingPolicy } from '../../hooks/useShippingPolicy';
 
 export const Footer = () => {
+  const { thresholdLabel } = useShippingPolicy();
   return (
     <footer style={{ backgroundColor: '#09090B', color: '#FFFFFF', paddingTop: '4rem', paddingBottom: '2.5rem', borderTop: '1px solid #1F1F23' }}>
       <div className="jm-container">
@@ -30,7 +32,7 @@ export const Footer = () => {
             <Truck size={28} color="#D4AF37" />
             <div>
               <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#FFFFFF' }}>Envíos Nacionales</div>
-              <div style={{ fontSize: '0.78rem', color: '#A1A1AA' }}>Gratis desde $200.000 a toda Colombia</div>
+              <div data-testid="footer-shipping" style={{ fontSize: '0.78rem', color: '#A1A1AA' }}>{thresholdLabel ? `Gratis desde ${thresholdLabel} a toda Colombia` : 'A toda Colombia'}</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

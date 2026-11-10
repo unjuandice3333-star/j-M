@@ -118,6 +118,10 @@ async function main() {
       await expectText(p, '$216.000'); // 240.000 - 10%
       await p.reload();
       await expectText(p, '$216.000');
+      // Textos de envío leídos de shipping_methods (standard: 12.000, gratis desde 200.000), no cifras fijas.
+      await p.goto(`${BASE}/envios`);
+      await expectText(p, 'ENVÍOS GRATIS EN COLOMBIA POR COMPRAS DESDE $200.000 COP');
+      await expectText(p, '$12.000 COP para compras inferiores al monto mínimo');
     }, browser);
 
     await journey('5. Checkout: validación y creación de pedido con reserva de stock', async (p) => {

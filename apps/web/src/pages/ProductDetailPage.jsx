@@ -20,6 +20,7 @@ import {
 import { formatCOP } from '../data/mockData';
 import supabase from '../config/supabase';
 import { useECommerceStore } from '../store/eCommerceStore';
+import { useShippingPolicy } from '../hooks/useShippingPolicy';
 import ProductCard from '../components/Product/ProductCard';
 import SafeProductImage from '../components/Common/SafeImage';
 
@@ -41,6 +42,7 @@ export const ProductDetailPage = () => {
     openSizeGuide,
     openSizeRecommender
   } = useECommerceStore();
+  const shippingPolicy = useShippingPolicy();
 
   useEffect(() => {
     if (!productsLoaded && loadProducts) {
@@ -603,7 +605,7 @@ export const ProductDetailPage = () => {
                   Despachamos directamente desde Colombia a todo el territorio nacional.
                 </p>
                 <ul style={{ paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#52525B', marginBottom: '0.8rem' }}>
-                  <li><strong>Envío GRATIS:</strong> Por compras iguales o superiores a $200.000 COP.</li>
+                  {shippingPolicy.thresholdLabel && <li><strong>Envío GRATIS:</strong> Por compras iguales o superiores a {shippingPolicy.thresholdLabel}.</li>}
                   <li><strong>Bogotá y Medellín:</strong> Entrega en 1 a 2 días hábiles.</li>
                   <li><strong>Resto de Colombia:</strong> Entrega en 2 a 4 días hábiles.</li>
                   <li><strong>Política de Cambios:</strong> Dispones de 30 días para solicitar cambios de talla o prenda.</li>

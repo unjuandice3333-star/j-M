@@ -371,3 +371,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Nota de entorno: `run_local.sh` necesita pg_cron y pgTAP y no puede correr como root (`runuser -u postgres -- env WORKDIR=<dir propiedad de postgres> bash supabase/tests/run_local.sh`).
 - Siguiente: punto 0 de Pendiente en MASTER_STATUS (umbral de envío gratis dinámico en textos de la tienda).
+
+## 2026-11-10 19:11 UTC — Ejecución 49 (trabajo de código: textos de envío dinámicos)
+- Estado inicial: sesión en `claude/gracious-pasteur-q4nswo` (= main); se cambió a la rama autorizada = remoto `752f241`, árbol limpio.
+- Tarea: punto 0(a) de Pendiente. Umbral de envío gratis y tarifa estándar leídos de `shipping_methods` en cabecera, pie, ficha de producto e InfoPage; aviso del panel de configuración actualizado.
+- Archivos: `apps/web/src/utils/shippingPolicy.js` (nuevo), `apps/web/src/hooks/useShippingPolicy.js` (nuevo), `components/Header/Header.jsx`, `components/Footer/Footer.jsx`, `pages/InfoPage.jsx`, `pages/ProductDetailPage.jsx`, `pages/admin/AdminSettingsPage.jsx`, `src/__tests__/shippingPolicy.test.jsx` (nuevo, 7 pruebas), `e2e/e2e_synthetic.cjs` (recorrido 4 ampliado).
+- Pruebas (ejecutadas aquí): ESLint 0 errores; `pnpm build` OK; `pnpm test:unit` 212/212 (17 archivos); `pnpm test:e2e-synthetic` 10/10. pgTAP no se re-ejecutó (sin cambios de SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(b) de Pendiente (revisar `AdminEditorialImagesPage` y `AdminDiscountsPage` por acciones incompletas).

@@ -20,10 +20,12 @@ import {
   Sparkles
 } from 'lucide-react';
 import { SIZE_CHART } from '../data/mockData';
+import { useShippingPolicy } from '../hooks/useShippingPolicy';
 
 export const InfoPage = () => {
   const location = useLocation();
   const path = location.pathname;
+  const shippingPolicy = useShippingPolicy();
 
   // Determine view type based on current URL path
   let viewType = 'tallas';
@@ -52,7 +54,7 @@ export const InfoPage = () => {
   const faqs = [
     {
       q: '¿Cuáles son las opciones y tiempos de envío en Colombia?',
-      a: 'Realizamos envíos a nivel nacional a través de transportadoras aliadas de alta confiabilidad. El tiempo estimado de entrega para Bogotá, Medellín, Cali y ciudades principales es de 2 a 4 días hábiles. Para municipios intermedios el tiempo estimado es de 3 a 6 días hábiles. Todos los pedidos superiores a $200.000 COP cuentan con Envío Gratis.'
+      a: 'Realizamos envíos a nivel nacional a través de transportadoras aliadas de alta confiabilidad. El tiempo estimado de entrega para Bogotá, Medellín, Cali y ciudades principales es de 2 a 4 días hábiles. Para municipios intermedios el tiempo estimado es de 3 a 6 días hábiles.' + (shippingPolicy.thresholdLabel ? ` Los pedidos desde ${shippingPolicy.thresholdLabel} cuentan con Envío Gratis.` : '')
     },
     {
       q: '¿Cómo solicito un cambio de talla o prenda?',
@@ -268,12 +270,16 @@ export const InfoPage = () => {
                   💰 COSTOS & ENVÍO GRATIS
                 </h3>
                 <div style={{ fontSize: '0.88rem', color: '#71717A', lineHeight: 1.6 }}>
-                  <p style={{ marginBottom: '0.75rem' }}>
-                    <strong style={{ color: '#09090B' }}>ENVÍO GRATIS:</strong> En todos los pedidos con monto total igual o superior a <strong>$200.000 COP</strong>.
-                  </p>
-                  <p>
-                    <strong style={{ color: '#09090B' }}>Tarifa Estándar:</strong> $15.000 COP para compras inferiores al monto mínimo.
-                  </p>
+                  {shippingPolicy.thresholdLabel && (
+                    <p data-testid="info-free-shipping" style={{ marginBottom: '0.75rem' }}>
+                      <strong style={{ color: '#09090B' }}>ENVÍO GRATIS:</strong> En todos los pedidos con monto total igual o superior a <strong>{shippingPolicy.thresholdLabel}</strong>.
+                    </p>
+                  )}
+                  {shippingPolicy.costLabel && (
+                    <p data-testid="info-standard-cost">
+                      <strong style={{ color: '#09090B' }}>Tarifa Estándar:</strong> {shippingPolicy.costLabel}{shippingPolicy.thresholdLabel ? ' para compras inferiores al monto mínimo.' : ' por pedido.'}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

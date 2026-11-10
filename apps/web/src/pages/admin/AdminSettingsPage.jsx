@@ -53,7 +53,7 @@ export const AdminSettingsPage = () => {
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>CONFIGURACIÓN · ENVÍOS</h1>
           <p style={{ fontSize: '0.88rem', color: '#71717A', maxWidth: 720 }}>
             La tarifa y el umbral de envío gratis se aplican en el servidor a cada cotización y pedido nuevo. El checkout usa el método
-            «{CHECKOUT_METHOD}». Los textos informativos de la tienda (cabecera, pie y página de envíos) no cambian solos: actualízalos si cambias el umbral.
+            «{CHECKOUT_METHOD}». Los textos de la tienda (cabecera, pie, ficha de producto y página de envíos) muestran el umbral y la tarifa vigentes del método «standard».
           </p>
         </div>
         <button type="button" onClick={() => open(emptyShippingMethod())} style={btnDark}><Plus size={16} /> NUEVO MÉTODO</button>

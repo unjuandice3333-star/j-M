@@ -19,11 +19,13 @@ import {
 } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { formatCOP } from '../../data/mockData';
+import { useShippingPolicy } from '../../hooks/useShippingPolicy';
 
 export const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const store = useECommerceStore();
+  const shippingPolicy = useShippingPolicy();
   const {
     products = [],
     items = [],
@@ -41,7 +43,7 @@ export const Header = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
-  const totals = typeof getTotals === 'function' ? getTotals() : { subtotal: 0, total: 0, shippingCost: 0, hasFreeShipping: false, amountForFreeShipping: 200000 };
+  const totals = typeof getTotals === 'function' ? getTotals() : { subtotal: 0, total: 0, shippingCost: 0, hasFreeShipping: false, amountForFreeShipping: 0 };
   const cartCount = (items || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
 
   // Scroll listener for subtle header elevation
@@ -99,7 +101,9 @@ export const Header = () => {
       >
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
           <Truck size={13} style={{ color: '#D4AF37' }} />
-          ENVÍOS GRATIS EN COLOMBIA POR COMPRAS &gt; $200.000 COP
+          {shippingPolicy.thresholdLabel
+            ? <span data-testid="shipping-banner">ENVÍOS GRATIS EN COLOMBIA POR COMPRAS DESDE {shippingPolicy.thresholdLabel}</span>
+            : <span data-testid="shipping-banner">ENVÍOS A TODA COLOMBIA</span>}
         </span>
         <span style={{ color: '#3F3F46' }}>|</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#D4AF37' }}>

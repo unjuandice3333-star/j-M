@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-10 (ejecución 48: configuración de envíos real en /admin/configuracion; vitest 205/205, pgTAP 291/291, E2E sintético 10/10)
+Última actualización: 2026-11-10 (ejecución 49: textos de envío de la tienda leídos de shipping_methods; vitest 212/212, E2E sintético 10/10)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -73,8 +73,11 @@ Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que
 ## Ejecución 48 — Admin: configuración de envíos (antes redirigía al dashboard)
 `/admin/configuracion` ahora gestiona `shipping_methods` (tarifa, umbral de envío gratis, tiempo de entrega, orden, activo; alta de métodos nuevos). La BD ya calculaba el envío con esa tabla (`private.shipping_cost`), así que el cambio se aplica a cotizaciones y pedidos nuevos sin desplegar. Reglas: `standard` no se puede desactivar (el checkout lo usa siempre); activo exige tarifa > 0 (igual que el CHECK); sin borrado (FK de pedidos). Eliminado código muerto sin referencias: `pages/Customers.jsx`, `Dashboard.jsx`, `Inventory.jsx` y sus `.module.css` (maquetas con cifras inventadas). **Verificado:** 13 pruebas vitest nuevas (servicio + UI), 6 aserciones pgTAP de RLS/CHECK (anon y cliente no escriben; admin edita y crea; activo con tarifa 0 → 23514). **No verificado:** contra Supabase QA ni Preview (bloqueados). Limitación conocida: los textos fijos «gratis desde $200.000» (cabecera, pie, InfoPage, ficha) no se actualizan solos; la página lo advierte.
 
+## Ejecución 49 — Textos de envío dinámicos
+Cabecera, pie, ficha de producto e InfoPage (`/envios`, FAQ) ya no tienen «$200.000»/«$15.000» fijos: leen el umbral y la tarifa del método `standard` de `shipping_methods` (`utils/shippingPolicy.js` + `hooks/useShippingPolicy.js`). Sin umbral o sin métodos cargados no se promete envío gratis. Corrige una incoherencia real: la página de envíos decía $15.000 aunque la tarifa en BD podía ser otra (el backend sintético usa 12.000). **Verificado:** 7 pruebas vitest nuevas; E2E sintético recorrido 4 ampliado (comprueba en Chromium el banner y la tarifa de `/envios`). **No verificado:** contra Supabase QA ni Preview (bloqueados).
+
 ## Pendiente (prioridad)
-0. Siguiente trabajo de código sin credenciales: (a) leer el umbral de envío gratis de `shipping_methods` (ya se carga en `eCommerceStore`) en cabecera/pie/ficha/InfoPage en vez del texto fijo $200.000; (b) revisar `AdminEditorialImagesPage` y `AdminDiscountsPage` por acciones incompletas; (c) checkout con selector de método de envío si hay más de uno activo.
+0. Siguiente trabajo de código sin credenciales: (a) ~~umbral de envío gratis dinámico~~ (hecho en ejecución 49); (b) revisar `AdminEditorialImagesPage` y `AdminDiscountsPage` por acciones incompletas; (c) checkout con selector de método de envío si hay más de uno activo.
 1. Revisar la primera ejecución real del CI en GitHub (job `e2e-synthetic` y `quality` ampliado).
 2. ~~Cobertura de UI Cart/Checkout y normalizeProduct~~ (hecho en ejecuciones 10–11); `adminService` (RPC admin_*) cubierto en la ejecución 12.
 3. Job de CI que ejecute los E2E de navegador contra Supabase local real (`e2e_*.cjs`) tras `supabase start` en `db-supabase`.
