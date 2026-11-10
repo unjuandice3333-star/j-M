@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-08 (ejecución 14, línea base re-verificada: vitest 179/179, E2E sintético 10/10)
+Última actualización: 2026-11-10 (ejecución 47: panel de colecciones/looks real; vitest 192/192, pgTAP 285/285, E2E sintético 10/10)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -67,7 +67,11 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
 
+## Ejecución 47 — Admin: colecciones y looks (antes simulado)
+`/admin/colecciones` mostraba ocasiones de `mockData` con botones sin acción. Ahora es un CRUD real sobre `collections` + `collection_products` (crear, editar, activar, ordenar productos, eliminar), con validación (`services/collectionsAdminService.js`). Los looks activos alimentan «Completa el look» de la ficha de producto, que ya leía la BD. **Verificado:** 13 pruebas vitest nuevas (servicio + UI) y 7 aserciones pgTAP nuevas de RLS (anon/cliente no escriben; admin crea, hace upsert y elimina en cascada). **No verificado:** contra Supabase QA ni Preview (bloqueados).
+
 ## Pendiente (prioridad)
+0. Siguiente trabajo de código sin credenciales: revisar el resto de páginas admin por datos/acciones simuladas (`/admin/configuracion` hoy redirige al dashboard; `AdminEditorialImagesPage`, `Customers.jsx`/`Inventory.jsx`/`Dashboard.jsx` heredados en `pages/` — confirmar si siguen en uso o son código muerto).
 1. Revisar la primera ejecución real del CI en GitHub (job `e2e-synthetic` y `quality` ampliado).
 2. ~~Cobertura de UI Cart/Checkout y normalizeProduct~~ (hecho en ejecuciones 10–11); `adminService` (RPC admin_*) cubierto en la ejecución 12.
 3. Job de CI que ejecute los E2E de navegador contra Supabase local real (`e2e_*.cjs`) tras `supabase start` en `db-supabase`.

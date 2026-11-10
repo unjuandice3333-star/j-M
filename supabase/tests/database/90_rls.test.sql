@@ -1,7 +1,7 @@
 -- 90 · Acceso diferenciado por roles (RLS + privilegios). Incluye las regresiones T9–T16 de la auditoría M23.
 BEGIN;
 \ir _helpers.psql
-SELECT plan(46);
+SELECT plan(53);
 
 CREATE FUNCTION pg_temp.n(p_who text, p_sql text) RETURNS int LANGUAGE sql AS $$ SELECT tests.nrows(tests.exec_as(p_who, p_sql)) $$;
 CREATE FUNCTION pg_temp.err(p_who text, p_sql text) RETURNS text LANGUAGE sql AS $$ SELECT tests.exec_as(p_who, p_sql) ->> 'sqlstate' $$;
@@ -87,6 +87,22 @@ SELECT is(tests.val(tests.exec_as('superadmin', format('SELECT public.admin_set_
           'super_admin promueve a un cliente a admin');
 SELECT is(tests.exec_as('superadmin', format('SELECT public.admin_set_user_role(%L, ''customer'') AS r', tests.uid('superadmin'))) ->> 'hint',
           'JM_LAST_SUPER_ADMIN', 'no se puede retirar el último super_admin');
+
+-- ===================== colecciones y looks (panel /admin/colecciones) =====================
+SELECT is(pg_temp.err('anon', $q$INSERT INTO public.collections (slug, name) VALUES ('hack-anon', 'Hack') RETURNING id$q$), '42501',
+          'anon no crea colecciones');
+SELECT is(pg_temp.err('c1', $q$INSERT INTO public.collections (slug, name) VALUES ('hack-c1', 'Hack') RETURNING id$q$), '42501',
+          'el cliente no crea colecciones');
+SELECT is(pg_temp.n('admin', $q$INSERT INTO public.collections (slug, name, kind, is_active) VALUES ('look-rls', 'Look RLS', 'look', false) RETURNING id$q$), 1,
+          'admin crea un look');
+SELECT is(pg_temp.n('admin', $q$INSERT INTO public.collection_products (collection_id, product_id, position)
+          SELECT id, '00000000-0000-4000-8000-00000000c001', 0 FROM public.collections WHERE slug = 'look-rls'
+          ON CONFLICT (collection_id, product_id) DO UPDATE SET position = EXCLUDED.position RETURNING product_id$q$), 1,
+          'admin asigna productos al look (upsert por collection_id, product_id)');
+SELECT is(pg_temp.n('anon', $q$SELECT id FROM public.collections WHERE slug = 'look-rls'$q$), 0, 'anon no ve colecciones inactivas');
+SELECT is(pg_temp.n('c1', $q$DELETE FROM public.collection_products RETURNING product_id$q$), 0, 'el cliente no borra productos de colecciones');
+SELECT is(pg_temp.n('admin', $q$DELETE FROM public.collections WHERE slug = 'look-rls' RETURNING id$q$), 1,
+          'admin elimina la colección (sus productos se borran en cascada)');
 
 -- ===================== service_role y storage =====================
 SELECT is(pg_temp.n('service', 'SELECT id FROM public.online_orders'), (SELECT count(*)::int FROM public.online_orders),

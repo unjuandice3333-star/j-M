@@ -354,3 +354,12 @@
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA (A3-R/A3-M + backup), credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks (`security` → `ci-gate`), incorporar `e2e-supabase` a `ci-gate`.
 - Notificación: no enviada (ya se avisó en la ejecución 21; sin cambios).
 - Siguiente: con las credenciales, ejecutar `OWNER_CHECKLIST.md`.
+
+## 2026-11-10 17:09 UTC — Ejecución 47 (trabajo de código: admin de colecciones)
+- Estado inicial: sesión en `claude/gracious-pasteur-ll4wak` (= main); se cambió a la rama autorizada = remoto `1c0d738`, árbol limpio. CI `ci`: todo ✔ salvo `security` (historial gitleaks, decisión del propietario).
+- Tarea: se rompió el ciclo de «solo línea base» buscando funcionalidades simuladas. `/admin/colecciones` era una maqueta (mockData, botones sin acción) → CRUD real de colecciones y looks.
+- Archivos: `apps/web/src/services/collectionsAdminService.js` (nuevo), `apps/web/src/pages/admin/AdminCollectionsPage.jsx` (reescrito), `apps/web/src/__tests__/adminCollections.test.jsx` (nuevo, 13 pruebas), `supabase/tests/database/90_rls.test.sql` (+7 aserciones RLS, plan 53).
+- Pruebas (ejecutadas aquí): ESLint 0 errores; `pnpm build` OK; `pnpm test:unit` 192/192 (15 archivos); `pnpm test:e2e-synthetic` 10/10; `supabase/tests/run_local.sh` pgTAP 285/285, concurrencia 12/12, determinismo OK.
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Siguiente: revisar el resto del admin por datos/acciones simuladas (ver punto 0 de Pendiente en MASTER_STATUS).
+
