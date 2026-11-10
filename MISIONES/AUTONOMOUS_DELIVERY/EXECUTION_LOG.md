@@ -380,3 +380,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(b) de Pendiente (revisar `AdminEditorialImagesPage` y `AdminDiscountsPage` por acciones incompletas).
+
+## 2026-11-10 20:15 UTC — Ejecución 50 (trabajo de código: cupones del admin)
+- Estado inicial: sesión en `claude/gracious-pasteur-xmpgvd` (= main); se partió de la rama autorizada = remoto `7338d9c`, árbol limpio.
+- Tarea: punto 0(b) de Pendiente. `AdminEditorialImagesPage` ya real (sin cambios). `AdminDiscountsPage`: corregido desplazamiento de fechas por zona horaria al editar y rango de porcentaje (UI 1–100 vs BD 1–90); servicio nuevo con validación y detección de 0 filas.
+- Archivos: `apps/web/src/services/couponsAdminService.js` (nuevo), `apps/web/src/pages/admin/AdminDiscountsPage.jsx`, `apps/web/src/__tests__/adminCoupons.test.jsx` (nuevo, 13 pruebas).
+- Pruebas (ejecutadas aquí): ESLint 0 errores en los archivos tocados; `pnpm build` OK; `pnpm test:unit` 225/225 (18 archivos); `pnpm test:e2e-synthetic` 10/10. pgTAP no re-ejecutado (sin cambios SQL).
+- Push: la sesión solo puede publicar en `claude/gracious-pasteur-xmpgvd` (instrucción del entorno); el commit se basa en la punta de `mission/m26-dev-qa-environments` y avanza en fast-forward sobre ella.
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Siguiente: punto 0(c) de Pendiente (selector de método de envío en checkout cuando haya más de uno activo; requiere revisar `create_order`/`quote_cart`, que hoy fijan `standard`).

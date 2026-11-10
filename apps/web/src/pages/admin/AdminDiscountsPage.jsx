@@ -2,24 +2,14 @@
 // Cupones — tabla public.coupons (RLS: solo admin). La validación y el canje los hace la BD (validate_coupon,
 // quote_cart y create_order): tipo (percent | fixed | free_shipping), mínimo de compra, vigencia, usos totales y por
 // correo. M27: reescrito; antes eran 3 cupones simulados en el estado de React que no existían en la BD.
+// Ejecución 50: validación y acceso a datos en services/couponsAdminService.js (fechas en hora local, % máx. 90).
 // =============================================================================
 import React, { useEffect, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { formatCOP } from '../../data/mockData';
-import supabase from '../../config/supabase';
-import { adminError } from '../../services/adminService';
+import couponsAdminService, { couponState, emptyCouponForm, toCouponForm, PERCENT_MAX } from '../../services/couponsAdminService';
 
 const TYPE_LABEL = { percent: 'Porcentaje', fixed: 'Valor fijo', free_shipping: 'Envío gratis' };
-const empty = { id: null, code: '', description: '', discount_type: 'percent', discount_value: '10', min_subtotal: '0', max_uses: '', max_uses_per_email: '', starts_at: '', expires_at: '', is_active: true };
-const toLocal = (ts) => (ts ? new Date(ts).toISOString().slice(0, 16) : '');
-
-export function couponState(c, now = new Date()) {
-  if (!c.is_active) return { label: 'Inactivo', color: '#52525B' };
-  if (c.starts_at && new Date(c.starts_at) > now) return { label: 'Programado', color: '#1D4ED8' };
-  if (c.expires_at && new Date(c.expires_at) <= now) return { label: 'Vencido', color: '#B91C1C' };
-  if (c.max_uses && c.used_count >= c.max_uses) return { label: 'Agotado', color: '#B91C1C' };
-  return { label: 'Activo', color: '#065F46' };
-}
 
 export const AdminDiscountsPage = () => {
   const [coupons, setCoupons] = useState([]);
@@ -30,43 +20,33 @@ export const AdminDiscountsPage = () => {
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
-    const { data, error } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
-    if (error) setLoadError('No se pudieron cargar los cupones.'); else { setCoupons(data); setLoadError(null); }
+    try { setCoupons(await couponsAdminService.list()); setLoadError(null); }
+    catch (e) { setLoadError(e.message || 'No se pudieron cargar los cupones.'); }
   };
   useEffect(() => { load(); }, []);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
-  const edit = (c) => { setFormError(null); setForm({ ...c, discount_value: String(c.discount_value), min_subtotal: String(c.min_subtotal),
-    max_uses: c.max_uses ?? '', max_uses_per_email: c.max_uses_per_email ?? '', starts_at: toLocal(c.starts_at), expires_at: toLocal(c.expires_at), description: c.description ?? '' }); };
+  const edit = (c) => { setFormError(null); setForm(toCouponForm(c)); };
 
   const save = async (e) => {
     e.preventDefault();
     setFormError(null);
-    const code = form.code.trim().toUpperCase();
-    const value = Number(form.discount_value);
-    if (!/^[A-Z0-9_-]{3,40}$/.test(code)) { setFormError('Código: 3 a 40 caracteres en MAYÚSCULAS, números, guion o guion bajo.'); return; }
-    if (form.discount_type === 'percent' && !(Number.isInteger(value) && value >= 1 && value <= 100)) { setFormError('El porcentaje debe estar entre 1 y 100.'); return; }
-    if (form.discount_type === 'fixed' && !(Number.isInteger(value) && value > 0)) { setFormError('El valor fijo debe ser mayor que 0.'); return; }
-    if (form.starts_at && form.expires_at && new Date(form.expires_at) <= new Date(form.starts_at)) { setFormError('La fecha de fin debe ser posterior a la de inicio.'); return; }
-    const row = {
-      code, description: form.description.trim() || null, discount_type: form.discount_type,
-      discount_value: form.discount_type === 'free_shipping' ? 0 : value, min_subtotal: Number(form.min_subtotal || 0),
-      max_uses: form.max_uses === '' ? null : Number(form.max_uses), max_uses_per_email: form.max_uses_per_email === '' ? null : Number(form.max_uses_per_email),
-      starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : null, expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
-      is_active: form.is_active,
-    };
     setSaving(true);
-    const q = form.id ? supabase.from('coupons').update(row).eq('id', form.id) : supabase.from('coupons').insert(row);
-    const { error } = await q;
-    setSaving(false);
-    if (error) { setFormError(adminError(error, 'No se pudo guardar el cupón.').message); return; }
-    setNotice(`Cupón ${code} ${form.id ? 'actualizado' : 'creado'}.`);
-    setForm(null); load();
+    try {
+      const row = await couponsAdminService.save(form);
+      setNotice(`Cupón ${row.code} ${form.id ? 'actualizado' : 'creado'}.`);
+      setForm(null);
+      load();
+    } catch (err) { setFormError(err.message || 'No se pudo guardar el cupón.'); }
+    finally { setSaving(false); }
   };
 
   const toggleActive = async (c) => {
-    const { error } = await supabase.from('coupons').update({ is_active: !c.is_active }).eq('id', c.id);
-    if (error) setNotice(adminError(error).message); else { setNotice(`Cupón ${c.code} ${c.is_active ? 'desactivado' : 'activado'}.`); load(); }
+    try {
+      await couponsAdminService.setActive(c.id, !c.is_active);
+      setNotice(`Cupón ${c.code} ${c.is_active ? 'desactivado' : 'activado'}.`);
+      load();
+    } catch (err) { setNotice(err.message); }
   };
 
   return (
@@ -76,7 +56,7 @@ export const AdminDiscountsPage = () => {
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>CUPONES ({coupons.length})</h1>
           <p style={{ fontSize: '0.88rem', color: '#71717A' }}>Los descuentos se validan y se cuentan en el servidor al crear cada pedido.</p>
         </div>
-        <button onClick={() => { setFormError(null); setForm({ ...empty }); }} style={{ backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.8rem 1.4rem', borderRadius: '6px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button onClick={() => { setFormError(null); setForm(emptyCouponForm()); }} style={{ backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.8rem 1.4rem', borderRadius: '6px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Plus size={18} /> CREAR CUPÓN
         </button>
       </div>
@@ -132,7 +112,7 @@ export const AdminDiscountsPage = () => {
                   </select>
                 </label>
                 {form.discount_type !== 'free_shipping' && (
-                  <label style={labelStyle}>{form.discount_type === 'percent' ? 'Porcentaje' : 'Valor (COP)'}
+                  <label style={labelStyle}>{form.discount_type === 'percent' ? `Porcentaje (1–${PERCENT_MAX})` : 'Valor (COP)'}
                     <input style={inputStyle} inputMode="numeric" value={form.discount_value} onChange={(e) => set({ discount_value: e.target.value.replace(/[^0-9]/g, '') })} />
                   </label>
                 )}

@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-10 (ejecución 49: textos de envío de la tienda leídos de shipping_methods; vitest 212/212, E2E sintético 10/10)
+Última actualización: 2026-11-10 (ejecución 50: cupones del admin — fechas en hora local y % máx. 90; vitest 225/225, E2E sintético 10/10)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -76,8 +76,11 @@ Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que
 ## Ejecución 49 — Textos de envío dinámicos
 Cabecera, pie, ficha de producto e InfoPage (`/envios`, FAQ) ya no tienen «$200.000»/«$15.000» fijos: leen el umbral y la tarifa del método `standard` de `shipping_methods` (`utils/shippingPolicy.js` + `hooks/useShippingPolicy.js`). Sin umbral o sin métodos cargados no se promete envío gratis. Corrige una incoherencia real: la página de envíos decía $15.000 aunque la tarifa en BD podía ser otra (el backend sintético usa 12.000). **Verificado:** 7 pruebas vitest nuevas; E2E sintético recorrido 4 ampliado (comprueba en Chromium el banner y la tarifa de `/envios`). **No verificado:** contra Supabase QA ni Preview (bloqueados).
 
+## Ejecución 50 — Admin: cupones (dos defectos reales)
+`AdminEditorialImagesPage` revisada: ya es real (site_content + Storage), sin cambios. `AdminDiscountsPage` tenía dos defectos: (1) al editar, las fechas se cargaban en UTC en un campo `datetime-local` (hora local), así que cada guardado sin cambios desplazaba inicio/fin −5 h en Colombia; (2) el formulario aceptaba 91–100 % y la BD lo rechazaba (`coupons_percent_range` 1–90) con un error genérico. Validación y acceso a datos movidos a `services/couponsAdminService.js` (espejo de los CHECK de la tabla); actualizar/activar sin filas afectadas ahora avisa en vez de fingir éxito. **Verificado:** 13 pruebas vitest nuevas (zona horaria America/Bogota forzada), ESLint, build, E2E sintético 10/10. pgTAP no re-ejecutado (sin cambios SQL). **No verificado:** contra Supabase QA ni Preview (bloqueados).
+
 ## Pendiente (prioridad)
-0. Siguiente trabajo de código sin credenciales: (a) ~~umbral de envío gratis dinámico~~ (hecho en ejecución 49); (b) revisar `AdminEditorialImagesPage` y `AdminDiscountsPage` por acciones incompletas; (c) checkout con selector de método de envío si hay más de uno activo.
+0. Siguiente trabajo de código sin credenciales: (a) ~~umbral de envío gratis dinámico~~ (hecho en ejecución 49); (b) ~~revisar `AdminEditorialImagesPage` y `AdminDiscountsPage`~~ (hecho en ejecución 50); (c) checkout con selector de método de envío si hay más de uno activo.
 1. Revisar la primera ejecución real del CI en GitHub (job `e2e-synthetic` y `quality` ampliado).
 2. ~~Cobertura de UI Cart/Checkout y normalizeProduct~~ (hecho en ejecuciones 10–11); `adminService` (RPC admin_*) cubierto en la ejecución 12.
 3. Job de CI que ejecute los E2E de navegador contra Supabase local real (`e2e_*.cjs`) tras `supabase start` en `db-supabase`.
