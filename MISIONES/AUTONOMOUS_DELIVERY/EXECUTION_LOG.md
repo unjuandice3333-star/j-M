@@ -389,3 +389,12 @@
 - Push: la sesión solo puede publicar en `claude/gracious-pasteur-xmpgvd` (instrucción del entorno); el commit se basa en la punta de `mission/m26-dev-qa-environments` y avanza en fast-forward sobre ella.
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Siguiente: punto 0(c) de Pendiente (selector de método de envío en checkout cuando haya más de uno activo; requiere revisar `create_order`/`quote_cart`, que hoy fijan `standard`).
+
+## 2026-11-10 21:15 UTC — Ejecución 51 (trabajo de código: método de envío en checkout)
+- Estado inicial: sesión en `claude/gracious-pasteur-bya7dc` (= main); se cambió a la rama autorizada = remoto `3f20452`, árbol limpio.
+- Tarea: punto 0(c) de Pendiente. El selector ya existía y la BD ya aceptaba el método; se corrigieron 3 defectos con varios métodos activos: cotización de otro método mostrada como definitiva, carrera entre cotizaciones, idempotencia sin método. Retorno a `standard` si el método elegido se desactiva.
+- Archivos: `apps/web/src/store/eCommerceStore.js`, `apps/web/src/pages/CheckoutPage.jsx`, `apps/web/src/__tests__/checkoutShippingMethod.test.jsx` (nuevo, 7 pruebas).
+- Pruebas (ejecutadas aquí): las 7 nuevas pasan y 6 de ellas fallan sin el arreglo (comprobado con `git stash`); `pnpm test:unit` 232/232 (19 archivos); ESLint 0 errores en los archivos tocados; `pnpm build` OK; `pnpm test:e2e-synthetic` 10/10. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(d) de Pendiente (mostrar el método de envío del pedido en confirmación, «Mis pedidos» y admin).

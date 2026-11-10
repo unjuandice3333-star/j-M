@@ -36,6 +36,8 @@ export function findVariant(product, size, color) {
 }
 
 const cartSignature = (items) => items.map((i) => `${i.variantId}x${i.quantity}`).sort().join(',');
+// Secuencia de solicitudes de cotización: solo se guarda la respuesta de la última (evita que una lenta pise a otra).
+let quoteRequestSeq = 0;
 
 export const useECommerceStore = create(
   persist(
@@ -241,7 +243,9 @@ export const useECommerceStore = create(
         const { items, appliedCoupon } = get();
         if (items.length === 0) { set({ quote: null }); return null; }
         const signature = cartSignature(items);
+        const requestId = ++quoteRequestSeq;
         const q = await orderService.quote(items, { couponCode: appliedCoupon?.code ?? null, shippingMethod, email });
+        if (requestId !== quoteRequestSeq) return null; // llegó una cotización más reciente (p. ej. otro método de envío)
         if (cartSignature(get().items) !== signature) return null; // el carrito cambió mientras tanto
         if (appliedCoupon && q.coupon && !q.coupon.valid) set({ appliedCoupon: null });
         set({ quote: { ...q, signature, shippingMethod } });
@@ -249,12 +253,13 @@ export const useECommerceStore = create(
       },
 
       /** Totales para mostrar: los de la BD si la cotización corresponde al carrito; si no, una estimación local. */
-      getTotals: () => {
+      getTotals: (shippingMethod = 'standard') => {
         const { items, appliedCoupon, quote, shippingMethods } = get();
         const rawSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        const standard = shippingMethods.find((m) => m.code === 'standard');
-        const threshold = standard?.free_over_subtotal ?? null;
-        if (quote && quote.signature === cartSignature(items)) {
+        const method = shippingMethods.find((m) => m.code === shippingMethod);
+        const threshold = method?.free_over_subtotal ?? null;
+        // La cotización solo vale para el carrito Y el método de envío con que se pidió.
+        if (quote && quote.signature === cartSignature(items) && (quote.shippingMethod ?? 'standard') === shippingMethod) {
           const subtotal = Number(quote.subtotal) - Number(quote.discount_total);
           return {
             rawSubtotal: Number(quote.subtotal), couponDiscount: Number(quote.discount_total), subtotal,
@@ -267,7 +272,7 @@ export const useECommerceStore = create(
         const couponDiscount = appliedCoupon ? Math.min(appliedCoupon.discountAmount, rawSubtotal) : 0;
         const subtotal = Math.max(0, rawSubtotal - couponDiscount);
         const free = rawSubtotal === 0 || appliedCoupon?.freeShipping || (threshold != null && subtotal >= threshold);
-        const shippingCost = free ? 0 : (standard?.cost ?? 0);
+        const shippingCost = free ? 0 : (method?.cost ?? 0);
         return {
           rawSubtotal, couponDiscount, subtotal, shippingCost, total: subtotal + shippingCost, freeShippingThreshold: threshold,
           amountForFreeShipping: threshold ? Math.max(0, threshold - subtotal) : 0, hasFreeShipping: free && rawSubtotal > 0,

@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-10 (ejecución 50: cupones del admin — fechas en hora local y % máx. 90; vitest 225/225, E2E sintético 10/10)
+Última actualización: 2026-11-10 (ejecución 51: método de envío en checkout — totales, carreras e idempotencia por método; vitest 232/232, E2E sintético 10/10)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -79,8 +79,11 @@ Cabecera, pie, ficha de producto e InfoPage (`/envios`, FAQ) ya no tienen «$200
 ## Ejecución 50 — Admin: cupones (dos defectos reales)
 `AdminEditorialImagesPage` revisada: ya es real (site_content + Storage), sin cambios. `AdminDiscountsPage` tenía dos defectos: (1) al editar, las fechas se cargaban en UTC en un campo `datetime-local` (hora local), así que cada guardado sin cambios desplazaba inicio/fin −5 h en Colombia; (2) el formulario aceptaba 91–100 % y la BD lo rechazaba (`coupons_percent_range` 1–90) con un error genérico. Validación y acceso a datos movidos a `services/couponsAdminService.js` (espejo de los CHECK de la tabla); actualizar/activar sin filas afectadas ahora avisa en vez de fingir éxito. **Verificado:** 13 pruebas vitest nuevas (zona horaria America/Bogota forzada), ESLint, build, E2E sintético 10/10. pgTAP no re-ejecutado (sin cambios SQL). **No verificado:** contra Supabase QA ni Preview (bloqueados).
 
+## Ejecución 51 — Checkout: método de envío (tres defectos reales)
+El selector de método ya existía (la BD acepta `p_shipping_method` en `quote_cart`/`create_order`), pero con dos o más métodos activos fallaba: (1) `getTotals` reutilizaba la cotización del método anterior → el método recién elegido mostraba la tarifa del otro y el total no cuadraba; la estimación local usaba siempre `standard`; (2) una cotización lenta podía llegar después de otra más reciente y pisarla; (3) la clave de idempotencia no incluía el método → reintentar tras cambiar de método devolvía el pedido anterior con el envío viejo. Corregido: `getTotals(shippingMethod)` solo usa la cotización si coincide carrito Y método; secuencia de solicitudes en `refreshQuote`; clave = carrito+cupón+método; si el admin desactiva el método elegido se vuelve a `standard`. **Verificado:** 7 pruebas vitest nuevas (6 fallan sin el arreglo), suite 232/232, ESLint, build, E2E sintético 10/10. pgTAP no re-ejecutado (sin cambios SQL). **No verificado:** contra Supabase QA ni Preview (bloqueados).
+
 ## Pendiente (prioridad)
-0. Siguiente trabajo de código sin credenciales: (a) ~~umbral de envío gratis dinámico~~ (hecho en ejecución 49); (b) ~~revisar `AdminEditorialImagesPage` y `AdminDiscountsPage`~~ (hecho en ejecución 50); (c) checkout con selector de método de envío si hay más de uno activo.
+0. Siguiente trabajo de código sin credenciales: (a) ~~umbral de envío gratis dinámico~~ (hecho en ejecución 49); (b) ~~revisar `AdminEditorialImagesPage` y `AdminDiscountsPage`~~ (hecho en ejecución 50); ~~(c) checkout con selector de método de envío~~ (hecho en ejecución 51); (d) mostrar el método de envío del pedido en confirmación, «Mis pedidos» y admin de pedidos (hoy solo el coste).
 1. Revisar la primera ejecución real del CI en GitHub (job `e2e-synthetic` y `quality` ampliado).
 2. ~~Cobertura de UI Cart/Checkout y normalizeProduct~~ (hecho en ejecuciones 10–11); `adminService` (RPC admin_*) cubierto en la ejecución 12.
 3. Job de CI que ejecute los E2E de navegador contra Supabase local real (`e2e_*.cjs`) tras `supabase start` en `db-supabase`.

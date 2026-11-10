@@ -31,11 +31,15 @@ export const CheckoutPage = () => {
   const navigate = useNavigate();
   const { items, getTotals, createOrder, refreshQuote, appliedCoupon, shippingMethods, loadProducts } = useECommerceStore();
   const { user, profile } = useAuthStore();
-  const totals = getTotals();
+  const [selectedShipping, setShippingMethod] = useState('standard');
+  // Si el método elegido deja de estar activo (lo desactivó el admin), se vuelve a 'standard', que siempre existe.
+  const shippingMethod = shippingMethods.length === 0 || shippingMethods.some((m) => m.code === selectedShipping)
+    ? selectedShipping : 'standard';
+  const totals = getTotals(shippingMethod);
 
-  // Clave de idempotencia por contenido del carrito: un doble clic o un reintento del mismo carrito devuelve el MISMO
-  // pedido (create_order es idempotente); si el carrito cambia, es un pedido nuevo.
-  const cartKey = cartKeyOf(items, appliedCoupon);
+  // Clave de idempotencia por contenido del carrito y método de envío: un doble clic o un reintento del mismo carrito
+  // devuelve el MISMO pedido (create_order es idempotente); si el carrito o el envío cambian, es un pedido nuevo.
+  const cartKey = `${cartKeyOf(items, appliedCoupon)}|${shippingMethod}`;
   const [idem, setIdem] = useState(() => ({ cartKey, key: newIdempotencyKey() }));
   const idempotencyKey = idem.cartKey === cartKey ? idem.key : null;
   useEffect(() => { if (idem.cartKey !== cartKey) setIdem({ cartKey, key: newIdempotencyKey() }); }, [cartKey, idem.cartKey]);
@@ -81,7 +85,6 @@ export const CheckoutPage = () => {
     }));
   }, [user, profile]);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [shippingMethod, setShippingMethod] = useState('standard');
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
