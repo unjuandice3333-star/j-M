@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ClipboardList, Search, Eye, Truck, Check, Printer, ChevronDown, X } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
@@ -28,6 +29,8 @@ const mapOrder = (o) => ({
 export const STATUS_LABEL = { payment_pending: 'Pago pendiente', paid: 'Pagado', processing: 'En preparación', shipped: 'Enviado',
   delivered: 'Entregado', cancelled: 'Cancelado', expired: 'Vencido', refunded: 'Reembolsado' };
 const TABS = ['todos', 'payment_pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'expired', 'refunded'];
+/** Ejecución 76: la pestaña vive en la URL (`?estado=paid`) para enlazar desde el dashboard y conservarla al recargar. */
+export const tabFromParam = (value) => (TABS.includes(value) ? value : 'todos');
 
 // M27: pedidos reales (online_orders con RLS de admin) y cambios de estado por la máquina de estados de la BD
 // (admin_transition_order): solo transiciones permitidas para 'admin', nota obligatoria donde la BD la exige y
@@ -36,7 +39,13 @@ export const AdminOrdersPage = () => {
   const [dbOrders, setDbOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [selectedStatusTab, setSelectedStatusTab] = useState('todos');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedStatusTab = tabFromParam(searchParams.get('estado'));
+  const setSelectedStatusTab = (st) => {
+    const next = new URLSearchParams(searchParams);
+    if (st === 'todos') next.delete('estado'); else next.set('estado', st);
+    setSearchParams(next, { replace: true });
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [methodFilter, setMethodFilter] = useState('todos');
   const [transitions, setTransitions] = useState([]);
@@ -189,6 +198,7 @@ export const AdminOrdersPage = () => {
             <button
               key={st}
               onClick={() => setSelectedStatusTab(st)}
+              aria-pressed={selectedStatusTab === st}
               style={{
                 padding: '0.4rem 0.8rem',
                 fontSize: '0.78rem',

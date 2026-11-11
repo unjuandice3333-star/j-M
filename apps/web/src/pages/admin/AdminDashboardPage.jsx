@@ -6,11 +6,12 @@ import {
   Truck,
   CreditCard,
   ChevronRight,
-  AlertTriangle
+  AlertTriangle,
+  PackageCheck
 } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
-import { adminService } from '../../services/adminService';
+import { adminService, countOrdersToPrepare } from '../../services/adminService';
 
 // M27: métricas de la BD (admin_dashboard_metrics; exige is_admin()). Sin valores de ejemplo: si la consulta falla,
 // se muestra el error. Rango: desde el inicio del periodo elegido hasta ahora.
@@ -24,6 +25,15 @@ export const AdminDashboardPage = () => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  // Ejecución 76: pedidos pagados esperando preparación, de CUALQUIER fecha (no dependen del periodo elegido: un pedido
+  // pagado hace 40 días sigue pendiente). Si el conteo falla, el resto del panel funciona igual.
+  const [toPrepare, setToPrepare] = useState(undefined);
+
+  useEffect(() => {
+    let alive = true;
+    countOrdersToPrepare().then((n) => { if (alive) setToPrepare(n); }, () => { if (alive) setToPrepare(null); });
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -102,7 +112,11 @@ export const AdminDashboardPage = () => {
         <KpiCard title="VENTAS PAGADAS" value={formatCOP(metrics.gross_sales)} detail={`${metrics.paid_orders} pedido(s) pagado(s)`} icon={DollarSign} />
         <KpiCard title="PEDIDOS DEL PERIODO" value={`${totalOrders} pedidos`} detail={`${byStatus.payment_pending ?? 0} con pago pendiente`} icon={ShoppingBag} />
         <KpiCard title="TICKET PROMEDIO" value={formatCOP(metrics.average_ticket)} detail={`${metrics.units_sold} unidades vendidas`} icon={CreditCard} />
-        <KpiCard title="POR PREPARAR / ENVIAR" value={`${(byStatus.paid ?? 0) + (byStatus.processing ?? 0)} pedidos`} detail={`${byStatus.shipped ?? 0} en camino`} icon={Truck} />
+        <KpiCard title="POR PREPARAR" to="/admin/pedidos?estado=paid" linkLabel="Ver pedidos pagados por preparar"
+          value={toPrepare === undefined ? '…' : toPrepare === null ? '—' : `${toPrepare} pedido${toPrepare === 1 ? '' : 's'}`}
+          detail={toPrepare === null ? 'No se pudo contar los pedidos pagados.' : 'Pagados, de cualquier fecha · Ver pedidos →'}
+          warn={toPrepare === null || toPrepare > 0} icon={PackageCheck} />
+        <KpiCard title="EN PREPARACIÓN / ENVIADOS" value={`${byStatus.processing ?? 0} / ${byStatus.shipped ?? 0}`} detail="pedidos del periodo" icon={Truck} />
         <KpiCard title="ALERTAS" value={`${metrics.low_stock_variants} variantes`} detail={`stock bajo · ${metrics.needs_attention} pedido(s) por revisar`}
           warn={Number(metrics.low_stock_variants) > 0 || Number(metrics.needs_attention) > 0} icon={AlertTriangle} />
       </div>
@@ -185,10 +199,12 @@ export const AdminDashboardPage = () => {
 };
 
 // Sin flechas de tendencia: el detalle es un dato del periodo, no una variación frente a otro periodo.
-const KpiCard = ({ title, value, detail, warn = false, icon }) => {
+const KpiCard = ({ title, value, detail, warn = false, icon, to, linkLabel }) => {
   const Icon = icon;
+  const Box = to ? Link : 'div';
+  const linkProps = to ? { to, 'aria-label': `${linkLabel}: ${value}`, 'data-kpi-link': 'true' } : {};
   return (
-  <div style={{ backgroundColor: '#FFFFFF', padding: '1.35rem', borderRadius: '10px', border: '1px solid #E4E4E7', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+  <Box {...linkProps} style={{ backgroundColor: '#FFFFFF', padding: '1.35rem', borderRadius: '10px', border: '1px solid #E4E4E7', display: 'flex', flexDirection: 'column', gap: '0.5rem', color: 'inherit', textDecoration: 'none' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#71717A', letterSpacing: '0.08em' }}>{title}</span>
       <Icon size={20} color="#09090B" />
@@ -197,7 +213,7 @@ const KpiCard = ({ title, value, detail, warn = false, icon }) => {
     <div data-warn={warn ? 'true' : 'false'} style={{ fontSize: '0.75rem', fontWeight: 700, color: warn ? '#B91C1C' : '#52525B' }}>
       {detail}
     </div>
-  </div>
+  </Box>
 );
 };
 

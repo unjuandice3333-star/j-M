@@ -719,6 +719,16 @@ async function main() {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
       await expectText(p, num);
+      // Ejecución 76: tarjeta «Por preparar» del dashboard → /admin/pedidos?estado=paid con la pestaña «Pagado» activa
+      const paidCount = (await state()).orders.filter((x) => x.status === 'paid').length;
+      const prepCard = p.getByRole('link', { name: /^Ver pedidos pagados por preparar/ });
+      await prepCard.filter({ hasText: `${paidCount} pedido` }).waitFor({ timeout: 8000 });
+      await prepCard.click();
+      await p.waitForURL(/\/admin\/pedidos\?estado=paid$/, { timeout: 8000 });
+      await p.getByRole('button', { name: `Pagado (${paidCount})`, pressed: true }).waitFor({ timeout: 8000 });
+      await expectText(p, num);
+      await p.reload();
+      await p.getByRole('button', { name: `Pagado (${paidCount})`, pressed: true }).waitFor({ timeout: 8000 });
       // inventario: ajuste con motivo
       await p.goto(`${BASE}/admin/inventario`);
       await expectText(p, 'INVENTARIO (5 variantes)');
