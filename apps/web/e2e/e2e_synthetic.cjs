@@ -333,6 +333,50 @@ async function main() {
       await p.goto(`${BASE}/cuenta/pedidos`); await expectText(p, num);
     }, browser);
 
+    await journey('14. Mis pedidos: pagar (rechazo de la BD → estado real), cancelar y ventana vencida desde la lista', async (p) => {
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Luis Mora');
+      await p.locator('input[type=email]').fill('luis@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      for (let i = 0; i < 3; i += 1) {
+        await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+        await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'luis@correo.co' });
+        await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+        await p.waitForURL(/\/checkout\/confirmacion/);
+        await expectText(p, 'Pedido registrado');
+      }
+      const [toExpire, toCancel, toPay] = (await state()).orders; // unshift: el más reciente primero
+      await fetch(`${API_URL}/__synthetic-expire-window/${toExpire.order_number}`);
+      let sent = null;
+      await p.route('**/api/wompi/signature', async (route) => {
+        sent = JSON.parse(route.request().postData() || '{}');
+        await fetch(`${API_URL}/__synthetic-mark-paid/${toPay.order_number}`);
+        await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'Este pedido ya no admite pagos.', code: 'JM_ORDER_NOT_PAYABLE' }) });
+      });
+      p.on('dialog', (d) => d.accept().catch(() => {}));
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      const card = (o) => p.locator('div').filter({ has: p.getByText(`PEDIDO #${o.order_number}`, { exact: true }) }).filter({ has: p.getByTestId('order-shipping-method') }).last();
+      // Ventana vencida: sin «Pagar ahora», marcado como vencido.
+      await card(toExpire).getByTestId('order-window-closed').waitFor({ timeout: 10000 });
+      if (await card(toExpire).getByTestId('order-pay').count()) throw new Error('ofrece pagar con la ventana vencida');
+      await card(toExpire).getByText('Pago vencido').waitFor();
+      // Pagar desde la lista: la firma se pide con id + token; la BD ya lo tenía pagado → estado real.
+      await card(toPay).getByTestId('order-pay-deadline').waitFor();
+      await card(toPay).getByTestId('order-pay').click();
+      await card(toPay).getByTestId('order-action-error').filter({ hasText: 'ya no admite pagos' }).waitFor({ timeout: 8000 });
+      await card(toPay).getByText('Compra completada').waitFor({ timeout: 8000 });
+      if (!sent || sent.order_id !== toPay.id || sent.public_token !== toPay.public_token) throw new Error(`firma pedida con ${JSON.stringify(sent)}`);
+      if (await card(toPay).getByTestId('order-pay').count()) throw new Error('sigue ofreciendo pagar un pedido pagado');
+      // Cancelar desde la lista libera la reserva.
+      await card(toCancel).getByTestId('order-cancel').click();
+      await card(toCancel).getByText('Cancelado', { exact: true }).waitFor({ timeout: 8000 });
+      const s2 = await state();
+      if (s2.orders.find((o) => o.id === toCancel.id).status !== 'cancelled') throw new Error('el pedido no quedó cancelado');
+      if (await card(toCancel).getByTestId('order-cancel').count()) throw new Error('sigue ofreciendo cancelar un pedido cancelado');
+    }, browser);
+
     await journey('9. Login: credenciales incorrectas y rutas protegidas', async (p) => {
       await login(p, '/login', 'nadie@correo.co', 'mala-clave', 'Iniciar Sesión');
       await expectText(p, 'Correo o contraseña incorrectos');

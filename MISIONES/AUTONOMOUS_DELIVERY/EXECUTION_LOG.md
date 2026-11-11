@@ -462,3 +462,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA (ahora + migración `20261111120000`), credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(k) de Pendiente («Mis pedidos»: pagar/cancelar desde la lista y ventana vencida).
+
+## 2026-11-11 05:15 UTC — Ejecución 59 (trabajo de código: «Mis pedidos» con pagar/cancelar desde la lista)
+- Estado inicial: sesión en `claude/gracious-pasteur-p42jhx` (= main, `2661f2a`); se partió de la rama autorizada = remoto `d347a7f`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(k) de Pendiente. «Pagar ahora» y «Cancelar pedido» directamente en la lista; plazo de pago visible; ventana vencida mostrada como «Pago vencido» sin botón de pago; relectura ante rechazo de la BD o tras cancelar; una relectura fallida no borra la lista.
+- Archivos: `apps/web/src/pages/AccountPage.jsx`, `apps/web/src/services/orderService.js` (`payment_expires_at` en `getMyOrders`), `apps/web/src/__tests__/accountOrdersActions.test.jsx` (nuevo, 9 pruebas), `apps/web/e2e/synthetic/backend.cjs` (`/__synthetic-expire-window/`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 14).
+- Pruebas (ejecutadas aquí): las 9 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 301/301 (25 archivos); ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 14/14 en 3 ejecuciones seguidas. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(l) de Pendiente (lista de deseos y búsqueda: lógica simulada restante).

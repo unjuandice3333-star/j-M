@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Package,
@@ -19,6 +19,18 @@ import { orderService } from '../services/orderService';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
 import { AccountDetails } from '../components/Account/AccountDetails';
+import { wompiService } from '../services/wompi';
+
+// Respuestas de /api/wompi/signature que indican que la lista quedó vieja (pagado, vencido o cancelado en otro lado).
+const STALE_PAYMENT_CODES = new Set(['JM_ORDER_NOT_PAYABLE', 'JM_PAYMENT_WINDOW_EXPIRED', 'JM_ORDER_NOT_FOUND']);
+
+/** Ejecución 59: estado de la ventana de pago de un pedido pendiente ('open' | 'closed' | null si no aplica). */
+export const paymentWindow = (ord, now = Date.now()) => {
+  if (ord?.status !== 'payment_pending') return null;
+  const t = ord.payment_expires_at ? new Date(ord.payment_expires_at).getTime() : NaN;
+  if (Number.isNaN(t)) return 'open';
+  return t <= now ? 'closed' : 'open';
+};
 
 export const AccountPage = () => {
   const navigate = useNavigate();
@@ -52,26 +64,57 @@ export const AccountPage = () => {
     else setResetInfo('Si el correo está registrado, te enviamos un enlace para crear una nueva contraseña.');
   };
 
-  // Cargar pedidos del usuario autenticado respetando RLS
+  // Cargar pedidos del usuario autenticado respetando RLS.
+  // keepOnError: una relectura tras pagar/cancelar no debe borrar la lista si falla la red.
+  const fetchUserOrders = useCallback(async ({ keepOnError = false } = {}) => {
+    if (!keepOnError) { setIsLoadingOrders(true); setOrdersError(null); }
+    try {
+      const data = await orderService.getMyOrders();
+      setUserOrders(data || []);
+    } catch (e) {
+      console.error('[AccountPage Error]: Error al cargar pedidos del usuario:', e);
+      if (!keepOnError) setOrdersError(e.message || 'No pudimos cargar tus pedidos en este momento.');
+    } finally {
+      if (!keepOnError) setIsLoadingOrders(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isLoggedIn || !user) return;
-
-    const fetchUserOrders = async () => {
-      setIsLoadingOrders(true);
-      setOrdersError(null);
-      try {
-        const data = await orderService.getMyOrders();
-        setUserOrders(data || []);
-      } catch (e) {
-        console.error('[AccountPage Error]: Error al cargar pedidos del usuario:', e);
-        setOrdersError(e.message || 'No pudimos cargar tus pedidos en este momento.');
-      } finally {
-        setIsLoadingOrders(false);
-      }
-    };
-
     fetchUserOrders();
-  }, [isLoggedIn, user]);
+  }, [isLoggedIn, user, fetchUserOrders]);
+
+  // Acciones por pedido desde la lista (antes había que abrir el detalle para pagar o cancelar).
+  const [orderBusy, setOrderBusy] = useState(null); // id del pedido en curso
+  const [orderActionError, setOrderActionError] = useState({}); // { [id]: mensaje }
+  const setOrderError = (id, msg) => setOrderActionError((m) => ({ ...m, [id]: msg }));
+
+  const payOrder = async (ord) => {
+    setOrderBusy(ord.id); setOrderError(ord.id, null);
+    try {
+      rememberOrder(ord); // el regreso de Wompi a la confirmación reconoce el pedido de este navegador
+      await wompiService.openWompiWidget({
+        order: ord,
+        customer: { email: user.email, name: profile?.full_name || '', phone: profile?.phone || '' },
+      });
+    } catch (e) {
+      setOrderError(ord.id, e.message || 'No se pudo iniciar el pago.');
+      if (STALE_PAYMENT_CODES.has(e.code)) await fetchUserOrders({ keepOnError: true });
+    } finally { setOrderBusy(null); }
+  };
+
+  const cancelOrder = async (ord) => {
+    if (!window.confirm(`¿Cancelar el pedido ${ord.order_number}? Se liberarán los productos reservados.`)) return;
+    setOrderBusy(ord.id); setOrderError(ord.id, null);
+    try {
+      await orderService.cancelOrder(ord.id, ord.public_token, 'Cancelado por el cliente desde Mis pedidos');
+    } catch (e) {
+      setOrderError(ord.id, e.message || 'No se pudo cancelar el pedido.');
+    } finally {
+      await fetchUserOrders({ keepOnError: true });
+      setOrderBusy(null);
+    }
+  };
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -335,7 +378,9 @@ export const AccountPage = () => {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {userOrders.map((ord) => {
-                  const badge = getStatusBadge(ord.status);
+                  const windowState = paymentWindow(ord);
+                  // Ventana vencida aunque el job de expiración aún no haya cambiado el estado: mostrarlo como vencido.
+                  const badge = getStatusBadge(windowState === 'closed' ? 'expired' : ord.status);
                   const formattedDate = new Date(ord.created_at).toLocaleDateString('es-CO', {
                     year: 'numeric',
                     month: 'short',
@@ -434,7 +479,7 @@ export const AccountPage = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
-                          {['cancelled', 'expired'].includes(ord.status) && (
+                          {(['cancelled', 'expired'].includes(ord.status) || windowState === 'closed') && (
                             <button
                               onClick={() => navigate('/ropa')}
                               style={{
@@ -456,9 +501,12 @@ export const AccountPage = () => {
                             </button>
                           )}
 
-                          {ord.status === 'payment_pending' && (
+                          {windowState === 'open' && (
                             <button
-                              onClick={() => openOrder(ord)}
+                              type="button"
+                              data-testid="order-pay"
+                              disabled={orderBusy === ord.id}
+                              onClick={() => payOrder(ord)}
                               style={{
                                 backgroundColor: '#D97706',
                                 color: '#FFFFFF',
@@ -471,10 +519,35 @@ export const AccountPage = () => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.4rem',
-                                cursor: 'pointer'
+                                cursor: orderBusy === ord.id ? 'wait' : 'pointer',
+                                opacity: orderBusy === ord.id ? 0.7 : 1
                               }}
                             >
-                              <Clock size={14} /> Continuar Pago
+                              <Clock size={14} /> {orderBusy === ord.id ? 'Procesando…' : 'Pagar ahora'}
+                            </button>
+                          )}
+
+                          {ord.status === 'payment_pending' && (
+                            <button
+                              type="button"
+                              data-testid="order-cancel"
+                              disabled={orderBusy === ord.id}
+                              onClick={() => cancelOrder(ord)}
+                              style={{
+                                backgroundColor: '#FFFFFF',
+                                color: '#B91C1C',
+                                border: '1px solid #FECACA',
+                                padding: '0.6rem 1.1rem',
+                                borderRadius: '6px',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                cursor: orderBusy === ord.id ? 'wait' : 'pointer'
+                              }}
+                            >
+                              <XCircle size={14} /> Cancelar pedido
                             </button>
                           )}
 
@@ -498,6 +571,21 @@ export const AccountPage = () => {
                           </button>
                         </div>
                       </div>
+                      {windowState === 'open' && ord.payment_expires_at && (
+                        <p data-testid="order-pay-deadline" style={{ fontSize: '0.78rem', color: '#92400E', margin: '0.75rem 0 0 0' }}>
+                          Productos reservados. Paga antes del {new Date(ord.payment_expires_at).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.
+                        </p>
+                      )}
+                      {windowState === 'closed' && (
+                        <p data-testid="order-window-closed" role="status" style={{ fontSize: '0.78rem', color: '#3F3F46', margin: '0.75rem 0 0 0' }}>
+                          La ventana de pago terminó: este pedido ya no puede pagarse y se cancelará automáticamente. Puedes volver a comprar desde la tienda.
+                        </p>
+                      )}
+                      {orderActionError[ord.id] && (
+                        <p data-testid="order-action-error" role="alert" style={{ fontSize: '0.8rem', color: '#991B1B', margin: '0.75rem 0 0 0', fontWeight: 600 }}>
+                          {orderActionError[ord.id]}
+                        </p>
+                      )}
                     </div>
                   );
                 })}
