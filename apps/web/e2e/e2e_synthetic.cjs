@@ -189,6 +189,24 @@ async function main() {
       if (skus !== 'CAM-S-BLA,POL-M-NEG') throw new Error(`carrito: ${skus}`);
     }, browser);
 
+    await journey('20. Favoritos: «Agregar todo al carrito» con talla elegida por prenda', async (p) => {
+      await p.goto(`${BASE}/ropa`);
+      await p.getByRole('button', { name: 'Guardar en favoritos: Camiseta Básica' }).first().click();
+      await p.getByRole('button', { name: 'Guardar en favoritos: Polo Clásico' }).first().click();
+      await p.goto(`${BASE}/cuenta/favoritos`);
+      const cart = () => p.evaluate(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"items":[]}}').state.items.map((i) => `${i.sku}`));
+      const moveAll = p.getByRole('button', { name: /AGREGAR TODO AL CARRITO/ });
+      await moveAll.click();
+      await p.getByText('Elige la talla de: Camiseta Básica').waitFor();
+      if ((await cart()).length) throw new Error('se agregó algo sin elegir talla');
+      await p.getByLabel('Color de Camiseta Básica').selectOption('Negro');
+      await p.getByLabel('Talla de Camiseta Básica').selectOption('L');
+      await moveAll.click();
+      await p.getByText('2 prenda(s) agregada(s) al carrito.').waitFor();
+      const skus = (await cart()).sort().join(',');
+      if (skus !== 'CAM-L-NEG,POL-M-NEG') throw new Error(`carrito: ${skus}`);
+    }, browser);
+
     await journey('3. Carrito: cantidades, límite de stock, persistencia y eliminación', async (p) => {
       await addToCart(p, 'camiseta-basica', 'L', 'Negro'); // L/Negro: solo 1 en stock
       await p.goto(`${BASE}/carrito`);

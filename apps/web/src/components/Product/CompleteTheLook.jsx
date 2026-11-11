@@ -4,13 +4,8 @@ import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import SafeProductImage from '../Common/SafeImage';
-import { isOneSize } from '../../utils/sizeAdvice';
-import { colorsInStock, sizesForColor, defaultLookSelection, changeLookColor, resolveLookSelection } from '../../utils/lookSelection';
-
-const selectStyle = {
-  padding: '0.35rem 0.5rem', border: '1px solid #D4D4D8', borderRadius: '5px', fontSize: '0.75rem',
-  fontWeight: 600, color: '#09090B', backgroundColor: '#FFFFFF', minWidth: 0, maxWidth: '100%',
-};
+import { colorsInStock, defaultLookSelection, resolveLookSelection } from '../../utils/lookSelection';
+import { VariantPicker } from './VariantPicker';
 
 // M27: el look sale de la BD (collections kind = 'look' + collection_products). Sin look publicado, no se muestra
 // nada (antes: un look simulado con productos inexistentes y un descuento por paquete que la tienda no aplica).
@@ -214,7 +209,7 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
                       {prod.fit ? `FIT: ${prod.fit}` : null}
                     </div>
 
-                    <LookItemPicker product={prod} selection={selectionOf(prod)} onChange={(next) => setSelection(prod, next)} />
+                    <VariantPicker product={prod} selection={selectionOf(prod)} onChange={(next) => setSelection(prod, next)} />
                   </div>
 
                   {/* Precio Individual */}
@@ -301,38 +296,5 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
     </section>
   );
 };
-
-// Selectores de color y talla de una prenda del look. Solo tallas con stock en el color elegido son elegibles.
-function LookItemPicker({ product, selection, onChange }) {
-  const colors = colorsInStock(product);
-  if (colors.length === 0) {
-    return <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#B91C1C', marginTop: '0.35rem' }}>Agotado</div>;
-  }
-  const sizes = sizesForColor(product, selection.color);
-  const stop = (e) => e.stopPropagation();
-  return (
-    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.4rem' }} onClick={stop}>
-      {colors.length > 1 ? (
-        <select aria-label={`Color de ${product.name}`} value={selection.color ?? ''} style={selectStyle}
-          onChange={(e) => onChange(changeLookColor(product, selection, e.target.value))}>
-          {colors.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-      ) : (
-        <span style={{ fontSize: '0.75rem', color: '#71717A', alignSelf: 'center' }}>Color: {selection.color}</span>
-      )}
-      {isOneSize(product) ? (
-        <span style={{ fontSize: '0.75rem', color: '#71717A', alignSelf: 'center' }}>Talla única</span>
-      ) : (
-        <select aria-label={`Talla de ${product.name}`} value={selection.size ?? ''} style={selectStyle}
-          onChange={(e) => onChange({ color: selection.color, size: e.target.value || null })}>
-          <option value="">Elige talla</option>
-          {sizes.map(({ size, available }) => (
-            <option key={size} value={size} disabled={available <= 0}>{available > 0 ? size : `${size} (agotada)`}</option>
-          ))}
-        </select>
-      )}
-    </div>
-  );
-}
 
 export default CompleteTheLook;

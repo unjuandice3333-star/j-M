@@ -4,16 +4,30 @@ import { Heart, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
 import ProductCard from '../components/Product/ProductCard';
 import { useAuthStore } from '../store/authStore';
+import { VariantPicker } from '../components/Product/VariantPicker';
+import { defaultLookSelection } from '../utils/lookSelection';
 
 export const WishlistPage = () => {
   const { wishlist, products, moveWishlistToCart, wishlistError } = useECommerceStore();
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const [moveResult, setMoveResult] = useState(null);
+  const [selections, setSelections] = useState({}); // productId → { color, size }
   const wishlistProducts = products.filter((p) => wishlist.includes(p.id));
+  const selectionOf = (p) => selections[p.id] ?? defaultLookSelection(p);
+  const setSelection = (p, next) => { setSelections((st) => ({ ...st, [p.id]: next })); setMoveResult(null); };
+  // Cada favorito se agrega con la talla y el color elegidos (antes: la primera variante con stock, sin preguntar).
   const onMoveAll = () => {
-    const r = moveWishlistToCart();
-    setMoveResult(r.ok ? { ok: true, text: 'Agregamos tus favoritos al carrito (talla disponible por defecto).' }
-      : { ok: false, text: `No se pudieron agregar: ${r.failed.join(', ')} (sin stock).` });
+    const r = moveWishlistToCart(selections);
+    if (r.missing.length) {
+      setMoveResult({ ok: false, text: `Elige la talla de: ${r.missing.join(', ')}.` });
+      return;
+    }
+    const parts = [];
+    if (r.added) parts.push(`${r.added} prenda(s) agregada(s) al carrito.`);
+    if (r.failed.length) parts.push(`No se pudieron agregar: ${r.failed.join(', ')}.`);
+    if (r.soldOut.length) parts.push(`Agotado: ${r.soldOut.join(', ')}.`);
+    if (!parts.length) parts.push('No hay prendas disponibles para agregar.');
+    setMoveResult({ ok: r.ok && r.added > 0, text: parts.join(' ') });
   };
 
   return (
@@ -65,7 +79,7 @@ export const WishlistPage = () => {
           </p>
         )}
         {wishlistError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600, marginBottom: '1rem' }}>{wishlistError}</div>}
-        {moveResult && <div role={moveResult.ok ? 'status' : 'alert'} style={{ color: moveResult.ok ? '#065F46' : '#B91C1C', fontWeight: 600, marginBottom: '1rem' }}>{moveResult.text}</div>}
+        {moveResult && <div data-testid="wishlist-notice" role={moveResult.ok ? 'status' : 'alert'} style={{ color: moveResult.ok ? '#065F46' : '#B91C1C', fontWeight: 600, marginBottom: '1rem' }}>{moveResult.text}</div>}
         {wishlistProducts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 1rem', border: '1px dashed #D4D4D8', borderRadius: '12px' }}>
             <Heart size={52} color="#A1A1AA" style={{ margin: '0 auto 1rem auto' }} />
@@ -101,7 +115,10 @@ export const WishlistPage = () => {
             gap: '1.5rem'
           }}>
             {wishlistProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <div key={product.id} data-testid="wishlist-item">
+                <ProductCard product={product} />
+                <VariantPicker product={product} selection={selectionOf(product)} onChange={(next) => setSelection(product, next)} />
+              </div>
             ))}
           </div>
         )}

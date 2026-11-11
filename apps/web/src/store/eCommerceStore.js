@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { analyticsService } from '../services/analytics';
 import { orderService, toOrderError } from '../services/orderService';
 import { wishlistService } from '../services/wishlistService';
+import { resolveLookSelection } from '../utils/lookSelection';
 
 export const DEFAULT_EDITORIAL_IMAGES = {
   hero_main: 'https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&q=80&w=2000',
@@ -319,15 +320,26 @@ export const useECommerceStore = create(
           return { ok: false, message: err.message };
         }
       },
-      moveWishlistToCart: () => {
+      /**
+       * Agrega los favoritos al carrito con la talla y el color elegidos por prenda (`selections`: productId → {color,size}).
+       * Antes se agregaba la primera variante con stock (p. ej. XS) sin preguntar. Si falta elegir alguna talla no se
+       * agrega nada; las prendas agotadas se informan y no bloquean al resto.
+       */
+      moveWishlistToCart: (selections = {}) => {
         const { wishlist, products, addItem } = get();
+        const inList = wishlist.map((id) => products.find((p) => p.id === id)).filter(Boolean);
+        const unknown = wishlist.length - inList.length;
+        const { ready, missing, soldOut } = resolveLookSelection(inList, selections);
+        const names = (ps) => ps.map((p) => p.name);
+        if (missing.length) return { ok: false, added: 0, missing: names(missing), soldOut: names(soldOut), failed: [] };
         const failed = [];
-        for (const prodId of wishlist) {
-          const prod = products.find((p) => p.id === prodId);
-          const v = prod?.rawVariants.find((x) => x.available > 0);
-          if (!v || !addItem(prod, v.size, v.color, 1).ok) failed.push(prod?.name ?? 'Producto no disponible');
+        for (const { product, size, color } of ready) {
+          const r = addItem(product, size, color, 1);
+          if (!r.ok) failed.push(`${product.name} (${r.message ?? 'no disponible'})`);
         }
-        return { ok: failed.length === 0, failed };
+        const added = ready.length - failed.length;
+        for (let i = 0; i < unknown; i += 1) failed.push('Producto no disponible');
+        return { ok: failed.length === 0 && soldOut.length === 0, added, missing: [], soldOut: names(soldOut), failed };
       },
       isInWishlist: (productId) => get().wishlist.includes(productId),
 

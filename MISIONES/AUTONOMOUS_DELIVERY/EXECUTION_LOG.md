@@ -526,3 +526,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(r) de Pendiente (boletín real con migración aditiva) y 0(s) (talla por prenda en «Mover todo al carrito»).
+
+## 2026-11-11 13:11 UTC — Ejecución 66 (trabajo de código: talla por prenda en «Agregar todo al carrito» de favoritos)
+- Estado inicial: sesión en `claude/gracious-pasteur-acsisb` (= main, `2661f2a`); se partió de la rama autorizada = remoto `ce2269f`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(s) de Pendiente. `moveWishlistToCart` agregaba la primera variante con stock de cada favorito (p. ej. XS) y el aviso decía «talla disponible por defecto»; ahora cada favorito muestra selector de color/talla y no se agrega nada si falta alguna talla; agotados y productos inexistentes se informan.
+- Archivos: `apps/web/src/components/Product/VariantPicker.jsx` (nuevo, extraído de `CompleteTheLook`), `apps/web/src/components/Product/CompleteTheLook.jsx`, `apps/web/src/store/eCommerceStore.js` (`moveWishlistToCart(selections)`), `apps/web/src/pages/WishlistPage.jsx`, `apps/web/src/__tests__/wishlistMoveToCart.test.jsx` (nuevo, 5 pruebas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 20).
+- Pruebas (ejecutadas aquí): las 5 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 357/357 (32 archivos); ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 20/20 en 2 ejecuciones seguidas. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(r) de Pendiente (boletín real: migración aditiva `newsletter_subscribers` + RPC `subscribe_newsletter`, pgTAP), luego 0(t).
