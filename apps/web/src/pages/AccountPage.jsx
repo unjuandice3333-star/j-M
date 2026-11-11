@@ -18,6 +18,7 @@ import supabase from '../config/supabase';
 import { orderService } from '../services/orderService';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
+import { AccountDetails } from '../components/Account/AccountDetails';
 
 export const AccountPage = () => {
   const navigate = useNavigate();
@@ -503,6 +504,9 @@ export const AccountPage = () => {
               </div>
             )}
           </div>
+
+          {/* DATOS PERSONALES Y DIRECCIONES (ejecución 56) */}
+          <AccountDetails user={user} profile={profile} />
         </div>
       </div>
     );

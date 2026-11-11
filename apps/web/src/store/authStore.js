@@ -19,6 +19,12 @@ export function authMessage(err) {
   return 'No se pudo completar la operación. Inténtalo de nuevo.';
 }
 
+// Ejecución 56: varias lecturas del perfil pueden estar en vuelo a la vez (restaurar sesión, INITIAL_SESSION,
+// TOKEN_REFRESHED, login). Solo se aplica la más reciente, y un perfil recién guardado (setProfile) invalida las que
+// seguían en vuelo: antes, una lectura tardía devolvía el nombre viejo y pisaba lo que el cliente acababa de guardar.
+let profileSeq = 0;
+let latestProfile = Promise.resolve(null);
+
 export const useAuthStore = create((set, get) => ({
   user: null,
   session: null,
@@ -28,6 +34,22 @@ export const useAuthStore = create((set, get) => ({
   error: null,
 
   setLoading: (loading) => set({ isLoading: loading }),
+
+  /** Perfil recién guardado por el cliente: se aplica y descarta lecturas anteriores aún en vuelo. */
+  setProfile: (profile) => { profileSeq += 1; latestProfile = Promise.resolve(profile); set({ profile }); },
+
+  /** Lee el perfil; si mientras tanto empezó otra lectura o se guardó el perfil, devuelve el resultado más reciente. */
+  loadProfile: async (userId) => {
+    const seq = ++profileSeq;
+    const mine = get().fetchProfile(userId);
+    latestProfile = mine;
+    const profile = await mine;
+    if (seq === profileSeq) return profile;
+    // Superada: esperar a la más reciente (nunca devolver un perfil vacío mientras la otra sigue en vuelo).
+    let last;
+    do { last = latestProfile; await last; } while (last !== latestProfile);
+    return latestProfile;
+  },
 
   // Carga el perfil del usuario desde PostgreSQL `profiles`
   fetchProfile: async (userId) => {
@@ -60,7 +82,7 @@ export const useAuthStore = create((set, get) => ({
       if (error) throw error;
 
       if (session?.user) {
-        const profile = await get().fetchProfile(session.user.id);
+        const profile = await get().loadProfile(session.user.id);
         set({
           session,
           user: session.user,
@@ -81,7 +103,7 @@ export const useAuthStore = create((set, get) => ({
       // 2. Escuchar cambios de estado en tiempo real (login, logout, token refresh)
       supabase.auth.onAuthStateChange(async (event, newSession) => {
         if (newSession?.user) {
-          const profile = await get().fetchProfile(newSession.user.id);
+          const profile = await get().loadProfile(newSession.user.id);
           set({
             session: newSession,
             user: newSession.user,
@@ -129,7 +151,7 @@ export const useAuthStore = create((set, get) => ({
       if (error) throw error;
 
       if (data.user) {
-        const profile = await get().fetchProfile(data.user.id);
+        const profile = await get().loadProfile(data.user.id);
         set({
           user: data.user,
           session: data.session,
@@ -180,7 +202,7 @@ export const useAuthStore = create((set, get) => ({
 
       if (error) throw error;
 
-      const profile = await get().fetchProfile(data.user.id);
+      const profile = await get().loadProfile(data.user.id);
 
       set({
         user: data.user,

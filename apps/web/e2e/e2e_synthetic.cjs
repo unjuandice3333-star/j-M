@@ -172,6 +172,56 @@ async function main() {
       if (items !== 1) throw new Error('se perdió el carrito');
     }, browser);
 
+    await journey('11. Cuenta: perfil, direcciones y checkout con dirección guardada', async (p) => {
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Luisa Mora');
+      await p.locator('input[type=email]').fill('luisa@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await p.goto(`${BASE}/cuenta`);
+      // perfil: validación visible y guardado real
+      const perfil = p.getByTestId('profile-section');
+      await perfil.locator('input[name=full_name]').fill('Luisa Fernanda Mora');
+      await perfil.locator('input[name=phone]').fill('12');
+      await perfil.getByRole('button', { name: 'Guardar datos' }).click();
+      await perfil.getByText(/7 a 15 dígitos/).first().waitFor({ timeout: 5000 });
+      await perfil.locator('input[name=phone]').fill('3109876543');
+      await perfil.getByRole('button', { name: 'Guardar datos' }).click();
+      await perfil.getByText('Datos guardados').waitFor({ timeout: 5000 });
+      await p.locator('h1').filter({ hasText: 'Luisa Fernanda Mora' }).waitFor({ timeout: 5000 });
+      // direcciones: dos direcciones, la segunda pasa a principal
+      const libreta = p.getByTestId('address-book');
+      const nueva = async (dept, city, line) => {
+        await libreta.getByRole('button', { name: 'Agregar dirección' }).click();
+        const f = libreta.getByTestId('address-form');
+        await f.locator('select[name=department]').selectOption({ label: dept });
+        await f.locator('input[name=city]').fill(city); await f.locator('input[name=address_line]').fill(line);
+        await f.getByRole('button', { name: 'Guardar dirección' }).click();
+        await libreta.getByText(line).first().waitFor({ timeout: 5000 });
+      };
+      await nueva('Antioquia', 'Envigado', 'Calle 40 Sur # 25-10');
+      await nueva('Caldas', 'Manizales', 'Carrera 23 # 65-11');
+      await libreta.getByTestId('address-item').filter({ hasText: 'Manizales' }).getByRole('button', { name: 'Hacer principal' }).click();
+      await libreta.getByTestId('address-item').filter({ hasText: 'Manizales' }).getByText('Principal', { exact: true }).waitFor({ timeout: 5000 });
+      // tras recargar, persiste (BD, no estado local)
+      await p.reload();
+      await p.getByTestId('address-item').first().filter({ hasText: 'Manizales' }).getByText('Principal', { exact: true }).waitFor({ timeout: 8000 });
+      if ((await p.getByTestId('address-item').count()) !== 2) throw new Error('se esperaban 2 direcciones tras recargar');
+      // checkout: sale la principal y se puede cambiar a la otra
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/checkout`);
+      await p.waitForFunction(() => document.querySelector('input[name=address]')?.value === 'Carrera 23 # 65-11', null, { timeout: 8000 });
+      if ((await p.locator('input[name=phone]').inputValue()) !== '3109876543') throw new Error('el teléfono del perfil no llegó al checkout');
+      const opt = await p.getByTestId('saved-address-select').locator('option', { hasText: 'Envigado' }).getAttribute('value');
+      await p.getByTestId('saved-address-select').selectOption(opt);
+      if ((await p.locator('input[name=city]').inputValue()) !== 'Envigado') throw new Error('elegir otra dirección guardada no cambió el formulario');
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      const o = (await state()).orders[0];
+      if (o.shipping_city !== 'Envigado' || o.shipping_address !== 'Calle 40 Sur # 25-10') throw new Error(`pedido con dirección inesperada: ${o.shipping_city} / ${o.shipping_address}`);
+    }, browser);
+
     await journey('8. Registro, cierre e inicio de sesión, historial de pedidos', async (p) => {
       await p.goto(`${BASE}/login`);
       await p.getByRole('button', { name: 'Crear cuenta' }).click();

@@ -9,15 +9,8 @@ import { newIdempotencyKey } from '../services/orderService';
 import { validateCheckout, cartKeyOf, EMAIL_RE } from '../utils/checkoutRules';
 import { useAuthStore } from '../store/authStore';
 import supabase from '../config/supabase';
-
-// Departamentos de Colombia (y Bogotá D.C.). Se guarda el nombre tal cual en el pedido.
-const DEPARTMENTS = [
-  'Amazonas', 'Antioquia', 'Arauca', 'Atlántico', 'Bogotá D.C.', 'Bolívar', 'Boyacá', 'Caldas', 'Caquetá', 'Casanare',
-  'Cauca', 'Cesar', 'Chocó', 'Córdoba', 'Cundinamarca', 'Guainía', 'Guaviare', 'Huila', 'La Guajira', 'Magdalena',
-  'Meta', 'Nariño', 'Norte de Santander', 'Putumayo', 'Quindío', 'Risaralda', 'San Andrés y Providencia', 'Santander',
-  'Sucre', 'Tolima', 'Valle del Cauca', 'Vaupés', 'Vichada'
-];
-
+import { DEPARTMENTS } from '../utils/colombia';
+import { accountService, addressToCheckout, addressSummary } from '../services/accountService';
 
 // M28: borrador del envío en sessionStorage (se borra al cerrar la pestaña y al crear el pedido) para no perder lo
 // escrito si hay que volver a iniciar sesión a mitad del checkout.
@@ -84,6 +77,34 @@ export const CheckoutPage = () => {
       phone: prev.phone || profile?.phone || '',
     }));
   }, [user, profile]);
+  // Ejecución 56: direcciones guardadas del cliente. Si no hay nada escrito (ni borrador), se usa la principal.
+  // Un fallo al cargarlas no bloquea el checkout: el formulario manual sigue disponible.
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [savedAddressId, setSavedAddressId] = useState('');
+  const formRef = useRef(formData);
+  formRef.current = formData;
+  useEffect(() => {
+    if (!user?.id) { setSavedAddresses([]); return undefined; }
+    let alive = true;
+    accountService.listAddresses(user.id).then((list) => {
+      if (!alive) return;
+      setSavedAddresses(list);
+      const def = list.find((a) => a.is_default);
+      if (!def) return;
+      const cur = formRef.current;
+      if (cur.address.trim() || cur.department || cur.city.trim()) return;
+      setSavedAddressId(def.id);
+      setFormData((prev) => ({ ...prev, ...addressToCheckout(def), phone: prev.phone || def.phone || '' }));
+    }).catch((e) => console.warn('[checkout] direcciones guardadas no disponibles:', e.message));
+    return () => { alive = false; };
+  }, [user?.id]);
+  const applySavedAddress = (id) => {
+    setSavedAddressId(id);
+    const a = savedAddresses.find((x) => x.id === id);
+    if (!a) return;
+    setFormData((prev) => ({ ...prev, ...addressToCheckout(a) }));
+    setFieldErrors((prev) => ({ ...prev, phone: undefined, department: undefined, city: undefined, address: undefined }));
+  };
   const [fieldErrors, setFieldErrors] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -98,6 +119,7 @@ export const CheckoutPage = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (['department', 'city', 'address', 'neighborhood'].includes(name)) setSavedAddressId('');
     if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
@@ -240,6 +262,17 @@ export const CheckoutPage = () => {
               <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#09090B', textTransform: 'uppercase', marginBottom: '1.25rem' }}>
                 2. DIRECCIÓN DE ENVÍO (COLOMBIA)
               </h2>
+              {savedAddresses.length > 0 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={labelStyle} htmlFor="checkout-saved-address">Usar una dirección guardada</label>
+                  <select id="checkout-saved-address" data-testid="saved-address-select" value={savedAddressId} onChange={(e) => applySavedAddress(e.target.value)} style={inputStyle}>
+                    <option value="">Escribir otra dirección…</option>
+                    {savedAddresses.map((a) => (
+                      <option key={a.id} value={a.id}>{a.is_default ? '★ ' : ''}{a.recipient_name} — {addressSummary(a)}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={labelStyle}>Departamento *</label>

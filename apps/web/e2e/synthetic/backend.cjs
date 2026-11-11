@@ -163,6 +163,7 @@ function start(port = 54321) {
     else if (table === 'v_variant_availability') data = S.inventories.map((i) => ({ variant_id: i.variant_id, product_id: i.variants.products.id, available: avail(i) }));
     else if (table === 'online_orders') data = ctx.role === 'admin' ? S.tables.online_orders : S.tables.online_orders.filter((o) => ctx.userId && o.user_id === ctx.userId);
     else if (table === 'profiles') data = ctx.role === 'admin' ? S.tables.profiles : S.tables.profiles.filter((p) => p.id === ctx.userId);
+    else if (table === 'customer_addresses') data = ctx.role === 'admin' ? S.tables.customer_addresses : S.tables.customer_addresses.filter((a) => ctx.userId && a.user_id === ctx.userId);
     else data = S.tables[table] || [];
     for (const [k, v] of Object.entries(q)) {
       if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
@@ -234,6 +235,32 @@ function start(port = 54321) {
             // Como PostgREST: con Prefer count=exact el total va tras la barra de Content-Range.
             const exact = /count=exact/.test(req.headers.prefer || '');
             return send(res, 200, data, { 'Content-Range': `${data.length ? `${offset}-${offset + data.length - 1}` : '*'}/${exact ? total : '*'}` });
+          }
+          // Escrituras del cliente sobre su cuenta (ejecución 56), con las mismas reglas que la BD:
+          // RLS por usuario (customer_addresses_own / profiles_update_own), columnas editables del perfil (GRANT UPDATE)
+          // y una única dirección principal por usuario (uq_customer_addresses_default → 23505).
+          const one = /vnd\.pgrst\.object/.test(req.headers.accept || '');
+          const reply = (list) => (one ? (list.length === 1 ? send(res, 200, list[0]) : send(res, 406, { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' })) : send(res, 200, list));
+          const dupDefault = (r, all) => r.is_default && all.some((o) => o !== r && o.id !== r.id && o.user_id === r.user_id && o.is_default);
+          if (table === 'customer_addresses' && ['POST', 'PATCH', 'DELETE'].includes(req.method)) {
+            if (!ctx.userId) return send(res, 401, { code: '42501', message: 'permission denied for table customer_addresses' });
+            const all = S.tables.customer_addresses;
+            if (req.method === 'POST') {
+              const r = { id: crypto.randomUUID(), created_at: new Date().toISOString(), neighborhood: null, reference: null, is_default: false, ...body };
+              if (r.user_id !== ctx.userId) return send(res, 403, { code: '42501', message: 'new row violates row-level security policy for table "customer_addresses"' });
+              if (dupDefault(r, all)) return send(res, 409, { code: '23505', message: 'duplicate key value violates unique constraint "uq_customer_addresses_default"' });
+              all.push(r); return reply([r]);
+            }
+            const hit = rows(table, q, { userId: ctx.userId });
+            if (req.method === 'DELETE') { S.tables.customer_addresses = all.filter((r) => !hit.includes(r)); return reply(hit); }
+            for (const r of hit) if (dupDefault({ ...r, ...body }, all)) return send(res, 409, { code: '23505', message: 'duplicate key value violates unique constraint "uq_customer_addresses_default"' });
+            for (const r of hit) Object.assign(r, body, { user_id: r.user_id }); return reply(hit);
+          }
+          if (table === 'profiles' && req.method === 'PATCH') {
+            const allowed = ['full_name', 'phone', 'avatar_url', 'preferred_size', 'preferred_fit', 'marketing_opt_in'];
+            if (Object.keys(body).some((k) => !allowed.includes(k))) return send(res, 403, { code: '42501', message: 'permission denied for table profiles' });
+            const hit = S.tables.profiles.filter((r) => r.id === ctx.userId && rows(table, q, ctx).includes(r));
+            for (const r of hit) Object.assign(r, body); return reply(hit);
           }
           return send(res, 405, { message: 'escritura directa no emulada' });
         }
