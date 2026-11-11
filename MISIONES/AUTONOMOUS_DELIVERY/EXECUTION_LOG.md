@@ -453,3 +453,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`. Nueva decisión de configuración para el propietario (no bloqueante): activar «Secure password change» en Supabase Auth (D35).
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(j) de Pendiente (confirmación/reintento de pago con sesión vencida; grep confirmó que no quedan otros callbacks `onAuthStateChange` asíncronos).
+
+## 2026-11-11 04:30 UTC — Ejecución 58 (trabajo de código: pagar/cancelar desde el enlace del pedido)
+- Estado inicial: sesión en `claude/gracious-pasteur-wtkleq` (= main, `2661f2a`); se partió de la rama autorizada = remoto `1176ccc`, árbol limpio. `pnpm install --frozen-lockfile` OK. Instalados en el contenedor `postgresql-16-pgtap`, `postgresql-16-cron` y `pg_prove` para `run_local.sh`.
+- Tarea: punto 0(j) de Pendiente. El enlace de seguimiento en otro navegador no permitía pagar ni cancelar (faltaba el id); el estado no se releía tras un rechazo del pago; se ofrecía pagar con la ventana vencida; un fallo de red en la consulta periódica tapaba el pedido.
+- Archivos: `supabase/migrations/20261111120000_order_public_id.sql` (nuevo, aditivo), `supabase/tests/database/70_transitions.test.sql` (+1 aserción), `apps/web/src/pages/OrderConfirmationPage.jsx`, `apps/web/src/__tests__/orderConfirmationRetry.test.jsx` (nuevo, 7 pruebas), `apps/web/e2e/synthetic/backend.cjs` (`get_order_public` con `id` y `payment_expires_at`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 13).
+- Pruebas (ejecutadas aquí): 6 de 7 pruebas nuevas fallan sin el cambio de la página (`git stash`); `pnpm test:unit` 292/292 (24 archivos); `supabase/tests/run_local.sh` pgTAP 292/292, concurrencia 12/12, determinismo OK; `migrations_policy.sh` OK; ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 13/13 en 3 ejecuciones seguidas.
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA (ahora + migración `20261111120000`), credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(k) de Pendiente («Mis pedidos»: pagar/cancelar desde la lista y ventana vencida).

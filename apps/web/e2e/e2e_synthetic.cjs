@@ -259,6 +259,51 @@ async function main() {
       await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
     }, browser);
 
+    await journey('13. Enlace del pedido en otro navegador: pagar (rechazo de la BD → estado real) y cancelar', async (p) => {
+      // Navegador A crea dos pedidos; el navegador B (contexto nuevo, sin localStorage) solo tiene el enlace.
+      for (let i = 0; i < 2; i += 1) {
+        await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+        await p.goto(`${BASE}/checkout`); await fillCheckout(p);
+        await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+        await p.waitForURL(/\/checkout\/confirmacion/);
+        await expectText(p, 'Pedido registrado');
+      }
+      const st = await state();
+      const [second, first] = st.orders; // unshift: el más reciente primero
+      const link = (o) => `${BASE}/checkout/confirmacion?order=${encodeURIComponent(o.order_number)}&token=${encodeURIComponent(o.public_token)}`;
+      const ctxB = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      try {
+        const b = await ctxB.newPage();
+        // /api/wompi/signature interceptado: se comprueba que el navegador B envía id + token del enlace; la BD
+        // sintética marca el pedido como pagado (webhook SINTÉTICO) y la API responde «ya no admite pagos».
+        let sent = null;
+        await b.route('**/api/wompi/signature', async (route) => {
+          sent = JSON.parse(route.request().postData() || '{}');
+          await fetch(`${API_URL}/__synthetic-mark-paid/${first.order_number}`);
+          await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'Este pedido ya no admite pagos.', code: 'JM_ORDER_NOT_PAYABLE' }) });
+        });
+        await b.goto(link(first));
+        await expectText(b, 'Pedido registrado');
+        if (await b.getByText('Este pedido se creó en otro navegador').count()) throw new Error('el enlace no permite actuar sobre el pedido');
+        await b.getByRole('button', { name: 'Pagar ahora' }).click();
+        await b.getByRole('alert').filter({ hasText: 'Este pedido ya no admite pagos.' }).waitFor({ timeout: 8000 });
+        await expectText(b, '¡Gracias por tu compra!');
+        if (!sent || sent.order_id !== first.id || sent.public_token !== first.public_token) throw new Error(`firma pedida con ${JSON.stringify(sent)}`);
+        if (await b.getByRole('button', { name: 'Pagar ahora' }).count()) throw new Error('sigue ofreciendo pagar un pedido pagado');
+        // Cancelar el segundo pedido desde B libera la reserva.
+        b.on('dialog', (d) => d.accept().catch(() => {}));
+        await b.goto(link(second));
+        await b.getByRole('button', { name: 'Cancelar pedido' }).click();
+        await expectText(b, 'Este pedido fue cancelado.');
+        const s2 = await state();
+        if (s2.orders.find((o) => o.id === second.id).status !== 'cancelled') throw new Error('el pedido no quedó cancelado');
+        if (s2.inventories.find((i) => i.sku === 'CAM-M-NEG').reserved !== 0) throw new Error('la reserva no se liberó');
+        // B recuerda los pedidos sobre los que actuó.
+        const remembered = await b.evaluate(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{}').state?.orders?.map((o) => o.id) ?? []);
+        if (!remembered.includes(first.id)) throw new Error('el pedido pagado desde el enlace no quedó en este navegador');
+      } finally { await ctxB.close(); }
+    }, browser);
+
     await journey('8. Registro, cierre e inicio de sesión, historial de pedidos', async (p) => {
       await p.goto(`${BASE}/login`);
       await p.getByRole('button', { name: 'Crear cuenta' }).click();

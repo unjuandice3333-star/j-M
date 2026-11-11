@@ -111,17 +111,17 @@ function start(port = 54321) {
         id, order_number: num, public_token: pub, user_id: ctx.userId || null, customer_name: c.name, customer_email: c.email, customer_phone: c.phone, customer_document: null,
         shipping_department: sh.department, shipping_city: sh.city, shipping_address: sh.address, shipping_neighborhood: sh.neighborhood || null, shipping_notes: sh.notes || null,
         shipping_method_code: a.p_shipping_method, subtotal: q.subtotal, discount_total: q.discount_total, shipping_cost: q.shipping_cost, total: q.total, coupon_code: a.p_coupon_code || null,
-        status: 'payment_pending', created_at: new Date().toISOString(), paid_at: null, needs_attention: false, carrier: null, tracking_number: null, tracking_url: null, shipped_at: null, delivered_at: null,
+        status: 'payment_pending', created_at: new Date().toISOString(), payment_expires_at: new Date(Date.now() + 3600e3).toISOString(), paid_at: null, needs_attention: false, carrier: null, tracking_number: null, tracking_url: null, shipped_at: null, delivered_at: null,
         online_order_items: q.lines.map((l) => { const p = S.products.find((x) => x.variants.some((v) => v.id === l.variant_id)); const v = p.variants.find((x) => x.id === l.variant_id);
           const inv = idx.get(l.variant_id); return { product_name: p.name, sku: v.sku, size_code: v.sizes.code, color_name: inv.variants.products.product_colors.find((pc) => pc.color_id === v.color_id).colors.name, unit_price: l.unit_price, quantity: l.quantity, line_total: l.line_total, image_url: null, variant_id: l.variant_id }; }),
         payment_transactions: [], order_events: [{ event_type: 'created', from_status: null, to_status: 'payment_pending', actor: 'cliente', note: null, created_at: new Date().toISOString() }],
       };
       S.tables.online_orders.unshift(order);
-      const res = { order_id: id, order_number: num, public_token: pub, status: order.status, total: order.total, amount_in_cents: order.total * 100, payment_expires_at: new Date(Date.now() + 3600e3).toISOString(), is_duplicate: false };
+      const res = { order_id: id, order_number: num, public_token: pub, status: order.status, total: order.total, amount_in_cents: order.total * 100, payment_expires_at: order.payment_expires_at, is_duplicate: false };
       S.idem.set(a.p_idempotency_key, res);
       return res;
     },
-    get_order_public: (a) => { const o = S.tables.online_orders.find((x) => x.order_number === a.p_order_number && x.public_token === a.p_public_token); return o ? { order_number: o.order_number, status: o.status, customer_name: o.customer_name, customer_email: o.customer_email, shipping: { department: o.shipping_department, city: o.shipping_city, address: o.shipping_address, neighborhood: o.shipping_neighborhood, method: o.shipping_method_code }, total: o.total, subtotal: o.subtotal, shipping_cost: o.shipping_cost, discount_total: o.discount_total, items: o.online_order_items, created_at: o.created_at } : null; },
+    get_order_public: (a) => { const o = S.tables.online_orders.find((x) => x.order_number === a.p_order_number && x.public_token === a.p_public_token); return o ? { id: o.id, order_number: o.order_number, status: o.status, payment_expires_at: o.payment_expires_at, customer_name: o.customer_name, customer_email: o.customer_email, shipping: { department: o.shipping_department, city: o.shipping_city, address: o.shipping_address, neighborhood: o.shipping_neighborhood, method: o.shipping_method_code }, total: o.total, subtotal: o.subtotal, shipping_cost: o.shipping_cost, discount_total: o.discount_total, items: o.online_order_items, created_at: o.created_at } : null; },
     cancel_my_order: (a) => {
       const o = S.tables.online_orders.find((x) => x.id === a.p_order_id && (x.public_token === a.p_public_token));
       if (!o) return err('P0001', 'no existe', 'JM_ORDER_NOT_FOUND');

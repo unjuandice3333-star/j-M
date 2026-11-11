@@ -2,6 +2,8 @@
 // Confirmación y seguimiento de pedido — estado REAL desde la BD (get_order_public: número + token público).
 // M27: el pedido solo se muestra como pagado cuando la BD lo marca 'paid' (lo hace el webhook verificado de Wompi);
 // volver del widget no paga nada. Mientras el pago está pendiente se consulta la BD periódicamente.
+// Ejecución 58: el enlace (número + token) basta para pagar o cancelar desde cualquier navegador; get_order_public
+// devuelve el id y las RPC siguen exigiendo el token. Si la BD rechaza el pago (vencido, ya no pagable), se relee.
 // =============================================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
@@ -24,13 +26,15 @@ const STEPS = [
   { key: 'delivered', title: 'Entregado', icon: CheckCircle2 },
 ];
 const ORDER_FLOW = STEPS.map((s) => s.key);
+// Respuestas de /api/wompi/signature que indican que el estado mostrado quedó viejo.
+const STALE_PAYMENT_CODES = new Set(['JM_ORDER_NOT_PAYABLE', 'JM_PAYMENT_WINDOW_EXPIRED', 'JM_ORDER_NOT_FOUND']);
 
 export const OrderConfirmationPage = () => {
   const [searchParams] = useSearchParams();
   const orderNumber = searchParams.get('order');
   const token = searchParams.get('token');
   const payError = searchParams.get('pago') === 'error';
-  const { orders, finalizePaidOrder, shippingMethods } = useECommerceStore();
+  const { orders, finalizePaidOrder, shippingMethods, rememberOrder } = useECommerceStore();
 
   const [order, setOrder] = useState(null);
   const [state, setState] = useState('loading'); // loading | ready | notfound | error
@@ -38,7 +42,8 @@ export const OrderConfirmationPage = () => {
   const [actionError, setActionError] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const fetchOrder = useCallback(async () => {
+  // keepOnError: una relectura tras una acción no debe tapar el pedido (ni el aviso de la acción) si falla la red.
+  const fetchOrder = useCallback(async ({ keepOnError = false } = {}) => {
     if (!orderNumber || !token) { setState('notfound'); return null; }
     try {
       const data = await orderService.getPublicOrder(orderNumber, token);
@@ -46,7 +51,7 @@ export const OrderConfirmationPage = () => {
       setOrder(data); setState('ready');
       return data;
     } catch {
-      setState('error');
+      if (!keepOnError) setState('error');
       return null;
     }
   }, [orderNumber, token]);
@@ -56,12 +61,16 @@ export const OrderConfirmationPage = () => {
   // Consulta periódica mientras el pago está pendiente (el webhook actualiza la BD)
   useEffect(() => {
     if (order?.status !== 'payment_pending' || polls >= POLL_MAX) return undefined;
-    const t = setTimeout(async () => { await fetchOrder(); setPolls((n) => n + 1); }, POLL_MS);
+    const t = setTimeout(async () => { await fetchOrder({ keepOnError: true }); setPolls((n) => n + 1); }, POLL_MS);
     return () => clearTimeout(t);
   }, [order?.status, polls, fetchOrder]);
 
   // Vaciar el carrito solo cuando la BD confirma el pago del pedido de este checkout
   const local = orders.find((o) => o.order_number === orderNumber);
+  // Pedido sobre el que se puede actuar: el de este navegador o, si no, el que identifica el enlace (id + token).
+  const payable = local ?? (order?.id && token
+    ? { id: order.id, order_number: order.order_number, public_token: token, total: order.total, status: order.status, created_at: order.created_at }
+    : null);
   useEffect(() => {
     if (order?.status === 'paid' && local) {
       if (finalizePaidOrder(local.id)) analyticsService.purchase({ ...order, id: order.order_number });
@@ -69,21 +78,24 @@ export const OrderConfirmationPage = () => {
   }, [order?.status, local, finalizePaidOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const retryPayment = async () => {
-    if (!local) { setActionError('Para reintentar el pago desde otro dispositivo, inicia sesión y abre el pedido en tu cuenta.'); return; }
+    if (!payable) { setActionError('Para reintentar el pago desde otro dispositivo, inicia sesión y abre el pedido en tu cuenta.'); return; }
     setBusy(true); setActionError(null);
     try {
-      await wompiService.openWompiWidget({ order: local, customer: { email: order.customer_email, name: order.customer_name, phone: '' } });
+      if (!local) rememberOrder(payable); // queda en «Pedidos hechos en este navegador»
+      await wompiService.openWompiWidget({ order: payable, customer: { email: order.customer_email, name: order.customer_name, phone: '' } });
     } catch (e) {
       setActionError(e.message);
+      // La BD decidió que el pedido ya no admite pago (vencido, pagado o cancelado en otra pestaña): mostrar su estado real.
+      if (STALE_PAYMENT_CODES.has(e.code)) await fetchOrder({ keepOnError: true });
     } finally { setBusy(false); }
   };
 
   const cancelOrder = async () => {
-    if (!local) return;
+    if (!payable) return;
     if (!window.confirm('¿Cancelar este pedido? Se liberarán los productos reservados.')) return;
     setBusy(true); setActionError(null);
-    try { await orderService.cancelOrder(local.id, local.public_token, 'Cancelado por el cliente desde la confirmación'); await fetchOrder(); }
-    catch (e) { setActionError(e.message); }
+    try { await orderService.cancelOrder(payable.id, payable.public_token, 'Cancelado por el cliente desde la confirmación'); await fetchOrder(); }
+    catch (e) { setActionError(e.message); await fetchOrder({ keepOnError: true }); }
     finally { setBusy(false); }
   };
 
@@ -123,6 +135,8 @@ export const OrderConfirmationPage = () => {
   const isPending = st === 'payment_pending';
   const isClosed = ['cancelled', 'expired', 'refunded'].includes(st);
   const expiresAt = order.payment_expires_at ? new Date(order.payment_expires_at) : null;
+  // La ventana de pago terminó aunque el job de expiración aún no haya cambiado el estado: no ofrecer «Pagar ahora».
+  const windowClosed = isPending && expiresAt !== null && expiresAt.getTime() <= Date.now();
   const reached = new Set((order.timeline ?? []).map((t) => t.to_status));
   const methodLabel = shippingMethodLabel(order.shipping?.method, shippingMethods);
 
@@ -142,7 +156,8 @@ export const OrderConfirmationPage = () => {
           </h1>
           <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
             {isPaidFlow && `Confirmamos el pago. Te avisaremos a ${order.customer_email} cuando despachemos tu pedido.`}
-            {isPending && (payError
+            {windowClosed && 'El tiempo para pagar este pedido terminó. La reserva se liberará en unos minutos; puedes hacer un pedido nuevo.'}
+            {isPending && !windowClosed && (payError
               ? 'Tu pedido quedó registrado y los productos están reservados, pero no se pudo abrir el pago. Puedes reintentarlo.'
               : polls >= POLL_MAX
                 ? 'Aún no recibimos la confirmación del pago. Si ya pagaste, la confirmación puede tardar unos minutos: recarga esta página.'
@@ -151,17 +166,19 @@ export const OrderConfirmationPage = () => {
             {st === 'cancelled' && 'Este pedido fue cancelado.'}
             {st === 'refunded' && 'Este pedido fue reembolsado.'}
           </p>
-          {isPending && expiresAt && <p style={{ fontSize: '0.82rem', color: '#71717A' }}>Reserva válida hasta {expiresAt.toLocaleString('es-CO')}.</p>}
+          {isPending && !windowClosed && expiresAt && <p style={{ fontSize: '0.82rem', color: '#71717A' }}>Reserva válida hasta {expiresAt.toLocaleString('es-CO')}.</p>}
         </div>
 
         {actionError && <div role="alert" style={{ backgroundColor: '#FEF2F2', color: '#B91C1C', padding: '0.8rem 1rem', borderRadius: '8px', marginBottom: '1.5rem', fontWeight: 600 }}>{actionError}</div>}
 
         {isPending && (
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
+            {!windowClosed && (
             <button onClick={retryPayment} disabled={busy} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.85rem 1.4rem', borderRadius: '6px', fontWeight: 800 }}>
               {busy ? 'Procesando…' : 'Pagar ahora'}
             </button>
-            {local && (
+            )}
+            {payable && (
               <button onClick={cancelOrder} disabled={busy} style={{ border: '1px solid #D4D4D8', padding: '0.85rem 1.4rem', borderRadius: '6px', fontWeight: 700 }}>
                 Cancelar pedido
               </button>
@@ -215,7 +232,7 @@ export const OrderConfirmationPage = () => {
           {methodLabel && <div data-testid="order-shipping-method" style={{ marginTop: '0.5rem', color: '#52525B' }}>Método: <strong>{methodLabel}</strong></div>}
         </section>
 
-        {isPending && !local && (
+        {isPending && !payable && (
           <p style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: '#71717A', fontSize: '0.85rem' }}>
             <AlertTriangle size={16} /> Este pedido se creó en otro navegador: para pagarlo o cancelarlo, ábrelo desde ese navegador o desde tu cuenta.
           </p>

@@ -1,7 +1,7 @@
 -- 70 · Máquina de estados: transiciones válidas e inválidas, actores, notas y guía
 BEGIN;
 \ir _helpers.psql
-SELECT plan(26);
+SELECT plan(27);
 
 CREATE FUNCTION pg_temp.paid(p_key text) RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE att jsonb;
@@ -68,6 +68,9 @@ CREATE TEMP TABLE t_pub AS SELECT order_number, public_token FROM public.online_
 SELECT is(tests.val(tests.exec_as('anon', format('SELECT public.get_order_public(%L, %L::uuid) AS r',
           (SELECT order_number FROM t_pub), (SELECT public_token FROM t_pub)))) ->> 'status', 'delivered',
           'get_order_public con token correcto devuelve el estado');
+SELECT is(tests.val(tests.exec_as('anon', format('SELECT public.get_order_public(%L, %L::uuid) AS r',
+          (SELECT order_number FROM t_pub), (SELECT public_token FROM t_pub)))) ->> 'id', (SELECT id FROM t_h)::text,
+          'get_order_public con token correcto devuelve el id (pagar/cancelar desde el enlace)');
 SELECT ok(tests.val(tests.exec_as('anon', format('SELECT public.get_order_public(%L, %L::uuid) AS r',
           (SELECT order_number FROM t_pub), gen_random_uuid()))) = 'null'::jsonb,
           'get_order_public con token falso no devuelve nada (ni confirma que el número exista)');
