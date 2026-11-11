@@ -22,6 +22,7 @@ import supabase from '../config/supabase';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { useShippingPolicy } from '../hooks/useShippingPolicy';
 import ProductCard from '../components/Product/ProductCard';
+import ProductReviewForm from '../components/Product/ProductReviewForm';
 import SafeProductImage from '../components/Common/SafeImage';
 
 import { analyticsService } from '../services/analytics';
@@ -667,6 +668,7 @@ export const ProductDetailPage = () => {
           ) : (
             <p style={{ color: '#71717A', fontSize: '0.9rem', marginBottom: '1rem' }}>Este producto todavía no tiene opiniones.</p>
           )}
+          <ProductReviewForm productId={product.id} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
             {reviews.map((rev) => (
               <div key={rev.id} style={{ border: '1px solid #E4E4E7', padding: '1.5rem', borderRadius: '8px', backgroundColor: '#FAFAFA' }}>

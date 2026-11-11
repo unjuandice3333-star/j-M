@@ -613,6 +613,44 @@ async function main() {
       if ((await row()).unsubscribed_at) throw new Error('el alta no se guardó en la lista');
     }, browser);
 
+    await journey('25. Producto: el comprador opina y la reseña queda pendiente de moderación', async (p) => {
+      await p.goto(`${BASE}/producto/camiseta-basica`);
+      const caja = p.getByTestId('review-form');
+      await caja.getByText('Inicia sesión').waitFor({ timeout: 8000 }); // sin sesión: invitación, sin formulario
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Lucía Pérez');
+      await p.locator('input[type=email]').fill('lucia.resena@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      // sin compra pagada: no hay formulario
+      await p.goto(`${BASE}/producto/camiseta-basica`);
+      await caja.getByText('Solo los clientes que compraron').waitFor({ timeout: 8000 });
+      await addToCart(p, 'camiseta-basica', 'M');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'lucia.resena@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click(); await p.waitForURL(/\/checkout\/confirmacion/);
+      const num = (await state()).orders[0].order_number;
+      await fetch(`${API_URL}/__synthetic-mark-paid/${num}`);
+      await p.goto(`${BASE}/producto/camiseta-basica`);
+      await caja.getByText(num).waitFor({ timeout: 8000 });
+      await caja.getByRole('button', { name: 'Enviar opinión' }).click(); // vacío → errores en pantalla, nada guardado
+      await caja.getByText('Elige una calificación').waitFor();
+      if ((await state()).reviews.length) throw new Error('se guardó una reseña inválida');
+      await caja.getByRole('button', { name: '5 de 5 estrellas' }).click();
+      await caja.getByLabel('Título').fill('Excelente camiseta');
+      await caja.getByLabel('Comentario').fill('La tela es suave y la talla M me quedó perfecta.');
+      await caja.getByLabel('Ciudad (opcional)').fill('Cali');
+      await caja.getByRole('button', { name: 'Enviar opinión' }).click();
+      await caja.getByText('Recibimos tu opinión').waitFor({ timeout: 5000 });
+      await caja.getByText('pendiente de aprobación').waitFor();
+      const rv = (await state()).reviews;
+      if (rv.length !== 1 || rv[0].status !== 'pending' || rv[0].author_name !== 'Lucía P.' || rv[0].rating !== 5) throw new Error(`reseña guardada: ${JSON.stringify(rv)}`);
+      await p.reload();
+      await caja.getByText('pendiente de aprobación').waitFor({ timeout: 8000 });
+      if (await caja.getByRole('button', { name: 'Enviar opinión' }).count()) throw new Error('se permite opinar dos veces sobre la misma compra');
+      if (await p.getByText('Excelente camiseta').count() !== 1) throw new Error('la reseña pendiente aparece publicada en la ficha');
+    }, browser);
+
     await journey('10. Admin: acceso, panel, inventario y gestión de pedidos', async (p) => {
       // crea un pedido como cliente anónimo y lo paga (sintético)
       await addToCart(p, 'polo-clasico', 'M'); await p.goto(`${BASE}/checkout`); await fillCheckout(p);

@@ -124,6 +124,34 @@ function start(port = 54321) {
       const prof = S.tables.profiles.find((x) => x.id === u.id); if (prof) prof.marketing_opt_in = a.p_subscribed;
       return rpc.my_newsletter_subscription({}, ctx);
     },
+    // Ejecución 71: espejo de la migración 20261111180000 (reseñas del comprador, quedan pendientes).
+    my_product_reviewables: (a, ctx) => {
+      if (!ctx.userId) return err('P0001', 'Inicia sesión para opinar', 'JM_AUTH_REQUIRED');
+      return S.tables.online_orders.filter((o) => o.user_id === ctx.userId && ['paid', 'processing', 'shipped', 'delivered'].includes(o.status))
+        .flatMap((o) => o.online_order_items.filter((i) => i.product_id === a.p_product_id).map((i) => {
+          const r = S.tables.product_reviews.find((x) => x.order_item_id === i.id);
+          return { order_item_id: i.id, order_number: o.order_number, purchased_at: o.paid_at || o.created_at, size_code: i.size_code, color_name: i.color_name,
+            review: r ? { id: r.id, status: r.status, rating: r.rating, title: r.title, comment: r.comment, admin_reply: r.admin_reply, created_at: r.created_at } : null };
+        }));
+    },
+    submit_product_review: (a, ctx) => {
+      if (!ctx.userId) return err('P0001', 'Inicia sesión para opinar', 'JM_AUTH_REQUIRED');
+      const t = String(a.p_title || '').trim(); const c = String(a.p_comment || '').trim(); const city = String(a.p_city || '').trim() || null;
+      if (!Number.isInteger(a.p_rating) || a.p_rating < 1 || a.p_rating > 5) return err('P0001', 'Elige una calificación de 1 a 5 estrellas', 'JM_INVALID_INPUT');
+      if (t.length < 3 || t.length > 120) return err('P0001', 'El título debe tener entre 3 y 120 caracteres', 'JM_INVALID_INPUT');
+      if (c.length < 10 || c.length > 2000) return err('P0001', 'El comentario debe tener entre 10 y 2000 caracteres', 'JM_INVALID_INPUT');
+      const o = S.tables.online_orders.find((x) => x.user_id === ctx.userId && ['paid', 'processing', 'shipped', 'delivered'].includes(x.status)
+        && x.online_order_items.some((i) => i.id === a.p_order_item_id));
+      if (!o) return err('P0001', 'Solo puedes opinar sobre productos que compraste', 'JM_NOT_PURCHASED');
+      if (S.tables.product_reviews.some((x) => x.order_item_id === a.p_order_item_id)) return err('P0001', 'Ya opinaste sobre esta compra', 'JM_ALREADY_REVIEWED');
+      const item = o.online_order_items.find((i) => i.id === a.p_order_item_id);
+      const parts = String(S.tables.profiles.find((x) => x.id === ctx.userId)?.full_name || '').trim().split(/\s+/).filter(Boolean);
+      const author = parts.length === 0 ? 'Cliente J&M' : parts.length === 1 ? parts[0] : `${parts[0]} ${parts[1][0].toUpperCase()}.`;
+      const row = { id: crypto.randomUUID(), product_id: item.product_id, order_item_id: item.id, user_id: ctx.userId, author_name: author, city, rating: a.p_rating,
+        title: t, comment: c, is_verified_buyer: true, status: 'pending', admin_reply: null, created_at: new Date().toISOString() };
+      S.tables.product_reviews.push(row);
+      return { id: row.id, status: 'pending', product_id: row.product_id };
+    },
     quote_cart: (a) => quote(a.p_items || [], a.p_coupon_code, a.p_shipping_method),
     validate_coupon: (a) => validateCoupon(a.p_code, a.p_subtotal),
     get_order_status_catalog: () => ({
@@ -153,7 +181,7 @@ function start(port = 54321) {
         shipping_method_code: a.p_shipping_method, subtotal: q.subtotal, discount_total: q.discount_total, shipping_cost: q.shipping_cost, total: q.total, coupon_code: a.p_coupon_code || null,
         status: 'payment_pending', created_at: new Date().toISOString(), payment_expires_at: new Date(Date.now() + 3600e3).toISOString(), paid_at: null, needs_attention: false, carrier: null, tracking_number: null, tracking_url: null, shipped_at: null, delivered_at: null,
         online_order_items: q.lines.map((l) => { const p = S.products.find((x) => x.variants.some((v) => v.id === l.variant_id)); const v = p.variants.find((x) => x.id === l.variant_id);
-          const inv = idx.get(l.variant_id); return { product_name: p.name, sku: v.sku, size_code: v.sizes.code, color_name: inv.variants.products.product_colors.find((pc) => pc.color_id === v.color_id).colors.name, unit_price: l.unit_price, quantity: l.quantity, line_total: l.line_total, image_url: null, variant_id: l.variant_id }; }),
+          const inv = idx.get(l.variant_id); return { id: crypto.randomUUID(), product_id: p.id, product_name: p.name, sku: v.sku, size_code: v.sizes.code, color_name: inv.variants.products.product_colors.find((pc) => pc.color_id === v.color_id).colors.name, unit_price: l.unit_price, quantity: l.quantity, line_total: l.line_total, image_url: null, variant_id: l.variant_id }; }),
         payment_transactions: [], order_events: [{ event_type: 'created', from_status: null, to_status: 'payment_pending', actor: 'cliente', note: null, created_at: new Date().toISOString() }],
       };
       S.tables.online_orders.unshift(order);
@@ -237,7 +265,7 @@ function start(port = 54321) {
       try {
         if (p === '/__health') return send(res, 200, { ok: true });
         if (p === '/__reset') { S = seed(); return send(res, 200, { ok: true }); }
-        if (p === '/__state') return send(res, 200, { orders: S.tables.online_orders, newsletter: S.tables.newsletter_subscribers, inventories: S.inventories.map((i) => ({ sku: i.variants.sku, stock: i.stock, reserved: i.reserved })) });
+        if (p === '/__state') return send(res, 200, { orders: S.tables.online_orders, newsletter: S.tables.newsletter_subscribers, reviews: S.tables.product_reviews, inventories: S.inventories.map((i) => ({ sku: i.variants.sku, stock: i.stock, reserved: i.reserved })) });
         // Simula la confirmación del webhook de pago. NO es Wompi: solo mueve el pedido a "paid" para probar lo que sigue.
         // Ejecución 59: ventana de pago vencida sin que el job de expiración haya pasado (estado sigue payment_pending).
         if (p.startsWith('/__synthetic-expire-window/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); o.payment_expires_at = new Date(Date.now() - 60e3).toISOString(); return send(res, 200, { payment_expires_at: o.payment_expires_at }); }

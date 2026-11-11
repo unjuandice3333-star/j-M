@@ -571,3 +571,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`, `20261111140000` y `20261111160000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(w) de Pendiente (reseñas de producto escritas por el cliente con comprador verificado calculado en la BD).
+
+## Ejecución 71 — 2026-11-11 (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-m1n1r8` (= main, `2661f2a`); se partió de la rama autorizada = remoto `0c4e90a`, árbol limpio. `pnpm install --frozen-lockfile` OK. pgTAP/pg_cron/pg_prove instalados con apt; `run_local.sh` como usuario `postgres`.
+- Tarea: punto 0(w) de Pendiente. Ningún cliente podía escribir una reseña (solo lectura de aprobadas + moderación admin) → RPC aditivas con compra verificada en la BD + formulario en la ficha.
+- Archivos: `supabase/migrations/20261111180000_customer_reviews.sql` (nuevo), `supabase/tests/database/94_customer_reviews.test.sql` (nuevo, 26 aserciones), `supabase/tests/database/01_structure.test.sql` (RPC de `authenticated`), `apps/web/src/services/reviewsService.js` (nuevo), `apps/web/src/components/Product/ProductReviewForm.jsx` (nuevo), `apps/web/src/pages/ProductDetailPage.jsx`, `apps/web/src/__tests__/productReviewForm.test.jsx` (nuevo, 9 pruebas), `apps/web/e2e/synthetic/backend.cjs` (RPC espejo; artículos con `id`/`product_id`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 25).
+- Pruebas (ejecutadas aquí): `run_local.sh` pgTAP 357/357 (13 archivos), concurrencia 12/12, determinismo OK; `migrations_policy.sh` OK; `pnpm test:unit` 392/392 (37 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `node apps/web/e2e/e2e_synthetic.cjs` 25/25.
+- Errores pendientes: ninguno nuevo. Observación: la lectura pública de `product_reviews` permite seleccionar `user_id` de reseñas aprobadas (UUID, sin datos personales directos); anotado en Pendiente 0(x).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`, `20261111140000`, `20261111160000` y `20261111180000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(x) de Pendiente (aviso para opinar desde «Mis pedidos», respuesta del admin en la ficha, `user_id` en la lectura pública).
