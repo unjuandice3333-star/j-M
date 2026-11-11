@@ -741,7 +741,18 @@ async function main() {
         await p.getByRole('button', { name: 'GUARDAR CAMBIOS' }).click();
         await p.locator('#order-next-status').waitFor({ state: 'detached' });
       };
+      // Ejecución 75: insignia «pedidos por preparar» del menú = pedidos pagados en la BD (HEAD count=exact)
+      const paidNow = async () => (await state()).orders.filter((x) => x.status === 'paid').length;
+      const badge = p.getByRole('link', { name: /^Pedidos/ }).locator('[aria-label$="por preparar"]');
+      const paidBefore = await paidNow();
+      if (paidBefore < 1) throw new Error('se esperaba al menos un pedido pagado');
+      await badge.filter({ hasText: String(paidBefore) }).waitFor({ timeout: 8000 });
       await cambiar('processing');
+      // al pasar a «En preparación» la insignia se recuenta sin recargar la página
+      const paidAfter = await paidNow();
+      if (paidAfter !== paidBefore - 1) throw new Error(`pagados tras preparar ${paidAfter} ≠ ${paidBefore - 1}`);
+      if (paidAfter === 0) await badge.waitFor({ state: 'detached', timeout: 8000 });
+      else await badge.filter({ hasText: String(paidAfter) }).waitFor({ timeout: 8000 });
       // enviar sin guía: la interfaz lo impide
       await p.locator('tr', { hasText: num }).getByRole('button', { name: 'GESTIONAR' }).click();
       await p.locator('#order-next-status').selectOption('shipped');

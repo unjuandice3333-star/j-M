@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
 import { countPendingReviews, REVIEWS_CHANGED_EVENT } from '../services/reviewsAdminService.js';
+import { countOrdersToPrepare, ORDERS_CHANGED_EVENT, ORDERS_POLL_MS } from '../services/adminService.js';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -21,6 +22,8 @@ import {
   LogOut
 } from 'lucide-react';
 
+const badgeText = (n) => (n > 0 ? (n > 99 ? '99+' : String(n)) : null);
+
 export const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -35,6 +38,17 @@ export const AdminLayout = () => {
     window.addEventListener(REVIEWS_CHANGED_EVENT, refresh);
     return () => { alive = false; window.removeEventListener(REVIEWS_CHANGED_EVENT, refresh); };
   }, [location.pathname]);
+  // Ejecución 75: pedidos pagados por preparar. Los pagos llegan por el webhook de Wompi en cualquier momento, así que
+  // además de recontar al navegar y al cambiar un estado se reconsulta cada minuto (solo cabecera HEAD, sin filas).
+  const [ordersToPrepare, setOrdersToPrepare] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const refresh = () => countOrdersToPrepare().then((n) => { if (alive) setOrdersToPrepare(n); }, () => { if (alive) setOrdersToPrepare(0); });
+    refresh();
+    const timer = setInterval(refresh, ORDERS_POLL_MS);
+    window.addEventListener(ORDERS_CHANGED_EVENT, refresh);
+    return () => { alive = false; clearInterval(timer); window.removeEventListener(ORDERS_CHANGED_EVENT, refresh); };
+  }, [location.pathname]);
   const { user, profile, logout } = useAuthStore();
 
   const handleLogout = async () => {
@@ -47,12 +61,12 @@ export const AdminLayout = () => {
     { label: 'Productos', path: '/admin/productos', icon: ShoppingBag },
     { label: 'Imágenes Home', path: '/admin/imagenes', icon: Image },
     { label: 'Inventario', path: '/admin/inventario', icon: Boxes },
-    { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList },
+    { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList, badge: badgeText(ordersToPrepare), badgeLabel: `${ordersToPrepare} pedido${ordersToPrepare === 1 ? '' : 's'} por preparar` },
     { label: 'Clientes', path: '/admin/clientes', icon: Users },
     { label: 'Boletín', path: '/admin/boletin', icon: Mail },
     { label: 'Colecciones', path: '/admin/colecciones', icon: FolderKanban },
     { label: 'Descuentos', path: '/admin/descuentos', icon: Tag },
-    { label: 'Reviews', path: '/admin/reviews', icon: Star, badge: pendingReviews > 0 ? (pendingReviews > 99 ? '99+' : String(pendingReviews)) : null, badgeLabel: `${pendingReviews} reseña${pendingReviews === 1 ? '' : 's'} pendiente${pendingReviews === 1 ? '' : 's'}` },
+    { label: 'Reviews', path: '/admin/reviews', icon: Star, badge: badgeText(pendingReviews), badgeLabel: `${pendingReviews} reseña${pendingReviews === 1 ? '' : 's'} pendiente${pendingReviews === 1 ? '' : 's'}` },
     { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
     { label: 'Configuración', path: '/admin/configuracion', icon: Settings }
   ];

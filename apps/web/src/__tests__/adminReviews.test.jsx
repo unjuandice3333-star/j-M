@@ -170,7 +170,7 @@ describe('contador de pendientes en el menú del admin', () => {
     const badge = () => container.querySelector('[aria-label$="pendientes"], [aria-label$="pendiente"]');
     expect(badge().textContent).toBe('2');
     expect(badge().getAttribute('aria-label')).toBe('2 reseñas pendientes');
-    expect(supa.state.heads.at(-1)).toEqual([['status', 'pending']]);
+    expect(supa.state.heads).toContainEqual([['status', 'pending']]);
     supa.state.rows.forEach((r) => { r.status = 'approved'; });
     await act(async () => { window.dispatchEvent(new Event('jm:admin-reviews-changed')); await new Promise((r) => setTimeout(r, 0)); });
     expect(badge()).toBeNull();

@@ -65,13 +65,30 @@ const call = async (fn, args, fallback) => {
   return data;
 };
 
+/** Evento del navegador que pide al menú del admin recontar los pedidos por preparar (ejecución 75). */
+export const ORDERS_CHANGED_EVENT = 'jm:admin-orders-changed';
+/** Cada cuánto el menú del admin reconsulta los pedidos por preparar (los pagos llegan por webhook). */
+export const ORDERS_POLL_MS = 60000;
+const notifyOrdersChanged = () => { try { window.dispatchEvent(new Event(ORDERS_CHANGED_EVENT)); } catch { /* sin window (node) */ } };
+
+/** Pedidos pagados que esperan preparación (status = 'paid'). Solo HEAD con count exacto: no descarga filas. */
+export async function countOrdersToPrepare() {
+  const { count, error } = await supabase.from('online_orders').select('id', { count: 'exact', head: true }).eq('status', 'paid');
+  if (error) throw adminError(error, 'No se pudo contar los pedidos por preparar.');
+  return count ?? 0;
+}
+
 export const adminService = {
   upsertProduct: (payload) => call('admin_upsert_product', { p: payload }, 'No se pudo guardar el producto.'),
   setProductStatus: (productId, status) => call('admin_set_product_status', { p_product_id: productId, p_status: status }, 'No se pudo cambiar el estado del producto.'),
   adjustInventory: (variantId, quantityChange, movementType, reason) =>
     call('admin_adjust_inventory', { p_variant_id: variantId, p_quantity_change: quantityChange, p_movement_type: movementType, p_reason: reason }, 'No se pudo ajustar el inventario.'),
-  transitionOrder: (orderId, to, note = null, tracking = null) =>
-    call('admin_transition_order', { p_order_id: orderId, p_to: to, p_note: note, p_tracking: tracking }, 'No se pudo cambiar el estado del pedido.'),
+  async transitionOrder(orderId, to, note = null, tracking = null) {
+    const data = await call('admin_transition_order', { p_order_id: orderId, p_to: to, p_note: note, p_tracking: tracking }, 'No se pudo cambiar el estado del pedido.');
+    notifyOrdersChanged();
+    return data;
+  },
+  countOrdersToPrepare,
   dashboardMetrics: (from, to) => call('admin_dashboard_metrics', { p_from: from, p_to: to }, 'No se pudieron cargar las métricas.'),
 
   /** Producto completo para edición (cualquier estado; RLS: solo admin). */

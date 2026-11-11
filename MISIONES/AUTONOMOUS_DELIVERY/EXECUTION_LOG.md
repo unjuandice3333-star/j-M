@@ -611,3 +611,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(aa) de Pendiente (insignia de pedidos pagados por preparar en el menú del admin).
+
+## Ejecución 75 — 2026-11-11 22:15 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-2ho7pk` (= main, `2661f2a`); se partió de la rama autorizada = remoto `125cc9f`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(aa) de Pendiente. Insignia «N pedidos por preparar» (pedidos `paid`) en el menú del admin, con recuento al navegar, tras cambiar de estado y cada 60 s.
+- Archivos: `apps/web/src/services/adminService.js` (`countOrdersToPrepare`, `ORDERS_CHANGED_EVENT`, `ORDERS_POLL_MS`; `transitionOrder` avisa tras éxito), `apps/web/src/layouts/AdminLayout.jsx`, `apps/web/src/__tests__/adminOrdersBadge.test.jsx` (nuevo, 8 pruebas), `apps/web/src/__tests__/adminReviews.test.jsx` (la última cabecera HEAD ya no es necesariamente la de reseñas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 10 ampliado).
+- Pruebas (ejecutadas aquí): 6 de las 8 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 417/417 (40 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 26/26. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ab) de Pendiente (enlace profundo `/admin/pedidos?estado=paid` y tarjeta «Por preparar» en el dashboard).
