@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Star, ShoppingBag, Eye } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
-import { formatCOP } from '../../data/mockData';
+import { formatCOP } from '../../utils/currency';
 
 import SafeProductImage from '../Common/SafeImage';
 import { getProductImage } from '../../utils/productUtils';

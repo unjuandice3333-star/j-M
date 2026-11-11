@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Trash2, Bookmark, ArrowRight, Truck, Sparkles, Plus, Minus, Tag, Check, X } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
-import { formatCOP } from '../data/mockData';
+import { formatCOP } from '../utils/currency';
 
 export const CartPage = () => {
   const navigate = useNavigate();

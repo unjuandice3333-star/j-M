@@ -8,7 +8,7 @@ import {
   ChevronRight,
   AlertTriangle
 } from 'lucide-react';
-import { formatCOP } from '../../data/mockData';
+import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { adminService } from '../../services/adminService';
 

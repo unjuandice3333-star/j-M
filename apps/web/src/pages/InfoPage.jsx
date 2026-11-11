@@ -19,7 +19,7 @@ import {
   CheckCircle2,
   Sparkles
 } from 'lucide-react';
-import { SIZE_CHART } from '../data/mockData';
+import { SIZE_CHART, SIZE_CHART_TABS } from '../data/sizeGuide';
 import { useShippingPolicy } from '../hooks/useShippingPolicy';
 
 export const InfoPage = () => {
@@ -117,7 +117,7 @@ export const InfoPage = () => {
 
             {/* TAB SELECTOR */}
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
-              {['camisetas', 'camisas', 'jeans', 'calzado'].map((tab) => (
+              {SIZE_CHART_TABS.map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setSizeTab(tab)}

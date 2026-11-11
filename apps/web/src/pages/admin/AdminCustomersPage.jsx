@@ -5,7 +5,7 @@
 // =============================================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
-import { formatCOP } from '../../data/mockData';
+import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { STATUS_LABEL } from './AdminOrdersPage';
 import { buildCustomers, fetchAllRows } from '../../utils/adminLists';

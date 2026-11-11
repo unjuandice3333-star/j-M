@@ -1,7 +1,7 @@
 // Política de envío visible en la tienda, derivada de public.shipping_methods (la misma tabla con la que la BD
 // calcula el envío en private.shipping_cost). Sin cifras fijas: si los métodos aún no cargaron, o el método
 // estándar no tiene umbral, los textos no prometen envío gratis.
-import { formatCOP } from '../data/mockData';
+import { formatCOP } from './currency';
 
 export const STANDARD_METHOD = 'standard';
 

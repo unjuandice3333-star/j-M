@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Check } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
-import { FITS_INFO } from '../../data/mockData';
+import { FITS_INFO } from '../../data/sizeGuide';
 
 export const FitGuideModal = () => {
   const { activeModal, closeModal } = useECommerceStore();

@@ -4,7 +4,7 @@ import { Plus, Search, Filter, Edit, Trash2, Eye, RefreshCw, Sparkles, AlertTria
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { productService } from '../../services/productService';
 import { adminService } from '../../services/adminService';
-import { formatCOP } from '../../data/mockData';
+import { formatCOP } from '../../utils/currency';
 import SafeProductImage from '../../components/Common/SafeImage';
 import { hasValidProductImage } from '../../utils/productUtils';
 

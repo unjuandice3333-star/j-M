@@ -6,7 +6,7 @@
 // =============================================================================
 import React, { useEffect, useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import { formatCOP } from '../../data/mockData';
+import { formatCOP } from '../../utils/currency';
 import couponsAdminService, { couponState, emptyCouponForm, toCouponForm, PERCENT_MAX } from '../../services/couponsAdminService';
 
 const TYPE_LABEL = { percent: 'Porcentaje', fixed: 'Valor fijo', free_shipping: 'Envío gratis' };

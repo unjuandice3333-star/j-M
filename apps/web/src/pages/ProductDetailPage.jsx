@@ -17,7 +17,7 @@ import {
   ZoomIn,
   X
 } from 'lucide-react';
-import { formatCOP } from '../data/mockData';
+import { formatCOP } from '../utils/currency';
 import supabase from '../config/supabase';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { useShippingPolicy } from '../hooks/useShippingPolicy';

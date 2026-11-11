@@ -5,7 +5,7 @@
 // =============================================================================
 import React, { useEffect, useState } from 'react';
 import { Plus, Edit, X } from 'lucide-react';
-import { formatCOP } from '../../data/mockData';
+import { formatCOP } from '../../utils/currency';
 import shippingAdminService, { CHECKOUT_METHOD, emptyShippingMethod, toShippingForm, validateShippingMethod } from '../../services/shippingAdminService';
 
 const btnDark = { backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.7rem 1.2rem', borderRadius: 6, fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' };

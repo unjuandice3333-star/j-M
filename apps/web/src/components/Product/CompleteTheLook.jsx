@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ShoppingBag, Sparkles, ArrowRight } from 'lucide-react';
-import { formatCOP } from '../../data/mockData';
+import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import SafeProductImage from '../Common/SafeImage';

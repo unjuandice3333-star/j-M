@@ -9,7 +9,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, Clock, XCircle, Truck, Package, CreditCard, AlertTriangle } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
-import { formatCOP } from '../data/mockData';
+import { formatCOP } from '../utils/currency';
 import { analyticsService } from '../services/analytics';
 import { orderService } from '../services/orderService';
 import { wompiService } from '../services/wompi';

@@ -498,3 +498,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(o) de Pendiente (restos de `mockData` en páginas; después guías de tallas/fit).
+
+## 2026-11-11 09:20 UTC — Ejecución 63 (trabajo de código: fuera `mockData`, guía de tallas por categoría)
+- Estado inicial: sesión en `claude/gracious-pasteur-w2moj2` (= main, `2661f2a`); se partió de la rama autorizada = remoto `839cd13`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(o) de Pendiente. Quedaban 18 importaciones de `data/mockData.js` (15 solo por `formatCOP`; 3 por `SIZE_CHART`/`FITS_INFO`) y ~380 líneas de productos/looks/reseñas simulados sin uso. Defecto real: `SizeGuideModal` está siempre montado y fijaba la pestaña con `useState` una sola vez → abrir «Guía de medidas» desde un zapato o pantalón mostraba camisetas; además `pantalones`, `bermudas`, `polos` y `chaquetas` no tenían tabla asociada.
+- Archivos: `apps/web/src/utils/currency.js` (nuevo), `apps/web/src/data/sizeGuide.js` (nuevo, con `sizeChartTabFor`), `apps/web/src/data/mockData.js` (eliminado), `components/Modals/SizeGuideModal.jsx`, `components/Modals/FitGuideModal.jsx`, `pages/InfoPage.jsx`, 15 archivos con el import de `formatCOP` cambiado, `src/__tests__/sizeGuideCurrency.test.jsx` (nuevo, 8 pruebas).
+- Pruebas (ejecutadas aquí): las 2 pruebas del modal fallan con la versión anterior del componente; `pnpm test:unit` 335/335 (29 archivos); ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 17/17 en 2 ejecuciones seguidas. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(p) de Pendiente («Encuentra tu talla», `CompleteTheLook`, guía en productos de talla única).

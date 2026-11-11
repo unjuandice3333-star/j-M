@@ -13,7 +13,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { formatCOP } from '../data/mockData';
+import { formatCOP } from '../utils/currency';
 import supabase from '../config/supabase';
 import { orderService } from '../services/orderService';
 import { useECommerceStore } from '../store/eCommerceStore';

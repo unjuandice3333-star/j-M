@@ -18,7 +18,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
-import { formatCOP } from '../../data/mockData';
+import { formatCOP } from '../../utils/currency';
 import { useShippingPolicy } from '../../hooks/useShippingPolicy';
 import { useStorefrontTaxonomy } from '../../hooks/useStorefrontTaxonomy';
 import { buildNavTaxonomy } from '../../utils/navTaxonomy';

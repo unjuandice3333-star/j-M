@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
 import { X, Ruler } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
-import { SIZE_CHART } from '../../data/mockData';
+import { SIZE_CHART, SIZE_CHART_TABS, sizeChartTabFor } from '../../data/sizeGuide';
 
+// El modal está siempre montado en el layout: la pestaña inicial se calcula en cada apertura (componente
+// interno que se monta al abrir), no una sola vez al montar. Antes, abrir la guía desde un zapato mostraba camisetas.
 export const SizeGuideModal = () => {
   const { activeModal, selectedModalCategory, closeModal } = useECommerceStore();
-  const [activeTab, setActiveTab] = useState(selectedModalCategory || 'camisetas');
-
   if (activeModal !== 'sizeGuide') return null;
+  const initialTab = sizeChartTabFor(selectedModalCategory);
+  return <SizeGuideContent initialTab={initialTab} closeModal={closeModal} />;
+};
+
+const SizeGuideContent = ({ initialTab, closeModal }) => {
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   const currentChart = SIZE_CHART[activeTab] || SIZE_CHART.camisetas;
 
   return (
-    <div className="modal-overlay" onClick={closeModal}>
+    <div className="modal-overlay" onClick={closeModal} data-testid="size-guide-modal" data-active-tab={activeTab}>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -42,9 +48,10 @@ export const SizeGuideModal = () => {
 
         {/* CATEGORY TABS */}
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '0.5rem' }}>
-          {['camisetas', 'camisas', 'jeans', 'calzado'].map((tab) => (
+          {SIZE_CHART_TABS.map((tab) => (
             <button
               key={tab}
+              aria-pressed={activeTab === tab}
               onClick={() => setActiveTab(tab)}
               style={{
                 padding: '0.5rem 1rem',

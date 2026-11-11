@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Truck, CreditCard, ShieldCheck, CheckCircle2, ChevronRight, Check } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
-import { formatCOP } from '../data/mockData';
+import { formatCOP } from '../utils/currency';
 import { analyticsService } from '../services/analytics';
 import { wompiService } from '../services/wompi';
 import { newIdempotencyKey } from '../services/orderService';
