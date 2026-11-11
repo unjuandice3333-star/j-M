@@ -1,12 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles, ShieldCheck, Truck, RefreshCw, Headphones, MapPin, Mail, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { ArrowRight, Sparkles, ShieldCheck, Truck, RefreshCw, Headphones, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useStorefrontTaxonomy } from '../hooks/useStorefrontTaxonomy';
 import { buildHomeTaxonomy } from '../utils/homeTaxonomy';
 import ProductCard from '../components/Product/ProductCard';
 import CompleteTheLook from '../components/Product/CompleteTheLook';
 import { useECommerceStore } from '../store/eCommerceStore';
 import SafeImage from '../components/Common/SafeImage';
+import NewsletterSignup from '../components/Home/NewsletterSignup';
 
 export const HomePage = () => {
   const navigate = useNavigate();
@@ -17,8 +18,6 @@ export const HomePage = () => {
   const { taxonomy } = useStorefrontTaxonomy();
   const { styleLines: STYLE_LINES, categories: CATEGORIES, occasions: OCCASIONS } = buildHomeTaxonomy(taxonomy, products, editorialImages);
 
-  const [newsletterEmail, setNewsletterEmail] = useState('');
-  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
 
   const activeProducts = products.filter((p) => p.status !== 'borrador' && p.status !== 'archivado');
   const newProducts = activeProducts.filter((p) => p.isNew);
@@ -31,13 +30,6 @@ export const HomePage = () => {
         left: direction === 'next' ? scrollAmount : -scrollAmount,
         behavior: 'smooth'
       });
-    }
-  };
-
-  const handleNewsletterSubmit = (e) => {
-    e.preventDefault();
-    if (newsletterEmail) {
-      setNewsletterSubscribed(true);
     }
   };
 
@@ -1021,77 +1013,7 @@ export const HomePage = () => {
       </section>
 
       {/* 9. ÚNETE AL CLUB J&M */}
-      <section style={{ padding: '3.25rem 0', backgroundColor: '#FAFAFA' }}>
-        <div className="jm-container" style={{ textAlign: 'center', maxWidth: '580px' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
-            <Mail size={22} color="#09090B" />
-          </div>
-
-          <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.18em', color: '#D4AF37', textTransform: 'uppercase', display: 'block', marginBottom: '0.3rem' }}>
-            10% OFF EN TU PRIMERA COMPRA
-          </span>
-
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '0.4rem' }}>
-            ÚNETE AL CLUB J&M
-          </h2>
-
-          <p style={{ fontSize: '0.85rem', color: '#71717A', marginBottom: '1.75rem', lineHeight: 1.5 }}>
-            Recibe novedades, lanzamientos y beneficios exclusivos de J&M.
-          </p>
-
-          {newsletterSubscribed ? (
-            <div style={{ backgroundColor: '#D1FAE5', color: '#065F46', padding: '0.9rem 1.2rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: '1px solid #A7F3D0' }}>
-              <Check size={18} /> ¡Gracias por suscribirte! Revisa tu correo para tu beneficio.
-            </div>
-          ) : (
-            <form onSubmit={handleNewsletterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <input
-                  type="email"
-                  required
-                  placeholder="Tu correo electrónico"
-                  value={newsletterEmail}
-                  onChange={(e) => setNewsletterEmail(e.target.value)}
-                  style={{
-                    flex: 1,
-                    minWidth: '240px',
-                    padding: '0.85rem 1.1rem',
-                    border: '1px solid #D4D4D8',
-                    borderRadius: '6px',
-                    fontSize: '0.88rem',
-                    outline: 'none',
-                    backgroundColor: '#FFFFFF'
-                  }}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    backgroundColor: '#09090B',
-                    color: '#FFFFFF',
-                    padding: '0.85rem 1.8rem',
-                    borderRadius: '6px',
-                    fontWeight: 800,
-                    fontSize: '0.82rem',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    border: 'none',
-                    transition: 'background-color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#27272A')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#09090B')}
-                >
-                  QUIERO MI 10% OFF
-                </button>
-              </div>
-
-              <span style={{ fontSize: '0.72rem', color: '#A1A1AA', fontWeight: 500, marginTop: '0.2rem' }}>
-                Sin spam. Solo novedades y beneficios J&M.
-              </span>
-            </form>
-          )}
-        </div>
-      </section>
+      <NewsletterSignup source="home" />
     </div>
   );
 };

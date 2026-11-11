@@ -45,7 +45,7 @@ function seed() {
         collection_products: [{ product_id: 'p-cam', position: 1 }, { product_id: 'p-pol', position: 2 }] }],
       product_reviews: [], coupons: [], customer_addresses: [], wishlist_items: [],
       shipping_methods: [{ code: 'standard', name: 'Estándar', cost: 12000, free_over_subtotal: 200000, eta_text: '3-5 días', sort_order: 1, is_active: true }],
-      v_product_rating: [], online_orders: [], profiles: [{ id: adminId, role: 'admin', full_name: 'Admin Sintético', email: 'admin@jm.test' }],
+      v_product_rating: [], online_orders: [], newsletter_subscribers: [], profiles: [{ id: adminId, role: 'admin', full_name: 'Admin Sintético', email: 'admin@jm.test' }],
     },
     coupons: { JM10: { pct: 10, min: 50000 } },
     idem: new Map(), seq: 0,
@@ -90,6 +90,16 @@ function start(port = 54321) {
   }
 
   const rpc = {
+    // Ejecución 67: espejo de la migración 20261111140000 (idempotente, normaliza, misma respuesta si ya existía).
+    subscribe_newsletter: (a, ctx) => {
+      const e = String(a.p_email || '').trim();
+      if (e.length < 3 || e.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return err('P0001', 'Correo electrónico inválido', 'JM_INVALID_EMAIL');
+      const list = S.tables.newsletter_subscribers; const norm = e.toLowerCase();
+      const row = list.find((x) => x.email_normalized === norm);
+      if (row) { row.unsubscribed_at = null; return { ok: true }; }
+      list.push({ email: e, email_normalized: norm, source: /^[a-z0-9_]{1,32}$/.test(a.p_source || '') ? a.p_source : 'home', user_id: ctx.userId || null, unsubscribed_at: null });
+      return { ok: true };
+    },
     quote_cart: (a) => quote(a.p_items || [], a.p_coupon_code, a.p_shipping_method),
     validate_coupon: (a) => validateCoupon(a.p_code, a.p_subtotal),
     get_order_status_catalog: () => ({
@@ -202,7 +212,7 @@ function start(port = 54321) {
       try {
         if (p === '/__health') return send(res, 200, { ok: true });
         if (p === '/__reset') { S = seed(); return send(res, 200, { ok: true }); }
-        if (p === '/__state') return send(res, 200, { orders: S.tables.online_orders, inventories: S.inventories.map((i) => ({ sku: i.variants.sku, stock: i.stock, reserved: i.reserved })) });
+        if (p === '/__state') return send(res, 200, { orders: S.tables.online_orders, newsletter: S.tables.newsletter_subscribers, inventories: S.inventories.map((i) => ({ sku: i.variants.sku, stock: i.stock, reserved: i.reserved })) });
         // Simula la confirmación del webhook de pago. NO es Wompi: solo mueve el pedido a "paid" para probar lo que sigue.
         // Ejecución 59: ventana de pago vencida sin que el job de expiración haya pasado (estado sigue payment_pending).
         if (p.startsWith('/__synthetic-expire-window/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); o.payment_expires_at = new Date(Date.now() - 60e3).toISOString(); return send(res, 200, { payment_expires_at: o.payment_expires_at }); }

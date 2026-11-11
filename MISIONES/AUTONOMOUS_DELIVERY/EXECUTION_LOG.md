@@ -535,3 +535,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(r) de Pendiente (boletín real: migración aditiva `newsletter_subscribers` + RPC `subscribe_newsletter`, pgTAP), luego 0(t).
+
+## 2026-11-11 14:10 UTC — Ejecución 67 (trabajo de código: boletín «Únete al club J&M» real)
+- Estado inicial: sesión en `claude/gracious-pasteur-s45bex` (= main, `2661f2a`); se partió de la rama autorizada = remoto `fbffcb0`, árbol limpio. `pnpm install --frozen-lockfile` OK. pgTAP/pg_cron instalados con `apt-get update` (sin ellos `run_local.sh` no corre).
+- Tarea: punto 0(r) de Pendiente. El formulario confirmaba sin guardar y prometía un 10% inexistente → migración aditiva `20261111140000_newsletter_subscribers.sql` (tabla + RLS admin + RPC `subscribe_newsletter` idempotente con límite) y componente real.
+- Archivos: `supabase/migrations/20261111140000_newsletter_subscribers.sql` (nuevo), `supabase/tests/database/92_newsletter.test.sql` (nuevo, 16 aserciones), `supabase/tests/database/01_structure.test.sql` (35 tablas, RPC nueva), `apps/web/src/services/newsletterService.js` (nuevo), `apps/web/src/components/Home/NewsletterSignup.jsx` (nuevo), `apps/web/src/pages/HomePage.jsx`, `apps/web/src/__tests__/newsletterSignup.test.jsx` (nuevo, 7 pruebas), `apps/web/e2e/synthetic/backend.cjs`, `apps/web/e2e/e2e_synthetic.cjs` (recorrido 21).
+- Pruebas (ejecutadas aquí): `run_local.sh` pgTAP 308/308, concurrencia 12/12, determinismo OK (la primera pasada falló 3 aserciones de `01_structure` que enumeran tablas/RPC → actualizadas); `migrations_policy.sh` OK; `pnpm test:unit` 364/364 (33 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `node apps/web/e2e/e2e_synthetic.cjs` 21/21.
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000` y `20261111140000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(t) de Pendiente (`ProductCard`: compra rápida sin elegir talla), luego 0(u) (admin de suscriptores).

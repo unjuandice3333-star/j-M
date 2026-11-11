@@ -11,8 +11,8 @@ SELECT set_eq(
         'branches','inventories','inventory_movements','inventory_reservations','shipping_methods','coupons',
         'online_orders','online_order_items','coupon_redemptions','order_status_catalog','order_status_transitions',
         'order_events','payment_transactions','webhook_events','order_refunds','product_reviews','site_content',
-        'wishlist_items','audit_logs'],
-  'el esquema public contiene exactamente las 34 tablas del diseño (sin objetos POS)');
+        'wishlist_items','audit_logs','newsletter_subscribers'],
+  'el esquema public contiene exactamente las 35 tablas del diseño (sin objetos POS)');
 
 SELECT is_empty($$SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND NOT rowsecurity$$,
   'RLS activa en todas las tablas de public');
@@ -38,14 +38,14 @@ SELECT set_eq($$
   SELECT p.proname::text FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND has_function_privilege('anon', p.oid, 'EXECUTE')$$,
   ARRAY['is_admin','is_super_admin','get_order_status_catalog','validate_coupon','quote_cart',
-        'create_order','get_order_public','cancel_my_order'],
+        'create_order','get_order_public','cancel_my_order','subscribe_newsletter'],
   'anon solo puede ejecutar las RPC públicas de tienda');
 
 SELECT set_eq($$
   SELECT p.proname::text FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND has_function_privilege('authenticated', p.oid, 'EXECUTE')$$,
   ARRAY['is_admin','is_super_admin','get_order_status_catalog','validate_coupon','quote_cart',
-        'create_order','get_order_public','cancel_my_order','admin_upsert_product','admin_set_product_status',
+        'create_order','get_order_public','cancel_my_order','subscribe_newsletter','admin_upsert_product','admin_set_product_status',
         'admin_adjust_inventory','admin_transition_order','admin_dashboard_metrics','admin_set_user_role'],
   'authenticated: RPC de tienda + RPC admin (que validan el rol internamente)');
 

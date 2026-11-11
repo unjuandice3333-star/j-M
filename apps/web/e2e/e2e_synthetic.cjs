@@ -123,6 +123,29 @@ async function main() {
       await p.getByText('Polo Clásico').first().waitFor();
     }, browser);
 
+    await journey('21. Portada: boletín «Únete al club J&M» guarda el correo en la BD', async (p) => {
+      await p.goto(`${BASE}/`);
+      const form = p.locator('section[aria-labelledby="jm-newsletter-title"]');
+      await form.scrollIntoViewIfNeeded();
+      if (/10\s*%/.test(await form.textContent())) throw new Error('el boletín sigue prometiendo un 10% inexistente');
+      const input = form.getByLabel('Correo electrónico para el boletín');
+      await input.fill('club@');
+      await form.getByRole('button', { name: 'Suscribirme' }).click();
+      await form.getByRole('alert').filter({ hasText: 'nombre@dominio' }).waitFor();
+      if ((await state()).newsletter.length) throw new Error('se guardó un correo inválido');
+      await input.fill('  Club.Cliente@Example.co ');
+      await form.getByRole('button', { name: 'Suscribirme' }).click();
+      await form.getByRole('status').filter({ hasText: 'quedó registrado' }).waitFor();
+      const subs = (await state()).newsletter;
+      if (subs.length !== 1 || subs[0].email_normalized !== 'club.cliente@example.co' || subs[0].source !== 'home') throw new Error(`suscriptores: ${JSON.stringify(subs)}`);
+      // repetir con otra capitalización no duplica
+      await p.reload(); await form.scrollIntoViewIfNeeded();
+      await input.fill('CLUB.cliente@example.co');
+      await form.getByRole('button', { name: 'Suscribirme' }).click();
+      await form.getByRole('status').waitFor();
+      if ((await state()).newsletter.length !== 1) throw new Error('suscripción duplicada');
+    }, browser);
+
     await journey('17. Cabecera: menú de líneas y categorías desde la BD', async (p) => {
       await p.setViewportSize({ width: 1440, height: 900 });
       await p.goto(`${BASE}/`);
