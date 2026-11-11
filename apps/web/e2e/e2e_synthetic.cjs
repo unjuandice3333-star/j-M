@@ -689,11 +689,19 @@ async function main() {
       await p.evaluate(() => localStorage.clear());
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      // ejecución 73: el menú cuenta la reseña pendiente; filtro por producto y por texto
+      await p.getByLabel('1 reseña pendiente').waitFor({ timeout: 8000 });
       await p.goto(`${BASE}/admin/reviews`);
-      const card = p.locator('div', { hasText: 'Buen polo' }).filter({ has: p.getByRole('button', { name: 'Aprobar' }) }).last();
+      await p.getByRole('tab', { name: 'Pendiente (1)' }).waitFor({ timeout: 8000 });
+      const prodSel = p.getByLabel('Filtrar por producto');
+      await prodSel.selectOption({ label: 'Polo Clásico (1 · 1 pendiente)' });
+      await p.getByLabel('Buscar reseñas').fill('CUELLO');
+      const card = p.getByRole('article', { name: /Buen polo/ });
       await card.getByLabel('Respuesta de la tienda').fill('¡Gracias, Marta! Nos alegra que te guste.');
       await card.getByRole('button', { name: 'Aprobar' }).click();
       await p.getByText('Reseña de Marta G.: aprobada.').waitFor({ timeout: 8000 });
+      await p.getByRole('tab', { name: 'Pendiente (0)' }).waitFor({ timeout: 8000 });
+      await p.waitForFunction(() => !document.querySelector('[aria-label="1 reseña pendiente"]'), null, { timeout: 8000 });
       // el público ve la reseña y la respuesta de J&M
       await p.evaluate(() => localStorage.clear());
       await p.goto(`${BASE}/producto/polo-clasico`);

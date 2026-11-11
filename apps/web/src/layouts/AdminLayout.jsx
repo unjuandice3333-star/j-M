@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
+import { countPendingReviews, REVIEWS_CHANGED_EVENT } from '../services/reviewsAdminService.js';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -25,7 +26,15 @@ export const AdminLayout = () => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
-  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  // Ejecución 73: reseñas pendientes de moderar en el menú (al navegar y cuando /admin/reviews modera).
+  const [pendingReviews, setPendingReviews] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const refresh = () => countPendingReviews().then((n) => { if (alive) setPendingReviews(n); }, () => { /* sin contador si falla */ });
+    refresh();
+    window.addEventListener(REVIEWS_CHANGED_EVENT, refresh);
+    return () => { alive = false; window.removeEventListener(REVIEWS_CHANGED_EVENT, refresh); };
+  }, [location.pathname]);
   const { user, profile, logout } = useAuthStore();
 
   const handleLogout = async () => {
@@ -43,7 +52,7 @@ export const AdminLayout = () => {
     { label: 'Boletín', path: '/admin/boletin', icon: Mail },
     { label: 'Colecciones', path: '/admin/colecciones', icon: FolderKanban },
     { label: 'Descuentos', path: '/admin/descuentos', icon: Tag },
-    { label: 'Reviews', path: '/admin/reviews', icon: Star },
+    { label: 'Reviews', path: '/admin/reviews', icon: Star, badge: pendingReviews > 0 ? (pendingReviews > 99 ? '99+' : String(pendingReviews)) : null, badgeLabel: `${pendingReviews} reseña${pendingReviews === 1 ? '' : 's'} pendiente${pendingReviews === 1 ? '' : 's'}` },
     { label: 'Analytics', path: '/admin/analytics', icon: BarChart3 },
     { label: 'Configuración', path: '/admin/configuracion', icon: Settings }
   ];
@@ -118,7 +127,7 @@ export const AdminLayout = () => {
                 <Icon size={18} color={isActive ? '#D4AF37' : '#A1A1AA'} />
                 <span style={{ flex: 1 }}>{item.label}</span>
                 {item.badge && (
-                  <span style={{ backgroundColor: '#E11D48', color: '#FFFFFF', fontSize: '0.68rem', fontWeight: 800, padding: '2px 7px', borderRadius: '999px' }}>
+                  <span aria-label={item.badgeLabel} title={item.badgeLabel} style={{ backgroundColor: '#E11D48', color: '#FFFFFF', fontSize: '0.68rem', fontWeight: 800, padding: '2px 7px', borderRadius: '999px' }}>
                     {item.badge}
                   </span>
                 )}

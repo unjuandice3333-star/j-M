@@ -331,6 +331,8 @@ function start(port = 54321) {
           if (req.method === 'GET' || req.method === 'HEAD') {
             let data = rows(table, q, ctx);
             if (table === 'online_orders' || table === 'inventories') data = [...data];
+            // Ejecución 73: embebido products ( name, slug ) de /admin/reviews (FK product_id), en copias para no tocar el estado.
+            if (table === 'product_reviews' && /products\s*\(/.test(q.select || '')) data = data.map((r) => { const pr = S.products.find((x) => x.id === r.product_id); return { ...r, products: pr ? { name: pr.name, slug: pr.slug } : null }; });
             const total = data.length; const offset = Number(q.offset || 0);
             if (offset) data = data.slice(offset);
             if (q.limit) data = data.slice(0, Number(q.limit));

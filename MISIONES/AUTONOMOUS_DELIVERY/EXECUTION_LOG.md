@@ -591,3 +591,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`, `20261111140000`, `20261111160000`, `20261111180000` y `20261111200000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(y) de Pendiente (contador de reseñas pendientes en el menú del admin y filtro por producto en `/admin/reviews`).
+
+## Ejecución 73 — 2026-11-11 20:12 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-ezmecf` (= main, `2661f2a`); se partió de la rama autorizada = remoto `3cb95a0`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(y) de Pendiente. `/admin/reviews`: filtro por producto, búsqueda sin tildes, contadores por estado, «Guardar respuesta» sin cambiar el estado, 0 filas afectadas = error, descarte de respuestas viejas; insignia de pendientes en el menú del admin.
+- Archivos: `apps/web/src/services/reviewsAdminService.js` (nuevo), `apps/web/src/utils/reviewsAdmin.js` (nuevo), `apps/web/src/pages/admin/AdminReviewsPage.jsx`, `apps/web/src/layouts/AdminLayout.jsx`, `apps/web/src/__tests__/adminReviews.test.jsx` (nuevo, 11 pruebas), `apps/web/e2e/synthetic/backend.cjs` (embebido `products(name, slug)` en reseñas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 26 ampliado).
+- Pruebas (ejecutadas aquí): 7 de las 11 pruebas nuevas fallan con el código anterior (`git stash`); `pnpm test:unit` 408/408 (39 archivos); ESLint `apps packages scripts` 0 errores y 0 avisos; `pnpm build` OK; `pnpm test:e2e-synthetic` 26/26. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111200000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(z) de Pendiente (coherencia de productos archivados en `my_product_reviewables` y formulario de la ficha; luego insignia de pedidos por preparar).
