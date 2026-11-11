@@ -106,3 +106,20 @@ export function buildHomeTaxonomy(taxonomy, products = [], editorial = {}) {
 
   return { styleLines, categories, occasions };
 }
+
+/**
+ * Entradas de la página «Imágenes editoriales» del admin, con las mismas claves que lee la portada. Antes era una
+ * lista fija: faltaban «Calzado» y cualquier línea, categoría u ocasión creada desde el admin.
+ * @param {{categories?: object[], styleLines?: object[], occasions?: object[]} | null} taxonomy (null: respaldo).
+ */
+export function buildEditorialItems(taxonomy) {
+  const source = taxonomy ?? FALLBACK_TAXONOMY;
+  const keep = (rows) => (rows ?? []).filter((r) => r?.slug && r.is_active !== false);
+  return [
+    { key: 'hero_main', title: 'Banner principal (Hero)', section: 'hero' },
+    ...keep(source.styleLines).map((r) => ({ key: styleImageKey(r.slug), title: `Línea ${r.name || r.slug}`, section: 'styles' })),
+    ...keep(source.categories).filter((r) => !r.parent_id).map((r) => ({ key: categoryImageKey(r.slug), title: r.name || r.slug, section: 'categories' })),
+    ...keep(source.occasions).map((r) => ({ key: occasionImageKey(r.slug), title: r.name || r.slug, section: 'occasions' })),
+    { key: 'outfit_complete_look', title: 'Completa el look', section: 'outfits' },
+  ];
+}

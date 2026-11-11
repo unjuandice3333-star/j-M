@@ -20,12 +20,16 @@ import {
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { formatCOP } from '../../data/mockData';
 import { useShippingPolicy } from '../../hooks/useShippingPolicy';
+import { useStorefrontTaxonomy } from '../../hooks/useStorefrontTaxonomy';
+import { buildNavTaxonomy } from '../../utils/navTaxonomy';
 
 export const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const store = useECommerceStore();
   const shippingPolicy = useShippingPolicy();
+  const { taxonomy } = useStorefrontTaxonomy();
+  const nav = React.useMemo(() => buildNavTaxonomy(taxonomy), [taxonomy]);
   const {
     products = [],
     items = [],
@@ -200,24 +204,11 @@ export const Header = () => {
             style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}
             className="desktop-nav"
           >
-            <Link
-              to="/linea/urbana"
-              style={getNavLinkStyle(isActivePath('/linea/urbana'), 'style')}
-            >
-              URBANO
-            </Link>
-            <Link
-              to="/linea/elegante"
-              style={getNavLinkStyle(isActivePath('/linea/elegante'), 'style')}
-            >
-              ELEGANTE
-            </Link>
-            <Link
-              to="/linea/casual"
-              style={getNavLinkStyle(isActivePath('/linea/casual'), 'style')}
-            >
-              SMART CASUAL
-            </Link>
+            {nav.styleLines.map((l) => (
+              <Link key={l.slug} to={l.to} style={getNavLinkStyle(isActivePath(l.to), 'style')}>
+                {l.label}
+              </Link>
+            ))}
             <span style={{ color: '#E4E4E7', fontWeight: 300, margin: '0 0.15rem' }}>|</span>
             <Link
               to="/ropa"
@@ -225,18 +216,11 @@ export const Header = () => {
             >
               ROPA
             </Link>
-            <Link
-              to="/calzado"
-              style={getNavLinkStyle(isActivePath('/calzado'), 'category')}
-            >
-              CALZADO
-            </Link>
-            <Link
-              to="/accesorios"
-              style={getNavLinkStyle(isActivePath('/accesorios'), 'category')}
-            >
-              ACCESORIOS
-            </Link>
+            {nav.topLevel.map((c) => (
+              <Link key={c.slug} to={c.to} style={getNavLinkStyle(isActivePath(c.to), 'category')}>
+                {c.label}
+              </Link>
+            ))}
             <Link
               to="/ofertas"
               style={getNavLinkStyle(isActivePath('/ofertas'), 'sale')}
@@ -331,14 +315,15 @@ export const Header = () => {
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <MobileNavLink to="/nuevo" onClick={() => setMobileMenuOpen(false)}>NUEVO</MobileNavLink>
               <MobileNavLink to="/ropa" onClick={() => setMobileMenuOpen(false)}>ROPA</MobileNavLink>
-              <MobileNavLink to="/ropa/camisetas" onClick={() => setMobileMenuOpen(false)}>└ Camisetas</MobileNavLink>
-              <MobileNavLink to="/ropa/camisas" onClick={() => setMobileMenuOpen(false)}>└ Camisas</MobileNavLink>
-              <MobileNavLink to="/ropa/polos" onClick={() => setMobileMenuOpen(false)}>└ Polos</MobileNavLink>
-              <MobileNavLink to="/ropa/jeans" onClick={() => setMobileMenuOpen(false)}>└ Jeans</MobileNavLink>
-              <MobileNavLink to="/ropa/pantalones" onClick={() => setMobileMenuOpen(false)}>└ Pantalones</MobileNavLink>
-              <MobileNavLink to="/ropa/chaquetas" onClick={() => setMobileMenuOpen(false)}>└ Chaquetas</MobileNavLink>
-              <MobileNavLink to="/calzado" onClick={() => setMobileMenuOpen(false)}>CALZADO</MobileNavLink>
-              <MobileNavLink to="/accesorios" onClick={() => setMobileMenuOpen(false)}>ACCESORIOS</MobileNavLink>
+              {nav.clothing.map((c) => (
+                <MobileNavLink key={c.slug} to={c.to} onClick={() => setMobileMenuOpen(false)}>└ {c.name}</MobileNavLink>
+              ))}
+              {nav.topLevel.map((c) => (
+                <MobileNavLink key={c.slug} to={c.to} onClick={() => setMobileMenuOpen(false)}>{c.label}</MobileNavLink>
+              ))}
+              {nav.styleLines.map((l) => (
+                <MobileNavLink key={l.slug} to={l.to} onClick={() => setMobileMenuOpen(false)}>{l.label}</MobileNavLink>
+              ))}
               <MobileNavLink to="/colecciones" onClick={() => setMobileMenuOpen(false)}>COLECCIONES</MobileNavLink>
               <MobileNavLink to="/mas-vendidos" onClick={() => setMobileMenuOpen(false)}>MÁS VENDIDOS</MobileNavLink>
               <MobileNavLink to="/ofertas" onClick={() => setMobileMenuOpen(false)} style={{ color: '#E11D48', fontWeight: 700 }}>OFERTAS</MobileNavLink>

@@ -9,30 +9,11 @@ import { Upload, Check, RotateCcw, FolderOpen, AlertTriangle, X } from 'lucide-r
 import { useECommerceStore, DEFAULT_EDITORIAL_IMAGES } from '../../store/eCommerceStore';
 import { useAuthStore } from '../../store/authStore';
 import siteContentService, { validateImageFile, publicUrl } from '../../services/siteContentService';
+import productService from '../../services/productService';
+import { buildEditorialItems } from '../../utils/homeTaxonomy';
 
-const ITEMS = [
-  { key: 'hero_main', title: 'Banner principal (Hero)', section: 'hero' },
-  { key: 'style_urbana', title: 'Línea Urbana', section: 'styles' },
-  { key: 'style_elegante', title: 'Línea Elegante', section: 'styles' },
-  { key: 'style_smart_casual', title: 'Línea Smart Casual', section: 'styles' },
-  { key: 'category_camisetas', title: 'Camisetas', section: 'categories' },
-  { key: 'category_camisas', title: 'Camisas', section: 'categories' },
-  { key: 'category_polos', title: 'Polos', section: 'categories' },
-  { key: 'category_jeans', title: 'Jeans', section: 'categories' },
-  { key: 'category_pantalones', title: 'Pantalones', section: 'categories' },
-  { key: 'category_bermudas', title: 'Bermudas', section: 'categories' },
-  { key: 'category_chaquetas', title: 'Chaquetas', section: 'categories' },
-  { key: 'category_accesorios', title: 'Accesorios', section: 'categories' },
-  { key: 'occasion_trabajo_oficina', title: 'Trabajo & Oficina', section: 'occasions' },
-  { key: 'occasion_cita_salidas', title: 'Cita & Salidas', section: 'occasions' },
-  { key: 'occasion_casual_urbano', title: 'Casual Urbano', section: 'occasions' },
-  { key: 'occasion_noche_eventos', title: 'Noche & Eventos', section: 'occasions' },
-  { key: 'occasion_fin_semana', title: 'Fin de Semana', section: 'occasions' },
-  { key: 'occasion_streetwear', title: 'Streetwear', section: 'occasions' },
-  { key: 'outfit_complete_look', title: 'Completa el look', section: 'outfits' },
-];
 const SECTION = { hero: 'Hero', styles: 'Línea de estilo', categories: 'Categoría', occasions: 'Ocasión', outfits: 'Outfit' };
-const TABS = [['todos', `Todas (${ITEMS.length})`], ['hero', 'Hero'], ['styles', 'Líneas de estilo'], ['categories', 'Categorías'],
+const TAB_LIST = [['hero', 'Hero'], ['styles', 'Líneas de estilo'], ['categories', 'Categorías'],
   ['occasions', 'Ocasiones'], ['outfits', 'Outfits'], ['library', 'Biblioteca']];
 
 const btnDark = { display: 'inline-flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#09090B', color: '#FFF', padding: '0.6rem 1rem', borderRadius: 6, fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer', border: 'none' };
@@ -54,6 +35,19 @@ export const AdminEditorialImagesPage = () => {
     try { setLibrary(await siteContentService.listLibrary()); setLibraryError(null); }
     catch (e) { setLibraryError(e.message); }
   };
+  // Entradas a partir de las líneas, categorías y ocasiones activas de la BD (lectura fresca: el admin puede haber
+  // creado una categoría hace un momento). Si la BD falla se muestran las de la semilla y se avisa.
+  const [taxonomy, setTaxonomy] = useState(null);
+  const [taxonomyError, setTaxonomyError] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    productService.getStorefrontTaxonomy()
+      .then((t) => { if (alive) { setTaxonomy(t); setTaxonomyError(null); } })
+      .catch((e) => { if (alive) setTaxonomyError(e?.message ?? 'No se pudieron cargar las secciones'); });
+    return () => { alive = false; };
+  }, []);
+  const ITEMS = React.useMemo(() => buildEditorialItems(taxonomy), [taxonomy]);
+  const TABS = [['todos', `Todas (${ITEMS.length})`], ...TAB_LIST];
   useEffect(() => { loadSiteContent(); loadLibrary(); }, [loadSiteContent]);
 
   const flash = (ok, text) => { setNotice({ ok, text }); if (ok) setTimeout(() => setNotice(null), 4000); };
@@ -118,6 +112,7 @@ export const AdminEditorialImagesPage = () => {
         </div>
       )}
       {siteContentError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{siteContentError}</div>}
+      {taxonomyError && <div role="alert" style={{ color: '#B45309', fontWeight: 600 }}>{taxonomyError}: se muestran las secciones predeterminadas.</div>}
 
       {tab === 'library' ? (
         <div style={{ backgroundColor: '#FFF', padding: '1.25rem', borderRadius: 10, border: '1px solid #E4E4E7', display: 'grid', gap: '1rem' }}>

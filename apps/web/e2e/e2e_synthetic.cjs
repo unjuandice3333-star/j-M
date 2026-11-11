@@ -123,6 +123,23 @@ async function main() {
       await p.getByText('Polo Clásico').first().waitFor();
     }, browser);
 
+    await journey('17. Cabecera: menú de líneas y categorías desde la BD', async (p) => {
+      await p.setViewportSize({ width: 1440, height: 900 });
+      await p.goto(`${BASE}/`);
+      const nav = p.locator('nav[aria-label="Navegación principal"]');
+      await nav.locator('a[href="/linea/urbana"]').waitFor({ timeout: 8000 });
+      // BD sintética: solo la línea Urbana y la categoría Camisetas (sin Calzado ni Accesorios)
+      const desk = await nav.locator('a').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+      for (const stale of ['/linea/elegante', '/linea/casual', '/calzado', '/accesorios']) if (desk.includes(stale)) throw new Error(`enlace fijo en la cabecera: ${stale}`);
+      await p.setViewportSize({ width: 390, height: 844 });
+      await p.getByRole('button', { name: 'Abrir menú de navegación' }).click();
+      const drawer = p.locator('.modal-overlay');
+      await drawer.locator('a[href="/ropa/camisetas"]').waitFor();
+      if (await drawer.locator('a[href="/ropa/polos"]').count()) throw new Error('subcategoría fija en el menú móvil');
+      await drawer.locator('a[href="/ropa/camisetas"]').click();
+      await p.waitForURL(/\/ropa\/camisetas/);
+    }, browser);
+
     await journey('2. Producto: precio, talla, color y disponibilidad', async (p) => {
       await p.goto(`${BASE}/producto/camiseta-basica`);
       await expectText(p, '$80.000');

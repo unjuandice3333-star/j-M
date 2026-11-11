@@ -489,3 +489,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(n) de Pendiente (menú de la cabecera y claves del admin de imágenes editoriales desde la BD).
+
+## 2026-11-11 08:10 UTC — Ejecución 62 (trabajo de código: cabecera y admin de imágenes editoriales desde la BD)
+- Estado inicial: sesión en `claude/gracious-pasteur-zk3xiw` (= main, `2661f2a`); se partió de la rama autorizada = remoto `df99b63`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(n) de Pendiente. La cabecera tenía líneas y categorías escritas a mano (ACCESORIOS y subcategorías fijas aunque no existieran o estuvieran desactivadas; nombres que el admin no podía cambiar); el admin de imágenes editoriales listaba claves fijas (sin «Calzado» ni secciones nuevas).
+- Archivos: `apps/web/src/utils/navTaxonomy.js` (nuevo), `apps/web/src/utils/homeTaxonomy.js` (`buildEditorialItems`), `apps/web/src/components/Header/Header.jsx`, `apps/web/src/pages/admin/AdminEditorialImagesPage.jsx`, `apps/web/src/__tests__/navTaxonomy.test.jsx` (nuevo, 7 pruebas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 17).
+- Pruebas (ejecutadas aquí): 2 pruebas de render fallan sin el cambio (`git stash`); `pnpm test:unit` 327/327 (28 archivos); ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 17/17 en 3 ejecuciones seguidas. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(o) de Pendiente (restos de `mockData` en páginas; después guías de tallas/fit).
