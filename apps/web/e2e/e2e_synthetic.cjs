@@ -156,6 +156,21 @@ async function main() {
       await p.waitForFunction(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"items":[]}}').state.items.length === 1);
     }, browser);
 
+    await journey('18. Producto: «Encuentra tu talla» sugiere una talla real y la aplica con un color que la tiene', async (p) => {
+      await p.goto(`${BASE}/producto/camiseta-basica`);
+      await p.getByRole('button', { name: 'Color Blanco' }).click(); // Blanco/M agotado
+      await p.getByRole('button', { name: /Encuentra tu talla/ }).click();
+      await p.getByRole('button', { name: /CALCULAR MI TALLA/ }).click(); // 175 cm / 74 kg / normal → M
+      await expectText(p, 'TALLA M');
+      const body = await p.textContent('body');
+      if (/94\s?%/.test(body)) throw new Error('el recomendador muestra una estadística inventada');
+      await p.getByRole('button', { name: 'USAR TALLA M' }).click();
+      await p.getByRole('button', { name: 'Talla M', exact: true, pressed: true }).waitFor();
+      await p.getByRole('button', { name: 'Color Negro', pressed: true }).waitFor();
+      await p.getByRole('button', { name: 'AGREGAR AL CARRITO' }).first().click();
+      await p.waitForFunction(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"items":[]}}').state.items.length === 1);
+    }, browser);
+
     await journey('3. Carrito: cantidades, límite de stock, persistencia y eliminación', async (p) => {
       await addToCart(p, 'camiseta-basica', 'L', 'Negro'); // L/Negro: solo 1 en stock
       await p.goto(`${BASE}/carrito`);

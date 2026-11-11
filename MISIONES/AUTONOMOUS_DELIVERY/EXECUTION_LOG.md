@@ -507,3 +507,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(p) de Pendiente («Encuentra tu talla», `CompleteTheLook`, guía en productos de talla única).
+
+## 2026-11-11 11:15 UTC — Ejecución 64 (trabajo de código: ayudas de talla y «Completa el look» con datos reales)
+- Estado inicial: sesión en `claude/gracious-pasteur-g26x3z` (= main, `2661f2a`); se partió de la rama autorizada = remoto `3ed1473`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(p) de Pendiente. Recomendador con estadística inventada («94% de clientes») y tallas no ofrecidas; guía y recomendador en talla única; recomendador en calzado/pantalón; etiquetas fijas por posición en «Completa el look»; resultado del recomendador que persistía entre productos.
+- Archivos: `apps/web/src/utils/sizeAdvice.js` (nuevo), `components/Modals/SizeRecommenderModal.jsx`, `components/Modals/SizeGuideModal.jsx`, `components/Product/CompleteTheLook.jsx`, `pages/ProductDetailPage.jsx`, `store/eCommerceStore.js` (`recommendedSize`, `applyRecommendedSize`, `selectedModalSizeGroup`), `src/__tests__/sizeAdvice.test.jsx` (nuevo, 11 pruebas), `e2e/synthetic/backend.cjs` (`size_group: 'alpha'`), `e2e/e2e_synthetic.cjs` (recorrido 18).
+- Pruebas (ejecutadas aquí): 5 pruebas de UI nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 346/346 (30 archivos) dos veces; ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 18/18 en 2 ejecuciones seguidas. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(q) de Pendiente (talla por prenda en «Comprar el look completo»; formularios de boletín/contacto).

@@ -25,6 +25,7 @@ import ProductCard from '../components/Product/ProductCard';
 import SafeProductImage from '../components/Common/SafeImage';
 
 import { analyticsService } from '../services/analytics';
+import { isOneSize, sizeHelpFor } from '../utils/sizeAdvice';
 
 export const ProductDetailPage = () => {
   const { slug } = useParams();
@@ -40,7 +41,9 @@ export const ProductDetailPage = () => {
     isInWishlist,
     openFitGuide,
     openSizeGuide,
-    openSizeRecommender
+    openSizeRecommender,
+    recommendedSize,
+    clearRecommendedSize
   } = useECommerceStore();
   const shippingPolicy = useShippingPolicy();
 
@@ -143,6 +146,37 @@ export const ProductDetailPage = () => {
       };
     }
   }, [slug, product]);
+
+  // Talla única (accesorios): no hay nada que elegir; se preselecciona si hay stock en el color elegido.
+  const oneSize = isOneSize(product);
+  useEffect(() => {
+    if (!oneSize || !product?.sizes?.length) return;
+    const only = product.sizes[0];
+    const v = (product.rawVariants ?? []).find((x) => x.size === only && x.color === selectedColor?.name);
+    if (v && v.available > 0) setSelectedSize(only);
+  }, [oneSize, product, selectedColor?.name]);
+
+  // «Usar talla X» desde «Encuentra tu talla»: se aplica a este producto; si la talla está agotada en el
+  // color elegido, se cambia al primer color que la tenga disponible.
+  useEffect(() => {
+    if (!recommendedSize || !product || recommendedSize.productId !== product.id) return;
+    const { size } = recommendedSize;
+    clearRecommendedSize?.();
+    const inColor = (product.rawVariants ?? []).find((v) => v.size === size && v.color === selectedColor?.name);
+    if (!inColor || inColor.available <= 0) {
+      const other = (product.rawVariants ?? []).find((v) => v.size === size && v.available > 0);
+      const color = other && product.colors?.find((c) => c.name === other.color);
+      if (!color) return;
+      setSelectedColor(color);
+      setSelectedImage(0);
+    }
+    setSelectedSize(size);
+    setSizeError(false);
+    setCartError(null);
+    setQuantity(1);
+  }, [recommendedSize, product, selectedColor?.name, clearRecommendedSize]);
+
+  const sizeHelp = sizeHelpFor(product);
 
   const toggleAccordion = (key) => {
     setOpenAccordions((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -366,21 +400,25 @@ export const ProductDetailPage = () => {
             <div id="size-selector-container">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 800, color: sizeError ? '#E11D48' : '#09090B' }}>
-                  SELECCIONA TU TALLA *
+                  {oneSize ? 'TALLA ÚNICA' : 'SELECCIONA TU TALLA *'}
                 </span>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button
-                    onClick={() => openSizeRecommender(product)}
-                    style={{ fontSize: '0.78rem', fontWeight: 700, color: '#D4AF37', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
-                  >
-                    <Sparkles size={14} /> Encuentra tu talla
-                  </button>
-                  <button
-                    onClick={() => openSizeGuide(product.category)}
-                    style={{ fontSize: '0.78rem', fontWeight: 700, color: '#71717A', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
-                  >
-                    <Ruler size={14} /> Guía de medidas
-                  </button>
+                  {sizeHelp.recommender && (
+                    <button
+                      onClick={() => openSizeRecommender(product)}
+                      style={{ fontSize: '0.78rem', fontWeight: 700, color: '#D4AF37', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
+                    >
+                      <Sparkles size={14} /> Encuentra tu talla
+                    </button>
+                  )}
+                  {sizeHelp.guide && (
+                    <button
+                      onClick={() => openSizeGuide(product.category, product.sizeGroup)}
+                      style={{ fontSize: '0.78rem', fontWeight: 700, color: '#71717A', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
+                    >
+                      <Ruler size={14} /> Guía de medidas
+                    </button>
+                  )}
                 </div>
               </div>
 

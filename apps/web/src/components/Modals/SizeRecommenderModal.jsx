@@ -1,43 +1,34 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Sparkles, CheckCircle, ArrowRight } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
+import { recommendSize, explainRecommendation } from '../../utils/sizeAdvice';
 
 export const SizeRecommenderModal = () => {
-  const { activeModal, selectedModalProduct, closeModal } = useECommerceStore();
+  const { activeModal, selectedModalProduct, closeModal, applyRecommendedSize } = useECommerceStore();
 
   const [height, setHeight] = useState(175);
   const [weight, setWeight] = useState(74);
   const [fitPreference, setFitPreference] = useState('normal'); // 'fitted' | 'normal' | 'loose'
   const [result, setResult] = useState(null);
 
+  // El modal está siempre montado: al abrirlo para otro producto no debe quedar la recomendación del anterior.
+  const productId = selectedModalProduct?.id ?? null;
+  useEffect(() => { setResult(null); }, [productId, activeModal]);
+
   if (activeModal !== 'sizeRecommender') return null;
 
   const calculateSize = (e) => {
     e.preventDefault();
-
-    let recSize = 'M';
-    let explanation = '';
-
-    if (weight < 65 || (height > 175 && weight < 68)) {
-      recSize = fitPreference === 'loose' ? 'M' : 'S';
-    } else if (weight >= 65 && weight <= 78) {
-      if (fitPreference === 'fitted') recSize = 'S';
-      else if (fitPreference === 'loose') recSize = 'L';
-      else recSize = 'M';
-    } else if (weight > 78 && weight <= 88) {
-      if (fitPreference === 'fitted') recSize = 'M';
-      else if (fitPreference === 'loose') recSize = 'XL';
-      else recSize = 'L';
-    } else {
-      recSize = fitPreference === 'fitted' ? 'L' : 'XL';
+    const input = { height, weight, fit: fitPreference };
+    const rec = recommendSize(selectedModalProduct, input);
+    if (!rec) {
+      setResult({ size: null, explanation: 'Este producto no usa tallas S–XL. Consulta la guía de medidas para elegir tu talla.' });
+      return;
     }
-
-    explanation = `Basado en tu altura de ${height}cm, peso de ${weight}kg y tu preferencia de ajuste ${
-      fitPreference === 'fitted' ? 'entallado' : fitPreference === 'loose' ? 'holgado' : 'estándar'
-    }. El 94% de clientes con tus proporciones eligieron talla ${recSize}.`;
-
-    setResult({ size: recSize, explanation });
+    setResult({ ...rec, explanation: explainRecommendation(rec, input) });
   };
+
+  const thumb = selectedModalProduct?.images?.[0];
 
   return (
     <div className="modal-overlay" onClick={closeModal}>
@@ -67,10 +58,10 @@ export const SizeRecommenderModal = () => {
 
         {selectedModalProduct && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', backgroundColor: '#FAFAFA', borderRadius: '6px', marginBottom: '1.25rem', border: '1px solid #E4E4E7' }}>
-            <img src={selectedModalProduct.images[0]} alt="" style={{ width: '40px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+            {thumb && <img src={thumb} alt="" style={{ width: '40px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />}
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedModalProduct.name}</div>
-              <div style={{ fontSize: '0.75rem', color: '#71717A' }}>FIT DE LA PRENDA: {selectedModalProduct.fit}</div>
+              {selectedModalProduct.fit && <div style={{ fontSize: '0.75rem', color: '#71717A' }}>FIT DE LA PRENDA: {selectedModalProduct.fit}</div>}
             </div>
           </div>
         )}
@@ -164,12 +155,14 @@ export const SizeRecommenderModal = () => {
           <div style={{ textAlign: 'center', padding: '1rem 0' }}>
             <CheckCircle size={52} color="#10B981" style={{ margin: '0 auto 1rem auto' }} />
             <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#71717A', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              RECOMENDACIÓN PERSONALIZADA J&M
+              RECOMENDACIÓN ORIENTATIVA J&M
             </span>
-            <div style={{ fontSize: '3rem', fontWeight: 900, color: '#09090B', margin: '0.4rem 0 1rem 0' }}>
-              TALLA {result.size}
-            </div>
-            <p style={{ fontSize: '0.88rem', color: '#27272A', lineHeight: 1.6, backgroundColor: '#FAFAFA', padding: '1rem', borderRadius: '8px', border: '1px solid #E4E4E7', marginBottom: '1.5rem' }}>
+            {result.size && (
+              <div data-testid="recommended-size" style={{ fontSize: '3rem', fontWeight: 900, color: '#09090B', margin: '0.4rem 0 1rem 0' }}>
+                TALLA {result.size}
+              </div>
+            )}
+            <p role="status" style={{ fontSize: '0.88rem', color: '#27272A', lineHeight: 1.6, backgroundColor: '#FAFAFA', padding: '1rem', borderRadius: '8px', border: '1px solid #E4E4E7', marginBottom: '1.5rem' }}>
               {result.explanation}
             </p>
 
@@ -188,7 +181,9 @@ export const SizeRecommenderModal = () => {
                 Recalcular
               </button>
               <button
-                onClick={closeModal}
+                onClick={() => (result.size && result.inStock && productId
+                  ? applyRecommendedSize(productId, result.size)
+                  : closeModal())}
                 style={{
                   flex: 1,
                   backgroundColor: '#09090B',
@@ -199,7 +194,7 @@ export const SizeRecommenderModal = () => {
                   fontSize: '0.85rem'
                 }}
               >
-                ENTENDIDO
+                {result.size && result.inStock && productId ? `USAR TALLA ${result.size}` : 'ENTENDIDO'}
               </button>
             </div>
           </div>

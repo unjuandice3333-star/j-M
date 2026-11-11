@@ -104,6 +104,7 @@ export const useECommerceStore = create(
       activeModal: null,
       selectedModalCategory: 'camisetas',
       selectedModalProduct: null,
+      recommendedSize: null, // { productId, size } elegido desde «Encuentra tu talla»
 
       /**
        * Agrega una variante concreta (talla + color) al carrito.
@@ -375,9 +376,11 @@ export const useECommerceStore = create(
       setSearchQuery: (query) => set({ searchQuery: query }),
 
       openFitGuide: () => set({ activeModal: 'fitGuide' }),
-      openSizeGuide: (category = 'camisetas') => set({ activeModal: 'sizeGuide', selectedModalCategory: category }),
+      openSizeGuide: (category = 'camisetas', sizeGroup = null) => set({ activeModal: 'sizeGuide', selectedModalCategory: category, selectedModalSizeGroup: sizeGroup }),
       openSizeRecommender: (product = null) => set({ activeModal: 'sizeRecommender', selectedModalProduct: product }),
       closeModal: () => set({ activeModal: null }),
+      applyRecommendedSize: (productId, size) => set({ activeModal: null, recommendedSize: { productId, size } }),
+      clearRecommendedSize: () => set({ recommendedSize: null }),
     }),
     {
       name: 'jm-fashion-store-cart-v14',

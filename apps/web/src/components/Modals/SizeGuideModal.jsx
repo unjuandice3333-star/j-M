@@ -6,9 +6,9 @@ import { SIZE_CHART, SIZE_CHART_TABS, sizeChartTabFor } from '../../data/sizeGui
 // El modal está siempre montado en el layout: la pestaña inicial se calcula en cada apertura (componente
 // interno que se monta al abrir), no una sola vez al montar. Antes, abrir la guía desde un zapato mostraba camisetas.
 export const SizeGuideModal = () => {
-  const { activeModal, selectedModalCategory, closeModal } = useECommerceStore();
+  const { activeModal, selectedModalCategory, selectedModalSizeGroup, closeModal } = useECommerceStore();
   if (activeModal !== 'sizeGuide') return null;
-  const initialTab = sizeChartTabFor(selectedModalCategory);
+  const initialTab = sizeChartTabFor(selectedModalCategory, selectedModalSizeGroup);
   return <SizeGuideContent initialTab={initialTab} closeModal={closeModal} />;
 };
 
