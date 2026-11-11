@@ -507,3 +507,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(p) de Pendiente («Encuentra tu talla», `CompleteTheLook`, guía en productos de talla única).
+
+## Ejecución 64 — 2026-11-11 10:15 UTC
+- Estado inicial: rama `mission/m26-dev-qa-environments` en `3ed1473`, árbol limpio (contenedor nuevo; trabajo en la rama local `claude/gracious-pasteur-jhixif` creada desde ella). Tarea: punto 0(p) de Pendiente.
+- Hecho (defectos reales): (1) productos de talla única (`one_size`) mostraban «Guía de medidas» (tabla de camisetas) y «Encuentra tu talla» → ahora ninguno; (2) pantalón y calzado ofrecían el recomendador, que solo calcula tallas alfa (recomendaba «TALLA M» para un zapato) → solo guía; (3) la guía no recibía el `size_group`, así que una categoría nueva de calzado abría camisetas → se pasa y se usa; (4) el recomendador afirmaba «El 94% de clientes con tus proporciones eligieron talla X» (cifra inventada) → texto orientativo, más la disponibilidad real de la talla en la prenda y la talla con stock más cercana; (5) al reabrir el recomendador para otro producto se veía el resultado anterior → el contenido se remonta en cada apertura; (6) «Completa el look» etiquetaba las prendas CAMISETA/JEAN/CALZADO por su posición → categoría real; dejó de mutar `look` durante el render.
+- Archivos: `apps/web/src/data/sizeGuide.js` (`sizeToolsFor`, `recommendAlphaSize`, `recommendedSizeAvailability`), `components/Modals/SizeRecommenderModal.jsx`, `components/Modals/SizeGuideModal.jsx`, `components/Product/CompleteTheLook.jsx`, `pages/ProductDetailPage.jsx`, `store/eCommerceStore.js` (`selectedModalSizeGroup`, no persistido), `src/__tests__/sizeTools.test.jsx` (nuevo, 14 pruebas).
+- Pruebas (ejecutadas aquí): 12 de las 14 pruebas nuevas fallan con el código anterior (las 2 restantes fijan la regla previa del recomendador y la guía por slug); `pnpm test:unit` 349/349 (30 archivos); ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 17/17. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(q) de Pendiente (promesa «10% OFF» de la newsletter y medios de pago del FAQ).
+

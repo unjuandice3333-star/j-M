@@ -1,42 +1,31 @@
 import React, { useState } from 'react';
 import { X, Sparkles, CheckCircle, ArrowRight } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
+import { recommendAlphaSize, recommendedSizeAvailability } from '../../data/sizeGuide';
 
+// Siempre montado en el layout: el contenido se remonta en cada apertura para no mostrar el resultado
+// (y la disponibilidad) calculados para otro producto.
 export const SizeRecommenderModal = () => {
   const { activeModal, selectedModalProduct, closeModal } = useECommerceStore();
+  if (activeModal !== 'sizeRecommender') return null;
+  return <SizeRecommenderContent key={selectedModalProduct?.id ?? 'none'} selectedModalProduct={selectedModalProduct} closeModal={closeModal} />;
+};
 
+const SizeRecommenderContent = ({ selectedModalProduct, closeModal }) => {
   const [height, setHeight] = useState(175);
   const [weight, setWeight] = useState(74);
   const [fitPreference, setFitPreference] = useState('normal'); // 'fitted' | 'normal' | 'loose'
   const [result, setResult] = useState(null);
 
-  if (activeModal !== 'sizeRecommender') return null;
-
   const calculateSize = (e) => {
     e.preventDefault();
-
-    let recSize = 'M';
-    let explanation = '';
-
-    if (weight < 65 || (height > 175 && weight < 68)) {
-      recSize = fitPreference === 'loose' ? 'M' : 'S';
-    } else if (weight >= 65 && weight <= 78) {
-      if (fitPreference === 'fitted') recSize = 'S';
-      else if (fitPreference === 'loose') recSize = 'L';
-      else recSize = 'M';
-    } else if (weight > 78 && weight <= 88) {
-      if (fitPreference === 'fitted') recSize = 'M';
-      else if (fitPreference === 'loose') recSize = 'XL';
-      else recSize = 'L';
-    } else {
-      recSize = fitPreference === 'fitted' ? 'L' : 'XL';
-    }
-
-    explanation = `Basado en tu altura de ${height}cm, peso de ${weight}kg y tu preferencia de ajuste ${
-      fitPreference === 'fitted' ? 'entallado' : fitPreference === 'loose' ? 'holgado' : 'estándar'
-    }. El 94% de clientes con tus proporciones eligieron talla ${recSize}.`;
-
-    setResult({ size: recSize, explanation });
+    const size = recommendAlphaSize({ height, weight, fit: fitPreference });
+    const fitLabel = fitPreference === 'fitted' ? 'entallado' : fitPreference === 'loose' ? 'holgado' : 'estándar';
+    // Antes decía «El 94% de clientes con tus proporciones eligieron talla X»: una cifra inventada.
+    const explanation = `Recomendación orientativa según tu estatura de ${height} cm, peso de ${weight} kg y ajuste ${fitLabel}. `
+      + 'Compara con la guía de medidas si estás entre dos tallas.';
+    const availability = selectedModalProduct ? recommendedSizeAvailability(selectedModalProduct, size) : null;
+    setResult({ size, explanation, availability });
   };
 
   return (
@@ -67,10 +56,10 @@ export const SizeRecommenderModal = () => {
 
         {selectedModalProduct && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', backgroundColor: '#FAFAFA', borderRadius: '6px', marginBottom: '1.25rem', border: '1px solid #E4E4E7' }}>
-            <img src={selectedModalProduct.images[0]} alt="" style={{ width: '40px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+            {selectedModalProduct.images?.[0] && <img src={selectedModalProduct.images[0]} alt="" style={{ width: '40px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />}
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{selectedModalProduct.name}</div>
-              <div style={{ fontSize: '0.75rem', color: '#71717A' }}>FIT DE LA PRENDA: {selectedModalProduct.fit}</div>
+              <div style={{ fontSize: '0.75rem', color: '#71717A' }}>{selectedModalProduct.fit && <>FIT DE LA PRENDA: {selectedModalProduct.fit}</>}</div>
             </div>
           </div>
         )}
@@ -172,6 +161,15 @@ export const SizeRecommenderModal = () => {
             <p style={{ fontSize: '0.88rem', color: '#27272A', lineHeight: 1.6, backgroundColor: '#FAFAFA', padding: '1rem', borderRadius: '8px', border: '1px solid #E4E4E7', marginBottom: '1.5rem' }}>
               {result.explanation}
             </p>
+
+            {result.availability && (
+              <p role="status" data-testid="size-availability" style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.5rem', color: result.availability.inStock ? '#047857' : '#B91C1C' }}>
+                {result.availability.inStock
+                  ? `La talla ${result.size} está disponible en esta prenda.`
+                  : `${result.availability.offered ? `La talla ${result.size} está agotada` : `Esta prenda no se fabrica en talla ${result.size}`}${
+                      result.availability.alternative ? `; la talla disponible más cercana es ${result.availability.alternative}.` : '.'}`}
+              </p>
+            )}
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button

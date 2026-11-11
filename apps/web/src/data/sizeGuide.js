@@ -76,3 +76,53 @@ export function sizeChartTabFor(category, sizeGroup) {
   if (GROUP_TO_TAB[sizeGroup]) return GROUP_TO_TAB[sizeGroup];
   return 'camisetas';
 }
+
+/**
+ * Herramientas de talla que tienen sentido para un grupo de tallas de la BD:
+ * - alpha (S–XXL): guía de medidas y recomendador por estatura/peso.
+ * - numeric_pants / footwear: solo guía (el recomendador calcula tallas alfa, no 30–36 ni 38–43).
+ * - one_size: ninguna (accesorios de talla única; antes mostraban la tabla de camisetas).
+ * Grupo desconocido o ausente: ambas, como antes.
+ */
+export function sizeToolsFor(sizeGroup) {
+  if (sizeGroup === 'one_size') return { guide: false, recommender: false };
+  if (sizeGroup === 'numeric_pants' || sizeGroup === 'footwear') return { guide: true, recommender: false };
+  return { guide: true, recommender: true };
+}
+
+const ALPHA_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+
+/**
+ * Talla alfa orientativa a partir de estatura (cm), peso (kg) y preferencia de ajuste
+ * ('fitted' | 'normal' | 'loose'). Misma regla que usaba el modal, ahora pura y probada.
+ */
+export function recommendAlphaSize({ height, weight, fit = 'normal' }) {
+  const h = Number(height);
+  const w = Number(weight);
+  if (!Number.isFinite(h) || !Number.isFinite(w)) return null;
+  if (w < 65 || (h > 175 && w < 68)) return fit === 'loose' ? 'M' : 'S';
+  if (w <= 78) return fit === 'fitted' ? 'S' : fit === 'loose' ? 'L' : 'M';
+  if (w <= 88) return fit === 'fitted' ? 'M' : fit === 'loose' ? 'XL' : 'L';
+  return fit === 'fitted' ? 'L' : 'XL';
+}
+
+/**
+ * Disponibilidad de la talla recomendada en el producto (variantes reales con stock).
+ * Devuelve { offered, inStock, alternative } — `alternative` es la talla alfa más cercana con stock.
+ */
+export function recommendedSizeAvailability(product, size) {
+  const variants = Array.isArray(product?.rawVariants) ? product.rawVariants : [];
+  const sizes = Array.isArray(product?.sizes) ? product.sizes : [];
+  const offered = sizes.includes(size);
+  const inStockSizes = new Set(variants.filter((v) => v.available > 0).map((v) => v.size));
+  const inStock = inStockSizes.has(size);
+  let alternative = null;
+  if (!inStock) {
+    const idx = ALPHA_ORDER.indexOf(size);
+    const candidates = [...inStockSizes].filter((s) => ALPHA_ORDER.includes(s))
+      .sort((a, b) => Math.abs(ALPHA_ORDER.indexOf(a) - idx) - Math.abs(ALPHA_ORDER.indexOf(b) - idx)
+        || ALPHA_ORDER.indexOf(b) - ALPHA_ORDER.indexOf(a));
+    alternative = idx >= 0 ? candidates[0] ?? null : null;
+  }
+  return { offered, inStock, alternative };
+}

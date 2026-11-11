@@ -41,14 +41,9 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
   };
 
   const coverImage = look.image_url || getEditorialImg('outfit_complete_look', null);
-  look.title = look.name;
 
-  // Helper for numbering 01, 02, 03 and labels
-  const getProductCategoryLabel = (category, index) => {
-    const labels = ['CAMISETA', 'JEAN', 'CALZADO'];
-    if (labels[index]) return labels[index];
-    return (category || 'PRENDA').toUpperCase();
-  };
+  // Etiqueta de la categoría real del producto (antes: CAMISETA/JEAN/CALZADO fijos según la posición en el look).
+  const getProductCategoryLabel = (prod) => (prod.categoryName || prod.category || 'PRENDA').toUpperCase();
 
   return (
     <section
@@ -98,7 +93,7 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
         }}>
           <SafeProductImage
             src={coverImage}
-            alt={look.title}
+            alt={look.name}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
           
@@ -116,7 +111,7 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
             <div style={{ width: '28px', height: '2px', backgroundColor: '#D4AF37', marginBottom: '0.75rem' }} />
             
             <span style={{ color: '#FFFFFF', fontWeight: 900, fontSize: '1.18rem', letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1.25 }}>
-              {look.title}
+              {look.name}
             </span>
           </div>
         </div>
@@ -170,7 +165,7 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
                         0{index + 1}
                       </span>
                       <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#71717A', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                        {getProductCategoryLabel(prod.category, index)}
+                        {getProductCategoryLabel(prod)}
                       </span>
                     </div>
 

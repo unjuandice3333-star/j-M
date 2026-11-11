@@ -103,6 +103,7 @@ export const useECommerceStore = create(
 
       activeModal: null,
       selectedModalCategory: 'camisetas',
+      selectedModalSizeGroup: null,
       selectedModalProduct: null,
 
       /**
@@ -375,7 +376,7 @@ export const useECommerceStore = create(
       setSearchQuery: (query) => set({ searchQuery: query }),
 
       openFitGuide: () => set({ activeModal: 'fitGuide' }),
-      openSizeGuide: (category = 'camisetas') => set({ activeModal: 'sizeGuide', selectedModalCategory: category }),
+      openSizeGuide: (category = 'camisetas', sizeGroup = null) => set({ activeModal: 'sizeGuide', selectedModalCategory: category, selectedModalSizeGroup: sizeGroup }),
       openSizeRecommender: (product = null) => set({ activeModal: 'sizeRecommender', selectedModalProduct: product }),
       closeModal: () => set({ activeModal: null }),
     }),

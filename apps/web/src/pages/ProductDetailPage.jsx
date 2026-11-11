@@ -23,6 +23,7 @@ import { useECommerceStore } from '../store/eCommerceStore';
 import { useShippingPolicy } from '../hooks/useShippingPolicy';
 import ProductCard from '../components/Product/ProductCard';
 import SafeProductImage from '../components/Common/SafeImage';
+import { sizeToolsFor } from '../data/sizeGuide';
 
 import { analyticsService } from '../services/analytics';
 
@@ -52,6 +53,7 @@ export const ProductDetailPage = () => {
 
   // M27: nunca se muestra otro producto en lugar del pedido (antes: products[0] como respaldo).
   const product = products.find((p) => p.slug === slug) || null;
+  const sizeTools = sizeToolsFor(product?.sizeGroup);
   const inWishlist = isInWishlist(product?.id);
 
   // Local Component States
@@ -369,18 +371,22 @@ export const ProductDetailPage = () => {
                   SELECCIONA TU TALLA *
                 </span>
                 <div style={{ display: 'flex', gap: '1rem' }}>
+                  {sizeTools.recommender && (
                   <button
                     onClick={() => openSizeRecommender(product)}
                     style={{ fontSize: '0.78rem', fontWeight: 700, color: '#D4AF37', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
                   >
                     <Sparkles size={14} /> Encuentra tu talla
                   </button>
+                  )}
+                  {sizeTools.guide && (
                   <button
-                    onClick={() => openSizeGuide(product.category)}
+                    onClick={() => openSizeGuide(product.category, product.sizeGroup)}
                     style={{ fontSize: '0.78rem', fontWeight: 700, color: '#71717A', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
                   >
                     <Ruler size={14} /> Guía de medidas
                   </button>
+                  )}
                 </div>
               </div>
 
