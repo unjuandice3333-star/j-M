@@ -516,3 +516,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(q) de Pendiente (talla por prenda en «Comprar el look completo»; formularios de boletín/contacto).
+
+## 2026-11-11 12:10 UTC — Ejecución 65 (trabajo de código: talla por prenda en «Comprar el look completo»)
+- Estado inicial: sesión en `claude/gracious-pasteur-n5e2p8` (= main, `2661f2a`); se partió de la rama autorizada = remoto `f8f50e9`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(q) de Pendiente. El look agregaba la primera variante con stock de cada prenda sin preguntar; ahora selector de color/talla por prenda, sin agregado parcial si falta talla, agotadas avisadas y fuera del precio.
+- Archivos: `apps/web/src/utils/lookSelection.js` (nuevo), `apps/web/src/components/Product/CompleteTheLook.jsx`, `apps/web/src/__tests__/lookSelection.test.jsx` (nuevo, 6 pruebas), `apps/web/e2e/synthetic/backend.cjs` (look sembrado en `collections`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 19).
+- Pruebas (ejecutadas aquí): las 2 pruebas de UI nuevas fallan con el componente anterior (`git stash`); `pnpm test:unit` 352/352 (31 archivos); ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 19/19 en 2 ejecuciones seguidas. pgTAP no re-ejecutado (sin cambios SQL).
+- Revisado sin cambios: `/contacto` (InfoPage) no tiene formulario. Hallado para la próxima: el boletín de la portada confirma suscripción y promete 10% sin guardar nada; «Mover todo al carrito» de la lista de deseos usa la primera variante con stock.
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(r) de Pendiente (boletín real con migración aditiva) y 0(s) (talla por prenda en «Mover todo al carrito»).

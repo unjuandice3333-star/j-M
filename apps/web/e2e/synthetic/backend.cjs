@@ -39,7 +39,11 @@ function seed() {
     users: [{ id: adminId, email: 'admin@jm.test', password: 'Admin-Sintetico-1', role: 'admin', full_name: 'Admin Sintético' }],
     products, inventories,
     tables: {
-      categories: [cat], style_lines: [line], occasions: [oficina], colors: Object.values(colors), sizes: [], brands: [{ id: 'b1', name: 'J&M' }], site_content: [], collections: [], product_reviews: [], coupons: [], customer_addresses: [], wishlist_items: [],
+      categories: [cat], style_lines: [line], occasions: [oficina], colors: Object.values(colors), sizes: [], brands: [{ id: 'b1', name: 'J&M' }], site_content: [],
+      // Look activo para «Completa el look» (portada y ficha): camiseta con varias tallas/colores + polo de talla única disponible.
+      collections: [{ id: 'col-look', slug: 'look-oficina', name: 'Look Oficina', subtitle: 'Para la semana', image_url: null, kind: 'look', is_active: true, sort_order: 1,
+        collection_products: [{ product_id: 'p-cam', position: 1 }, { product_id: 'p-pol', position: 2 }] }],
+      product_reviews: [], coupons: [], customer_addresses: [], wishlist_items: [],
       shipping_methods: [{ code: 'standard', name: 'Estándar', cost: 12000, free_over_subtotal: 200000, eta_text: '3-5 días', sort_order: 1, is_active: true }],
       v_product_rating: [], online_orders: [], profiles: [{ id: adminId, role: 'admin', full_name: 'Admin Sintético', email: 'admin@jm.test' }],
     },

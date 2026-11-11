@@ -4,6 +4,13 @@ import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import SafeProductImage from '../Common/SafeImage';
+import { isOneSize } from '../../utils/sizeAdvice';
+import { colorsInStock, sizesForColor, defaultLookSelection, changeLookColor, resolveLookSelection } from '../../utils/lookSelection';
+
+const selectStyle = {
+  padding: '0.35rem 0.5rem', border: '1px solid #D4D4D8', borderRadius: '5px', fontSize: '0.75rem',
+  fontWeight: 600, color: '#09090B', backgroundColor: '#FFFFFF', minWidth: 0, maxWidth: '100%',
+};
 
 // M27: el look sale de la BD (collections kind = 'look' + collection_products). Sin look publicado, no se muestra
 // nada (antes: un look simulado con productos inexistentes y un descuento por paquete que la tienda no aplica).
@@ -12,6 +19,7 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [look, setLook] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [selections, setSelections] = useState({}); // productId → { color, size }
 
   const getEditorialImg = (key, fallback) => (editorialImages && editorialImages[key]) ? editorialImages[key] : fallback;
 
@@ -29,15 +37,36 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
         .map((cp) => (products || []).find((p) => p.id === cp.product_id)).filter(Boolean)
     : [];
   if (!look || lookProducts.length === 0) return null;
-  const totalPrice = lookProducts.reduce((n, p) => n + p.price, 0);
+  const selectionOf = (p) => selections[p.id] ?? defaultLookSelection(p);
+  const setSelection = (p, next) => { setSelections((st) => ({ ...st, [p.id]: next })); setNotice(null); };
+  const purchasable = lookProducts.filter((p) => colorsInStock(p).length > 0);
+  const totalPrice = purchasable.reduce((n, p) => n + p.price, 0);
 
+  // Agrega cada prenda con la talla y el color elegidos. Si falta elegir alguna talla no se agrega nada
+  // (un look a medias con tallas al azar es peor que pedir la elección).
   const handleBuyLook = () => {
-    const failed = [];
-    for (const p of lookProducts) {
-      const v = p.rawVariants.find((x) => x.available > 0);
-      if (!v || !addItem(p, v.size, v.color, 1).ok) failed.push(p.name);
+    const { ready, missing, soldOut } = resolveLookSelection(lookProducts, selections);
+    if (missing.length) {
+      setNotice({ type: 'error', text: `Elige la talla de: ${missing.map((p) => p.name).join(', ')}.` });
+      return;
     }
-    setNotice(failed.length ? `No se pudieron agregar: ${failed.join(', ')} (sin stock).` : 'Look agregado al carrito. Revisa tallas y colores en el carrito.');
+    if (ready.length === 0) {
+      setNotice({ type: 'error', text: 'Las prendas de este look están agotadas.' });
+      return;
+    }
+    const failed = [];
+    for (const { product, size, color } of ready) {
+      const res = addItem(product, size, color, 1);
+      if (!res.ok) failed.push(`${product.name} (${res.message ?? 'no disponible'})`);
+    }
+    const parts = [];
+    if (failed.length) parts.push(`No se pudieron agregar: ${failed.join(', ')}.`);
+    if (soldOut.length) parts.push(`Agotado: ${soldOut.map((p) => p.name).join(', ')}.`);
+    const added = ready.length - failed.length;
+    setNotice({
+      type: failed.length || soldOut.length ? 'error' : 'ok',
+      text: [added ? `${added} prenda(s) agregada(s) al carrito.` : null, ...parts].filter(Boolean).join(' '),
+    });
   };
 
   const coverImage = look.image_url || getEditorialImg('outfit_complete_look', null);
@@ -140,7 +169,7 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
                     boxShadow: isHovered ? '0 6px 18px rgba(212, 175, 55, 0.08)' : 'none',
                     transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
                     transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                    cursor: 'pointer'
+                    cursor: 'default'
                   }}
                 >
                   {/* Foto con ampliación suave */}
@@ -182,8 +211,10 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
                     </div>
 
                     <div style={{ fontSize: '0.75rem', color: '#71717A', marginTop: '0.15rem' }}>
-                      {[prod.fit && `FIT: ${prod.fit}`, prod.color && `Color: ${prod.color}`].filter(Boolean).join(' • ')}
+                      {prod.fit ? `FIT: ${prod.fit}` : null}
                     </div>
+
+                    <LookItemPicker product={prod} selection={selectionOf(prod)} onChange={(next) => setSelection(prod, next)} />
                   </div>
 
                   {/* Precio Individual */}
@@ -253,8 +284,16 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
 
             {/* Microtexto informativo debajo del CTA */}
             <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#71717A', fontWeight: 600 }}>
-              Incluye {lookProducts.length} productos{notice ? ` · ${notice}` : ''}
+              Incluye {purchasable.length} producto(s) disponible(s){purchasable.length < lookProducts.length ? ` de ${lookProducts.length}` : ''}
             </div>
+            {notice && (
+              <div role={notice.type === 'error' ? 'alert' : 'status'} data-testid="look-notice" style={{
+                textAlign: 'center', fontSize: '0.8rem', fontWeight: 700,
+                color: notice.type === 'error' ? '#B91C1C' : '#065F46',
+              }}>
+                {notice.text}
+              </div>
+            )}
           </div>
 
         </div>
@@ -262,5 +301,38 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
     </section>
   );
 };
+
+// Selectores de color y talla de una prenda del look. Solo tallas con stock en el color elegido son elegibles.
+function LookItemPicker({ product, selection, onChange }) {
+  const colors = colorsInStock(product);
+  if (colors.length === 0) {
+    return <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#B91C1C', marginTop: '0.35rem' }}>Agotado</div>;
+  }
+  const sizes = sizesForColor(product, selection.color);
+  const stop = (e) => e.stopPropagation();
+  return (
+    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.4rem' }} onClick={stop}>
+      {colors.length > 1 ? (
+        <select aria-label={`Color de ${product.name}`} value={selection.color ?? ''} style={selectStyle}
+          onChange={(e) => onChange(changeLookColor(product, selection, e.target.value))}>
+          {colors.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      ) : (
+        <span style={{ fontSize: '0.75rem', color: '#71717A', alignSelf: 'center' }}>Color: {selection.color}</span>
+      )}
+      {isOneSize(product) ? (
+        <span style={{ fontSize: '0.75rem', color: '#71717A', alignSelf: 'center' }}>Talla única</span>
+      ) : (
+        <select aria-label={`Talla de ${product.name}`} value={selection.size ?? ''} style={selectStyle}
+          onChange={(e) => onChange({ color: selection.color, size: e.target.value || null })}>
+          <option value="">Elige talla</option>
+          {sizes.map(({ size, available }) => (
+            <option key={size} value={size} disabled={available <= 0}>{available > 0 ? size : `${size} (agotada)`}</option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
 
 export default CompleteTheLook;

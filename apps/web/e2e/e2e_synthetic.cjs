@@ -171,6 +171,24 @@ async function main() {
       await p.waitForFunction(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"items":[]}}').state.items.length === 1);
     }, browser);
 
+    await journey('19. Completa el look: talla elegida por prenda, nada se agrega sin elegirla', async (p) => {
+      await p.goto(`${BASE}/`); // la sección se monta en la portada
+      const look = p.getByRole('region', { name: 'Outfit recomendado Completa el Look' });
+      const buy = look.getByRole('button', { name: /COMPRAR EL LOOK COMPLETO/ });
+      await buy.click();
+      await look.getByText('Elige la talla de: Camiseta Básica').waitFor();
+      const cart = () => p.evaluate(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"items":[]}}').state.items.map((i) => `${i.sku}`));
+      if ((await cart()).length) throw new Error('se agregó algo sin elegir talla');
+      await look.getByLabel('Color de Camiseta Básica').selectOption('Blanco');
+      const mBlanco = look.getByLabel('Talla de Camiseta Básica').locator('option[value="M"]');
+      if (!(await mBlanco.isDisabled())) throw new Error('M/Blanco (agotada) se puede elegir');
+      await look.getByLabel('Talla de Camiseta Básica').selectOption('S');
+      await buy.click();
+      await look.getByText('2 prenda(s) agregada(s) al carrito.').waitFor();
+      const skus = (await cart()).sort().join(',');
+      if (skus !== 'CAM-S-BLA,POL-M-NEG') throw new Error(`carrito: ${skus}`);
+    }, browser);
+
     await journey('3. Carrito: cantidades, límite de stock, persistencia y eliminación', async (p) => {
       await addToCart(p, 'camiseta-basica', 'L', 'Negro'); // L/Negro: solo 1 en stock
       await p.goto(`${BASE}/carrito`);
