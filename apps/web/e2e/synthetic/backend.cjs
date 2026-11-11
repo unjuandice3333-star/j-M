@@ -208,6 +208,16 @@ function start(port = 54321) {
           if (q.grant_type === 'password') { const u = S.users.find((x) => x.email === body.email && x.password === body.password); return u ? send(res, 200, session(u)) : send(res, 400, { code: 'invalid_credentials', error_code: 'invalid_credentials', msg: 'Invalid login credentials', message: 'Invalid login credentials' }); }
           if (q.grant_type === 'refresh_token') { const u = S.users.find((x) => `r-${x.id}` === body.refresh_token); return u ? send(res, 200, session(u)) : send(res, 400, { msg: 'Invalid Refresh Token', message: 'Invalid Refresh Token' }); }
         }
+        // Ejecución 57: cambio de contraseña con sesión (mismo contrato que GoTrue: 422 same_password / weak_password).
+        if (p === '/auth/v1/user' && req.method === 'PUT') {
+          const u = S.users.find((x) => x.id === ctx.userId); if (!u) return send(res, 401, { code: 'no_authorization', msg: 'invalid token', message: 'invalid token' });
+          if (body.password !== undefined) {
+            if (String(body.password).length < 8) return send(res, 422, { code: 'weak_password', msg: 'Password should be at least 8 characters.', message: 'Password should be at least 8 characters.' });
+            if (body.password === u.password) return send(res, 422, { code: 'same_password', msg: 'New password should be different from the old password.', message: 'New password should be different from the old password.' });
+            u.password = body.password;
+          }
+          return send(res, 200, session(u).user);
+        }
         if (p === '/auth/v1/user') { const u = S.users.find((x) => x.id === ctx.userId); return u ? send(res, 200, session(u).user) : send(res, 401, { msg: 'invalid token' }); }
         if (p === '/auth/v1/logout') return send(res, 204);
         if (p.startsWith('/rest/v1/rpc/')) {

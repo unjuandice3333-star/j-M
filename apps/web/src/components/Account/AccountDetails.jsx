@@ -1,12 +1,14 @@
 // «Mi cuenta»: datos personales y libreta de direcciones del cliente (ejecución 56).
 // Datos reales en profiles/customer_addresses (RLS por usuario); errores siempre visibles, nunca éxito fingido.
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin, User, Star, Pencil, Trash2, Plus } from 'lucide-react';
+import { MapPin, User, Star, Pencil, Trash2, Plus, KeyRound } from 'lucide-react';
+import supabase from '../../config/supabase';
 import { useAuthStore } from '../../store/authStore';
 import {
   accountService, toProfileForm, validateProfile, emptyAddressForm, toAddressForm, validateAddress, addressSummary,
 } from '../../services/accountService';
 import { DEPARTMENTS } from '../../utils/colombia';
+import { PASSWORD_MAX, validateNewPassword, passwordUpdateError } from '../../utils/passwordPolicy';
 
 const card = { backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem' };
 const label = { display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#09090B', marginBottom: '0.35rem' };
@@ -238,11 +240,86 @@ function AddressBook({ user, profile }) {
   );
 }
 
+// Ejecución 57: cambiar la contraseña con la sesión abierta (antes solo existía «olvidé mi contraseña» por correo).
+// Si el proyecto exige reautenticación (Auth → «Secure password change»), Supabase responde reauthentication_needed:
+// se pide el código que llega por correo (supabase.auth.reauthenticate) y se reenvía como nonce.
+function PasswordSection() {
+  const [pw, setPw] = useState({ password: '', confirm: '', nonce: '' });
+  const [needsCode, setNeedsCode] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const change = (e) => { const { name, value } = e.target; setPw((f) => ({ ...f, [name]: value })); setMsg(null); };
+
+  const sendCode = async () => {
+    const { error } = await supabase.auth.reauthenticate();
+    if (error) { setMsg({ kind: 'error', text: passwordUpdateError(error).message }); return false; }
+    return true;
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    const invalid = validateNewPassword(pw.password, pw.confirm);
+    if (invalid) { setMsg({ kind: 'error', text: invalid }); return; }
+    if (needsCode && !pw.nonce.trim()) { setMsg({ kind: 'error', text: 'Escribe el código que te enviamos por correo.' }); return; }
+    setBusy(true); setMsg(null);
+    try {
+      const attrs = needsCode ? { password: pw.password, nonce: pw.nonce.trim() } : { password: pw.password };
+      const { error } = await supabase.auth.updateUser(attrs);
+      if (!error) {
+        setPw({ password: '', confirm: '', nonce: '' }); setNeedsCode(false);
+        setMsg({ kind: 'ok', text: 'Contraseña actualizada. Úsala la próxima vez que inicies sesión.' });
+        return;
+      }
+      const { kind, message } = passwordUpdateError(error);
+      if (kind === 'reauth') {
+        if (await sendCode()) { setNeedsCode(true); setMsg({ kind: 'ok', text: message }); }
+        return;
+      }
+      if (kind === 'session') { setMsg({ kind: 'error', text: `${message} Vuelve a iniciar sesión.` }); return; }
+      setMsg({ kind: 'error', text: message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section style={card} aria-labelledby="account-password-title" data-testid="account-password">
+      <h2 id="account-password-title" style={heading}><KeyRound size={20} /> Contraseña</h2>
+      <form onSubmit={submit} noValidate style={{ marginTop: '1rem' }}>
+        <div style={grid}>
+          <div>
+            <label style={label} htmlFor="acc-new-password">Nueva contraseña</label>
+            <input id="acc-new-password" name="password" type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={pw.password} onChange={change} style={input} />
+          </div>
+          <div>
+            <label style={label} htmlFor="acc-confirm-password">Repite la contraseña</label>
+            <input id="acc-confirm-password" name="confirm" type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={pw.confirm} onChange={change} style={input} />
+          </div>
+          {needsCode && (
+            <div>
+              <label style={label} htmlFor="acc-password-nonce">Código enviado a tu correo</label>
+              <input id="acc-password-nonce" name="nonce" inputMode="numeric" autoComplete="one-time-code" maxLength={12} value={pw.nonce} onChange={change} style={input} />
+            </div>
+          )}
+        </div>
+        {msg && <Banner kind={msg.kind}>{msg.text}</Banner>}
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+          <button type="submit" disabled={busy} style={primaryBtn}>{busy ? 'Guardando…' : 'Cambiar contraseña'}</button>
+          {needsCode && <button type="button" disabled={busy} onClick={async () => { setMsg(null); if (await sendCode()) setMsg({ kind: 'ok', text: 'Te enviamos un código nuevo.' }); }} style={ghostBtn}>Reenviar código</button>}
+        </div>
+      </form>
+    </section>
+  );
+}
+
 export function AccountDetails({ user, profile }) {
   return (
     <>
       <ProfileSection user={user} profile={profile} />
       <AddressBook user={user} profile={profile} />
+      <PasswordSection />
     </>
   );
 }

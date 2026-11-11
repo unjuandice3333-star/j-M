@@ -106,6 +106,24 @@ describe('persistencia de sesión', () => {
     await cb('SIGNED_OUT', null);
     expect(A().isLoggedIn).toBe(false);
   });
+  it('el callback no espera consultas (evita el bloqueo del candado de supabase-js en updateUser) y un evento viejo no pisa uno nuevo', async () => {
+    supa.state.tables.profiles = [{ id: 'u1', role: 'customer' }];
+    await A().initAuth();
+    const cb = supa.auth.onAuthStateChange.mock.calls[0][0];
+    const fetchSpy = vi.fn(async () => ({ id: 'u1', role: 'customer' }));
+    useAuthStore.setState({ fetchProfile: fetchSpy });
+    // síncrono: devuelve sin esperar y la consulta del perfil aún no empezó (se hace fuera del candado)
+    expect(cb('USER_UPDATED', { user })).toBeUndefined();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(A()).toMatchObject({ isLoggedIn: true, profile: { role: 'customer' } });
+    // SIGNED_IN seguido de SIGNED_OUT inmediato: la lectura diferida del primero no reabre la sesión
+    cb('SIGNED_IN', { user });
+    cb('SIGNED_OUT', null);
+    await new Promise((r) => setTimeout(r, 5));
+    expect(A().isLoggedIn).toBe(false);
+  });
 });
 
 describe('roles y rutas protegidas', () => {

@@ -24,6 +24,7 @@ export function authMessage(err) {
 // seguían en vuelo: antes, una lectura tardía devolvía el nombre viejo y pisaba lo que el cliente acababa de guardar.
 let profileSeq = 0;
 let latestProfile = Promise.resolve(null);
+let authEventSeq = 0;
 
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -101,16 +102,25 @@ export const useAuthStore = create((set, get) => ({
       }
 
       // 2. Escuchar cambios de estado en tiempo real (login, logout, token refresh)
-      supabase.auth.onAuthStateChange(async (event, newSession) => {
+      // Ejecución 57: el callback NO puede esperar consultas a Supabase. supabase-js notifica eventos como USER_UPDATED
+      // (updateUser) o PASSWORD_RECOVERY mientras retiene su candado de sesión y espera a los callbacks; una consulta
+      // dentro pide el mismo candado → bloqueo mutuo (el cambio de contraseña se quedaba en «Guardando…» para siempre).
+      // La lectura del perfil se difiere fuera del callback y solo se aplica si sigue siendo el último evento.
+      supabase.auth.onAuthStateChange((event, newSession) => {
+        authEventSeq += 1;
+        const seq = authEventSeq;
         if (newSession?.user) {
-          const profile = await get().loadProfile(newSession.user.id);
-          set({
-            session: newSession,
-            user: newSession.user,
-            profile,
-            isLoggedIn: true,
-            isLoading: false
-          });
+          setTimeout(async () => {
+            const profile = await get().loadProfile(newSession.user.id);
+            if (seq !== authEventSeq) return;
+            set({
+              session: newSession,
+              user: newSession.user,
+              profile,
+              isLoggedIn: true,
+              isLoading: false
+            });
+          }, 0);
         } else {
           set({
             session: null,

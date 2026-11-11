@@ -348,3 +348,211 @@ describe('Checkout: direcciones guardadas', () => {
     expect(host.querySelector('[name="address"]')).not.toBeNull();
   });
 });
+
+// =============================================================================================================
+// Ejecución 57: «Guardar esta dirección en mi cuenta» (checkout) y contraseña (Mi cuenta y /cuenta/restablecer).
+// =============================================================================================================
+describe('accountService.saveFromCheckout', () => {
+  const co = (over = {}) => ({ firstName: 'Ana', lastName: 'Pérez', phone: '3001234567', department: 'Antioquia', city: 'Medellín',
+    address: 'Calle 10 # 20-30', neighborhood: 'Laureles', notes: 'Portería', ...over });
+
+  it('la primera dirección queda principal; las notas de entrega pasan a «referencia»', async () => {
+    const res = await svc.accountService.saveFromCheckout(ME, co());
+    expect(res.status).toBe('saved');
+    expect(supa.db.customer_addresses).toHaveLength(1);
+    expect(supa.db.customer_addresses[0]).toMatchObject({ user_id: ME, recipient_name: 'Ana Pérez', address_line: 'Calle 10 # 20-30', reference: 'Portería', is_default: true });
+    const second = await svc.accountService.saveFromCheckout(ME, co({ address: 'Carrera 7 # 1-2', city: 'Envigado' }));
+    expect(second.status).toBe('saved');
+    expect(supa.db.customer_addresses.filter((a) => a.is_default)).toHaveLength(1);
+  });
+
+  it('no duplica una dirección que ya existe (ignora mayúsculas, tildes y signos)', async () => {
+    supa.db.customer_addresses.push({ id: 'd1', user_id: ME, created_at: '2026-11-01T00:00:00Z', ...addr({ is_default: true }) });
+    const res = await svc.accountService.saveFromCheckout(ME, co({ city: 'MEDELLIN', address: 'calle 10 #20-30' }));
+    expect(res.status).toBe('duplicate');
+    expect(supa.calls.some((c) => c.table === 'customer_addresses' && c.op === 'insert')).toBe(false);
+  });
+
+  it('nunca lanza: datos inválidos o fallo de la BD se devuelven como estado', async () => {
+    expect((await svc.accountService.saveFromCheckout(ME, co({ phone: '12' }))).status).toBe('invalid');
+    supa.fail['customer_addresses.insert'] = { code: '42501', message: 'row-level security' };
+    const res = await svc.accountService.saveFromCheckout(ME, co());
+    expect(res.status).toBe('error');
+    expect(res.message).toMatch(/permiso/);
+    expect((await svc.accountService.saveFromCheckout(null, co())).status).toBe('error');
+  });
+});
+
+describe('Checkout: guardar la dirección escrita', () => {
+  let createOrder, openWompiWidget;
+  const mount = async () => {
+    supa.auth.getSession = vi.fn(async () => ({ data: { session: { user: { id: ME } } }, error: null }));
+    const { useAuthStore } = await import('../store/authStore.js');
+    useAuthStore.setState({ isLoggedIn: true, isLoading: false, user: { id: ME, email: 'ana@correo.com' }, profile: { id: ME, full_name: 'Ana Pérez', phone: '3001234567' } });
+    const { useECommerceStore } = await import('../store/eCommerceStore.js');
+    await useECommerceStore.persist.rehydrate();
+    createOrder = vi.fn(async () => ({ id: 'o1', order_number: 'JM-1', public_token: 't' }));
+    useECommerceStore.setState({ loadProducts: async () => {}, refreshQuote: async () => {}, createOrder });
+    useECommerceStore.getState().addItem(makeProduct(), 'M', 'Negro', 1);
+    ({ wompiService: { openWompiWidget } } = await import('../services/wompi'));
+    openWompiWidget.mockClear();
+    const { CheckoutPage } = await import('../pages/CheckoutPage.jsx');
+    await act(async () => root.render(<CheckoutPage />));
+    await flush();
+  };
+  const fill = () => {
+    for (const [k, v] of [['department', 'Antioquia'], ['city', 'Medellín'], ['address', 'Calle 10 # 20-30'], ['notes', 'Portería']]) {
+      setValue(host.querySelector(`[name="${k}"]`), v);
+    }
+  };
+  const placeOrder = async () => { await submitForm(host.querySelector('form')); await flush(); };
+
+  it('marcada: guarda la dirección (principal si es la primera) y luego abre el pago', async () => {
+    await mount();
+    fill();
+    const box = host.querySelector('[data-testid="save-address-checkbox"]');
+    expect(box.parentElement.textContent).toMatch(/como principal/);
+    await click(box);
+    await placeOrder();
+    expect(createOrder).toHaveBeenCalledTimes(1);
+    expect(supa.db.customer_addresses).toHaveLength(1);
+    expect(supa.db.customer_addresses[0]).toMatchObject({ recipient_name: 'Ana Pérez', city: 'Medellín', reference: 'Portería', is_default: true });
+    expect(openWompiWidget).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin marcar no guarda nada; con una dirección guardada elegida la opción no aparece', async () => {
+    supa.db.customer_addresses.push({ id: 'd1', user_id: ME, created_at: '2026-11-01T00:00:00Z', ...addr({ is_default: true }) });
+    await mount();
+    expect(host.querySelector('[data-testid="saved-address-select"]').value).toBe('d1');
+    expect(host.querySelector('[data-testid="save-address-checkbox"]')).toBeNull();
+    setValue(host.querySelector('[name="address"]'), 'Carrera 7 # 1-2');
+    expect(host.querySelector('[data-testid="save-address-checkbox"]')).not.toBeNull();
+    await placeOrder();
+    expect(createOrder).toHaveBeenCalledTimes(1);
+    expect(supa.calls.some((c) => c.table === 'customer_addresses' && c.op === 'insert')).toBe(false);
+  });
+
+  it('si guardar la dirección falla, el pago se abre igual', async () => {
+    supa.fail['customer_addresses.insert'] = { code: 'XX000', message: 'boom' };
+    await mount();
+    fill();
+    await click(host.querySelector('[data-testid="save-address-checkbox"]'));
+    await placeOrder();
+    expect(createOrder).toHaveBeenCalledTimes(1);
+    expect(openWompiWidget).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Contraseña', () => {
+  let pp;
+  beforeEach(async () => { pp = await import('../utils/passwordPolicy.js'); });
+
+  it('validación: 8–72 caracteres, no solo espacios, confirmación igual', () => {
+    expect(pp.validateNewPassword('corta', 'corta')).toMatch(/al menos 8/);
+    expect(pp.validateNewPassword('x'.repeat(73), 'x'.repeat(73))).toMatch(/máximo 72/);
+    expect(pp.validateNewPassword('         ', '         ')).toMatch(/espacios/);
+    expect(pp.validateNewPassword('Segura123', 'Segura124')).toMatch(/no coinciden/);
+    expect(pp.validateNewPassword('Segura123', 'Segura123')).toBeNull();
+  });
+
+  it('traduce los errores de Supabase Auth según la causa real', () => {
+    const k = (e) => pp.passwordUpdateError(e).kind;
+    expect(k({ code: 'same_password', message: 'New password should be different from the old password.' })).toBe('same');
+    expect(k({ code: 'weak_password', message: 'Password should contain at least one character of each' })).toBe('weak');
+    expect(k({ code: 'reauthentication_needed', message: 'Password update requires reauthentication' })).toBe('reauth');
+    expect(k({ code: 'reauthentication_not_valid', message: 'Requires a valid nonce' })).toBe('bad_nonce');
+    expect(k({ name: 'AuthSessionMissingError', message: 'Auth session missing!' })).toBe('session');
+    expect(k({ status: 429, message: 'For security purposes, you can only request this after 30 seconds.' })).toBe('rate');
+    expect(k({ message: 'Failed to fetch' })).toBe('network');
+    expect(k({ message: '???' })).toBe('unknown');
+  });
+
+  it('enlace de recuperación vencido o inválido en la URL', () => {
+    expect(pp.recoveryLinkError('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid')).toMatch(/venció/);
+    expect(pp.recoveryLinkError('', '?error=server_error')).toMatch(/no es válido/);
+    expect(pp.recoveryLinkError('#access_token=x&type=recovery')).toBeNull();
+  });
+
+  const pwForm = async (scope, password, confirm = password) => {
+    setValue(scope.querySelector('[name="password"]'), password);
+    setValue(scope.querySelector('[name="confirm"]'), confirm);
+    await submitForm(scope.querySelector('form'));
+    await flush();
+  };
+
+  it('Mi cuenta: cambia la contraseña; valida antes de enviar y explica «misma contraseña»', async () => {
+    supa.auth.updateUser = vi.fn()
+      .mockResolvedValueOnce({ data: null, error: { code: 'same_password', message: 'New password should be different from the old password.' } })
+      .mockResolvedValueOnce({ data: { user: { id: ME } }, error: null });
+    const { AccountDetails } = await import('../components/Account/AccountDetails.jsx');
+    await act(async () => root.render(<AccountDetails user={{ id: ME, email: 'ana@correo.com' }} profile={{ id: ME, full_name: 'Ana' }} />));
+    await flush();
+    const sec = host.querySelector('[data-testid="account-password"]');
+    await pwForm(sec, 'Segura123', 'Otra12345');
+    expect(sec.textContent).toMatch(/no coinciden/);
+    expect(supa.auth.updateUser).not.toHaveBeenCalled();
+    await pwForm(sec, 'Segura123');
+    expect(sec.textContent).toMatch(/distinta de la actual/);
+    await pwForm(sec, 'Nueva12345');
+    expect(supa.auth.updateUser).toHaveBeenLastCalledWith({ password: 'Nueva12345' });
+    expect(sec.textContent).toMatch(/Contraseña actualizada/);
+    expect(sec.querySelector('[name="password"]').value).toBe('');
+  });
+
+  it('Mi cuenta: si Supabase exige reautenticación, pide el código del correo y lo envía como nonce', async () => {
+    supa.auth.updateUser = vi.fn()
+      .mockResolvedValueOnce({ data: null, error: { code: 'reauthentication_needed', message: 'Password update requires reauthentication' } })
+      .mockResolvedValueOnce({ data: { user: { id: ME } }, error: null });
+    supa.auth.reauthenticate = vi.fn(async () => ({ data: {}, error: null }));
+    const { AccountDetails } = await import('../components/Account/AccountDetails.jsx');
+    await act(async () => root.render(<AccountDetails user={{ id: ME, email: 'ana@correo.com' }} profile={{ id: ME, full_name: 'Ana' }} />));
+    await flush();
+    const sec = host.querySelector('[data-testid="account-password"]');
+    await pwForm(sec, 'Nueva12345');
+    expect(supa.auth.reauthenticate).toHaveBeenCalledTimes(1);
+    expect(sec.textContent).toMatch(/código a tu correo/);
+    await submitForm(sec.querySelector('form'));
+    expect(sec.textContent).toMatch(/Escribe el código/);
+    expect(supa.auth.updateUser).toHaveBeenCalledTimes(1);
+    setValue(sec.querySelector('[name="nonce"]'), ' 123456 ');
+    await submitForm(sec.querySelector('form'));
+    await flush();
+    expect(supa.auth.updateUser).toHaveBeenLastCalledWith({ password: 'Nueva12345', nonce: '123456' });
+    expect(sec.textContent).toMatch(/Contraseña actualizada/);
+    expect(sec.querySelector('[name="nonce"]')).toBeNull();
+  });
+
+  describe('/cuenta/restablecer', () => {
+    const mountReset = async (hash = '') => {
+      window.history.replaceState(null, '', `/cuenta/restablecer${hash}`);
+      const { ResetPasswordPage } = await import('../pages/ResetPasswordPage.jsx');
+      await act(async () => root.render(<ResetPasswordPage />));
+      await flush();
+    };
+
+    it('una contraseña repetida NO se presenta como enlace vencido', async () => {
+      supa.auth.getSession = vi.fn(async () => ({ data: { session: { user: { id: ME } } }, error: null }));
+      supa.auth.updateUser = vi.fn(async () => ({ data: null, error: { code: 'same_password', message: 'New password should be different from the old password.' } }));
+      await mountReset();
+      await pwForm(host, 'Segura123');
+      expect(host.textContent).toMatch(/distinta de la actual/);
+      expect(host.textContent).not.toMatch(/enlace/i);
+    });
+
+    it('sesión de recuperación vencida: lo dice y ofrece pedir otro enlace', async () => {
+      supa.auth.getSession = vi.fn(async () => ({ data: { session: { user: { id: ME } } }, error: null }));
+      supa.auth.updateUser = vi.fn(async () => ({ data: null, error: { name: 'AuthSessionMissingError', message: 'Auth session missing!' } }));
+      await mountReset();
+      await pwForm(host, 'Segura123');
+      expect(host.textContent).toMatch(/vencieron/);
+      expect([...host.querySelectorAll('a')].some((a) => a.textContent === 'Pedir enlace')).toBe(true);
+    });
+
+    it('enlace del correo vencido (error en la URL): mensaje claro sin formulario', async () => {
+      await mountReset('#error=access_denied&error_code=otp_expired');
+      expect(host.querySelector('[role="alert"]').textContent).toMatch(/venció o ya se usó/);
+      expect(host.querySelector('form')).toBeNull();
+      window.history.replaceState(null, '', '/');
+    });
+  });
+});

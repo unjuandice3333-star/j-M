@@ -222,6 +222,43 @@ async function main() {
       if (o.shipping_city !== 'Envigado' || o.shipping_address !== 'Calle 40 Sur # 25-10') throw new Error(`pedido con dirección inesperada: ${o.shipping_city} / ${o.shipping_address}`);
     }, browser);
 
+    await journey('12. Cuenta: guardar la dirección del checkout y cambiar la contraseña', async (p) => {
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Marta Ruiz');
+      await p.locator('input[type=email]').fill('marta@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      // checkout con dirección escrita a mano y «Guardar esta dirección en mi cuenta»
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'marta@correo.co', city: 'Rionegro', address: 'Calle 49 # 50-12' });
+      const guardar = p.getByTestId('save-address-checkbox');
+      await guardar.check();
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      await p.goto(`${BASE}/cuenta`);
+      const item = p.getByTestId('address-item').filter({ hasText: 'Calle 49 # 50-12' });
+      await item.getByText('Principal', { exact: true }).waitFor({ timeout: 8000 });
+      if ((await p.getByTestId('address-item').count()) !== 1) throw new Error('se esperaba 1 dirección guardada desde el checkout');
+      // cambiar la contraseña: la misma se rechaza con un motivo claro; una nueva sirve para volver a entrar
+      const sec = p.getByTestId('account-password');
+      await sec.locator('input[name=password]').fill('Clave-Segura-1'); await sec.locator('input[name=confirm]').fill('Clave-Segura-1');
+      await sec.getByRole('button', { name: 'Cambiar contraseña' }).click();
+      await sec.getByText(/distinta de la actual/).waitFor({ timeout: 5000 });
+      await sec.locator('input[name=password]').fill('Clave-Nueva-22'); await sec.locator('input[name=confirm]').fill('Clave-Nueva-22');
+      await sec.getByRole('button', { name: 'Cambiar contraseña' }).click();
+      await sec.getByText(/Contraseña actualizada/).waitFor({ timeout: 5000 });
+      await p.getByText(/cerrar sesi[oó]n/i).first().click();
+      await p.waitForFunction(() => !Object.keys(localStorage).some((k) => k.includes('auth-token')));
+      await p.goto(`${BASE}/cuenta`);
+      await p.locator('input[type=email]').fill('marta@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.getByRole('button', { name: 'Iniciar sesión' }).first().click();
+      await expectText(p, 'Correo o contraseña incorrectos');
+      await p.locator('input[type=password]').fill('Clave-Nueva-22');
+      await p.getByRole('button', { name: 'Iniciar sesión' }).first().click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+    }, browser);
+
     await journey('8. Registro, cierre e inicio de sesión, historial de pedidos', async (p) => {
       await p.goto(`${BASE}/login`);
       await p.getByRole('button', { name: 'Crear cuenta' }).click();

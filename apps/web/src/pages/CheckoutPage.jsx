@@ -81,6 +81,8 @@ export const CheckoutPage = () => {
   // Un fallo al cargarlas no bloquea el checkout: el formulario manual sigue disponible.
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [savedAddressId, setSavedAddressId] = useState('');
+  // Ejecución 57: guardar en la cuenta la dirección escrita a mano (opt-in; nunca bloquea el pago).
+  const [saveAddress, setSaveAddress] = useState(false);
   const formRef = useRef(formData);
   formRef.current = formData;
   useEffect(() => {
@@ -148,6 +150,10 @@ export const CheckoutPage = () => {
         idempotencyKey,
       });
       clearDraft();
+      if (saveAddress && user?.id && !savedAddressId) {
+        const res = await accountService.saveFromCheckout(user.id, formData);
+        if (res.status === 'invalid' || res.status === 'error') console.warn('[checkout] no se guardó la dirección:', res.message);
+      }
       try {
         await wompiService.openWompiWidget({ order, customer });
       } catch (payErr) {
@@ -305,6 +311,12 @@ export const CheckoutPage = () => {
                   <input type="text" name="notes" placeholder="Ej: Dejar en portería" value={formData.notes} onChange={handleInputChange} style={inputStyle} />
                 </div>
               </div>
+              {user && !savedAddressId && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', fontSize: '0.85rem', fontWeight: 600, color: '#09090B', cursor: 'pointer' }}>
+                  <input type="checkbox" data-testid="save-address-checkbox" checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} style={{ accentColor: '#09090B' }} />
+                  Guardar esta dirección en mi cuenta{savedAddresses.length === 0 ? ' como principal' : ''}
+                </label>
+              )}
             </div>
 
             {/* 3. MÉTODO DE ENVÍO */}

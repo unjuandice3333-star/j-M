@@ -106,6 +106,22 @@ export const addressToCheckout = (a) => ({
   neighborhood: a.neighborhood ?? '', notes: a.reference ?? '',
 });
 
+/**
+ * Ejecución 57: datos del checkout → formulario de dirección para «Guardar esta dirección en mi cuenta».
+ * Las notas de entrega del checkout son la «referencia» de la dirección (inverso de addressToCheckout).
+ */
+export const checkoutToAddressForm = (f, isDefault = false) => ({
+  id: null,
+  recipient_name: `${trim(f.firstName)} ${trim(f.lastName)}`.trim(),
+  phone: f.phone ?? '', department: f.department ?? '', city: f.city ?? '', address_line: f.address ?? '',
+  neighborhood: f.neighborhood ?? '', reference: f.notes ?? '', is_default: !!isDefault,
+});
+
+const norm = (v) => trim(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+/** ¿Ya existe esa dirección? (misma dirección, ciudad y departamento sin distinguir mayúsculas, tildes ni signos). */
+export const hasSameAddress = (list, form) => (list ?? []).some((a) =>
+  norm(a.address_line) === norm(form.address_line) && norm(a.city) === norm(form.city) && a.department === trim(form.department));
+
 const sortAddresses = (list) => [...list].sort((a, b) =>
   (b.is_default === true) - (a.is_default === true) || String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')));
 
@@ -166,6 +182,26 @@ export const accountService = {
     const { data, error } = await supabase.from('customer_addresses').update({ is_default: true }).eq('id', id).eq('user_id', userId).select('id');
     if (error) throw accountError(error, 'No pudimos cambiar la dirección principal.');
     if (!data?.length) throw Object.assign(new Error('La dirección ya no existe. Recarga la página.'), { hint: 'NOT_FOUND' });
+  },
+
+  /**
+   * «Guardar esta dirección en mi cuenta» del checkout. Nunca lanza: el pedido ya existe y el pago no debe depender de
+   * esto. Devuelve { status: 'saved' | 'duplicate' | 'invalid' | 'error', address?, message? }.
+   * Es la principal solo si el cliente no tenía ninguna. Relee la lista antes de insertar (otra pestaña pudo guardarla).
+   */
+  async saveFromCheckout(userId, checkoutForm) {
+    if (!userId) return { status: 'error', message: 'Sin sesión.' };
+    try {
+      const existing = await this.listAddresses(userId);
+      const form = checkoutToAddressForm(checkoutForm, existing.length === 0);
+      if (hasSameAddress(existing, form)) return { status: 'duplicate' };
+      const { errors } = validateAddress(form);
+      if (Object.keys(errors).length) return { status: 'invalid', message: Object.values(errors)[0] };
+      const address = await this.saveAddress(userId, form);
+      return { status: 'saved', address };
+    } catch (e) {
+      return { status: 'error', message: e.message };
+    }
   },
 
   /** Elimina una dirección; si era la principal y quedan otras, la más reciente pasa a ser la principal. */
