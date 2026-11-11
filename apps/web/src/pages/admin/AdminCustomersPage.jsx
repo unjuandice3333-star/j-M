@@ -8,7 +8,7 @@ import { Search, X } from 'lucide-react';
 import { formatCOP } from '../../data/mockData';
 import supabase from '../../config/supabase';
 import { STATUS_LABEL } from './AdminOrdersPage';
-import { buildCustomers } from '../../utils/adminLists';
+import { buildCustomers, fetchAllRows } from '../../utils/adminLists';
 
 const ROLE_LABEL = { customer: 'Cliente', admin: 'Administrador', super_admin: 'Super administrador' };
 
@@ -26,11 +26,17 @@ export const AdminCustomersPage = () => {
   useEffect(() => {
     (async () => {
       const [p, o] = await Promise.all([
-        supabase.from('profiles').select('id, email, full_name, phone, role, marketing_opt_in, created_at').order('created_at', { ascending: false }),
-        supabase.from('online_orders').select('id, order_number, user_id, customer_email, customer_name, total, status, created_at, shipping_city').order('created_at', { ascending: false }),
+        // Todas las filas, por páginas: PostgREST corta cada respuesta en max_rows (1000) sin avisar (ejecución 54).
+        fetchAllRows(() => supabase.from('profiles').select('id, email, full_name, phone, role, marketing_opt_in, created_at')
+          .order('created_at', { ascending: false }).order('id', { ascending: false })),
+        fetchAllRows(() => supabase.from('online_orders').select('id, order_number, user_id, customer_email, customer_name, total, status, created_at, shipping_city')
+          .order('created_at', { ascending: false }).order('id', { ascending: false })),
       ]);
       if (p.error || o.error) setLoadError('No se pudieron cargar los clientes.');
-      else { setProfiles(p.data); setOrders(o.data); }
+      else {
+        setProfiles(p.data); setOrders(o.data);
+        if (p.capped || o.capped) setLoadError('Hay más registros de los que el panel puede cargar; las cifras pueden estar incompletas.');
+      }
       setIsLoading(false);
     })();
   }, []);

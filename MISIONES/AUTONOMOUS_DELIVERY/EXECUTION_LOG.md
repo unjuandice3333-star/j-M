@@ -416,3 +416,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(f) de Pendiente (paginación real en admin de pedidos/clientes).
+
+## 2026-11-11 00:13 UTC — Ejecución 54 (trabajo de código: paginación real en el admin)
+- Estado inicial: sesión en `claude/gracious-pasteur-54q5eb` (= main); se cambió a la rama autorizada = remoto `b64d8b7`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(f) de Pendiente. Pedidos: filtros y búsqueda en la BD, páginas de 50 con conteo exacto y «Cargar más», conteos de pestañas sobre todos los pedidos. Clientes e inventario: lectura completa por páginas (`fetchAllRows`) en vez de una consulta cortada a 1000 filas por PostgREST.
+- Archivos: `apps/web/src/utils/adminLists.js`, `pages/admin/AdminOrdersPage.jsx`, `pages/admin/AdminCustomersPage.jsx`, `pages/admin/AdminInventoryPage.jsx`, `src/__tests__/adminLists.test.jsx`, `src/__tests__/orderShippingMethod.test.jsx` (fake con `range`/`or`), `e2e/synthetic/backend.cjs` (offset, conteo exacto, `or` ilike), `e2e/e2e_synthetic.cjs` (recorrido 10 + espera estable del nombre del método en 5 y 8).
+- Pruebas (ejecutadas aquí): 3 pruebas nuevas fallan sin el cambio en las páginas (`git stash`); `pnpm test:unit` 249/249 (21 archivos); ESLint 0 errores en `apps/web/src` y los E2E tocados; `pnpm build` OK; `pnpm test:e2e-synthetic` 10/10 en 4 ejecuciones tras estabilizar la espera (antes de estabilizarla, el recorrido 8 falló 1 vez de 3 por una carrera del propio test: leía el nombre de respaldo del método antes de cargar `shipping_methods`). pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(g) de Pendiente (límites silenciosos en catálogo/reseñas/wishlist; luego perfil y direcciones del cliente).

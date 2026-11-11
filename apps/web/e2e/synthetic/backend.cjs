@@ -166,6 +166,11 @@ function start(port = 54321) {
     else data = S.tables[table] || [];
     for (const [k, v] of Object.entries(q)) {
       if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
+      if (k === 'or') { // solo la forma que usa el admin: (col.ilike.*texto*,col2.ilike.*texto*)
+        const conds = v.replace(/^\(|\)$/g, '').split(',').map((c) => /^([a-z_]+)\.ilike\.\*(.*)\*$/.exec(c)).filter(Boolean);
+        data = data.filter((r) => conds.some(([, col, t]) => String(r[col] ?? '').toLowerCase().includes(t.toLowerCase())));
+        continue;
+      }
       const m = /^(eq|in|neq)\.(.*)$/.exec(v); if (!m) continue;
       if (m[1] === 'eq') data = data.filter((r) => String(r[k]) === m[2]);
       else if (m[1] === 'neq') data = data.filter((r) => String(r[k]) !== m[2]);
@@ -222,9 +227,13 @@ function start(port = 54321) {
           if (req.method === 'GET' || req.method === 'HEAD') {
             let data = rows(table, q, ctx);
             if (table === 'online_orders' || table === 'inventories') data = [...data];
+            const total = data.length; const offset = Number(q.offset || 0);
+            if (offset) data = data.slice(offset);
             if (q.limit) data = data.slice(0, Number(q.limit));
             if (/vnd\.pgrst\.object/.test(req.headers.accept || '')) return data.length === 1 ? send(res, 200, data[0]) : send(res, 406, { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned', details: `The result contains ${data.length} rows`, hint: null });
-            return send(res, 200, data, { 'Content-Range': `0-${Math.max(0, data.length - 1)}/*` });
+            // Como PostgREST: con Prefer count=exact el total va tras la barra de Content-Range.
+            const exact = /count=exact/.test(req.headers.prefer || '');
+            return send(res, 200, data, { 'Content-Range': `${data.length ? `${offset}-${offset + data.length - 1}` : '*'}/${exact ? total : '*'}` });
           }
           return send(res, 405, { message: 'escritura directa no emulada' });
         }

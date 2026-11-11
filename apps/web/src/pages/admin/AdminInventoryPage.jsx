@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Boxes, AlertTriangle, CheckCircle, Search, RefreshCw, MapPin } from 'lucide-react';
 import supabase from '../../config/supabase';
 import { adminService } from '../../services/adminService';
+import { fetchAllRows } from '../../utils/adminLists';
 
 export const AdminInventoryPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,10 +18,11 @@ export const AdminInventoryPage = () => {
   // M27: stock, reservado y disponible reales (inventories + variante + color por product_colors). Sin valores inventados.
   const fetchRealInventory = async () => {
     setIsLoading(true); setLoadError(null);
-    const { data, error } = await supabase.from('inventories').select(`
+    // Todas las filas por páginas: con más de 1000 variantes PostgREST cortaba la lista sin avisar (ejecución 54).
+    const { data, error } = await fetchAllRows(() => supabase.from('inventories').select(`
         id, stock, reserved, min_stock, location_shelf, variant_id, branch_id,
         variants ( id, sku, is_active, color_id, sizes ( code ), products ( id, name, reference, status, product_colors ( color_id, colors ( name ) ) ) )`)
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false }).order('id', { ascending: true }));
     if (error) { setLoadError('No se pudo cargar el inventario.'); setIsLoading(false); return; }
     setInventoryItems(data.map((inv) => {
       const v = inv.variants; const p = v?.products;

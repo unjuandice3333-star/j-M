@@ -13,7 +13,7 @@ function fakeSupabase() {
   const from = vi.fn((table) => {
     const q = {
       select: (cols) => { state.selects.push({ table, cols }); return q; },
-      eq: () => q, order: () => q, limit: () => q,
+      eq: () => q, order: () => q, limit: () => q, range: () => q, or: () => q,
       single: async () => ({ data: (state.tables[table] ?? [])[0] ?? null, error: null }),
       then: (res, rej) => Promise.resolve({ data: state.tables[table] ?? [], error: null }).then(res, rej),
     };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ClipboardList, Search, Eye, Truck, Check, Printer, ChevronDown, X } from 'lucide-react';
 import { formatCOP } from '../../data/mockData';
 import supabase from '../../config/supabase';
@@ -6,7 +6,24 @@ import { adminService } from '../../services/adminService';
 import { orderService } from '../../services/orderService';
 import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
-import { ADMIN_ORDERS_LIMIT, filterAdminOrders, shippingMethodOptions } from '../../utils/adminLists';
+import { ADMIN_ORDERS_PAGE_SIZE, countByStatus, fetchAllRows, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
+
+const SEARCH_DEBOUNCE_MS = 300;
+const ORDER_SELECT = `
+        id, order_number, customer_name, customer_email, customer_phone, customer_document,
+        shipping_department, shipping_city, shipping_address, shipping_neighborhood, shipping_notes, shipping_method_code,
+        subtotal, discount_total, shipping_cost, total, coupon_code, status, created_at, paid_at, needs_attention,
+        carrier, tracking_number, tracking_url,
+        online_order_items ( product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
+        payment_transactions ( reference, status, amount_in_cents, payment_method_type, created_at ),
+        order_events ( event_type, from_status, to_status, actor, note, created_at )`;
+
+const mapOrder = (o) => ({
+  ...o, id: o.order_number, rawId: o.id, date: new Date(o.created_at).toLocaleString('es-CO'),
+  customerName: o.customer_name, total: Number(o.total),
+  shippingAddress: `${o.shipping_address}${o.shipping_neighborhood ? `, ${o.shipping_neighborhood}` : ''}, ${o.shipping_city} (${o.shipping_department})`,
+  paymentMethod: (o.payment_transactions ?? []).length ? `Wompi · ${o.payment_transactions.map((t) => t.status).join(', ')}` : 'Wompi · sin intentos',
+});
 
 export const STATUS_LABEL = { payment_pending: 'Pago pendiente', paid: 'Pagado', processing: 'En preparación', shipped: 'Enviado',
   delivered: 'Entregado', cancelled: 'Cancelado', expired: 'Vencido', refunded: 'Reembolsado' };
@@ -35,38 +52,66 @@ export const AdminOrdersPage = () => {
   const [modalError, setModalError] = useState(null);
   const [notice, setNotice] = useState(null);
 
-  const fetchDbOrders = async () => {
-    setIsLoading(true); setLoadError(null);
-    const { data, error } = await supabase.from('online_orders').select(`
-        id, order_number, customer_name, customer_email, customer_phone, customer_document,
-        shipping_department, shipping_city, shipping_address, shipping_neighborhood, shipping_notes, shipping_method_code,
-        subtotal, discount_total, shipping_cost, total, coupon_code, status, created_at, paid_at, needs_attention,
-        carrier, tracking_number, tracking_url,
-        online_order_items ( product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
-        payment_transactions ( reference, status, amount_in_cents, payment_method_type, created_at ),
-        order_events ( event_type, from_status, to_status, actor, note, created_at )`)
-      .order('created_at', { ascending: false }).limit(ADMIN_ORDERS_LIMIT);
-    if (error) { setLoadError('No se pudieron cargar los pedidos.'); setIsLoading(false); return; }
-    setDbOrders(data.map((o) => ({
-      ...o, id: o.order_number, rawId: o.id, date: new Date(o.created_at).toLocaleString('es-CO'),
-      customerName: o.customer_name, total: Number(o.total),
-      shippingAddress: `${o.shipping_address}${o.shipping_neighborhood ? `, ${o.shipping_neighborhood}` : ''}, ${o.shipping_city} (${o.shipping_department})`,
-      paymentMethod: (o.payment_transactions ?? []).length ? `Wompi · ${o.payment_transactions.map((t) => t.status).join(', ')}` : 'Wompi · sin intentos',
-    })));
-    setIsLoading(false);
+  const [totalCount, setTotalCount] = useState(null);
+  const [summaryRows, setSummaryRows] = useState([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const requestSeq = useRef(0);
+
+  // Paginación real (ejecución 54): antes se cargaban solo los 200 más recientes y los filtros, la búsqueda y los
+  // conteos se aplicaban sobre esos. Ahora estado, método y texto se filtran en la BD, la lista llega por páginas
+  // (`.range()`) con conteo exacto, y los conteos de las pestañas salen de TODOS los pedidos (solo status y método).
+  const buildOrdersQuery = (filters, from) => {
+    let q = supabase.from('online_orders').select(ORDER_SELECT, { count: 'exact' });
+    if (filters.status !== 'todos') q = q.eq('status', filters.status);
+    if (filters.method !== 'todos') q = q.eq('shipping_method_code', filters.method);
+    const or = orderSearchFilter(filters.query);
+    if (or) q = q.or(or);
+    return q.order('created_at', { ascending: false }).order('id', { ascending: false })
+      .range(from, from + ADMIN_ORDERS_PAGE_SIZE - 1);
   };
 
+  const fetchSummary = async () => {
+    const { data, error } = await fetchAllRows(() => supabase.from('online_orders').select('id, status, shipping_method_code')
+      .order('created_at', { ascending: false }).order('id', { ascending: false }));
+    setSummaryRows(error ? [] : data);
+  };
+
+  const filters = { status: selectedStatusTab, method: methodFilter, query: debouncedQuery };
+
+  const fetchDbOrders = async ({ append = false } = {}) => {
+    const seq = ++requestSeq.current;
+    if (append) setIsLoadingMore(true); else { setIsLoading(true); }
+    setLoadError(null);
+    const from = append ? dbOrders.length : 0;
+    const { data, error, count } = await buildOrdersQuery(filters, from);
+    if (seq !== requestSeq.current) return; // llegó tarde: hay una solicitud más reciente
+    if (error) { setLoadError('No se pudieron cargar los pedidos.'); setIsLoading(false); setIsLoadingMore(false); return; }
+    const mapped = (data ?? []).map(mapOrder);
+    setDbOrders((prev) => (append ? [...prev, ...mapped.filter((m) => !prev.some((p) => p.rawId === m.rawId))] : mapped));
+    setTotalCount(typeof count === 'number' ? count : null);
+    setIsLoading(false); setIsLoadingMore(false);
+  };
+
+  const refreshAll = async () => { await Promise.all([fetchDbOrders(), fetchSummary()]); };
+
   useEffect(() => {
-    fetchDbOrders();
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  useEffect(() => { fetchDbOrders(); }, [selectedStatusTab, methodFilter, debouncedQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    fetchSummary();
     orderService.getStatusCatalog().then((c) => setTransitions((c.transitions ?? []).filter((t) => t.actor === 'admin'))).catch(() => setTransitions([]));
     // Incluye métodos inactivos (el admin los lee todos): los pedidos antiguos conservan su nombre.
     shippingAdminService.list().then(setShippingMethods).catch(() => setShippingMethods([]));
   }, []);
 
-  const displayOrders = dbOrders;
-  const filteredOrders = filterAdminOrders(displayOrders, { status: selectedStatusTab, method: methodFilter, query: searchQuery });
-  const methodOptions = shippingMethodOptions(displayOrders, shippingMethods);
-  const truncated = displayOrders.length >= ADMIN_ORDERS_LIMIT;
+  const statusCounts = countByStatus(summaryRows);
+  const methodOptions = shippingMethodOptions(summaryRows, shippingMethods);
+  const hasMore = totalCount !== null ? dbOrders.length < totalCount : false;
 
   const allowedNext = (status) => transitions.filter((t) => t.from === status);
   const handleOpenModal = (ord) => {
@@ -87,7 +132,7 @@ export const AdminOrdersPage = () => {
       await adminService.transitionOrder(selectedOrder.rawId, modalStatus, modalNote.trim() || null, tracking);
       setNotice(`${selectedOrder.order_number}: ${STATUS_LABEL[selectedOrder.status]} → ${STATUS_LABEL[modalStatus]}.`);
       setSelectedOrder(null);
-      await fetchDbOrders();
+      await refreshAll();
     } catch (err) {
       setModalError(err.message || 'No se pudo cambiar el estado.');
     } finally {
@@ -100,7 +145,7 @@ export const AdminOrdersPage = () => {
       {/* HEADER */}
       <div>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>
-          PEDIDOS ({displayOrders.length})
+          PEDIDOS ({statusCounts.todos})
         </h1>
         <p style={{ fontSize: '0.88rem', color: '#71717A' }}>
           Pagos, preparación, despacho y entrega. Los cambios de estado siguen las reglas de la tienda.
@@ -156,13 +201,12 @@ export const AdminOrdersPage = () => {
                 cursor: 'pointer'
               }}
             >
-              {st === 'todos' ? 'Todos' : STATUS_LABEL[st]} ({st === 'todos' ? displayOrders.length : displayOrders.filter((o) => o.status === st).length})
+              {st === 'todos' ? 'Todos' : STATUS_LABEL[st]} ({statusCounts[st] ?? 0})
             </button>
           ))}
         </div>
       </div>
       {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{loadError}</div>}
-      {truncated && <div data-testid="orders-truncated" style={{ color: '#92400E', fontSize: '0.85rem' }}>Se muestran los {ADMIN_ORDERS_LIMIT} pedidos más recientes; los conteos y filtros se aplican solo sobre ellos.</div>}
       {notice && <div role="status" style={{ color: '#065F46', fontWeight: 600 }}>{notice}</div>}
 
       {/* ORDERS TABLE */}
@@ -171,7 +215,7 @@ export const AdminOrdersPage = () => {
           <div style={{ padding: '3rem', textAlign: 'center', color: '#71717A' }}>
             Cargando pedidos…
           </div>
-        ) : filteredOrders.length === 0 ? (
+        ) : dbOrders.length === 0 ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
             No hay pedidos con estos filtros.
           </div>
@@ -190,7 +234,7 @@ export const AdminOrdersPage = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((ord) => (
+              {dbOrders.map((ord) => (
                 <tr key={ord.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
                   <td style={{ ...tdOrder, fontWeight: 900 }}>{ord.id}</td>
                   <td style={{ ...tdOrder, color: '#71717A' }}>{ord.date}</td>
@@ -235,6 +279,20 @@ export const AdminOrdersPage = () => {
           </table>
         )}
       </div>
+
+      {!isLoading && totalCount !== null && totalCount > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <span data-testid="orders-page-info" style={{ fontSize: '0.85rem', color: '#71717A' }}>
+            Mostrando {dbOrders.length} de {totalCount} pedidos{selectedStatusTab !== 'todos' || methodFilter !== 'todos' || debouncedQuery.trim() ? ' con estos filtros' : ''}.
+          </span>
+          {hasMore && (
+            <button type="button" onClick={() => fetchDbOrders({ append: true })} disabled={isLoadingMore}
+              style={{ padding: '0.5rem 1rem', border: '1px solid #09090B', borderRadius: '6px', backgroundColor: '#FFFFFF', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer' }}>
+              {isLoadingMore ? 'Cargando…' : 'Cargar más pedidos'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ORDER DETAIL & STATUS CHANGE MODAL */}
       {selectedOrder && (

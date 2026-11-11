@@ -143,7 +143,7 @@ async function main() {
       const items = await p.evaluate(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14')).state.items.length);
       if (items !== 1) throw new Error('el carrito se vació sin pago confirmado');
       // El método de envío del pedido se muestra con su nombre configurado (shipping_methods.name)
-      const metodo = await p.getByTestId('order-shipping-method').textContent({ timeout: 10000 });
+      const metodo = await p.getByTestId('order-shipping-method').filter({ hasText: /Estándar/ }).textContent({ timeout: 10000 }).catch(() => p.getByTestId('order-shipping-method').textContent());
       if (!/Estándar/.test(metodo)) throw new Error(`método de envío en la confirmación: «${metodo}»`);
     }, browser);
 
@@ -187,7 +187,8 @@ async function main() {
       await p.waitForURL(/\/checkout\/confirmacion/);
       const num = (await state()).orders[0].order_number;
       await p.goto(`${BASE}/cuenta/pedidos`); await expectText(p, num);
-      const metodo = await p.getByTestId('order-shipping-method').first().textContent({ timeout: 10000 });
+      // El nombre llega al cargar shipping_methods; antes se ve el nombre de respaldo («Envío estándar»): esperar al final.
+      const metodo = await p.getByTestId('order-shipping-method').filter({ hasText: /Estándar/ }).first().textContent({ timeout: 10000 }).catch(() => p.getByTestId('order-shipping-method').first().textContent());
       if (!/Estándar/.test(metodo)) throw new Error(`método de envío en «Mis pedidos»: «${metodo}»`);
       // cerrar sesión, comprobar que la cuenta ya no muestra el pedido, volver a entrar
       await p.getByText(/cerrar sesi[oó]n/i).first().click();
@@ -238,6 +239,9 @@ async function main() {
       if (inv.stock !== 16) throw new Error(`stock tras el ajuste ${inv.stock} ≠ 16 (10 − 1 vendida + 7)`);
       // pedidos: pagado → procesando → enviado (con guía)
       await p.goto(`${BASE}/admin/pedidos`); await expectText(p, num);
+      // Paginación real: el total viene del conteo exacto de la BD (Content-Range), no de las filas cargadas.
+      const info = await p.getByTestId('orders-page-info').textContent({ timeout: 10000 });
+      if (!/^Mostrando \d+ de \d+ pedidos/.test(info)) throw new Error(`info de paginación: «${info}»`);
       const cambiar = async (estado, extra) => {
         await p.locator('tr', { hasText: num }).getByRole('button', { name: 'GESTIONAR' }).click();
         await p.locator('#order-next-status').selectOption(estado);

@@ -9,13 +9,28 @@ import { act } from 'react-dom/test-utils';
 import { MemoryRouter } from 'react-router-dom';
 
 function fakeSupabase() {
-  const state = { tables: {}, rpc: {}, errors: {} };
+  const state = { tables: {}, rpc: {}, errors: {}, queries: [] };
+  // Emula lo justo de PostgREST: eq, or(…ilike…), range y count exact; registra cada consulta.
   const from = vi.fn((table) => {
+    const rec = { table, eq: [], or: null, range: null, count: null };
     const q = {
-      select: () => q, eq: () => q, order: () => q, limit: () => q,
-      then: (res, rej) => Promise.resolve(state.errors[table]
-        ? { data: null, error: state.errors[table] }
-        : { data: state.tables[table] ?? [], error: null }).then(res, rej),
+      select: (_cols, opts) => { rec.count = opts?.count ?? null; return q; },
+      eq: (c, v) => { rec.eq.push([c, v]); return q; },
+      or: (f) => { rec.or = f; return q; }, order: () => q, limit: () => q,
+      range: (a, b) => { rec.range = [a, b]; return q; },
+      then: (res, rej) => {
+        state.queries.push(rec);
+        if (state.errors[table]) return Promise.resolve({ data: null, error: state.errors[table] }).then(res, rej);
+        let rows = state.tables[table] ?? [];
+        rec.eq.forEach(([c, v]) => { rows = rows.filter((r) => r[c] === v); });
+        if (rec.or) {
+          const conds = rec.or.split(',').map((c) => /^([a-z_]+)\.ilike\.\*(.*)\*$/.exec(c));
+          rows = rows.filter((r) => conds.some(([, col, t]) => String(r[col] ?? '').toLowerCase().includes(t.toLowerCase())));
+        }
+        const total = rows.length;
+        if (rec.range) rows = rows.slice(rec.range[0], rec.range[1] + 1);
+        return Promise.resolve({ data: rows, error: null, count: rec.count === 'exact' ? total : null }).then(res, rej);
+      },
     };
     return q;
   });
@@ -126,27 +141,85 @@ describe('Admin de pedidos', () => {
     const sel = container.querySelector('select[aria-label="Filtrar por método de envío"]');
     expect([...sel.options].map((o) => o.textContent)).toEqual(['Todos los envíos', 'Envío estándar nacional', 'Envío express 24 h']);
     setSelect(sel, 'express');
+    await flush();
     expect(cells()).toEqual(['Envío express 24 h']);
-    expect(container.querySelector('[data-testid="orders-truncated"]')).toBeNull();
+    const last = supa.state.queries.filter((x) => x.table === 'online_orders' && x.count === 'exact').pop();
+    expect(last.eq).toEqual([['shipping_method_code', 'express']]);
   });
 
-  it('busca por número de guía y avisa cuando la lista llega al límite', async () => {
-    const { ADMIN_ORDERS_LIMIT } = await import('../utils/adminLists');
-    const many = Array.from({ length: ADMIN_ORDERS_LIMIT }, (_, i) => order(i + 1));
-    many[5] = order(6, { tracking_number: 'SERV-123', status: 'shipped' });
+  it('pagina con «Cargar más», cuenta todos los pedidos y filtra en la BD', async () => {
+    const { ADMIN_ORDERS_PAGE_SIZE } = await import('../utils/adminLists');
+    const N = ADMIN_ORDERS_PAGE_SIZE * 2 + 10;
+    const many = Array.from({ length: N }, (_, i) => order(i + 1, i % 10 === 0 ? { status: 'shipped' } : {}));
+    many[N - 1] = order(N, { tracking_number: 'SERV-123', status: 'shipped' });
     supa.state.tables.online_orders = many;
     supa.state.tables.shipping_methods = [STANDARD];
     supa.state.rpc.get_order_status_catalog = { transitions: [] };
     await renderPage();
-    expect(container.querySelector('[data-testid="orders-truncated"]')).not.toBeNull();
+    const rows = () => container.querySelectorAll('[data-testid="order-row-shipping"]').length;
+    const info = () => container.querySelector('[data-testid="orders-page-info"]').textContent;
+    const more = () => [...container.querySelectorAll('button')].find((b) => b.textContent === 'Cargar más pedidos');
+    expect(rows()).toBe(ADMIN_ORDERS_PAGE_SIZE);
+    expect(info()).toContain(`Mostrando ${ADMIN_ORDERS_PAGE_SIZE} de ${N} pedidos`);
+    // Conteos de las pestañas y del título sobre TODOS los pedidos, no solo los cargados.
+    expect(container.querySelector('h1').textContent).toBe(`PEDIDOS (${N})`);
+    const shippedTab = [...container.querySelectorAll('button')].find((b) => b.textContent.startsWith('Enviado'));
+    expect(shippedTab.textContent).toBe(`Enviado (${many.filter((o) => o.status === 'shipped').length})`);
+    await act(async () => { more().click(); }); await flush();
+    expect(rows()).toBe(ADMIN_ORDERS_PAGE_SIZE * 2);
+    await act(async () => { more().click(); }); await flush();
+    expect(rows()).toBe(N);
+    expect(more()).toBeUndefined();
+    // La búsqueda va a la BD: encuentra un pedido aunque no estuviera entre los cargados.
+    supa.state.queries.length = 0;
     setInput(container.querySelector('input[aria-label="Buscar pedidos"]'), 'serv-123');
-    const rows = container.querySelectorAll('[data-testid="order-row-shipping"]');
-    expect(rows.length).toBe(1);
-    expect(container.textContent).toContain('JM-6');
+    await act(async () => { await new Promise((r) => setTimeout(r, 350)); }); await flush();
+    expect(rows()).toBe(1);
+    expect(container.textContent).toContain(`JM-${N}`);
+    const q = supa.state.queries.find((x) => x.table === 'online_orders' && x.or);
+    expect(q.or).toContain('tracking_number.ilike.*serv-123*');
+    expect(q.range).toEqual([0, ADMIN_ORDERS_PAGE_SIZE - 1]);
+    // Pestaña de estado → filtro eq en la BD y página reiniciada.
+    await act(async () => { shippedTab.click(); }); await flush();
+    const q2 = supa.state.queries.filter((x) => x.table === 'online_orders' && x.count === 'exact').pop();
+    expect(q2.eq).toEqual([['status', 'shipped']]);
+  });
+
+  it('la búsqueda neutraliza caracteres de la sintaxis de PostgREST', async () => {
+    const { orderSearchFilter, sanitizeOrSearch } = await import('../utils/adminLists');
+    expect(sanitizeOrSearch('a,b),status.eq.paid')).toBe('a b status.eq.paid');
+    expect(orderSearchFilter('x),id.eq.(1')).not.toMatch(/[()]/);
+    expect(orderSearchFilter('  ')).toBeNull();
+  });
+});
+
+describe('fetchAllRows', () => {
+  it('lee todas las páginas hasta una incompleta y marca el tope', async () => {
+    const { fetchAllRows } = await import('../utils/adminLists');
+    supa.state.tables.t = Array.from({ length: 2500 }, (_, i) => ({ id: i }));
+    const r = await fetchAllRows(() => supa.from('t').select('id'));
+    expect(r.data.length).toBe(2500);
+    expect(r.capped).toBe(false);
+    expect(supa.state.queries.map((x) => x.range)).toEqual([[0, 999], [1000, 1999], [2000, 2999]]);
+    const c = await fetchAllRows(() => supa.from('t').select('id'), { pageSize: 1000, maxRows: 2000 });
+    expect(c.data.length).toBe(2000);
+    expect(c.capped).toBe(true);
+    supa.state.errors.t = { message: 'x' };
+    expect((await fetchAllRows(() => supa.from('t').select('id'))).error).toEqual({ message: 'x' });
   });
 });
 
 describe('Admin de clientes', () => {
+  it('carga más de 1000 clientes y sus pedidos (antes PostgREST los cortaba)', async () => {
+    supa.state.tables.profiles = Array.from({ length: 1205 }, (_, i) => ({ id: `u${i}`, email: `u${i}@x.co`, full_name: `U${i}`, role: 'customer', created_at: '2026-10-01T00:00:00Z' }));
+    supa.state.tables.online_orders = [order(1, { user_id: 'u1204' })];
+    const { AdminCustomersPage } = await import('../pages/admin/AdminCustomersPage');
+    await act(async () => { root.render(<MemoryRouter><AdminCustomersPage /></MemoryRouter>); });
+    await flush();
+    expect(container.querySelector('h1').textContent).toBe('CLIENTES (1205)');
+    expect(supa.state.queries.filter((x) => x.table === 'profiles').map((x) => x.range)).toEqual([[0, 999], [1000, 1999]]);
+  });
+
   it('muestra error si fallan las direcciones en vez de «sin direcciones»', async () => {
     supa.state.tables.profiles = [{ id: 'u1', email: 'ana@x.co', full_name: 'Ana', role: 'customer', created_at: '2026-10-01T00:00:00Z' }];
     supa.state.tables.online_orders = [order(1, { user_id: 'u1' })];
