@@ -28,6 +28,7 @@ export function reviewErrorMessage(err) {
   if (hint === 'JM_AUTH_REQUIRED' || err?.code === 'PGRST301') return 'Tu sesión venció. Vuelve a iniciar sesión para opinar.';
   if (hint === 'JM_NOT_PURCHASED') return 'Solo puedes opinar sobre productos que compraste.';
   if (hint === 'JM_ALREADY_REVIEWED') return 'Ya enviaste una opinión sobre esta compra.';
+  if (hint === 'JM_PRODUCT_INACTIVE') return 'Este producto ya no está disponible en la tienda.';
   if (hint === 'JM_INVALID_INPUT' && err?.message) return err.message;
   if (isReviewRpcMissing(err)) return 'Las opiniones de clientes no están disponibles en este momento.';
   return 'No pudimos enviar tu opinión. Revisa tu conexión e intenta de nuevo.';

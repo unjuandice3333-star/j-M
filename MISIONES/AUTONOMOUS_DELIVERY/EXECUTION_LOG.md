@@ -601,3 +601,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111200000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(z) de Pendiente (coherencia de productos archivados en `my_product_reviewables` y formulario de la ficha; luego insignia de pedidos por preparar).
+
+## Ejecución 74 — 2026-11-11 21:15 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-3lynf0` (= main, `2661f2a`); se partió de la rama autorizada = remoto `cb1f6e6`, árbol limpio. `pnpm install --frozen-lockfile` OK. pgTAP/pg_cron/pg_prove instalados con apt; `run_local.sh` como usuario `postgres`.
+- Tarea: punto 0(z) de Pendiente. `my_product_reviewables` listaba compras de productos archivados y `submit_product_review` aceptaba reseñas de ellos (invisibles en la tienda), mientras `my_review_invitations` ya los ocultaba.
+- Archivos: `supabase/migrations/20261111220000_reviews_active_products.sql` (nuevo, solo `CREATE OR REPLACE` de las dos RPC), `supabase/tests/database/97_reviews_active_products.test.sql` (nuevo, 8 aserciones), `apps/web/src/services/reviewsService.js` (mensaje para `JM_PRODUCT_INACTIVE`), `apps/web/src/__tests__/productReviewForm.test.jsx` (+1 prueba), `apps/web/e2e/synthetic/backend.cjs` (espejo: solo productos activos).
+- Pruebas (ejecutadas aquí): `run_local.sh` pgTAP 382/382 (15 archivos), concurrencia 12/12, determinismo OK; sin la migración, 4 de las 8 aserciones nuevas fallan; `migrations_policy.sh` (BASE_REF=origin/main) OK; `pnpm test:unit` 409/409 (39 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 26/26.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(aa) de Pendiente (insignia de pedidos pagados por preparar en el menú del admin).

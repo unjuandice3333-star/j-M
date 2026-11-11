@@ -129,6 +129,14 @@ describe('ProductReviewForm', () => {
     expect(host.querySelector('[role="alert"]').textContent).toContain('Ya enviaste una opinión sobre esta compra');
   });
 
+  it('traduce el rechazo por producto retirado del catálogo (JM_PRODUCT_INACTIVE)', async () => {
+    submitError = { code: 'P0001', hint: 'JM_PRODUCT_INACTIVE', message: 'Este producto ya no está disponible en la tienda' };
+    await mount();
+    await fill();
+    await submit();
+    expect(host.querySelector('[role="alert"]').textContent).toContain('Este producto ya no está disponible en la tienda');
+  });
+
   it('si la migración no está aplicada, no muestra nada', async () => {
     supa.rpc = vi.fn(async () => ({ data: null, error: { code: 'PGRST202', message: 'not found' } }));
     await mount();

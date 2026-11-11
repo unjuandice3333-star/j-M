@@ -128,7 +128,9 @@ function start(port = 54321) {
     my_product_reviewables: (a, ctx) => {
       if (!ctx.userId) return err('P0001', 'Inicia sesión para opinar', 'JM_AUTH_REQUIRED');
       return S.tables.online_orders.filter((o) => o.user_id === ctx.userId && ['paid', 'processing', 'shipped', 'delivered'].includes(o.status))
-        .flatMap((o) => o.online_order_items.filter((i) => i.product_id === a.p_product_id).map((i) => {
+        // Ejecución 74 (migración 20261111220000): solo productos activos.
+        .flatMap((o) => o.online_order_items.filter((i) => i.product_id === a.p_product_id
+          && S.products.some((p) => p.id === i.product_id && p.status === 'active')).map((i) => {
           const r = S.tables.product_reviews.find((x) => x.order_item_id === i.id);
           return { order_item_id: i.id, order_number: o.order_number, purchased_at: o.paid_at || o.created_at, size_code: i.size_code, color_name: i.color_name,
             review: r ? { id: r.id, status: r.status, rating: r.rating, title: r.title, comment: r.comment, admin_reply: r.admin_reply, created_at: r.created_at } : null };
@@ -143,6 +145,8 @@ function start(port = 54321) {
       const o = S.tables.online_orders.find((x) => x.user_id === ctx.userId && ['paid', 'processing', 'shipped', 'delivered'].includes(x.status)
         && x.online_order_items.some((i) => i.id === a.p_order_item_id));
       if (!o) return err('P0001', 'Solo puedes opinar sobre productos que compraste', 'JM_NOT_PURCHASED');
+      const bought = o.online_order_items.find((i) => i.id === a.p_order_item_id);
+      if (!S.products.some((p) => p.id === bought.product_id && p.status === 'active')) return err('P0001', 'Este producto ya no está disponible en la tienda', 'JM_PRODUCT_INACTIVE');
       if (S.tables.product_reviews.some((x) => x.order_item_id === a.p_order_item_id)) return err('P0001', 'Ya opinaste sobre esta compra', 'JM_ALREADY_REVIEWED');
       const item = o.online_order_items.find((i) => i.id === a.p_order_item_id);
       const parts = String(S.tables.profiles.find((x) => x.id === ctx.userId)?.full_name || '').trim().split(/\s+/).filter(Boolean);
