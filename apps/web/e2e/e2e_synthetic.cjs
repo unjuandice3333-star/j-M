@@ -78,6 +78,34 @@ async function main() {
       await p.waitForURL(/\/producto\/camiseta-basica/);
     }, browser);
 
+    await journey('15. Catálogo: búsqueda sin tildes, ocasión real y filtros en móvil', async (p) => {
+      // búsqueda desde la cabecera, sin tilde: «clasico» encuentra «Polo Clásico»
+      await p.goto(`${BASE}/ropa?q=clasico`);
+      await expectText(p, 'MOSTRANDO 1 PRENDAS');
+      await p.getByText('Polo Clásico').first().waitFor();
+      if (await p.getByText('Camiseta Básica').count()) throw new Error('la búsqueda devolvió la camiseta');
+      // ocasión con el nombre de la BD (no de mockData)
+      await p.goto(`${BASE}/ropa`);
+      await expectText(p, 'MOSTRANDO 2 PRENDAS');
+      if (await p.getByText('TRABAJO & OFICINA').count()) throw new Error('aún se muestran ocasiones de mockData');
+      await p.locator('aside').getByRole('button', { name: 'Oficina', exact: true }).click();
+      await expectText(p, 'MOSTRANDO 1 PRENDAS');
+      // precio: sin límite por defecto; el tope del control es el precio real más alto
+      const max = await p.locator('aside input[aria-label="Precio máximo"]').getAttribute('max');
+      if (max !== '120000') throw new Error(`tope de precio ${max}`);
+      // móvil: el panel incluye talla y precio, y filtra
+      await p.setViewportSize({ width: 390, height: 844 });
+      await p.goto(`${BASE}/ropa`);
+      await expectText(p, 'MOSTRANDO 2 PRENDAS');
+      await p.getByRole('button', { name: /FILTRAR/ }).click();
+      const drawer = p.locator('.modal-overlay');
+      await drawer.getByText('PRECIO MÁXIMO').waitFor();
+      await drawer.getByRole('button', { name: 'S', exact: true }).click();
+      await drawer.getByRole('button', { name: /VER RESULTADOS \(1\)/ }).click();
+      await expectText(p, 'MOSTRANDO 1 PRENDAS');
+      await p.getByText('Camiseta Básica').first().waitFor();
+    }, browser);
+
     await journey('2. Producto: precio, talla, color y disponibilidad', async (p) => {
       await p.goto(`${BASE}/producto/camiseta-basica`);
       await expectText(p, '$80.000');

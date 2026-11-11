@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { Filter, SlidersHorizontal, X, ChevronDown, Check } from 'lucide-react';
-import { OCCASIONS } from '../data/mockData';
 import ProductCard from '../components/Product/ProductCard';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { normalizeStyleLine } from '../utils/productUtils';
+import {
+  PRICE_STEP, filterProducts, sortProducts, priceCeiling, sizeOptions, fitOptions, occasionOptions,
+} from '../utils/catalogFilters';
 
 export const CatalogPage = () => {
   const { category: urlCategory, styleLine: urlStyleLine } = useParams();
@@ -28,7 +30,8 @@ export const CatalogPage = () => {
   const [onlyNew, setOnlyNew] = useState(false);
   const [onlyBestSeller, setOnlyBestSeller] = useState(false);
   const [onlySale, setOnlySale] = useState(false);
-  const [maxPrice, setMaxPrice] = useState(400000);
+  // null = sin límite de precio (antes $400.000 fijo: ocultaba lo más caro sin avisar).
+  const [maxPrice, setMaxPrice] = useState(null);
   const [sortBy, setSortBy] = useState('relevancia');
 
   // Mobile Drawer State
@@ -113,58 +116,25 @@ export const CatalogPage = () => {
     return 'CATÁLOGO DE MODA MASCULINA';
   }, [location.pathname, selectedCategory, selectedStyleLine, querySearch, CATEGORIES]);
 
-  // Filter and Sort Logic (Robust Normalization & Strict Intersection AND)
-  const filteredProducts = useMemo(() => {
-    const activeProducts = products.filter((p) => p.status === 'active');
+  // Opciones de filtro derivadas de los productos activos reales.
+  const activeProducts = useMemo(() => products.filter((p) => p.status === 'active'), [products]);
+  const priceMax = useMemo(() => priceCeiling(activeProducts), [activeProducts]);
+  const SIZES = useMemo(() => sizeOptions(activeProducts), [activeProducts]);
+  const FITS = useMemo(() => fitOptions(activeProducts), [activeProducts]);
+  const OCCASIONS = useMemo(() => {
+    const list = occasionOptions(activeProducts);
+    // Ocasión llegada por URL (p. ej. desde el inicio) aunque ningún producto la tenga: visible y deseleccionable.
+    if (selectedOccasion !== 'todas' && !list.some((o) => o.slug === selectedOccasion)) {
+      list.push({ slug: selectedOccasion, name: selectedOccasion.replace(/-/g, ' ') });
+    }
+    return list;
+  }, [activeProducts, selectedOccasion]);
+  const effectiveMaxPrice = maxPrice != null && maxPrice < priceMax ? maxPrice : null;
 
-    return activeProducts.filter((p) => {
-      // Search query
-      if (querySearch && !p.name.toLowerCase().includes(querySearch.toLowerCase()) && !p.category?.toLowerCase().includes(querySearch.toLowerCase())) {
-        return false;
-      }
-      // Robust Style Line Filter using normalizeStyleLine
-      const targetStyleLine = normalizeStyleLine(selectedStyleLine);
-      if (targetStyleLine !== 'todas') {
-        const prodStyleLine = normalizeStyleLine(p.styleLine);
-        if (prodStyleLine !== targetStyleLine) {
-          return false;
-        }
-      }
-      // Section filters (Nuevo, Mas vendidos, Ofertas)
-      if (onlyNew && !p.isNew) return false;
-      if (onlyBestSeller && !p.isBestSeller) return false;
-      if (onlySale && (!p.isSale || p.discountPercent <= 0)) return false;
-
-      // Category Filter
-      if (selectedCategory !== 'todas' && p.category !== selectedCategory) {
-        return false;
-      }
-      // Fit Filter
-      if (selectedFit !== 'todos' && p.fit !== selectedFit) {
-        return false;
-      }
-      // Size Filter
-      if (selectedSize !== 'todas' && !p.sizes?.includes(selectedSize)) {
-        return false;
-      }
-      // Occasion Filter
-      if (selectedOccasion !== 'todas' && !(p.occasions ?? []).includes(selectedOccasion)) {
-        return false;
-      }
-      // Max Price Filter
-      if (p.price > maxPrice) {
-        return false;
-      }
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === 'precio-asc') return a.price - b.price;
-      if (sortBy === 'precio-desc') return b.price - a.price;
-      if (sortBy === 'mas-vendidos') return (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0);
-      if (sortBy === 'mejor-valorados') return (b.rating || 0) - (a.rating || 0);
-      if (sortBy === 'nuevos') return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
-      return 0;
-    });
-  }, [products, selectedStyleLine, selectedCategory, selectedFit, selectedSize, selectedOccasion, onlyNew, onlyBestSeller, onlySale, maxPrice, sortBy, querySearch]);
+  const filteredProducts = useMemo(() => sortProducts(filterProducts(products, {
+    query: querySearch, styleLine: selectedStyleLine, category: selectedCategory, fit: selectedFit,
+    size: selectedSize, occasion: selectedOccasion, onlyNew, onlyBestSeller, onlySale, maxPrice: effectiveMaxPrice,
+  }, normalizeStyleLine), sortBy), [products, selectedStyleLine, selectedCategory, selectedFit, selectedSize, selectedOccasion, onlyNew, onlyBestSeller, onlySale, effectiveMaxPrice, sortBy, querySearch]);
 
   const clearAllFilters = () => {
     setSelectedCategory('todas');
@@ -174,10 +144,172 @@ export const CatalogPage = () => {
     setOnlyNew(false);
     setOnlyBestSeller(false);
     setOnlySale(false);
-    setMaxPrice(400000);
+    setMaxPrice(null);
   };
 
   const canonicalStyleLine = normalizeStyleLine(selectedStyleLine);
+
+  const filterPanel = (
+    <>
+      {/* Línea de Estilo */}
+      <div>
+        <h4 style={filterSectionTitle}>LÍNEA DE ESTILO</h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <button
+            onClick={() => setSelectedStyleLine('todas')}
+            style={filterOptionBtn(canonicalStyleLine === 'todas')}
+          >
+            Todas las líneas
+          </button>
+          <button
+            onClick={() => setSelectedStyleLine('urbana')}
+            style={filterOptionBtn(canonicalStyleLine === 'urbana')}
+          >
+            Línea Urbana
+          </button>
+          <button
+            onClick={() => setSelectedStyleLine('elegante')}
+            style={filterOptionBtn(canonicalStyleLine === 'elegante')}
+          >
+            Línea Elegante
+          </button>
+          <button
+            onClick={() => setSelectedStyleLine('casual')}
+            style={filterOptionBtn(canonicalStyleLine === 'casual')}
+          >
+            Línea Smart Casual
+          </button>
+        </div>
+      </div>
+
+      {/* Categorías */}
+      <div>
+        <h4 style={filterSectionTitle}>CATEGORÍA</h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <button
+            onClick={() => setSelectedCategory('todas')}
+            style={filterOptionBtn(selectedCategory === 'todas')}
+          >
+            Todas las categorías
+          </button>
+          {CATEGORIES.map((cat) => {
+            const countInContext = activeProducts.filter((p) =>
+              p.category === cat.slug &&
+              (canonicalStyleLine === 'todas' || normalizeStyleLine(p.styleLine) === canonicalStyleLine)
+            ).length;
+
+            // Hides categories with 0 items when a specific styleLine is active
+            if (canonicalStyleLine !== 'todas' && countInContext === 0) {
+              return null;
+            }
+
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.slug)}
+                style={filterOptionBtn(selectedCategory === cat.slug)}
+              >
+                {cat.name} ({countInContext})
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Fit / Horma */}
+      <div>
+        <h4 style={filterSectionTitle}>FIT / HORMA</h4>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+          {['todos', ...FITS].map((fit) => (
+            <button
+              key={fit}
+              onClick={() => setSelectedFit(fit)}
+              style={{
+                padding: '0.4rem 0.8rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                borderRadius: '4px',
+                border: selectedFit === fit ? '1px solid #09090B' : '1px solid #E4E4E7',
+                backgroundColor: selectedFit === fit ? '#09090B' : '#FFFFFF',
+                color: selectedFit === fit ? '#FFFFFF' : '#09090B'
+              }}
+            >
+              {fit}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tallas */}
+      <div>
+        <h4 style={filterSectionTitle}>TALLA</h4>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+          {['todas', ...SIZES].map((sz) => (
+            <button
+              key={sz}
+              onClick={() => setSelectedSize(sz)}
+              style={{
+                padding: '0.35rem 0.65rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                borderRadius: '4px',
+                border: selectedSize === sz ? '1px solid #09090B' : '1px solid #E4E4E7',
+                backgroundColor: selectedSize === sz ? '#09090B' : '#FFFFFF',
+                color: selectedSize === sz ? '#FFFFFF' : '#09090B'
+              }}
+            >
+              {sz}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Ocasión */}
+      <div>
+        <h4 style={filterSectionTitle}>OCASIÓN</h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <button
+            onClick={() => setSelectedOccasion('todas')}
+            style={filterOptionBtn(selectedOccasion === 'todas')}
+          >
+            Todas las ocasiones
+          </button>
+          {OCCASIONS.map((occ) => (
+            <button
+              key={occ.slug}
+              onClick={() => setSelectedOccasion(occ.slug)}
+              style={filterOptionBtn(selectedOccasion === occ.slug)}
+            >
+              {occ.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Precio Máximo */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+          <h4 style={filterSectionTitle}>PRECIO MÁXIMO</h4>
+          <span style={{ fontSize: '0.8rem', fontWeight: 800 }} data-testid="catalog-max-price">
+            {effectiveMaxPrice == null ? 'Sin límite' : `$${effectiveMaxPrice.toLocaleString('es-CO')}`}
+          </span>
+        </div>
+        <input
+          type="range"
+          aria-label="Precio máximo"
+          min={PRICE_STEP}
+          max={priceMax}
+          step={PRICE_STEP}
+          value={effectiveMaxPrice ?? priceMax}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            setMaxPrice(v >= priceMax ? null : v);
+          }}
+          style={{ width: '100%', accentColor: '#09090B' }}
+        />
+      </div>
+    </>
+  );
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', minHeight: '80vh', padding: '2.5rem 0 5rem 0' }}>
@@ -216,158 +348,7 @@ export const CatalogPage = () => {
               </button>
             </div>
 
-            {/* Línea de Estilo */}
-            <div>
-              <h4 style={filterSectionTitle}>LÍNEA DE ESTILO</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <button
-                  onClick={() => setSelectedStyleLine('todas')}
-                  style={filterOptionBtn(canonicalStyleLine === 'todas')}
-                >
-                  Todas las líneas
-                </button>
-                <button
-                  onClick={() => setSelectedStyleLine('urbana')}
-                  style={filterOptionBtn(canonicalStyleLine === 'urbana')}
-                >
-                  Línea Urbana
-                </button>
-                <button
-                  onClick={() => setSelectedStyleLine('elegante')}
-                  style={filterOptionBtn(canonicalStyleLine === 'elegante')}
-                >
-                  Línea Elegante
-                </button>
-                <button
-                  onClick={() => setSelectedStyleLine('casual')}
-                  style={filterOptionBtn(canonicalStyleLine === 'casual')}
-                >
-                  Línea Smart Casual
-                </button>
-              </div>
-            </div>
-
-            {/* Categorías */}
-            <div>
-              <h4 style={filterSectionTitle}>CATEGORÍA</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <button
-                  onClick={() => setSelectedCategory('todas')}
-                  style={filterOptionBtn(selectedCategory === 'todas')}
-                >
-                  Todas las categorías
-                </button>
-                {CATEGORIES.map((cat) => {
-                  const countInContext = products.filter((p) => 
-                    p.category === cat.slug && 
-                    p.status !== 'borrador' && 
-                    (canonicalStyleLine === 'todas' || normalizeStyleLine(p.styleLine) === canonicalStyleLine)
-                  ).length;
-
-                  // Hides categories with 0 items when a specific styleLine is active
-                  if (canonicalStyleLine !== 'todas' && countInContext === 0) {
-                    return null;
-                  }
-
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat.slug)}
-                      style={filterOptionBtn(selectedCategory === cat.slug)}
-                    >
-                      {cat.name} ({countInContext})
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Fit / Horma */}
-            <div>
-              <h4 style={filterSectionTitle}>FIT / HORMA</h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                {['todos', 'SLIM', 'REGULAR', 'RELAXED', 'OVERSIZE'].map((fit) => (
-                  <button
-                    key={fit}
-                    onClick={() => setSelectedFit(fit)}
-                    style={{
-                      padding: '0.4rem 0.8rem',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      borderRadius: '4px',
-                      border: selectedFit === fit ? '1px solid #09090B' : '1px solid #E4E4E7',
-                      backgroundColor: selectedFit === fit ? '#09090B' : '#FFFFFF',
-                      color: selectedFit === fit ? '#FFFFFF' : '#09090B'
-                    }}
-                  >
-                    {fit}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tallas */}
-            <div>
-              <h4 style={filterSectionTitle}>TALLA</h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                {['todas', 'S', 'M', 'L', 'XL', 'XXL', '30', '32', '34', '36', '38', '39', '40', '41', '42'].map((sz) => (
-                  <button
-                    key={sz}
-                    onClick={() => setSelectedSize(sz)}
-                    style={{
-                      padding: '0.35rem 0.65rem',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      borderRadius: '4px',
-                      border: selectedSize === sz ? '1px solid #09090B' : '1px solid #E4E4E7',
-                      backgroundColor: selectedSize === sz ? '#09090B' : '#FFFFFF',
-                      color: selectedSize === sz ? '#FFFFFF' : '#09090B'
-                    }}
-                  >
-                    {sz}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Ocasión */}
-            <div>
-              <h4 style={filterSectionTitle}>OCASIÓN</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <button
-                  onClick={() => setSelectedOccasion('todas')}
-                  style={filterOptionBtn(selectedOccasion === 'todas')}
-                >
-                  Todas las ocasiones
-                </button>
-                {OCCASIONS.map((occ) => (
-                  <button
-                    key={occ.id}
-                    onClick={() => setSelectedOccasion(occ.id)}
-                    style={filterOptionBtn(selectedOccasion === occ.id)}
-                  >
-                    {occ.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Precio Máximo */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <h4 style={filterSectionTitle}>PRECIO MÁXIMO</h4>
-                <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>${maxPrice.toLocaleString('es-CO')}</span>
-              </div>
-              <input
-                type="range"
-                min="50000"
-                max="400000"
-                step="10000"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(Number(e.target.value))}
-                style={{ width: '100%', accentColor: '#09090B' }}
-              />
-            </div>
+            {filterPanel}
           </aside>
 
           {/* MAIN CATALOG CONTENT */}
@@ -492,21 +473,10 @@ export const CatalogPage = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
-              {/* Category */}
-              <div>
-                <h4 style={filterSectionTitle}>CATEGORÍA</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  {CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => { setSelectedCategory(cat.slug); setIsMobileFilterOpen(false); }}
-                      style={filterOptionBtn(selectedCategory === cat.slug)}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <button type="button" onClick={clearAllFilters} style={{ alignSelf: 'flex-start', fontSize: '0.78rem', color: '#E11D48', fontWeight: 700 }}>
+                Limpiar filtros
+              </button>
+              {filterPanel}
             </div>
 
             <button

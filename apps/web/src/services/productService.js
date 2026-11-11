@@ -67,7 +67,9 @@ export function normalizeProduct(db, availability = new Map(), ratings = new Map
   const stock = variants.reduce((n, v) => n + v.available, 0);
   const original = db.compare_at_price ? Number(db.compare_at_price) : null;
   const rating = ratings.get(db.id);
-  const occasions = (db.product_occasions ?? []).map((po) => po.occasions?.slug).filter(Boolean);
+  const occasionList = (db.product_occasions ?? []).map((po) => po.occasions).filter((o) => o?.slug)
+    .map((o) => ({ slug: o.slug, name: o.name ?? o.slug }));
+  const occasions = occasionList.map((o) => o.slug);
 
   return {
     id: db.id,
@@ -91,6 +93,7 @@ export function normalizeProduct(db, availability = new Map(), ratings = new Map
     fit: db.fit,
     occasion: occasions[0] ?? null,
     occasions,
+    occasionList,
     color: defaultColor?.name ?? null,
     colors: colorList,
     sizes,

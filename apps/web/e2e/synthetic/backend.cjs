@@ -28,6 +28,8 @@ function seed() {
   ];
   const vsB = [{ id: 'vb-m-neg', sku: 'POL-M-NEG', color: 'c-neg', size: 'M', stock: 10 }];
   const products = [mk('p-cam', 'CAM-001', 'camiseta-basica', 'Camiseta Básica', 80000, vsA), mk('p-pol', 'POL-001', 'polo-clasico', 'Polo Clásico', 120000, vsB)];
+  const oficina = { id: 'oc-ofi', slug: 'oficina', name: 'Oficina', is_active: true, sort_order: 1 };
+  products[1].product_occasions = [{ occasions: { slug: oficina.slug, name: oficina.name } }];
   const inventories = [...vsA.map((v) => ({ v, p: products[0] })), ...vsB.map((v) => ({ v, p: products[1] }))].map(({ v, p }, i) => ({
     id: `inv-${i}`, variant_id: v.id, branch_id: 'br1', stock: v.stock, reserved: 0, min_stock: 2, location_shelf: null, updated_at: `2026-01-0${i + 1}T00:00:00Z`,
     variants: { id: v.id, sku: v.sku, is_active: true, color_id: v.color, sizes: { code: v.size }, products: { id: p.id, name: p.name, reference: p.reference, status: 'active', product_colors: p.product_colors } },
@@ -37,7 +39,7 @@ function seed() {
     users: [{ id: adminId, email: 'admin@jm.test', password: 'Admin-Sintetico-1', role: 'admin', full_name: 'Admin Sintético' }],
     products, inventories,
     tables: {
-      categories: [cat], style_lines: [line], occasions: [], colors: Object.values(colors), sizes: [], brands: [{ id: 'b1', name: 'J&M' }], site_content: [], collections: [], product_reviews: [], coupons: [], customer_addresses: [], wishlist_items: [],
+      categories: [cat], style_lines: [line], occasions: [oficina], colors: Object.values(colors), sizes: [], brands: [{ id: 'b1', name: 'J&M' }], site_content: [], collections: [], product_reviews: [], coupons: [], customer_addresses: [], wishlist_items: [],
       shipping_methods: [{ code: 'standard', name: 'Estándar', cost: 12000, free_over_subtotal: 200000, eta_text: '3-5 días', sort_order: 1, is_active: true }],
       v_product_rating: [], online_orders: [], profiles: [{ id: adminId, role: 'admin', full_name: 'Admin Sintético', email: 'admin@jm.test' }],
     },
