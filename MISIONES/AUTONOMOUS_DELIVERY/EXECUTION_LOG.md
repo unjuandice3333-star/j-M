@@ -544,3 +544,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000` y `20261111140000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(t) de Pendiente (`ProductCard`: compra rápida sin elegir talla), luego 0(u) (admin de suscriptores).
+
+## 2026-11-11 15:10 UTC — Ejecución 68 (trabajo de código: agregado rápido de `ProductCard` con color elegido)
+- Estado inicial: sesión en `claude/gracious-pasteur-355juw` (= main, `2661f2a`); se partió de la rama autorizada = remoto `cff8e8e`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(t) de Pendiente. La barra de tallas de la tarjeta agregaba siempre el primer color sin decirlo y, con ese color agotado, deshabilitaba todas las tallas. Ahora muestras de color seleccionables, tallas del color elegido, confirmación con talla y color, barra visible con foco de teclado.
+- Archivos: `apps/web/src/components/Product/ProductCard.jsx`, `apps/web/src/__tests__/productCardQuickAdd.test.jsx` (nuevo, 4 pruebas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 22).
+- Pruebas (ejecutadas aquí): las 4 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 368/368 (34 archivos); ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 22/22 en 3 ejecuciones (una primera versión falló 8 recorridos por nombres accesibles «Color X» duplicados → etiquetas cambiadas). pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000` y `20261111140000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(u) de Pendiente (admin de suscriptores del boletín: búsqueda, baja y CSV, paginado con `fetchAllRows`).

@@ -6,6 +6,7 @@ import { formatCOP } from '../../utils/currency';
 
 import SafeProductImage from '../Common/SafeImage';
 import { getProductImage } from '../../utils/productUtils';
+import { colorsInStock, sizesForColor, defaultLookSelection } from '../../utils/lookSelection';
 
 export const ProductCard = ({ product }) => {
   const { toggleWishlist, isInWishlist, addItem } = useECommerceStore();
@@ -16,21 +17,37 @@ export const ProductCard = ({ product }) => {
   const secondImage = getProductImage(product, 1);
 
   const [quickMsg, setQuickMsg] = useState(null);
-  // Agregado rápido con el color principal: solo tallas con stock real en ese color.
-  const mainColor = product.colors?.[0]?.name;
-  const availableFor = (size) => product.rawVariants?.find((v) => v.size === size && v.color === mainColor)?.available ?? 0;
+  // Agregado rápido: el cliente elige el color en las muestras (por defecto el del producto si tiene stock,
+  // si no el primero con stock) y la talla en la barra. Antes se agregaba siempre el PRIMER color sin
+  // indicarlo, y si ese color estaba agotado todas las tallas salían deshabilitadas aunque otro color tuviera stock.
+  const stockColors = colorsInStock(product);
+  const [quickColor, setQuickColor] = useState(() => defaultLookSelection(product).color ?? product.colors?.[0]?.name ?? null);
+  const hasVariants = (product.rawVariants ?? []).length > 0;
+  const quickSizes = hasVariants
+    ? sizesForColor(product, quickColor)
+    : (product.sizes ?? []).map((size) => ({ size, available: 0 }));
+
+  const chooseColor = (e, name) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setQuickColor(name);
+    setQuickMsg(null);
+    setIsHovered(true);
+  };
 
   const handleQuickAdd = (e, size) => {
     e.preventDefault();
     e.stopPropagation();
-    const r = addItem(product, size, mainColor, 1);
-    setQuickMsg(r.ok ? null : r.message);
+    const r = addItem(product, size, quickColor, 1);
+    setQuickMsg(r.ok ? { ok: true, text: `Agregado: talla ${size} · ${quickColor}` } : { ok: false, text: r.message });
   };
 
   return (
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onFocus={() => setIsHovered(true)}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setIsHovered(false); }}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -71,7 +88,7 @@ export const ProductCard = ({ product }) => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            toggleWishlist(product.id).then((r) => { if (r && !r.ok) setQuickMsg(r.message); });
+            toggleWishlist(product.id).then((r) => { if (r && !r.ok) setQuickMsg({ ok: false, text: r.message }); });
           }}
           style={{
             pointerEvents: 'auto',
@@ -148,17 +165,20 @@ export const ProductCard = ({ product }) => {
           transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           borderTop: '1px solid #E4E4E7'
         }}>
-          <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#09090B', letterSpacing: '0.05em' }}>SELECCIONAR TALLA:</span>
+          <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#09090B', letterSpacing: '0.05em' }}>
+            {stockColors.length > 0 && quickColor ? `SELECCIONAR TALLA · ${String(quickColor).toUpperCase()}` : 'SELECCIONAR TALLA:'}
+          </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
-            {product.sizes.map((sz) => (
+            {quickSizes.map(({ size: sz, available }) => (
               <button
                 key={sz}
+                type="button"
                 onClick={(e) => handleQuickAdd(e, sz)}
-                disabled={availableFor(sz) <= 0}
-                aria-label={availableFor(sz) <= 0 ? `Talla ${sz} agotada` : `Agregar talla ${sz} al carrito`}
+                disabled={available <= 0}
+                aria-label={available <= 0 ? `Talla ${sz} agotada en ${quickColor}` : `Agregar talla ${sz} en ${quickColor} al carrito`}
                 style={{
-                  opacity: availableFor(sz) <= 0 ? 0.4 : 1,
-                  textDecoration: availableFor(sz) <= 0 ? 'line-through' : 'none',
+                  opacity: available <= 0 ? 0.4 : 1,
+                  textDecoration: available <= 0 ? 'line-through' : 'none',
                   padding: '4px 7px',
                   fontSize: '0.72rem',
                   fontWeight: 800,
@@ -166,7 +186,7 @@ export const ProductCard = ({ product }) => {
                   borderRadius: '4px',
                   backgroundColor: '#FFFFFF',
                   color: '#09090B',
-                  cursor: 'pointer',
+                  cursor: available <= 0 ? 'not-allowed' : 'pointer',
                   transition: 'background 0.15s, color 0.15s'
                 }}
               >
@@ -174,7 +194,11 @@ export const ProductCard = ({ product }) => {
               </button>
             ))}
           </div>
-          {quickMsg && <span role="alert" style={{ fontSize: '0.68rem', color: '#E11D48', fontWeight: 700 }}>{quickMsg}</span>}
+          {quickMsg && (
+            <span role={quickMsg.ok ? 'status' : 'alert'} style={{ fontSize: '0.68rem', color: quickMsg.ok ? '#15803D' : '#E11D48', fontWeight: 700 }}>
+              {quickMsg.text}
+            </span>
+          )}
           {!product.inStock && <span style={{ fontSize: '0.7rem', color: '#E11D48', fontWeight: 800 }}>AGOTADO</span>}
         </div>
       </Link>
@@ -186,21 +210,35 @@ export const ProductCard = ({ product }) => {
           <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#71717A', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {product.category}
           </span>
-          {/* Color Dots */}
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {product.colors.map((c, idx) => (
-              <span
-                key={idx}
-                title={c.name}
-                style={{
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '50%',
-                  backgroundColor: c.hex,
-                  border: c.hex === '#FFFFFF' ? '1px solid #D4D4D8' : 'none'
-                }}
-              />
-            ))}
+          {/* Muestras de color: eligen el color del agregado rápido (las agotadas no se pueden elegir) */}
+          <div style={{ display: 'flex', gap: '4px' }} role="group" aria-label={`Colores de ${product.name}`}>
+            {product.colors.map((c, idx) => {
+              const inStock = stockColors.includes(c.name);
+              const selected = c.name === quickColor;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  title={inStock ? c.name : `${c.name} (agotado)`}
+                  aria-label={inStock ? `${product.name} en ${c.name}` : `${product.name} en ${c.name} (agotado)`}
+                  aria-pressed={selected}
+                  disabled={!inStock}
+                  onClick={(e) => chooseColor(e, c.name)}
+                  style={{
+                    width: '14px',
+                    height: '14px',
+                    padding: 0,
+                    borderRadius: '50%',
+                    backgroundColor: c.hex,
+                    border: c.hex === '#FFFFFF' ? '1px solid #D4D4D8' : '1px solid transparent',
+                    outline: selected ? '2px solid #09090B' : 'none',
+                    outlineOffset: '1px',
+                    opacity: inStock ? 1 : 0.35,
+                    cursor: inStock ? 'pointer' : 'not-allowed'
+                  }}
+                />
+              );
+            })}
           </div>
         </div>
 

@@ -146,6 +146,24 @@ async function main() {
       if ((await state()).newsletter.length !== 1) throw new Error('suscripción duplicada');
     }, browser);
 
+    await journey('22. Catálogo: agregado rápido con el color elegido en la tarjeta', async (p) => {
+      await p.setViewportSize({ width: 1440, height: 900 });
+      await p.goto(`${BASE}/ropa`);
+      // única tarjeta de la camiseta en /ropa: las etiquetas de sus botones son únicas en la página
+      await p.getByRole('group', { name: 'Colores de Camiseta Básica' }).waitFor({ timeout: 8000 });
+      await p.getByRole('heading', { name: 'Camiseta Básica' }).hover();
+      // Negro por defecto: S no existe en Negro; tras elegir Blanco, M agotada y S disponible
+      await p.getByRole('button', { name: 'Camiseta Básica en Blanco' }).click();
+      const mAgotada = p.getByRole('button', { name: 'Talla M agotada en Blanco' });
+      await mAgotada.waitFor();
+      if (!(await mAgotada.isDisabled())) throw new Error('talla agotada en Blanco seleccionable');
+      await p.getByRole('button', { name: 'Agregar talla S en Blanco al carrito' }).click();
+      await p.waitForFunction(() => {
+        const items = JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"items":[]}}').state.items;
+        return items.length === 1 && items[0].sku === 'CAM-S-BLA';
+      });
+    }, browser);
+
     await journey('17. Cabecera: menú de líneas y categorías desde la BD', async (p) => {
       await p.setViewportSize({ width: 1440, height: 900 });
       await p.goto(`${BASE}/`);
