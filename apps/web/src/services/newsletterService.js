@@ -67,3 +67,38 @@ export async function setNewsletterSubscriberActive(id, active) {
   if (!data || data.length !== 1) throw new Error('No se pudo actualizar el suscriptor (sin permiso o no existe).');
   return data[0];
 }
+
+// ---------------------------------------------------------------------------
+// «Mi cuenta» (ejecución 70, migración 20261111160000): el cliente gestiona el boletín de SU correo.
+// La casilla de «Mis datos» antes solo cambiaba profiles.marketing_opt_in y no tocaba la lista real.
+// ---------------------------------------------------------------------------
+export function accountNewsletterError(err) {
+  const hint = err?.hint;
+  if (hint === 'JM_EMAIL_UNCONFIRMED') return 'Confirma tu correo (revisa el enlace que te enviamos) para gestionar el boletín.';
+  if (hint === 'JM_AUTH_REQUIRED' || err?.code === 'PGRST301') return 'Tu sesión venció. Vuelve a iniciar sesión.';
+  if (hint === 'JM_NO_EMAIL') return 'Tu cuenta no tiene un correo asociado.';
+  if (err?.code === 'PGRST202' || err?.code === '42883') return 'La gestión del boletín no está disponible en este momento.';
+  return 'No pudimos actualizar tu suscripción al boletín. Intenta de nuevo.';
+}
+
+/** Error que indica que la RPC no existe en esta BD (falta la migración): la UI vuelve al comportamiento anterior. */
+export const isNewsletterRpcMissing = (err) => err?.code === 'PGRST202' || err?.code === '42883';
+
+const normalizeStatus = (d) => ({ email: d?.email ?? null, subscribed: !!d?.subscribed, onList: !!d?.on_list });
+
+async function callAccountRpc(name, args) {
+  let res;
+  try { res = await supabase.rpc(name, args); } catch (e) {
+    throw Object.assign(new Error(accountNewsletterError(e)), { cause: e });
+  }
+  if (res?.error) throw Object.assign(new Error(accountNewsletterError(res.error)), { cause: res.error, missing: isNewsletterRpcMissing(res.error) });
+  if (!res?.data || typeof res.data !== 'object') throw new Error(accountNewsletterError(null));
+  return normalizeStatus(res.data);
+}
+
+/** { email, subscribed, onList } del correo de la cuenta con sesión. */
+export const getMyNewsletterStatus = () => callAccountRpc('my_newsletter_subscription', {});
+
+/** Alta (true) o baja (false) del correo de la cuenta; devuelve el estado resultante. */
+export const setMyNewsletterSubscription = (subscribed) =>
+  callAccountRpc('set_my_newsletter_subscription', { p_subscribed: !!subscribed });

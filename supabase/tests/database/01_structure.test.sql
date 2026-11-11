@@ -45,7 +45,8 @@ SELECT set_eq($$
   SELECT p.proname::text FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND has_function_privilege('authenticated', p.oid, 'EXECUTE')$$,
   ARRAY['is_admin','is_super_admin','get_order_status_catalog','validate_coupon','quote_cart',
-        'create_order','get_order_public','cancel_my_order','subscribe_newsletter','admin_upsert_product','admin_set_product_status',
+        'create_order','get_order_public','cancel_my_order','subscribe_newsletter',
+        'my_newsletter_subscription','set_my_newsletter_subscription','admin_upsert_product','admin_set_product_status',
         'admin_adjust_inventory','admin_transition_order','admin_dashboard_metrics','admin_set_user_role'],
   'authenticated: RPC de tienda + RPC admin (que validan el rol internamente)');
 

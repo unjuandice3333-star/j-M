@@ -580,6 +580,39 @@ async function main() {
       if (!/^suscriptores-boletin-todos-\d{4}-\d{2}-\d{2}\.csv$/.test(dl.suggestedFilename())) throw new Error(`nombre: ${dl.suggestedFilename()}`);
     }, browser);
 
+    await journey('24. Cuenta: baja y alta del boletín desde «Mis datos»', async (p) => {
+      // suscripción en la portada con el mismo correo (otra capitalización) que luego usa la cuenta
+      await p.goto(`${BASE}/`);
+      const form = p.locator('section[aria-labelledby="jm-newsletter-title"]');
+      await form.scrollIntoViewIfNeeded();
+      await form.getByLabel('Correo electrónico para el boletín').fill('Marta.Club@Correo.co');
+      await form.getByRole('button', { name: 'Suscribirme' }).click();
+      await form.getByRole('status').filter({ hasText: 'quedó registrado' }).waitFor();
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Marta Club');
+      await p.locator('input[type=email]').fill('marta.club@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await p.goto(`${BASE}/cuenta`);
+      const perfil = p.getByTestId('profile-section');
+      const box = perfil.locator('input[name=marketing_opt_in]');
+      await perfil.getByText('Estás suscrito').waitFor({ timeout: 8000 });
+      if (!(await box.isChecked())) throw new Error('la casilla no refleja la suscripción de la portada');
+      await box.uncheck();
+      await perfil.getByRole('button', { name: 'Guardar datos' }).click();
+      await perfil.getByText('Te diste de baja del boletín').waitFor({ timeout: 5000 });
+      const row = () => state().then((st) => st.newsletter.find((x) => x.email_normalized === 'marta.club@correo.co'));
+      if (!(await row()).unsubscribed_at) throw new Error('la baja no se guardó en la lista');
+      await p.reload();
+      await perfil.getByText('Puedes darte de baja').waitFor({ timeout: 8000 });
+      if (await box.isChecked()) throw new Error('tras recargar la casilla sigue marcada');
+      await box.check();
+      await perfil.getByRole('button', { name: 'Guardar datos' }).click();
+      await perfil.getByText('Quedaste suscrito').waitFor({ timeout: 5000 });
+      if ((await row()).unsubscribed_at) throw new Error('el alta no se guardó en la lista');
+    }, browser);
+
     await journey('10. Admin: acceso, panel, inventario y gestión de pedidos', async (p) => {
       // crea un pedido como cliente anónimo y lo paga (sintético)
       await addToCart(p, 'polo-clasico', 'M'); await p.goto(`${BASE}/checkout`); await fillCheckout(p);

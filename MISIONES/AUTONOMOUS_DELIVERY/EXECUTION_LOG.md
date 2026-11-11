@@ -562,3 +562,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000` y `20261111140000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(v) de Pendiente (baja del boletín por el propio cliente desde «Mi cuenta»).
+
+## 2026-11-11 17:20 UTC — Ejecución 70 (trabajo de código: boletín desde «Mi cuenta»)
+- Estado inicial: sesión en `claude/gracious-pasteur-ugny2r` (= main, `2661f2a`); se partió de la rama autorizada = remoto `d530410`, árbol limpio. `pnpm install --frozen-lockfile` OK. pgTAP/pg_cron/pg_prove instalados con apt; `run_local.sh` como usuario `postgres`.
+- Tarea: punto 0(v) de Pendiente. La casilla de marketing de «Mis datos» no tocaba la lista real del boletín → RPC aditivas por correo de la cuenta + UI conectada.
+- Archivos: `supabase/migrations/20261111160000_newsletter_account.sql` (nuevo), `supabase/tests/database/93_newsletter_account.test.sql` (nuevo, 20 aserciones), `supabase/tests/database/01_structure.test.sql` (RPC de `authenticated`), `apps/web/src/services/newsletterService.js`, `apps/web/src/components/Account/AccountDetails.jsx`, `apps/web/src/__tests__/accountNewsletter.test.jsx` (nuevo, 7 pruebas), `apps/web/e2e/synthetic/backend.cjs`, `apps/web/e2e/e2e_synthetic.cjs` (recorrido 24).
+- Pruebas (ejecutadas aquí): `run_local.sh` pgTAP 331/331, concurrencia 12/12, determinismo OK; `migrations_policy.sh` OK; 5 de las 7 pruebas nuevas fallan sin el cambio de UI; `pnpm test:unit` 383/383 (36 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `node apps/web/e2e/e2e_synthetic.cjs` 24/24.
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`, `20261111140000` y `20261111160000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(w) de Pendiente (reseñas de producto escritas por el cliente con comprador verificado calculado en la BD).

@@ -9,6 +9,7 @@ import {
 } from '../../services/accountService';
 import { DEPARTMENTS } from '../../utils/colombia';
 import { PASSWORD_MAX, validateNewPassword, passwordUpdateError } from '../../utils/passwordPolicy';
+import { getMyNewsletterStatus, setMyNewsletterSubscription } from '../../services/newsletterService';
 
 const card = { backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem' };
 const label = { display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#09090B', marginBottom: '0.35rem' };
@@ -29,7 +30,13 @@ const Banner = ({ kind, children }) => (
 
 const sameForm = (a, b) => a.full_name === b.full_name && a.phone === b.phone && a.marketing_opt_in === b.marketing_opt_in;
 
+// Ejecución 70: la casilla del boletín refleja la lista real (newsletter_subscribers) del correo de la cuenta,
+// no solo profiles.marketing_opt_in. nl.status: loading | ready | unavailable (BD sin la migración: comportamiento
+// anterior, solo el perfil) | error (p. ej. correo sin confirmar: casilla deshabilitada con el motivo).
+const formFor = (profile, nl) => ({ ...toProfileForm(profile), ...(nl.status === 'ready' ? { marketing_opt_in: nl.subscribed } : {}) });
+
 function ProfileSection({ user, profile }) {
+  const [nl, setNl] = useState({ status: 'loading' });
   const [form, setForm] = useState(() => toProfileForm(profile));
   const [errors, setErrors] = useState({});
   const [msg, setMsg] = useState(null);
@@ -38,10 +45,20 @@ function ProfileSection({ user, profile }) {
   // el cliente no tiene cambios sin guardar (antes, una relectura borraba lo que estaba escribiendo).
   const synced = useRef(toProfileForm(profile));
   useEffect(() => {
-    const next = toProfileForm(profile);
-    setForm((cur) => (sameForm(cur, synced.current) ? next : cur));
+    const next = formFor(profile, nl);
+    const prev = synced.current; // capturado: el actualizador de setForm se ejecuta después de reasignar synced
+    setForm((cur) => (sameForm(cur, prev) ? next : cur));
     synced.current = next;
-  }, [profile]);
+  }, [profile, nl]);
+
+  useEffect(() => {
+    let alive = true;
+    setNl({ status: 'loading' });
+    getMyNewsletterStatus()
+      .then((st) => { if (alive) setNl({ status: 'ready', subscribed: st.subscribed, onList: st.onList }); })
+      .catch((err) => { if (alive) setNl(err.missing ? { status: 'unavailable' } : { status: 'error', message: err.message }); });
+    return () => { alive = false; };
+  }, [user.id]);
 
   const change = (e) => {
     const { name, type, checked, value } = e.target;
@@ -59,10 +76,23 @@ function ProfileSection({ user, profile }) {
     try {
       const saved = await accountService.updateProfile(user.id, form);
       const next = { ...(profile || {}), ...saved };
-      synced.current = toProfileForm(next);
+      let nlNext = nl;
+      let nlError = null;
+      const want = !!form.marketing_opt_in;
+      if (nl.status === 'ready' && (want !== nl.subscribed || (want && !nl.onList))) {
+        try {
+          const st = await setMyNewsletterSubscription(want);
+          nlNext = { status: 'ready', subscribed: st.subscribed, onList: st.onList };
+          next.marketing_opt_in = st.subscribed;
+        } catch (err) { nlError = err.message; }
+      }
+      synced.current = formFor(next, nlNext);
       setForm(synced.current);
+      setNl(nlNext);
       useAuthStore.getState().setProfile(next);
-      setMsg({ kind: 'ok', text: 'Datos guardados.' });
+      if (nlError) setMsg({ kind: 'error', text: `Datos guardados, pero no cambió tu suscripción al boletín: ${nlError}` });
+      else if (nlNext !== nl) setMsg({ kind: 'ok', text: want ? 'Datos guardados. Quedaste suscrito al boletín del club J&M.' : 'Datos guardados. Te diste de baja del boletín.' });
+      else setMsg({ kind: 'ok', text: 'Datos guardados.' });
     } catch (err) {
       if (err.errors) setErrors(err.errors);
       setMsg({ kind: 'error', text: err.message });
@@ -90,9 +120,15 @@ function ProfileSection({ user, profile }) {
           </div>
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#3F3F46', margin: '1rem 0' }}>
-          <input type="checkbox" name="marketing_opt_in" checked={form.marketing_opt_in} onChange={change} />
-          Quiero recibir novedades y promociones por correo.
+          <input type="checkbox" name="marketing_opt_in" checked={form.marketing_opt_in} onChange={change}
+            disabled={nl.status === 'loading' || nl.status === 'error'} aria-describedby="profile-newsletter-note" />
+          Quiero recibir el boletín del club J&M (novedades y promociones) en mi correo.
         </label>
+        <div id="profile-newsletter-note" style={{ fontSize: '0.75rem', color: nl.status === 'error' ? '#B91C1C' : '#71717A', marginTop: '-0.6rem', marginBottom: '1rem' }}>
+          {nl.status === 'loading' && 'Consultando tu suscripción al boletín…'}
+          {nl.status === 'error' && nl.message}
+          {nl.status === 'ready' && (nl.subscribed && nl.onList ? 'Estás suscrito. Desmarca la casilla y guarda para darte de baja.' : 'Puedes darte de baja cuando quieras desde aquí.')}
+        </div>
         {msg && <Banner kind={msg.kind}>{msg.text}</Banner>}
         <button type="submit" disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? 'Guardando…' : 'Guardar datos'}</button>
       </form>

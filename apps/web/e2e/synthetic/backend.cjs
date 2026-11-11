@@ -101,6 +101,29 @@ function start(port = 54321) {
       list.push({ id: crypto.randomUUID(), email: e, email_normalized: norm, source: /^[a-z0-9_]{1,32}$/.test(a.p_source || '') ? a.p_source : 'home', user_id: ctx.userId || null, subscribed_at: now, unsubscribed_at: null, created_at: now });
       return { ok: true };
     },
+    // Ejecución 70: espejo de la migración 20261111160000 (boletín del correo de LA CUENTA; usuarios sintéticos = confirmados).
+    my_newsletter_subscription: (a, ctx) => {
+      const u = S.users.find((x) => x.id === ctx.userId);
+      if (!u) return err('P0001', 'Inicia sesión para gestionar el boletín', 'JM_AUTH_REQUIRED');
+      const email = String(u.email).trim().toLowerCase();
+      const row = S.tables.newsletter_subscribers.find((x) => x.email_normalized === email);
+      if (row) return { email, subscribed: !row.unsubscribed_at, on_list: true, subscribed_at: row.subscribed_at, unsubscribed_at: row.unsubscribed_at };
+      const prof = S.tables.profiles.find((x) => x.id === u.id);
+      return { email, subscribed: !!prof?.marketing_opt_in, on_list: false, subscribed_at: null, unsubscribed_at: null };
+    },
+    set_my_newsletter_subscription: (a, ctx) => {
+      const u = S.users.find((x) => x.id === ctx.userId);
+      if (!u) return err('P0001', 'Inicia sesión para gestionar el boletín', 'JM_AUTH_REQUIRED');
+      if (typeof a.p_subscribed !== 'boolean') return err('P0001', 'Indica si quieres recibir el boletín', 'JM_INVALID_INPUT');
+      const email = String(u.email).trim().toLowerCase(); const now = new Date().toISOString();
+      const list = S.tables.newsletter_subscribers; const row = list.find((x) => x.email_normalized === email);
+      if (a.p_subscribed) {
+        if (row) { if (row.unsubscribed_at) row.subscribed_at = now; row.unsubscribed_at = null; row.user_id = row.user_id || u.id; }
+        else list.push({ id: crypto.randomUUID(), email, email_normalized: email, source: 'account', user_id: u.id, subscribed_at: now, unsubscribed_at: null, created_at: now });
+      } else if (row && !row.unsubscribed_at) row.unsubscribed_at = now;
+      const prof = S.tables.profiles.find((x) => x.id === u.id); if (prof) prof.marketing_opt_in = a.p_subscribed;
+      return rpc.my_newsletter_subscription({}, ctx);
+    },
     quote_cart: (a) => quote(a.p_items || [], a.p_coupon_code, a.p_shipping_method),
     validate_coupon: (a) => validateCoupon(a.p_code, a.p_subtotal),
     get_order_status_catalog: () => ({
