@@ -1,7 +1,7 @@
 -- 92 · Boletín: subscribe_newsletter (anon/cliente), idempotencia, validación, límite y RLS de newsletter_subscribers.
 BEGIN;
 \ir _helpers.psql
-SELECT plan(16);
+SELECT plan(19);
 
 CREATE FUNCTION pg_temp.n(p_who text, p_sql text) RETURNS int LANGUAGE sql AS $$ SELECT tests.nrows(tests.exec_as(p_who, p_sql)) $$;
 CREATE FUNCTION pg_temp.err(p_who text, p_sql text) RETURNS text LANGUAGE sql AS $$ SELECT tests.exec_as(p_who, p_sql) ->> 'sqlstate' $$;
@@ -35,6 +35,14 @@ SELECT is(pg_temp.n('c1', 'SELECT id FROM public.newsletter_subscribers'), 0, 'e
 SELECT is(pg_temp.n('admin', 'SELECT id FROM public.newsletter_subscribers'), 2, 'el admin ve todos los suscriptores');
 SELECT is(pg_temp.n('admin', $q$UPDATE public.newsletter_subscribers SET unsubscribed_at = now()
                                 WHERE email_normalized = 'ana.club@example.co' RETURNING id$q$), 1, 'el admin da de baja');
+-- Panel /admin/boletin (ejecución 69): el admin solo cambia unsubscribed_at; el cliente no cambia nada.
+SELECT is(pg_temp.n('c1', $q$UPDATE public.newsletter_subscribers SET unsubscribed_at = now() RETURNING id$q$), 0,
+          'el cliente no da de baja a nadie (RLS)');
+SELECT is(pg_temp.err('admin', $q$UPDATE public.newsletter_subscribers SET email = 'otro@example.co'
+                                 WHERE email_normalized = 'ana.club@example.co' RETURNING id$q$), '42501',
+          'el admin no puede reescribir el correo (GRANT solo de unsubscribed_at)');
+SELECT is(pg_temp.err('admin', $q$DELETE FROM public.newsletter_subscribers RETURNING id$q$), '42501',
+          'el admin no borra suscriptores (sin GRANT DELETE)');
 
 -- Reactivación tras la baja
 SELECT tests.exec_as('anon', $q$SELECT public.subscribe_newsletter('ana.club@example.co')$q$);

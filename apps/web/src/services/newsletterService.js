@@ -4,6 +4,7 @@
 // La RPC es idempotente y responde igual si el correo ya estaba suscrito (no revela suscriptores).
 // =============================================================================
 import supabase from '../config/supabase';
+import { fetchAllRows } from '../utils/fetchAll.js';
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -36,4 +37,33 @@ export async function subscribeNewsletter(email, source = 'home') {
   if (res?.error) throw new Error(newsletterErrorMessage(res.error));
   if (!res?.data?.ok) throw new Error(newsletterErrorMessage(null));
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Admin (ejecución 69): lista, baja/reactivación y exportación. La RLS de la migración
+// 20261111140000 solo deja leer y cambiar `unsubscribed_at` a is_admin().
+// ---------------------------------------------------------------------------
+export const NEWSLETTER_ADMIN_COLUMNS = 'id, email, source, user_id, subscribed_at, unsubscribed_at, created_at';
+
+/** Todos los suscriptores (activos y dados de baja), paginando para no perder filas tras max_rows. */
+export async function fetchNewsletterSubscribers() {
+  const res = await fetchAllRows(() => supabase.from('newsletter_subscribers').select(NEWSLETTER_ADMIN_COLUMNS)
+    .order('created_at', { ascending: false }).order('id', { ascending: false }));
+  if (res.error) {
+    const missing = res.error.code === 'PGRST205' || res.error.code === '42P01';
+    throw new Error(missing ? 'La tabla del boletín no existe en esta base de datos (falta la migración 20261111140000).'
+      : 'No se pudieron cargar los suscriptores.');
+  }
+  return { rows: res.data, capped: res.capped };
+}
+
+/** Baja (active=false) o reactivación (active=true). Devuelve la fila actualizada. */
+export async function setNewsletterSubscriberActive(id, active) {
+  const unsubscribed_at = active ? null : new Date().toISOString();
+  const { data, error } = await supabase.from('newsletter_subscribers').update({ unsubscribed_at })
+    .eq('id', id).select(NEWSLETTER_ADMIN_COLUMNS);
+  if (error) throw new Error('No se pudo actualizar el suscriptor.');
+  // Sin filas = la RLS lo impidió (no admin) o el registro ya no existe.
+  if (!data || data.length !== 1) throw new Error('No se pudo actualizar el suscriptor (sin permiso o no existe).');
+  return data[0];
 }

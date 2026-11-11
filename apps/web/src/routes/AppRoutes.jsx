@@ -25,6 +25,7 @@ const AdminProductFormPage = lazy(() => import('../pages/admin/AdminProductFormP
 const AdminInventoryPage = lazy(() => import('../pages/admin/AdminInventoryPage.jsx'));
 const AdminOrdersPage = lazy(() => import('../pages/admin/AdminOrdersPage.jsx'));
 const AdminCustomersPage = lazy(() => import('../pages/admin/AdminCustomersPage.jsx'));
+const AdminNewsletterPage = lazy(() => import('../pages/admin/AdminNewsletterPage.jsx'));
 const AdminDiscountsPage = lazy(() => import('../pages/admin/AdminDiscountsPage.jsx'));
 const AdminReviewsPage = lazy(() => import('../pages/admin/AdminReviewsPage.jsx'));
 const AdminAnalyticsPage = lazy(() => import('../pages/admin/AdminAnalyticsPage.jsx'));
@@ -121,6 +122,7 @@ export const AppRoutes = () => {
           <Route path="/admin/inventario" element={<AdminInventoryPage />} />
           <Route path="/admin/pedidos" element={<AdminOrdersPage />} />
           <Route path="/admin/clientes" element={<AdminCustomersPage />} />
+          <Route path="/admin/boletin" element={<AdminNewsletterPage />} />
           <Route path="/admin/colecciones" element={<AdminCollectionsPage />} />
           <Route path="/admin/imagenes" element={<AdminEditorialImagesPage />} />
           <Route path="/admin/descuentos" element={<AdminDiscountsPage />} />

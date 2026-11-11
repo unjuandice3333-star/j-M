@@ -547,6 +547,39 @@ async function main() {
       await expectText(p, 'permisos administrativos');
     }, browser, /\[Login Exception\]/); // el login fallido registra ese error a propósito
 
+    await journey('23. Admin: boletín, búsqueda, baja, reactivación y CSV', async (p) => {
+      // suscripción real desde la portada con un correo propio de este recorrido
+      await p.goto(`${BASE}/`);
+      const form = p.locator('section[aria-labelledby="jm-newsletter-title"]');
+      await form.scrollIntoViewIfNeeded();
+      await form.getByLabel('Correo electrónico para el boletín').fill('boletin.admin@example.co');
+      await form.getByRole('button', { name: 'Suscribirme' }).click();
+      await form.getByRole('status').filter({ hasText: 'quedó registrado' }).waitFor();
+      await p.evaluate(() => localStorage.clear());
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await p.getByRole('link', { name: 'Boletín' }).first().click();
+      await p.waitForURL(/\/admin\/boletin/);
+      await p.getByLabel('Buscar suscriptores').fill('BOLETIN.ADMIN');
+      const row = p.locator('tbody tr', { hasText: 'boletin.admin@example.co' });
+      await row.waitFor();
+      if ((await p.locator('tbody tr').count()) !== 1) throw new Error('la búsqueda no filtró');
+      await row.getByRole('button', { name: 'Dar de baja boletin.admin@example.co' }).click();
+      await p.getByRole('status').filter({ hasText: 'dado de baja' }).waitFor();
+      let s = (await state()).newsletter.find((x) => x.email_normalized === 'boletin.admin@example.co');
+      if (!s.unsubscribed_at) throw new Error('la baja no se guardó');
+      await p.getByLabel('Filtrar por estado').selectOption('bajas');
+      await row.getByRole('button', { name: 'Reactivar boletin.admin@example.co' }).click();
+      await p.getByRole('status').filter({ hasText: 'reactivado' }).waitFor();
+      s = (await state()).newsletter.find((x) => x.email_normalized === 'boletin.admin@example.co');
+      if (s.unsubscribed_at) throw new Error('la reactivación no se guardó');
+      await p.getByLabel('Filtrar por estado').selectOption('todos');
+      const [dl] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: /Exportar CSV/ }).click()]);
+      const csv = fs.readFileSync(await dl.path(), 'utf8');
+      if (!/^\uFEFFcorreo,estado,origen/.test(csv) || !csv.includes('boletin.admin@example.co,activo,home')) throw new Error(`CSV: ${csv.slice(0, 200)}`);
+      if (!/^suscriptores-boletin-todos-\d{4}-\d{2}-\d{2}\.csv$/.test(dl.suggestedFilename())) throw new Error(`nombre: ${dl.suggestedFilename()}`);
+    }, browser);
+
     await journey('10. Admin: acceso, panel, inventario y gestión de pedidos', async (p) => {
       // crea un pedido como cliente anónimo y lo paga (sintético)
       await addToCart(p, 'polo-clasico', 'M'); await p.goto(`${BASE}/checkout`); await fillCheckout(p);

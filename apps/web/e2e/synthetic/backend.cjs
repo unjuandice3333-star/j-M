@@ -96,8 +96,9 @@ function start(port = 54321) {
       if (e.length < 3 || e.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return err('P0001', 'Correo electrónico inválido', 'JM_INVALID_EMAIL');
       const list = S.tables.newsletter_subscribers; const norm = e.toLowerCase();
       const row = list.find((x) => x.email_normalized === norm);
-      if (row) { row.unsubscribed_at = null; return { ok: true }; }
-      list.push({ email: e, email_normalized: norm, source: /^[a-z0-9_]{1,32}$/.test(a.p_source || '') ? a.p_source : 'home', user_id: ctx.userId || null, unsubscribed_at: null });
+      if (row) { if (row.unsubscribed_at) row.subscribed_at = new Date().toISOString(); row.unsubscribed_at = null; return { ok: true }; }
+      const now = new Date().toISOString();
+      list.push({ id: crypto.randomUUID(), email: e, email_normalized: norm, source: /^[a-z0-9_]{1,32}$/.test(a.p_source || '') ? a.p_source : 'home', user_id: ctx.userId || null, subscribed_at: now, unsubscribed_at: null, created_at: now });
       return { ok: true };
     },
     quote_cart: (a) => quote(a.p_items || [], a.p_coupon_code, a.p_shipping_method),
@@ -179,6 +180,7 @@ function start(port = 54321) {
     else if (table === 'v_variant_availability') data = S.inventories.map((i) => ({ variant_id: i.variant_id, product_id: i.variants.products.id, available: avail(i) }));
     else if (table === 'online_orders') data = ctx.role === 'admin' ? S.tables.online_orders : S.tables.online_orders.filter((o) => ctx.userId && o.user_id === ctx.userId);
     else if (table === 'profiles') data = ctx.role === 'admin' ? S.tables.profiles : S.tables.profiles.filter((p) => p.id === ctx.userId);
+    else if (table === 'newsletter_subscribers') data = ctx.role === 'admin' ? S.tables.newsletter_subscribers : []; // RLS newsletter_admin_read
     else if (table === 'customer_addresses') data = ctx.role === 'admin' ? S.tables.customer_addresses : S.tables.customer_addresses.filter((a) => ctx.userId && a.user_id === ctx.userId);
     else data = S.tables[table] || [];
     for (const [k, v] of Object.entries(q)) {
@@ -288,6 +290,12 @@ function start(port = 54321) {
             const allowed = ['full_name', 'phone', 'avatar_url', 'preferred_size', 'preferred_fit', 'marketing_opt_in'];
             if (Object.keys(body).some((k) => !allowed.includes(k))) return send(res, 403, { code: '42501', message: 'permission denied for table profiles' });
             const hit = S.tables.profiles.filter((r) => r.id === ctx.userId && rows(table, q, ctx).includes(r));
+            for (const r of hit) Object.assign(r, body); return reply(hit);
+          }
+          // Ejecución 69: baja/reactivación desde /admin/boletin. RLS newsletter_admin_update + GRANT UPDATE (unsubscribed_at).
+          if (table === 'newsletter_subscribers' && req.method === 'PATCH') {
+            if (Object.keys(body).some((k) => k !== 'unsubscribed_at')) return send(res, 403, { code: '42501', message: 'permission denied for table newsletter_subscribers' });
+            const hit = rows(table, q, ctx); // vacío si no es admin, como la RLS
             for (const r of hit) Object.assign(r, body); return reply(hit);
           }
           return send(res, 405, { message: 'escritura directa no emulada' });
