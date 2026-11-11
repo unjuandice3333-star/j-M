@@ -425,3 +425,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(g) de Pendiente (límites silenciosos en catálogo/reseñas/wishlist; luego perfil y direcciones del cliente).
+
+## 2026-11-11 01:12 UTC — Ejecución 55 (trabajo de código: catálogo sin cortes silenciosos)
+- Estado inicial: sesión en `claude/gracious-pasteur-kbocro` (= main); se cambió a la rama autorizada = remoto `3ce8a48`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(g) de Pendiente. Defecto real: con >1000 variantes la disponibilidad se cortaba y productos con stock salían agotados. Catálogo, disponibilidad, valoraciones, wishlist y reseñas del admin paginados; listas `in` troceadas.
+- Archivos: `apps/web/src/utils/fetchAll.js` (nuevo), `utils/adminLists.js` (re-export), `services/productService.js`, `services/wishlistService.js`, `pages/admin/AdminReviewsPage.jsx`, `src/__tests__/catalogPagination.test.js` (nuevo, 5 pruebas).
+- Pruebas (ejecutadas aquí): 2 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 254/254 (22 archivos); ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 10/10. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(h) de Pendiente (perfil y direcciones del cliente).

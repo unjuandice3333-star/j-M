@@ -1,12 +1,14 @@
 // M28 — Lista de deseos en public.wishlist_items (PK user_id+product_id ⇒ sin duplicados; RLS: solo el propietario).
 import supabase from '../config/supabase';
+import { fetchAllRows } from '../utils/fetchAll.js';
 
 const fail = (error, msg) => Object.assign(new Error(msg), { cause: error });
 
 export const wishlistService = {
   /** ids de producto del usuario autenticado (RLS limita a sus filas), del más antiguo al más reciente. */
   async getIds() {
-    const { data, error } = await supabase.from('wishlist_items').select('product_id').order('created_at', { ascending: true });
+    const { data, error } = await fetchAllRows(() => supabase.from('wishlist_items').select('product_id')
+      .order('created_at', { ascending: true }).order('product_id'));
     if (error) throw fail(error, 'No se pudo cargar tu lista de deseos.');
     return data.map((r) => r.product_id);
   },

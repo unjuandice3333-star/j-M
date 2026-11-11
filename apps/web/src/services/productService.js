@@ -10,6 +10,7 @@
 import supabase from '../config/supabase';
 import { getClientConfig } from '../config/runtimeConfig.js';
 import { normalizeStyleLine } from '../utils/productUtils';
+import { fetchAllIn, fetchAllRows } from '../utils/fetchAll.js';
 
 export const PRODUCT_IMAGES_BUCKET = 'product-images';
 
@@ -111,11 +112,13 @@ export class CatalogError extends Error {
   constructor(message, cause) { super(message); this.name = 'CatalogError'; this.cause = cause; }
 }
 
+// Disponibilidad y valoraciones de TODAS las variantes/productos pedidos: lista de ids troceada y cada trozo
+// paginado (antes una sola consulta: con >1000 variantes PostgREST cortaba y faltaba stock sin error).
 async function loadAvailabilityAndRatings(productIds) {
   if (productIds.length === 0) return { availability: new Map(), ratings: new Map() };
   const [av, rt] = await Promise.all([
-    supabase.from('v_variant_availability').select('variant_id, available').in('product_id', productIds),
-    supabase.from('v_product_rating').select('product_id, rating, review_count').in('product_id', productIds),
+    fetchAllIn((ids) => supabase.from('v_variant_availability').select('variant_id, available').in('product_id', ids).order('variant_id'), productIds),
+    fetchAllIn((ids) => supabase.from('v_product_rating').select('product_id, rating, review_count').in('product_id', ids).order('product_id'), productIds),
   ]);
   if (av.error) throw new CatalogError('No se pudo consultar la disponibilidad', av.error);
   if (rt.error) throw new CatalogError('No se pudieron consultar las valoraciones', rt.error);
@@ -128,10 +131,14 @@ async function loadAvailabilityAndRatings(productIds) {
 export const productService = {
   /** Productos visibles para el usuario actual (anon: solo `active`; admin: todos, por RLS). */
   async getProducts({ includeInactive = false } = {}) {
-    let q = supabase.from('products').select(PRODUCT_SELECT).order('published_at', { ascending: false, nullsFirst: false });
-    if (!includeInactive) q = q.eq('status', 'active');
-    const { data, error } = await q;
+    // Paginado con orden total (published_at + id): con >1000 productos una consulta única perdía filas.
+    const { data, error, capped } = await fetchAllRows(() => {
+      let q = supabase.from('products').select(PRODUCT_SELECT).order('published_at', { ascending: false, nullsFirst: false }).order('id');
+      if (!includeInactive) q = q.eq('status', 'active');
+      return q;
+    });
     if (error) throw new CatalogError('No se pudo cargar el catálogo', error);
+    if (capped) console.warn('[catálogo] se alcanzó el tope de productos; la lista puede estar incompleta');
     const { availability, ratings } = await loadAvailabilityAndRatings(data.map((p) => p.id));
     return data.map((p) => normalizeProduct(p, availability, ratings));
   },

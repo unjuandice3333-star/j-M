@@ -6,29 +6,8 @@ export const PAID_STATUSES = new Set(['paid', 'processing', 'shipped', 'delivere
 /** Pedidos por página en el admin de pedidos (se cargan más con «Cargar más»). */
 export const ADMIN_ORDERS_PAGE_SIZE = 50;
 
-/** Filas por solicitud al leer tablas completas; igual a `max_rows` de PostgREST (supabase/config.toml). */
-export const FETCH_ALL_PAGE_SIZE = 1000;
-/** Tope de seguridad de filas al leer una tabla completa (evita bucles infinitos y pestañas colgadas). */
-export const FETCH_ALL_MAX_ROWS = 50000;
-
-/**
- * Lee TODAS las filas de una consulta paginando con `.range()`. PostgREST corta cada respuesta en `max_rows`
- * (1000) sin avisar, así que una sola consulta pierde filas en silencio a partir de ese número.
- * `buildQuery` debe devolver una consulta NUEVA con orden total y estable (p. ej. `.order('created_at').order('id')`).
- * @param {() => any} buildQuery
- * @returns {Promise<{data: Array|null, error: any, capped: boolean}>} capped = se alcanzó `maxRows`.
- */
-export async function fetchAllRows(buildQuery, { pageSize = FETCH_ALL_PAGE_SIZE, maxRows = FETCH_ALL_MAX_ROWS } = {}) {
-  const out = [];
-  for (let from = 0; from < maxRows; from += pageSize) {
-    const { data, error } = await buildQuery().range(from, Math.min(from + pageSize, maxRows) - 1);
-    if (error) return { data: null, error, capped: false };
-    const page = data ?? [];
-    out.push(...page);
-    if (page.length < pageSize) return { data: out, error: null, capped: false };
-  }
-  return { data: out, error: null, capped: true };
-}
+// Lectura paginada compartida con la tienda (catálogo, reseñas, lista de deseos).
+export { fetchAllRows, FETCH_ALL_PAGE_SIZE, FETCH_ALL_MAX_ROWS } from './fetchAll.js';
 
 /**
  * Texto de búsqueda seguro para un filtro `or=(…ilike…)` de PostgREST: quita los caracteres con significado

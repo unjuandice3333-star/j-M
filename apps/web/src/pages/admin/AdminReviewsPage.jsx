@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Star } from 'lucide-react';
 import supabase from '../../config/supabase';
 import { adminError } from '../../services/adminService';
+import { fetchAllRows } from '../../utils/fetchAll';
 import { useAuthStore } from '../../store/authStore';
 
 const STATUS = { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' };
@@ -16,11 +17,18 @@ export const AdminReviewsPage = () => {
   const [replies, setReplies] = useState({});
 
   const load = async () => {
-    let q = supabase.from('product_reviews').select('id, author_name, city, rating, title, comment, status, admin_reply, is_verified_buyer, created_at, products ( name, slug )')
-      .order('created_at', { ascending: false });
-    if (filter !== 'todas') q = q.eq('status', filter);
-    const { data, error } = await q;
-    if (error) setNotice({ ok: false, text: 'No se pudieron cargar las reseñas.' }); else setReviews(data);
+    // Todas las páginas (PostgREST corta en 1000 sin avisar); orden total created_at + id.
+    const { data, error, capped } = await fetchAllRows(() => {
+      let q = supabase.from('product_reviews').select('id, author_name, city, rating, title, comment, status, admin_reply, is_verified_buyer, created_at, products ( name, slug )')
+        .order('created_at', { ascending: false }).order('id');
+      if (filter !== 'todas') q = q.eq('status', filter);
+      return q;
+    });
+    if (error) setNotice({ ok: false, text: 'No se pudieron cargar las reseñas.' });
+    else {
+      setReviews(data);
+      if (capped) setNotice({ ok: false, text: `Se muestran las primeras ${data.length} reseñas; filtra por estado para ver el resto.` });
+    }
   };
   useEffect(() => { load(); }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
