@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Sparkles, ShieldCheck, Truck, RefreshCw, Headphones, MapPin, Mail, ChevronRight, ChevronLeft, Check } from 'lucide-react';
-import { CATEGORIES, OCCASIONS, STYLE_LINES } from '../data/mockData';
+import { useStorefrontTaxonomy } from '../hooks/useStorefrontTaxonomy';
+import { buildHomeTaxonomy } from '../utils/homeTaxonomy';
 import ProductCard from '../components/Product/ProductCard';
 import CompleteTheLook from '../components/Product/CompleteTheLook';
 import { useECommerceStore } from '../store/eCommerceStore';
@@ -13,6 +14,8 @@ export const HomePage = () => {
   const carouselRef = useRef(null);
 
   const getEditorialImg = (key, fallback) => (editorialImages && editorialImages[key]) ? editorialImages[key] : fallback;
+  const { taxonomy } = useStorefrontTaxonomy();
+  const { styleLines: STYLE_LINES, categories: CATEGORIES, occasions: OCCASIONS } = buildHomeTaxonomy(taxonomy, products, editorialImages);
 
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
@@ -230,6 +233,7 @@ export const HomePage = () => {
       </section>
 
       {/* 2. TRES LÍNEAS DE ESTILO J&M */}
+      {STYLE_LINES.length > 0 && (
       <section
         role="region"
         aria-label="Líneas de estilo masculinas J&M"
@@ -270,7 +274,7 @@ export const HomePage = () => {
           <div className="style-lines-grid">
             {STYLE_LINES.map((line) => (
               <div
-                key={line.id}
+                key={line.slug}
                 onClick={() => navigate(`/linea/${line.slug}`)}
                 tabIndex={0}
                 role="button"
@@ -285,7 +289,7 @@ export const HomePage = () => {
               >
                 {/* Background Image with Smooth Hover Zoom */}
                 <SafeImage
-                  src={getEditorialImg(`style_${line.id}`, line.image)}
+                  src={line.image}
                   alt={line.name}
                   className="style-line-img"
                 />
@@ -341,7 +345,7 @@ export const HomePage = () => {
                       lineHeight: 1.3
                     }}
                   >
-                    &quot;{line.tagline}&quot;
+                    {line.tagline ? <>&quot;{line.tagline}&quot;</> : null}
                   </p>
 
                   {/* Description (Enhanced +1px font size & #D4D4D8 contrast) */}
@@ -443,6 +447,7 @@ export const HomePage = () => {
           }
         `}</style>
       </section>
+      )}
 
       {/* 3. NUEVA COLECCIÓN */}
       <section
@@ -618,6 +623,7 @@ export const HomePage = () => {
       </section>
 
       {/* 4. CATEGORÍAS DESTACADAS */}
+      {CATEGORIES.length > 0 && (
       <section style={{ padding: '3.75rem 0', backgroundColor: '#FAFAFA' }}>
         <div className="jm-container">
           <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
@@ -651,7 +657,7 @@ export const HomePage = () => {
           <div className="featured-categories-grid">
             {CATEGORIES.map((cat) => (
               <Link
-                key={cat.id}
+                key={cat.slug}
                 to={`/ropa/${cat.slug}`}
                 className="category-card"
                 style={{
@@ -668,7 +674,7 @@ export const HomePage = () => {
                 }}
               >
                 <SafeImage
-                  src={getEditorialImg(`category_${cat.id}`, cat.image)}
+                  src={cat.image}
                   alt={cat.name}
                   className="category-card-img"
                   style={{
@@ -758,8 +764,10 @@ export const HomePage = () => {
           }
         `}</style>
       </section>
+      )}
 
       {/* 5. COMPRA POR OCASIÓN */}
+      {OCCASIONS.length > 0 && (
       <section style={{ padding: '80px 0', backgroundColor: '#FFFFFF' }}>
         <div className="jm-container">
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -792,17 +800,10 @@ export const HomePage = () => {
 
           <div className="occasions-grid">
             {OCCASIONS.map((occ) => {
-              const occKey = occ.id === 'trabajo' ? 'occasion_trabajo_oficina'
-                : occ.id === 'cita' ? 'occasion_cita_salidas'
-                : occ.id === 'casual' ? 'occasion_casual_urbano'
-                : occ.id === 'fiesta' ? 'occasion_noche_eventos'
-                : occ.id === 'fin-de-semana' ? 'occasion_fin_semana'
-                : 'occasion_streetwear';
-
               return (
                 <Link
-                  key={occ.id}
-                  to={`/colecciones?ocasion=${occ.id}`}
+                  key={occ.slug}
+                  to={`/colecciones?ocasion=${encodeURIComponent(occ.slug)}`}
                   className="occasion-card"
                   style={{
                     position: 'relative',
@@ -819,7 +820,7 @@ export const HomePage = () => {
                   }}
                 >
                   <SafeImage
-                    src={getEditorialImg(occKey, occ.image)}
+                    src={occ.image}
                     alt={occ.name}
                     className="occasion-card-img"
                     style={{
@@ -858,7 +859,7 @@ export const HomePage = () => {
                         {occ.name}
                       </h3>
                       <p style={{ fontSize: '0.80rem', color: '#E4E4E7', marginTop: '0.3rem', fontWeight: 400, margin: '0.3rem 0 0 0' }}>
-                        "{occ.subtitle}"
+                        {occ.subtitle ? `"${occ.subtitle}"` : null}
                       </p>
                     </div>
                     <ChevronRight size={19} className="occasion-card-arrow" style={{ transition: 'transform 300ms ease, color 300ms ease, opacity 300ms ease', opacity: 0.85, flexShrink: 0, marginLeft: '0.5rem' }} />
@@ -920,6 +921,7 @@ export const HomePage = () => {
           }
         `}</style>
       </section>
+      )}
 
       {/* 6. MÁS VENDIDOS */}
       <section style={{ padding: '4rem 0', backgroundColor: '#FAFAFA' }}>

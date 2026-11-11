@@ -35,7 +35,7 @@ async function journey(name, fn, browser, allowConsole = null) {
   page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|wompi|\/api\/wompi|net::ERR/i.test(m.text()) && !(allowConsole && allowConsole.test(m.text()))) problems.push(`console.error: ${m.text().slice(0, 160)}`); });
   if (process.env.E2E_DEBUG) { page.on('framenavigated', (f) => console.log('   nav', f.url())); page.on('dialog', (d) => console.log('   dialog', d.message().slice(0, 50))); }
   const t0 = Date.now(); let ok = true; let detail = '';
-  try { await fn(page, ctx); } catch (e) { ok = false; detail = String(e.message).split('\n')[0]; await page.screenshot({ path: path.join(WEB, 'e2e', `fail-${name.replace(/\W+/g, '_')}.png`) }).catch(() => {}); }
+  try { await fn(page, ctx); } catch (e) { ok = false; if (process.env.E2E_DEBUG) console.log(e.message); detail = String(e.message).split('\n')[0]; await page.screenshot({ path: path.join(WEB, 'e2e', `fail-${name.replace(/\W+/g, '_')}.png`) }).catch(() => {}); }
   if (ok && problems.length) { ok = false; detail = `errores de consola/página: ${problems.slice(0, 2).join(' · ')}`; }
   results.push({ name, ok, ms: Date.now() - t0, detail });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  → ' + detail : ''}`);
@@ -104,6 +104,23 @@ async function main() {
       await drawer.getByRole('button', { name: /VER RESULTADOS \(1\)/ }).click();
       await expectText(p, 'MOSTRANDO 1 PRENDAS');
       await p.getByText('Camiseta Básica').first().waitFor();
+    }, browser);
+
+    await journey('16. Portada: líneas, categorías y ocasiones desde la BD', async (p) => {
+      await p.goto(`${BASE}/`);
+      // BD sintética: 1 categoría (Camisetas), 1 línea (Urbana) y 1 ocasión (Oficina) con productos
+      await p.locator('.featured-categories-grid a[href="/ropa/camisetas"]').waitFor({ timeout: 8000 });
+      await p.locator('.occasions-grid a[href="/colecciones?ocasion=oficina"]').waitFor();
+      const hrefs = await p.$$eval('.featured-categories-grid a, .occasions-grid a', (as) => as.map((a) => a.getAttribute('href')));
+      for (const stale of ['/ropa/jeans', '/ropa/accesorios', '/colecciones?ocasion=trabajo']) if (hrefs.includes(stale)) throw new Error(`enlace de mockData: ${stale}`);
+      if (await p.getByRole('button', { name: 'Explorar línea Elegante' }).count()) throw new Error('línea sin productos visible');
+      await p.getByRole('button', { name: 'Explorar línea Urbana' }).click();
+      await p.waitForURL(/\/linea\/urbana/);
+      await expectText(p, 'MOSTRANDO 2 PRENDAS');
+      await p.goto(`${BASE}/`);
+      await p.locator('a[href="/colecciones?ocasion=oficina"]').first().click();
+      await expectText(p, 'MOSTRANDO 1 PRENDAS');
+      await p.getByText('Polo Clásico').first().waitFor();
     }, browser);
 
     await journey('2. Producto: precio, talla, color y disponibilidad', async (p) => {

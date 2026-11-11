@@ -155,6 +155,17 @@ export const productService = {
     return normalizeProduct(data, availability, ratings);
   },
 
+  /** Líneas, categorías y ocasiones activas con sus textos e imágenes, para la portada (antes mockData). */
+  async getStorefrontTaxonomy() {
+    const [cat, sl, oc] = await Promise.all([
+      supabase.from('categories').select('id, slug, name, parent_id, image_url, sort_order').eq('is_active', true).order('sort_order'),
+      supabase.from('style_lines').select('id, slug, name, tagline, description, badge, image_url, sort_order').eq('is_active', true).order('sort_order'),
+      supabase.from('occasions').select('id, slug, name, subtitle, image_url, sort_order').eq('is_active', true).order('sort_order'),
+    ]);
+    for (const r of [cat, sl, oc]) if (r.error) throw new CatalogError('No se pudieron cargar las secciones de la tienda', r.error);
+    return { categories: cat.data ?? [], styleLines: sl.data ?? [], occasions: oc.data ?? [] };
+  },
+
   /** Catálogos de referencia para filtros y para el formulario de administración. */
   async getReferenceData() {
     const [cat, sl, oc, col, sz, br] = await Promise.all([

@@ -480,3 +480,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(m) de Pendiente (`HomePage`: categorías, ocasiones y líneas desde la BD en lugar de `mockData`).
+
+## 2026-11-11 07:17 UTC — Ejecución 61 (trabajo de código: portada con secciones de la BD)
+- Estado inicial: sesión en `claude/gracious-pasteur-gt2wtj` (= main, `2661f2a`); se partió de la rama autorizada = remoto `4e9713a`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(m) de Pendiente. `HomePage` leía líneas, categorías y ocasiones de `mockData`; ahora de `style_lines`/`categories`/`occasions` con respaldo si la BD falla. Defecto real: la imagen editorial de Smart Casual (`style_smart_casual`) nunca se mostraba (la portada buscaba `style_casual`).
+- Archivos: `apps/web/src/utils/homeTaxonomy.js` (nuevo), `apps/web/src/hooks/useStorefrontTaxonomy.js` (nuevo), `apps/web/src/services/productService.js` (`getStorefrontTaxonomy`), `apps/web/src/pages/HomePage.jsx`, `apps/web/src/data/mockData.js` (eliminadas 3 constantes sin uso), `apps/web/src/__tests__/homeTaxonomy.test.jsx` (nuevo, 7 pruebas), `apps/web/e2e/synthetic/backend.cjs` (`is_active` en categoría y línea), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 16; error completo con `E2E_DEBUG`).
+- Pruebas (ejecutadas aquí): 2 pruebas de la página fallan sin el cambio (`git stash`); `pnpm test:unit` 320/320 (27 archivos); ESLint `apps packages scripts` 0 errores; `pnpm build` OK; `pnpm test:e2e-synthetic` 16/16 en 3 ejecuciones seguidas. pgTAP no re-ejecutado (sin cambios SQL).
+- Errores pendientes: ninguno nuevo. Bloqueos reales (sin cambio): baseline M24 + migración `20261111120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(n) de Pendiente (menú de la cabecera y claves del admin de imágenes editoriales desde la BD).

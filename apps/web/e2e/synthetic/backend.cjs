@@ -11,8 +11,8 @@ const token = (sub, role) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub, 
 function seed() {
   const colors = { negro: { id: 'c-neg', slug: 'negro', name: 'Negro', hex_code: '#111111' }, blanco: { id: 'c-bla', slug: 'blanco', name: 'Blanco', hex_code: '#FFFFFF' } };
   const sizes = { S: { code: 'S', sort_order: 1 }, M: { code: 'M', sort_order: 2 }, L: { code: 'L', sort_order: 3 } };
-  const cat = { id: 'cat-cam', slug: 'camisetas', name: 'Camisetas', size_group: 'tops', sort_order: 1 };
-  const line = { id: 'sl-urb', slug: 'urbana', name: 'Urbana', tagline: 'Casual urbano', sort_order: 1 };
+  const cat = { id: 'cat-cam', slug: 'camisetas', name: 'Camisetas', size_group: 'tops', sort_order: 1, is_active: true };
+  const line = { id: 'sl-urb', slug: 'urbana', name: 'Urbana', tagline: 'Casual urbano', sort_order: 1, is_active: true };
   const mk = (id, ref, slug, name, price, vs) => ({
     id, reference: ref, slug, name, description: `${name} de algodón (dato sintético).`, details: ['100% algodón'], fit: 'REGULAR', fit_description: 'Corte regular',
     base_price: price, compare_at_price: null, status: 'active', is_featured_new: true, is_bestseller: false, published_at: '2026-01-01T00:00:00Z', created_at: '2026-01-01T00:00:00Z',

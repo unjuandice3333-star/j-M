@@ -1,55 +1,5 @@
 // Mock data para J&M FASHION STORE — Moda Masculina Colombia
 
-export const CATEGORIES = [
-  { id: 'camisetas', name: 'Camisetas', slug: 'camisetas', count: 18, image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=800' },
-  { id: 'camisas', name: 'Camisas', slug: 'camisas', count: 24, image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&q=80&w=800' },
-  { id: 'polos', name: 'Polos', slug: 'polos', count: 12, image: 'https://images.unsplash.com/photo-1626557981101-aae6f84aa6ff?auto=format&fit=crop&q=80&w=800' },
-  { id: 'jeans', name: 'Jeans', slug: 'jeans', count: 16, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&q=80&w=800' },
-  { id: 'pantalones', name: 'Pantalones', slug: 'pantalones', count: 14, image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&q=80&w=800' },
-  { id: 'bermudas', name: 'Bermudas', slug: 'bermudas', count: 10, image: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?auto=format&fit=crop&q=80&w=800' },
-  { id: 'chaquetas', name: 'Chaquetas', slug: 'chaquetas', count: 15, image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&q=80&w=800' },
-  { id: 'accesorios', name: 'Accesorios', slug: 'accesorios', count: 9, image: 'https://images.unsplash.com/photo-1624222247344-550fb60583dc?auto=format&fit=crop&q=80&w=800' }
-];
-
-export const OCCASIONS = [
-  { id: 'trabajo', name: 'TRABAJO & OFICINA', subtitle: 'Presencia sin perder comodidad.', image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=800' },
-  { id: 'cita', name: 'CITA & SALIDAS', subtitle: 'Tu mejor versión empieza aquí.', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=800' },
-  { id: 'casual', name: 'CASUAL URBANO', subtitle: 'Estilo para todos los días.', image: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=800' },
-  { id: 'fiesta', name: 'NOCHE & EVENTOS', subtitle: 'Destaca cuando importa.', image: 'https://images.unsplash.com/photo-1534030347209-467a5b0ad3e6?auto=format&fit=crop&q=80&w=800' },
-  { id: 'fin-de-semana', name: 'FIN DE SEMANA', subtitle: 'Comodidad con actitud.', image: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?auto=format&fit=crop&q=80&w=800' },
-  { id: 'streetwear', name: 'STREETWEAR', subtitle: 'Actitud que se lleva puesta.', image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?auto=format&fit=crop&q=80&w=800' }
-];
-
-export const STYLE_LINES = [
-  {
-    id: 'urbana',
-    name: 'URBANA',
-    slug: 'urbana',
-    tagline: 'Actitud, comodidad y carácter.',
-    description: 'Denim, oversize y esenciales para un estilo urbano contemporáneo.',
-    image: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=1000',
-    badge: 'ESTILO URBANO'
-  },
-  {
-    id: 'elegante',
-    name: 'ELEGANTE',
-    slug: 'elegante',
-    tagline: 'Presencia para cada ocasión.',
-    description: 'Prendas refinadas para un estilo elegante y sofisticado.',
-    image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&q=80&w=1000',
-    badge: 'OFICINA & FORMAL'
-  },
-  {
-    id: 'casual',
-    name: 'SMART CASUAL',
-    slug: 'casual',
-    tagline: 'Equilibrio entre estilo y comodidad.',
-    description: 'Looks versátiles que combinan elegancia y frescura.',
-    image: 'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&q=80&w=1000',
-    badge: 'CASUAL ELEGANTE'
-  }
-];
-
 export const PRODUCTS = [
   {
     id: 'prod-1',
