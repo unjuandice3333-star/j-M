@@ -19,6 +19,7 @@ import { orderService } from '../services/orderService';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
 import { AccountDetails } from '../components/Account/AccountDetails';
+import { ReviewInvitations } from '../components/Account/ReviewInvitations';
 import { wompiService } from '../services/wompi';
 
 // Respuestas de /api/wompi/signature que indican que la lista quedó vieja (pagado, vencido o cancelado en otro lado).
@@ -334,6 +335,10 @@ export const AccountPage = () => {
                 Comprar prendas <ChevronRight size={16} />
               </Link>
             </div>
+
+            {!isLoadingOrders && userOrders.some((o) => o.status === 'delivered') && (
+              <ReviewInvitations refreshKey={userOrders.length} />
+            )}
 
             {isLoadingOrders ? (
               <div style={{ backgroundColor: '#FFFFFF', padding: '3rem', borderRadius: '12px', border: '1px solid #E4E4E7', textAlign: 'center', color: '#71717A' }}>

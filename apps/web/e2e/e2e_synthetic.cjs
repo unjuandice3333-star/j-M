@@ -651,6 +651,56 @@ async function main() {
       if (await p.getByText('Excelente camiseta').count() !== 1) throw new Error('la reseña pendiente aparece publicada en la ficha');
     }, browser);
 
+    await journey('26. Entregado: invitación a opinar, reseña, respuesta del admin y columnas privadas', async (p) => {
+      // Lectura pública sin identificadores internos (GRANT por columnas): pedir user_id falla con 42501.
+      const priv = await fetch(`${API_URL}/rest/v1/product_reviews?select=id,user_id`);
+      if (priv.status !== 401 || (await priv.json()).code !== '42501') throw new Error(`user_id legible en product_reviews: ${priv.status}`);
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Marta Gómez');
+      await p.locator('input[type=email]').fill('marta.entrega@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'marta.entrega@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click(); await p.waitForURL(/\/checkout\/confirmacion/);
+      const num = (await state()).orders[0].order_number;
+      await fetch(`${API_URL}/__synthetic-mark-paid/${num}`);
+      // pagado sin entregar: sin invitación
+      await p.goto(`${BASE}/cuenta/pedidos`); await expectText(p, num);
+      if (await p.getByText('OPINA SOBRE TUS COMPRAS').count()) throw new Error('invitación a opinar antes de la entrega');
+      await fetch(`${API_URL}/__synthetic-mark-delivered/${num}`);
+      await p.reload();
+      await p.getByText('OPINA SOBRE TUS COMPRAS').waitFor({ timeout: 8000 });
+      await p.getByRole('link', { name: 'Opinar sobre Polo Clásico' }).click();
+      await p.waitForURL(/\/producto\/polo-clasico#opiniones$/);
+      const caja = p.getByTestId('review-form');
+      await caja.getByText(num).waitFor({ timeout: 8000 });
+      await caja.getByRole('button', { name: '4 de 5 estrellas' }).click();
+      await caja.getByLabel('Título').fill('Buen polo');
+      await caja.getByLabel('Comentario').fill('Buena tela, el cuello no se deforma al lavarlo.');
+      await caja.getByRole('button', { name: 'Enviar opinión' }).click();
+      await caja.getByText('Recibimos tu opinión').waitFor({ timeout: 5000 });
+      // ya opinó: la invitación desaparece
+      await p.goto(`${BASE}/cuenta/pedidos`); await expectText(p, num);
+      await p.waitForTimeout(500);
+      if (await p.getByText('OPINA SOBRE TUS COMPRAS').count()) throw new Error('la invitación sigue tras opinar');
+      // admin aprueba con respuesta pública
+      await p.evaluate(() => localStorage.clear());
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await p.goto(`${BASE}/admin/reviews`);
+      const card = p.locator('div', { hasText: 'Buen polo' }).filter({ has: p.getByRole('button', { name: 'Aprobar' }) }).last();
+      await card.getByLabel('Respuesta de la tienda').fill('¡Gracias, Marta! Nos alegra que te guste.');
+      await card.getByRole('button', { name: 'Aprobar' }).click();
+      await p.getByText('Reseña de Marta G.: aprobada.').waitFor({ timeout: 8000 });
+      // el público ve la reseña y la respuesta de J&M
+      await p.evaluate(() => localStorage.clear());
+      await p.goto(`${BASE}/producto/polo-clasico`);
+      await p.getByText('Buen polo').waitFor({ timeout: 8000 });
+      await p.getByRole('note', { name: 'Respuesta de J&M' }).getByText('¡Gracias, Marta! Nos alegra que te guste.').waitFor();
+    }, browser);
+
     await journey('10. Admin: acceso, panel, inventario y gestión de pedidos', async (p) => {
       // crea un pedido como cliente anónimo y lo paga (sintético)
       await addToCart(p, 'polo-clasico', 'M'); await p.goto(`${BASE}/checkout`); await fillCheckout(p);

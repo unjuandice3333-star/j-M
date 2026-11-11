@@ -73,3 +73,25 @@ export async function submitReview({ orderItemId, rating, title, comment, city }
   if (!res?.data?.id) throw fail(null);
   return res.data;
 }
+
+/**
+ * Ejecución 72 (migración 20261111200000): artículos de pedidos ENTREGADOS sin reseña propia del producto,
+ * uno por producto: [{ orderItemId, orderNumber, deliveredAt, productId, productName, slug, imageUrl, size, color }]
+ */
+export async function fetchReviewInvitations() {
+  let res;
+  try { res = await supabase.rpc('my_review_invitations'); } catch (e) { throw fail(e); }
+  if (res?.error) throw fail(res.error);
+  const rows = Array.isArray(res?.data) ? res.data : [];
+  return rows.filter((r) => r?.slug).map((r) => ({
+    orderItemId: r.order_item_id,
+    orderNumber: r.order_number,
+    deliveredAt: r.delivered_at,
+    productId: r.product_id,
+    productName: r.product_name,
+    slug: r.slug,
+    imageUrl: r.image_url ?? null,
+    size: r.size_code,
+    color: r.color_name,
+  }));
+}

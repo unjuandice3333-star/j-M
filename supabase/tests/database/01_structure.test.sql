@@ -46,7 +46,7 @@ SELECT set_eq($$
    WHERE n.nspname = 'public' AND has_function_privilege('authenticated', p.oid, 'EXECUTE')$$,
   ARRAY['is_admin','is_super_admin','get_order_status_catalog','validate_coupon','quote_cart',
         'create_order','get_order_public','cancel_my_order','subscribe_newsletter',
-        'my_newsletter_subscription','set_my_newsletter_subscription','my_product_reviewables','submit_product_review',
+        'my_newsletter_subscription','set_my_newsletter_subscription','my_product_reviewables','submit_product_review','my_review_invitations',
         'admin_upsert_product','admin_set_product_status',
         'admin_adjust_inventory','admin_transition_order','admin_dashboard_metrics','admin_set_user_role'],
   'authenticated: RPC de tienda + RPC admin (que validan el rol internamente)');

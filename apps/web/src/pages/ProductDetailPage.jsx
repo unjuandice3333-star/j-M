@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Star,
   Heart,
@@ -68,6 +68,7 @@ export const ProductDetailPage = () => {
   const [addedFeedback, setAddedFeedback] = useState(false);
   const [cartError, setCartError] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const { hash } = useLocation();
 
   // Variantes reales: disponibilidad por talla para el color elegido
   const variantsForColor = (product?.rawVariants ?? []).filter((v) => v.color === selectedColor?.name);
@@ -82,7 +83,7 @@ export const ProductDetailPage = () => {
   useEffect(() => {
     if (!product?.id) return undefined;
     let alive = true;
-    supabase.from('product_reviews').select('id, author_name, city, rating, title, comment, created_at, is_verified_buyer')
+    supabase.from('product_reviews').select('id, author_name, city, rating, title, comment, created_at, is_verified_buyer, admin_reply')
       .eq('product_id', product.id).eq('status', 'approved').order('created_at', { ascending: false }).limit(12)
       .then(({ data }) => { if (alive) setReviews(data ?? []); });
     return () => { alive = false; };
@@ -147,6 +148,14 @@ export const ProductDetailPage = () => {
       };
     }
   }, [slug, product]);
+
+  // Desde «Opina sobre tus compras» (Mis pedidos) se llega con #opiniones: ir directo a la sección
+  // (corre después del desplazamiento al inicio del efecto anterior).
+  useEffect(() => {
+    if (!product?.id || hash !== '#opiniones') return;
+    const el = document.getElementById('opiniones');
+    if (el?.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [product?.id, hash]);
 
   // Talla única (accesorios): no hay nada que elegir; se preselecciona si hay stock en el color elegido.
   const oneSize = isOneSize(product);
@@ -657,7 +666,7 @@ export const ProductDetailPage = () => {
         {/* COMPLETE THE LOOK SECTION */}
 
         {/* REVIEWS SECTION — reseñas aprobadas de la BD */}
-        <section style={{ margin: '4rem 0', padding: '2.5rem 0', borderTop: '1px solid #E4E4E7' }}>
+        <section id="opiniones" style={{ margin: '4rem 0', padding: '2.5rem 0', borderTop: '1px solid #E4E4E7', scrollMarginTop: '5rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 900, textTransform: 'uppercase', marginBottom: '0.4rem' }}>OPINIONES DE CLIENTES</h2>
           {product.rating ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
@@ -682,6 +691,12 @@ export const ProductDetailPage = () => {
                 <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.4rem', color: '#09090B' }}>{rev.title}</div>
                 <p style={{ fontSize: '0.82rem', color: '#71717A', lineHeight: 1.5 }}>"{rev.comment}"</p>
                 {rev.is_verified_buyer && <div style={{ fontSize: '0.72rem', color: '#10B981', fontWeight: 700, marginTop: '0.4rem' }}>Compra verificada</div>}
+                {rev.admin_reply && String(rev.admin_reply).trim() && (
+                  <div role="note" aria-label="Respuesta de J&M" style={{ marginTop: '0.75rem', padding: '0.6rem 0.75rem', borderLeft: '3px solid #09090B', backgroundColor: '#F4F4F5', borderRadius: 4 }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: '#09090B', marginBottom: '0.2rem' }}>Respuesta de J&M</div>
+                    <p style={{ fontSize: '0.8rem', color: '#3F3F46', lineHeight: 1.5, margin: 0 }}>{String(rev.admin_reply).trim()}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>

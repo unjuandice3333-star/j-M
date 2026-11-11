@@ -59,14 +59,14 @@ SELECT is((SELECT row(r.product_id, r.user_id, r.rating, r.title, r.comment, r.c
           'fila con producto, usuario, textos recortados, compra verificada y nombre «Nombre I.»');
 SELECT is(pg_temp.hint('c1', pg_temp.submit(pg_temp.item('qa-seed-order-01', :tee), 5, 'Otra vez', 'Quiero opinar de nuevo.')), 'JM_ALREADY_REVIEWED', 'una reseña por artículo comprado');
 SELECT is(pg_temp.items('c1', :tee) -> 0 -> 'review' ->> 'status', 'pending', 'la lista devuelve la reseña propia pendiente');
-SELECT is(tests.nrows(tests.exec_as('anon', format('SELECT id FROM public.product_reviews WHERE user_id = %L', tests.uid('c1')))), 0,
+SELECT is(tests.nrows(tests.exec_as('anon', $$SELECT id FROM public.product_reviews WHERE title = 'Muy cómoda'$$)), 0,
           'la reseña pendiente no es pública');
-SELECT is(tests.nrows(tests.exec_as('admin', format('SELECT id FROM public.product_reviews WHERE user_id = %L', tests.uid('c1')))), 1,
+SELECT is(tests.nrows(tests.exec_as('admin', $$SELECT id FROM public.product_reviews WHERE title = 'Muy cómoda'$$)), 1,
           'el admin la ve para moderar');
 
 -- Moderación existente: aprobada → pública y suma al promedio
 UPDATE public.product_reviews SET status = 'approved' WHERE user_id = tests.uid('c1');
-SELECT is(tests.nrows(tests.exec_as('anon', format('SELECT id FROM public.product_reviews WHERE user_id = %L AND is_verified_buyer', tests.uid('c1')))), 1,
+SELECT is(tests.nrows(tests.exec_as('anon', $$SELECT id FROM public.product_reviews WHERE title = 'Muy cómoda' AND is_verified_buyer$$)), 1,
           'aprobada → visible con compra verificada');
 SELECT is(tests.val(tests.exec_as('anon', format('SELECT review_count FROM public.v_product_rating WHERE product_id = %L', :tee::uuid))), '3'::jsonb,
           'v_product_rating cuenta la nueva reseña aprobada');

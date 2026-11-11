@@ -152,6 +152,18 @@ function start(port = 54321) {
       S.tables.product_reviews.push(row);
       return { id: row.id, status: 'pending', product_id: row.product_id };
     },
+    // Ejecución 72: espejo de my_review_invitations (migración 20261111200000): pedidos entregados, sin reseña propia del producto.
+    my_review_invitations: (a, ctx) => {
+      if (!ctx.userId) return err('P0001', 'Inicia sesión para opinar', 'JM_AUTH_REQUIRED');
+      const seen = new Set();
+      return S.tables.online_orders.filter((o) => o.user_id === ctx.userId && o.status === 'delivered')
+        .flatMap((o) => o.online_order_items.map((i) => ({ o, i })))
+        .filter(({ i }) => !S.tables.product_reviews.some((r) => r.product_id === i.product_id && r.user_id === ctx.userId))
+        .filter(({ i }) => (seen.has(i.product_id) ? false : (seen.add(i.product_id), true)))
+        .map(({ o, i }) => ({ order_item_id: i.id, order_number: o.order_number, delivered_at: o.delivered_at, product_id: i.product_id,
+          product_name: i.product_name, slug: (S.products.find((x) => x.id === i.product_id) || {}).slug, image_url: i.image_url || null,
+          size_code: i.size_code, color_name: i.color_name }));
+    },
     quote_cart: (a) => quote(a.p_items || [], a.p_coupon_code, a.p_shipping_method),
     validate_coupon: (a) => validateCoupon(a.p_code, a.p_subtotal),
     get_order_status_catalog: () => ({
@@ -221,6 +233,7 @@ function start(port = 54321) {
   function transition(o, to, actor, note) {
     const from = o.status; o.status = to; if (to === 'cancelled') for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); if (inv) inv.reserved = Math.max(0, inv.reserved - it.quantity); }
     if (to === 'paid') o.paid_at = new Date().toISOString();
+    if (to === 'delivered') o.delivered_at = new Date().toISOString();
     o.order_events.unshift({ event_type: 'status', from_status: from, to_status: to, actor, note: note || null, created_at: new Date().toISOString() });
   }
 
@@ -232,6 +245,7 @@ function start(port = 54321) {
     else if (table === 'online_orders') data = ctx.role === 'admin' ? S.tables.online_orders : S.tables.online_orders.filter((o) => ctx.userId && o.user_id === ctx.userId);
     else if (table === 'profiles') data = ctx.role === 'admin' ? S.tables.profiles : S.tables.profiles.filter((p) => p.id === ctx.userId);
     else if (table === 'newsletter_subscribers') data = ctx.role === 'admin' ? S.tables.newsletter_subscribers : []; // RLS newsletter_admin_read
+    else if (table === 'product_reviews') data = ctx.role === 'admin' ? S.tables.product_reviews : S.tables.product_reviews.filter((r) => r.status === 'approved'); // RLS product_reviews_read
     else if (table === 'customer_addresses') data = ctx.role === 'admin' ? S.tables.customer_addresses : S.tables.customer_addresses.filter((a) => ctx.userId && a.user_id === ctx.userId);
     else data = S.tables[table] || [];
     for (const [k, v] of Object.entries(q)) {
@@ -269,6 +283,8 @@ function start(port = 54321) {
         // Simula la confirmación del webhook de pago. NO es Wompi: solo mueve el pedido a "paid" para probar lo que sigue.
         // Ejecución 59: ventana de pago vencida sin que el job de expiración haya pasado (estado sigue payment_pending).
         if (p.startsWith('/__synthetic-expire-window/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); o.payment_expires_at = new Date(Date.now() - 60e3).toISOString(); return send(res, 200, { payment_expires_at: o.payment_expires_at }); }
+        // Ejecución 72: entrega SINTÉTICA (paid → processing → shipped → delivered), para probar lo que sigue a la entrega.
+        if (p.startsWith('/__synthetic-mark-delivered/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o || o.status !== 'paid') return send(res, 404, {}); for (const st of ['processing', 'shipped', 'delivered']) transition(o, st, 'sintético'); return send(res, 200, { status: o.status }); }
         if (p.startsWith('/__synthetic-mark-paid/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); inv.reserved -= it.quantity; inv.stock -= it.quantity; } transition(o, 'paid', 'sintético'); return send(res, 200, { status: 'paid' }); }
         if (p === '/auth/v1/signup') {
           if (S.users.some((u) => u.email === body.email)) return send(res, 422, { code: 'user_already_exists', msg: 'User already registered', message: 'User already registered' });
@@ -305,6 +321,12 @@ function start(port = 54321) {
             if (['shipping_methods', 'site_content', 'v_variant_availability', 'v_product_rating'].includes(table)) return send(res, 404, { code: 'PGRST205', message: `Could not find the table 'public.${table}' in the schema cache`, details: null, hint: null });
             const rel = table === 'collections' && /collection_products/.test(sel) ? 'collection_products' : table === 'products' && /product_images/.test(sel) ? 'product_images' : null;
             if (rel) return send(res, 400, { code: 'PGRST200', message: `Could not find a relationship between '${table}' and '${rel}' in the schema cache`, details: `Searched for a foreign key relationship between '${table}' and '${rel}' in the schema 'public', but no matches were found.`, hint: null });
+          }
+          // Ejecución 72: SELECT por columnas en product_reviews (GRANT de la migración 20261111200000).
+          if (table === 'product_reviews' && (req.method === 'GET' || req.method === 'HEAD')) {
+            const cols = String(q.select || '*').replace(/\([^)]*\)/g, '').split(',').map((c) => c.trim().split(/\s|\(/)[0]).filter(Boolean);
+            const hidden = Object.keys(q).filter((k) => !['select', 'order', 'limit', 'offset'].includes(k)).concat(cols);
+            if (hidden.some((c) => ['*', 'user_id', 'order_item_id', 'moderated_by', 'moderated_at'].includes(c))) return send(res, 401, { code: '42501', message: 'permission denied for table product_reviews', details: null, hint: null });
           }
           if (req.method === 'GET' || req.method === 'HEAD') {
             let data = rows(table, q, ctx);
@@ -347,6 +369,11 @@ function start(port = 54321) {
           if (table === 'newsletter_subscribers' && req.method === 'PATCH') {
             if (Object.keys(body).some((k) => k !== 'unsubscribed_at')) return send(res, 403, { code: '42501', message: 'permission denied for table newsletter_subscribers' });
             const hit = rows(table, q, ctx); // vacío si no es admin, como la RLS
+            for (const r of hit) Object.assign(r, body); return reply(hit);
+          }
+          if (table === 'product_reviews' && req.method === 'PATCH') { // moderación de /admin/reviews (RLS product_reviews_admin)
+            if (Object.keys(body).some((k) => !['status', 'admin_reply', 'moderated_by', 'moderated_at'].includes(k))) return send(res, 400, { code: 'PGRST204', message: 'columna no emulada' });
+            const hit = ctx.role === 'admin' ? rows(table, q, ctx) : [];
             for (const r of hit) Object.assign(r, body); return reply(hit);
           }
           return send(res, 405, { message: 'escritura directa no emulada' });
