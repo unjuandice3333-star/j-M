@@ -8,7 +8,7 @@ import { slugify } from '../../services/adminService';
 import collectionsAdminService, { COLLECTION_KINDS, emptyCollection, toCollectionForm, validateCollection } from '../../services/collectionsAdminService';
 
 const btnDark = { backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.7rem 1.2rem', borderRadius: 6, fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' };
-const btnLight = { backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', padding: '0.4rem 0.8rem', borderRadius: 4, fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' };
+const btnLight = { backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', padding: '0.4rem 0.8rem', minHeight: 36, borderRadius: 4, fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' };
 const input = { padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: 6, width: '100%' };
 const label = { display: 'grid', gap: '0.3rem', fontSize: '0.8rem', fontWeight: 700, color: '#3F3F46' };
 const err = { color: '#B91C1C', fontSize: '0.75rem', fontWeight: 600 };
@@ -102,7 +102,7 @@ export const AdminCollectionsPage = () => {
           <form onSubmit={save} noValidate style={{ backgroundColor: '#FFF', borderRadius: 10, padding: '1.5rem', width: 'min(640px, 100%)', maxHeight: '90vh', overflowY: 'auto', display: 'grid', gap: '0.9rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontWeight: 900, textTransform: 'uppercase' }}>{form.id ? 'Editar colección' : 'Nueva colección'}</h2>
-              <button type="button" aria-label="Cerrar" onClick={() => setForm(null)}><X size={18} /></button>
+              <button type="button" aria-label="Cerrar" style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setForm(null)}><X size={18} /></button>
             </div>
             <label style={label}>Nombre<input style={input} value={form.name} onChange={(e) => set({ name: e.target.value })} />{errors.name && <span style={err}>{errors.name}</span>}</label>
             <label style={label}>Slug<input style={input} value={form.slug} onChange={(e) => set({ slug: e.target.value, slugTouched: true })} />{errors.slug && <span style={err}>{errors.slug}</span>}</label>

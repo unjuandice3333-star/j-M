@@ -76,7 +76,7 @@ export const AdminNewsletterPage = () => {
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#FFF', padding: '1rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', flex: 1, minWidth: 220 }}>
           <Search size={16} color="#71717A" />
-          <input aria-label="Buscar suscriptores" placeholder="Buscar por correo u origen" value={query} onChange={(e) => setQuery(e.target.value)} style={{ border: 'none', outline: 'none', flex: 1 }} />
+          <input aria-label="Buscar suscriptores" placeholder="Buscar por correo u origen" value={query} onChange={(e) => setQuery(e.target.value)} style={{ border: 'none', outline: 'none', flex: 1, minHeight: 36 }} />
         </div>
         <select aria-label="Filtrar por estado" value={status} onChange={(e) => setStatus(e.target.value)} style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: '6px' }}>
           <option value="activos">Activos</option>

@@ -95,7 +95,7 @@ export const AdminDiscountsPage = () => {
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#FFF', padding: '1rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', flex: 1, minWidth: 220 }}>
           <Search size={16} color="#71717A" />
-          <input aria-label="Buscar cupones" placeholder="Buscar por código o descripción" value={query} onChange={(e) => setParam('q', e.target.value, '')} style={{ border: 'none', outline: 'none', flex: 1 }} />
+          <input aria-label="Buscar cupones" placeholder="Buscar por código o descripción" value={query} onChange={(e) => setParam('q', e.target.value, '')} style={{ border: 'none', outline: 'none', flex: 1, minHeight: 36 }} />
         </div>
         <select aria-label="Filtrar por estado" value={status} onChange={(e) => setParam('estado', e.target.value, 'todos')} style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: '6px' }}>
           {COUPON_STATUS_FILTERS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -126,7 +126,7 @@ export const AdminDiscountsPage = () => {
                     {usage[c.id]?.pending > 0 && <div style={{ fontSize: '0.72rem', color: '#B45309' }}>+{usage[c.id].pending} con pago pendiente</div>}
                     {couponUseCount(c, usage[c.id]) > 0 && (
                       <Link to={`/admin/pedidos?cupon=${encodeURIComponent(c.code)}`} data-testid={`pedidos-cupon-${c.code}`}
-                        style={{ display: 'inline-block', marginTop: '0.2rem', fontSize: '0.72rem', fontWeight: 700, color: '#4338CA' }}>
+                        style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32, fontSize: '0.72rem', fontWeight: 700, color: '#4338CA' }}>
                         Ver pedidos
                       </Link>
                     )}
@@ -151,12 +151,12 @@ export const AdminDiscountsPage = () => {
           <div role="dialog" aria-label={form.id ? 'Editar cupón' : 'Crear cupón'} onClick={(e) => e.stopPropagation()} style={{ backgroundColor: '#FFF', width: '100%', maxWidth: '520px', borderRadius: '12px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 900 }}>{form.id ? `Editar ${form.code}` : 'Nuevo cupón'}</h2>
-              <button onClick={() => setForm(null)} aria-label="Cerrar"><X size={20} /></button>
+              <button onClick={() => setForm(null)} aria-label="Cerrar" style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
             </div>
             <form onSubmit={save} noValidate style={{ display: 'grid', gap: '0.8rem' }}>
               <label style={labelStyle}>Código<input style={inputStyle} value={form.code} onChange={(e) => set({ code: e.target.value.toUpperCase() })} /></label>
               <label style={labelStyle}>Descripción<input style={inputStyle} value={form.description} onChange={(e) => set({ description: e.target.value })} /></label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: '0.6rem' }}>
                 <label style={labelStyle}>Tipo
                   <select style={inputStyle} value={form.discount_type} onChange={(e) => set({ discount_type: e.target.value })}>
                     {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -168,12 +168,12 @@ export const AdminDiscountsPage = () => {
                   </label>
                 )}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 110px), 1fr))', gap: '0.6rem' }}>
                 <label style={labelStyle}>Compra mínima<input style={inputStyle} inputMode="numeric" value={form.min_subtotal} onChange={(e) => set({ min_subtotal: e.target.value.replace(/[^0-9]/g, '') })} /></label>
                 <label style={labelStyle}>Usos totales<input style={inputStyle} inputMode="numeric" placeholder="sin límite" value={form.max_uses} onChange={(e) => set({ max_uses: e.target.value.replace(/[^0-9]/g, '') })} /></label>
                 <label style={labelStyle}>Por correo<input style={inputStyle} inputMode="numeric" placeholder="sin límite" value={form.max_uses_per_email} onChange={(e) => set({ max_uses_per_email: e.target.value.replace(/[^0-9]/g, '') })} /></label>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: '0.6rem' }}>
                 <label style={labelStyle}>Inicio<input type="datetime-local" style={inputStyle} value={form.starts_at} onChange={(e) => set({ starts_at: e.target.value })} /></label>
                 <label style={labelStyle}>Fin<input type="datetime-local" style={inputStyle} value={form.expires_at} onChange={(e) => set({ expires_at: e.target.value })} /></label>
               </div>
@@ -192,8 +192,10 @@ export const AdminDiscountsPage = () => {
 
 const thDisc = { padding: '0.85rem 1rem', fontSize: '0.75rem', fontWeight: 800, color: '#71717A', letterSpacing: '0.05em' };
 const tdDisc = { padding: '0.85rem 1rem', color: '#09090B' };
-const linkBtn = { textDecoration: 'underline', fontSize: '0.8rem', fontWeight: 700, marginRight: '0.6rem' };
+// minHeight: área táctil ≥ 32 px en móvil (ejecución 96)
+const linkBtn = { textDecoration: 'underline', fontSize: '0.8rem', fontWeight: 700, marginRight: '0.6rem', minHeight: 32, display: 'inline-flex', alignItems: 'center' };
 const labelStyle = { display: 'grid', gap: '0.3rem', fontSize: '0.78rem', fontWeight: 700, color: '#09090B' };
-const inputStyle = { width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 500 };
+// minWidth/boxSizing: un datetime-local no ensancha la columna en móvil (ejecución 96)
+const inputStyle = { width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '0.6rem 0.75rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 500 };
 
 export default AdminDiscountsPage;

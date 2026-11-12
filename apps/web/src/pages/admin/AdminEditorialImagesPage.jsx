@@ -169,7 +169,7 @@ export const AdminEditorialImagesPage = () => {
             style={{ backgroundColor: '#FFF', width: '100%', maxWidth: 720, borderRadius: 12, padding: '1.5rem', maxHeight: '90vh', overflowY: 'auto', display: 'grid', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <h2 style={{ fontSize: '1.1rem', fontWeight: 900 }}>{editing.item.title}</h2>
-              <button onClick={() => setEditing(null)} aria-label="Cerrar"><X size={20} /></button>
+              <button onClick={() => setEditing(null)} aria-label="Cerrar" style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
             </div>
             <img src={editing.preview} alt="Vista previa" style={{ width: '100%', height: 220, objectFit: 'cover', borderRadius: 8, backgroundColor: '#F4F4F5' }} />
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

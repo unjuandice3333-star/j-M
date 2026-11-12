@@ -103,7 +103,7 @@ export const AdminCustomersPage = () => {
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#FFF', padding: '1rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', flex: 1, minWidth: 240 }}>
           <Search size={16} color="#71717A" />
-          <input aria-label="Buscar clientes" type="search" placeholder="Buscar por nombre, correo, teléfono o ciudad" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', outline: 'none', flex: 1 }} />
+          <input aria-label="Buscar clientes" type="search" placeholder="Buscar por nombre, correo, teléfono o ciudad" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', outline: 'none', flex: 1, minHeight: 36 }} />
         </div>
         <select aria-label="Filtrar por rol" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: '6px' }}>
           <option value="customer">Clientes</option>
@@ -153,7 +153,7 @@ export const AdminCustomersPage = () => {
           <div role="dialog" aria-label={`Cliente ${selected.full_name || selected.email}`} onClick={(e) => e.stopPropagation()} style={{ backgroundColor: '#FFF', width: '100%', maxWidth: '640px', borderRadius: '12px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 900 }}>{selected.full_name || selected.email}</h2>
-              <button onClick={close} aria-label="Cerrar"><X size={20} /></button>
+              <button onClick={close} aria-label="Cerrar" style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
             </div>
             <div style={{ fontSize: '0.88rem', display: 'grid', gap: '0.3rem', marginBottom: '1rem' }}>
               <div>{selected.email} · {selected.phone || 'sin teléfono'} · {ROLE_LABEL[selected.role]}</div>

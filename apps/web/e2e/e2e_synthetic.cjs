@@ -488,6 +488,47 @@ async function main() {
       await assertTappable(row.getByRole('button').first(), 'aplicar ajuste de inventario');
     }, browser, null, MOBILE);
 
+    await journey('32. Móvil 375×812: resto del admin (descuentos, reseñas, boletín, imágenes, colecciones, analytics, configuración y sus modales) sin desbordes', async (p) => {
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      const pages = [['/admin/descuentos', 'JM10'], ['/admin/reviews', 'RESEÑAS'], ['/admin/boletin', 'BOLETÍN'], ['/admin/imagenes', 'IMÁGENES'],
+        ['/admin/colecciones', 'COLECCIONES'], ['/admin/analytics', 'ANALÍTICA'], ['/admin/configuracion', 'ENVÍO'], ['/admin/clientes?rol=todos', 'Ver detalle']];
+      const failures = [];
+      // todos los controles visibles (no solo uno): botones, enlaces, selectores y campos de texto; los enlaces
+      // dentro de una frase —`p a`— quedan fuera (excepción de enlace en línea de WCAG 2.5.8)
+      const checkControls = async (scope, where) => {
+        const controls = p.locator(['button', 'a:not(p a)', 'select', 'input:not([type=checkbox]):not([type=radio]):not([type=file])', 'textarea'].map((x) => `${scope} ${x}:visible`).join(', '));
+        const n = await controls.count();
+        for (let i = 0; i < n; i++) {
+          const c = controls.nth(i);
+          const label = ((await c.getAttribute('aria-label')) || (await c.innerText().catch(() => '')) || (await c.getAttribute('placeholder')) || '').trim().slice(0, 30);
+          await assertTappable(c, `${where} «${label}»`).catch((e) => failures.push(e.message));
+        }
+        return n;
+      };
+      for (const [url, text] of pages) {
+        await p.goto(`${BASE}${url}`);
+        await expectText(p, text);
+        await p.waitForLoadState('networkidle');
+        await assertNoHorizontalOverflow(p, url).catch((e) => failures.push(e.message));
+        await checkControls('main', url);
+      }
+      // formularios y fichas modales (cupón, colección, método de envío, imagen de la portada, cliente)
+      for (const [url, opener, dialog] of [['/admin/descuentos', p.locator('tbody tr', { hasText: 'JM10' }).getByRole('button', { name: 'Editar' }), 'Editar cupón'],
+        ['/admin/colecciones', p.getByRole('button', { name: 'Editar', exact: false }).first(), 'Editar colección'],
+        ['/admin/configuracion', p.getByRole('button', { name: /^Editar / }).first(), 'Editar método de envío'],
+        ['/admin/imagenes', p.getByRole('button', { name: /^Cambiar imagen / }).first(), /^Editar /],
+        ['/admin/clientes?rol=todos', p.getByRole('button', { name: 'Ver detalle' }).first(), /^Cliente /]]) {
+        await p.goto(`${BASE}${url}`);
+        await opener.tap();
+        await p.getByRole('dialog', { name: dialog }).waitFor({ timeout: 8000 });
+        await p.waitForLoadState('networkidle');
+        await assertNoHorizontalOverflow(p, `${url} · ${dialog}`).catch((e) => failures.push(e.message));
+        if (!(await checkControls('[role=dialog]', `${url} · ${dialog}`))) failures.push(`${url} · ${dialog}: sin controles visibles`);
+      }
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser, null, MOBILE);
+
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);

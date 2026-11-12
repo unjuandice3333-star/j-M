@@ -123,7 +123,7 @@ export const AdminReviewsPage = () => {
       </div>
       <div role="tablist" aria-label="Estado de la reseña" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
         {TABS.map((f) => (
-          <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} style={{ padding: '0.4rem 0.8rem', borderRadius: 6, fontWeight: 700, fontSize: '0.8rem',
+          <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} style={{ padding: '0.4rem 0.8rem', minHeight: 36, borderRadius: 6, fontWeight: 700, fontSize: '0.8rem',
             border: '1px solid #E4E4E7', backgroundColor: filter === f ? '#09090B' : '#FFF', color: filter === f ? '#FFF' : '#52525B', cursor: 'pointer' }}>
             {f === 'todas' ? 'Todas' : REVIEW_STATUS[f]} ({counts[f]})
           </button>
