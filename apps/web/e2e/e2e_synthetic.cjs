@@ -26,10 +26,10 @@ const reset = () => fetch(`${API_URL}/__reset`).then(j);
 const state = () => fetch(`${API_URL}/__state`).then(j);
 
 const results = [];
-async function journey(name, fn, browser, allowConsole = null) {
+async function journey(name, fn, browser, allowConsole = null, ctxOpts = { viewport: { width: 1280, height: 900 } }) {
   if (process.env.ONLY && !new RegExp(process.env.ONLY).test(name)) return;
   await reset();
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const ctx = await browser.newContext(ctxOpts);
   const page = await ctx.newPage();
   const problems = [];
   page.on('dialog', (d) => d.accept().catch(() => {})); // confirmaciones nativas de la interfaz
@@ -61,6 +61,42 @@ const login = async (page, url, email, password, submit) => {
   await page.locator('input[type=email]').fill(email); await page.locator('input[type=password]').fill(password);
   await page.getByRole('button', { name: submit }).click();
 };
+
+// Móvil: la página no debe desplazarse en horizontal; si lo hace, nombra los elementos que se salen.
+async function assertNoHorizontalOverflow(page, where) {
+  const measure = () => page.evaluate(async () => {
+    // mide con las animaciones/transiciones terminadas (p. ej. un aviso que entra desde la derecha)
+    await Promise.race([Promise.all(document.getAnimations().map((x) => x.finished.catch(() => {}))), new Promise((ok) => setTimeout(ok, 1500))]);
+    const vw = document.documentElement.clientWidth;
+    const sw = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+    const off = [];
+    if (sw > vw) {
+      for (const el of document.querySelectorAll('body *')) {
+        const b = el.getBoundingClientRect();
+        if (b.width && (b.right > vw + 1 || b.left < -1)) {
+          let clipped = false; // dentro de un contenedor con overflow oculto/desplazable no desborda la página
+          for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { const o = getComputedStyle(a).overflowX; if (o !== 'visible') { clipped = true; break; } }
+          const label = (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30);
+          if (!clipped) off.push(`${el.tagName.toLowerCase()}${el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : ''}«${label}»[${Math.round(b.left)},${Math.round(b.right)}]`);
+        }
+      }
+    }
+    return { vw, sw, off: off.slice(-6) };
+  });
+  let r = await measure();
+  if (r.sw > r.vw) { if (process.env.E2E_DEBUG) console.log(`   desborde transitorio en ${where}: ${r.off.join(' ')}`); await page.waitForTimeout(500); r = await measure(); } // solo cuenta si persiste
+  if (r.sw > r.vw) throw new Error(`${where}: desborde horizontal ${r.sw}px > ${r.vw}px · ${r.off.join(' ')}`);
+}
+// Móvil: el control está dentro del ancho de la pantalla y su tamaño táctil es razonable (≥ 32 px de alto).
+async function assertTappable(locator, where) {
+  await locator.scrollIntoViewIfNeeded();
+  const b = await locator.boundingBox();
+  const vw = await locator.page().evaluate(() => document.documentElement.clientWidth);
+  if (!b) throw new Error(`${where}: control no visible`);
+  if (b.x < 0 || b.x + b.width > vw + 1) throw new Error(`${where}: control fuera de pantalla (${Math.round(b.x)}–${Math.round(b.x + b.width)} de ${vw})`);
+  if (b.height < 32) throw new Error(`${where}: control de ${Math.round(b.height)} px de alto (< 32)`);
+}
+const MOBILE = { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 };
 
 async function main() {
   const be = await backend.start(API);
@@ -302,6 +338,48 @@ async function main() {
       const metodo = await p.getByTestId('order-shipping-method').filter({ hasText: /Estándar/ }).textContent({ timeout: 10000 }).catch(() => p.getByTestId('order-shipping-method').textContent());
       if (!/Estándar/.test(metodo)) throw new Error(`método de envío en la confirmación: «${metodo}»`);
     }, browser);
+
+    await journey('29. Móvil 375×812: portada → catálogo → producto → carrito → checkout sin desbordes', async (p) => {
+      await p.goto(`${BASE}/`);
+      await p.locator('.featured-categories-grid a[href="/ropa/camisetas"]').waitFor({ timeout: 8000 });
+      await assertNoHorizontalOverflow(p, 'portada');
+      await p.getByRole('button', { name: 'Abrir menú de navegación' }).tap();
+      const drawer = p.locator('.modal-overlay');
+      await drawer.locator('a[href="/ropa/camisetas"]').tap();
+      await p.waitForURL(/\/ropa\/camisetas/);
+      await expectText(p, 'MOSTRANDO 2 PRENDAS');
+      await assertNoHorizontalOverflow(p, 'catálogo');
+      await p.getByText('Camiseta Básica').first().tap();
+      await p.waitForURL(/\/producto\/camiseta-basica/);
+      await expectText(p, '$80.000');
+      await assertNoHorizontalOverflow(p, 'producto');
+      await p.getByRole('button', { name: 'Color Negro' }).tap();
+      const talla = p.getByRole('button', { name: 'Talla M', exact: true });
+      await assertTappable(talla, 'talla M'); await talla.tap();
+      const add = p.getByRole('button', { name: 'AGREGAR AL CARRITO' }).first();
+      await assertTappable(add, 'agregar al carrito'); await add.tap();
+      await p.waitForFunction(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"items":[]}}').state.items.length === 1);
+      await assertNoHorizontalOverflow(p, 'producto tras agregar');
+      await p.goto(`${BASE}/carrito`);
+      await expectText(p, 'CARRITO DE COMPRAS (1)');
+      await assertNoHorizontalOverflow(p, 'carrito');
+      const mas = p.getByRole('button', { name: /Aumentar cantidad/ }).first();
+      await assertTappable(mas, 'aumentar cantidad'); await mas.tap();
+      await expectText(p, 'CARRITO DE COMPRAS (2)');
+      const go = p.getByRole('link', { name: /FINALIZAR|CHECKOUT|PAGAR/i }).or(p.getByRole('button', { name: /FINALIZAR|CHECKOUT|PAGAR/i })).first();
+      await assertTappable(go, 'ir al checkout'); await go.tap();
+      await p.waitForURL(/\/checkout$/);
+      await assertNoHorizontalOverflow(p, 'checkout');
+      await fillCheckout(p);
+      const pay = p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' });
+      await assertTappable(pay, 'confirmar y pagar');
+      await assertNoHorizontalOverflow(p, 'checkout lleno');
+      await pay.tap();
+      await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 15000 });
+      await assertNoHorizontalOverflow(p, 'confirmación');
+      const st = await state();
+      if (st.orders.length !== 1 || st.orders[0].total !== 172000) throw new Error(`pedido: ${JSON.stringify(st.orders.map((o) => o.total))} (se esperaba 1 de 172.000 = 2×80.000 + 12.000)`);
+    }, browser, null, MOBILE);
 
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');

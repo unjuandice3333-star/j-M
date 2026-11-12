@@ -791,3 +791,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(as) de Pendiente (recorrido E2E sintético móvil 375×812 catálogo → checkout).
+
+## Ejecución 93 — 2026-11-12 16:09 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-f4daqc` (= main, `2661f2a`); se partió de la rama autorizada = remoto `7a5d089`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(as) de Pendiente. Recorrido E2E sintético móvil 375×812 portada → catálogo → producto → carrito → checkout, y corrección de los desbordes encontrados (D64).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (recorrido 29, `assertNoHorizontalOverflow`, `assertTappable`, `journey` acepta opciones de contexto), `apps/web/src/pages/CatalogPage.jsx`, `apps/web/src/pages/CartPage.jsx`, `apps/web/src/components/Product/CompleteTheLook.jsx`.
+- Pruebas (ejecutadas aquí): recorrido 29 falla sin los cambios de `src` (`git stash`: portada 377 px; antes de cada corrección: catálogo 392 px, carrito 555 px) y pasa 10/10 seguidas con ellos; `pnpm test:unit` 487/487 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 29/29. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni en dispositivos reales.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(at) de Pendiente (recorrido móvil de cuenta, «Mis pedidos» y enlace de seguimiento).

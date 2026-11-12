@@ -500,25 +500,27 @@ export const CatalogPage = () => {
       <style>{`
         .catalog-products-responsive-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 1.25rem;
         }
+        /* minmax(0, 1fr) y min-width: 0: una tarjeta con contenido largo no ensancha la columna ni desborda en móvil */
+        .catalog-products-responsive-grid > * { min-width: 0; }
 
         @media (max-width: 1200px) {
           .catalog-products-responsive-grid {
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
         }
 
         @media (max-width: 900px) {
-          .catalog-grid-layout { grid-template-columns: 1fr !important; }
+          .catalog-grid-layout { grid-template-columns: minmax(0, 1fr) !important; }
           .desktop-filters { display: none !important; }
           .desktop-only { display: none !important; }
         }
 
         @media (max-width: 640px) {
           .catalog-products-responsive-grid {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 0.75rem;
           }
         }

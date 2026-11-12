@@ -77,7 +77,7 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
         backgroundColor: '#FAFAFA',
         border: '1px solid #E4E4E7',
         borderRadius: '12px',
-        padding: '2.25rem 2.5rem',
+        padding: '2.25rem clamp(1rem, 5vw, 2.5rem)', // menos relleno lateral en móvil
         margin: '2.5rem 0',
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)'
       }}
@@ -102,7 +102,8 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
       {/* 1. LAYOUT 48% IMAGEN / 52% CONTENIDO EN DESKTOP */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        // min(320px, 100%): en pantallas de menos de 320 px útiles la columna se ajusta en vez de desbordar
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
         gap: '2.5rem',
         alignItems: 'center'
       }}>

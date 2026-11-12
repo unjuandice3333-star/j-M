@@ -142,6 +142,7 @@ export const CartPage = () => {
                 {items.map((item) => (
                   <div
                     key={item.id}
+                    className="cart-line"
                     style={{
                       display: 'grid',
                       gridTemplateColumns: '100px 1fr auto',
@@ -156,10 +157,11 @@ export const CartPage = () => {
                     <img
                       src={item.image}
                       alt={item.name}
+                      className="cart-line-img"
                       style={{ width: '100px', height: '125px', objectFit: 'cover', borderRadius: '6px' }}
                     />
 
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                       <Link to={`/producto/${item.slug}`} style={{ textDecoration: 'none' }}>
                         <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#09090B', marginBottom: '0.3rem' }}>
                           {item.name}
@@ -197,12 +199,13 @@ export const CartPage = () => {
                         );
                       })()}
 
-                      <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+                      <div className="cart-line-actions" style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         {/* Quantity Counter */}
                         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E4E4E7', borderRadius: '4px' }}>
                           <button
                             onClick={() => { updateQuantity(item.id, item.quantity - 1); setQtyError(null); }}
                             aria-label={`Disminuir cantidad de ${item.name}`}
+                            className="cart-qty-btn"
                             style={{ padding: '0.35rem 0.6rem', color: '#09090B' }}
                           >
                             <Minus size={14} />
@@ -211,6 +214,7 @@ export const CartPage = () => {
                           <button
                             onClick={() => { const r = updateQuantity(item.id, item.quantity + 1); setQtyError(r.ok ? null : r.message); }}
                             aria-label={`Aumentar cantidad de ${item.name}`}
+                            className="cart-qty-btn"
                             style={{ padding: '0.35rem 0.6rem', color: '#09090B' }}
                           >
                             <Plus size={14} />
@@ -235,7 +239,7 @@ export const CartPage = () => {
                       </div>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
+                    <div className="cart-line-price" style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#09090B' }}>
                         {formatCOP(item.price * item.quantity)}
                       </div>
@@ -384,7 +388,15 @@ export const CartPage = () => {
 
       <style>{`
         @media (max-width: 900px) {
-          .cart-page-layout { grid-template-columns: 1fr !important; }
+          .cart-page-layout { grid-template-columns: minmax(0, 1fr) !important; gap: 2rem !important; }
+        }
+        /* Móvil: imagen más pequeña, el precio pasa debajo de los datos y los controles se ajustan al ancho */
+        @media (max-width: 640px) {
+          .cart-line { grid-template-columns: 80px minmax(0, 1fr) !important; gap: 0.9rem !important; padding: 1rem !important; align-items: start !important; }
+          .cart-line-img { width: 80px !important; height: 100px !important; }
+          .cart-line-price { grid-column: 2; text-align: left !important; }
+          .cart-line-actions { gap: 0.75rem 1rem !important; }
+          .cart-qty-btn { min-width: 36px; min-height: 36px; display: inline-flex; align-items: center; justify-content: center; }
         }
       `}</style>
     </div>
