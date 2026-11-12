@@ -445,8 +445,8 @@ export const AccountPage = () => {
                       {/* PRODUCT ITEMS IN THIS ORDER */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
                         {ord.online_order_items?.map((item) => (
-                          <div key={`${item.product_name}-${item.size_code}-${item.color_name}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.88rem' }}>
-                            <div>
+                          <div key={`${item.product_name}-${item.size_code}-${item.color_name}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', fontSize: '0.88rem' }}>
+                            <div style={{ minWidth: 0 }}>
                               <strong style={{ color: '#09090B' }}>{item.product_name}</strong>
                               <span style={{ color: '#71717A', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
                                 (Talla: {item.size_code} • Color: {item.color_name} • Cant: {item.quantity})
@@ -483,7 +483,7 @@ export const AccountPage = () => {
                           )}
                         </div>
 
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', maxWidth: '100%' }}>
                           {(['cancelled', 'expired'].includes(ord.status) || windowState === 'closed') && (
                             <button
                               onClick={() => navigate('/ropa')}
@@ -705,7 +705,7 @@ export const AccountPage = () => {
               {isLoading ? 'Cargando...' : isRegisterMode ? 'Crear cuenta' : 'Iniciar sesión'}
             </button>
             {!isRegisterMode && (
-              <button type="button" onClick={handleForgotPassword} style={{ fontSize: '0.8rem', textDecoration: 'underline', color: '#52525B', alignSelf: 'center' }}>
+              <button type="button" onClick={handleForgotPassword} style={{ fontSize: '0.8rem', textDecoration: 'underline', color: '#52525B', alignSelf: 'center', minHeight: 44, padding: '0 0.5rem' }}>
                 ¿Olvidaste tu contraseña?
               </button>
             )}
@@ -753,7 +753,7 @@ export const AccountPage = () => {
             <button
               type="button"
               onClick={() => { setIsRegisterMode(!isRegisterMode); setFormError(null); }}
-              style={{ border: 'none', background: 'none', fontWeight: 700, color: '#2563EB', cursor: 'pointer' }}
+              style={{ border: 'none', background: 'none', fontWeight: 700, color: '#2563EB', cursor: 'pointer', minHeight: 44, padding: '0 0.5rem', fontSize: 'inherit' }}
             >
               {isRegisterMode ? 'Inicia sesión →' : 'Empieza →'}
             </button>

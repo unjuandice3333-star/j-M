@@ -92,7 +92,7 @@ export const Login = () => {
           <button
             type="button"
             onClick={() => setIsRegistering(!isRegistering)}
-            style={{ border: 'none', background: 'none', fontWeight: 700, color: '#2563EB', cursor: 'pointer' }}
+            style={{ border: 'none', background: 'none', fontWeight: 700, color: '#2563EB', cursor: 'pointer', minHeight: 44, padding: '0 0.5rem', fontSize: 'inherit' }}
           >
             {isRegistering ? 'Inicia sesión' : 'Crear cuenta'}
           </button>

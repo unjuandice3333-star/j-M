@@ -381,6 +381,63 @@ async function main() {
       if (st.orders.length !== 1 || st.orders[0].total !== 172000) throw new Error(`pedido: ${JSON.stringify(st.orders.map((o) => o.total))} (se esperaba 1 de 172.000 = 2×80.000 + 12.000)`);
     }, browser, null, MOBILE);
 
+    await journey('30. Móvil 375×812: registro, cuenta, «Mis pedidos» y enlace de seguimiento sin desbordes', async (p, ctx) => {
+      await p.goto(`${BASE}/cuenta`);
+      await assertNoHorizontalOverflow(p, '/cuenta sin sesión');
+      await assertTappable(p.getByRole('button', { name: '¿Olvidaste tu contraseña?' }), 'olvidé mi contraseña');
+      await assertTappable(p.getByRole('button', { name: 'Empieza →' }), 'cambiar a registro (/cuenta)');
+      await p.goto(`${BASE}/login`);
+      await assertNoHorizontalOverflow(p, 'login');
+      const crear = p.getByRole('button', { name: 'Crear cuenta' });
+      await assertTappable(crear, 'pestaña crear cuenta'); await crear.tap();
+      await p.getByPlaceholder(/Juan/i).first().fill('Sara Ríos');
+      await p.locator('input[type=email]').fill('sara@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await assertNoHorizontalOverflow(p, 'registro lleno');
+      const submit = p.locator('button[type=submit]');
+      await assertTappable(submit, 'crear cuenta'); await submit.tap();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      for (let i = 0; i < 2; i += 1) {
+        await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+        await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'sara@correo.co' });
+        await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).tap();
+        await p.waitForURL(/\/checkout\/confirmacion/);
+        await expectText(p, 'Pedido registrado');
+      }
+      const [pending, paid] = (await state()).orders; // unshift: el más reciente primero
+      await fetch(`${API_URL}/__synthetic-mark-paid/${paid.order_number}`);
+      for (const url of ['/cuenta', '/cuenta/datos', '/cuenta/direcciones']) {
+        await p.goto(`${BASE}${url}`);
+        await p.waitForLoadState('networkidle');
+        await assertNoHorizontalOverflow(p, url);
+      }
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      await expectText(p, `PEDIDO #${pending.order_number}`);
+      await expectText(p, `PEDIDO #${paid.order_number}`);
+      await p.getByTestId('order-shipping-method').first().waitFor();
+      await assertNoHorizontalOverflow(p, 'mis pedidos');
+      await assertTappable(p.getByTestId('order-pay').first(), 'pagar ahora (lista)');
+      await assertTappable(p.getByTestId('order-cancel').first(), 'cancelar pedido (lista)');
+      const detalle = p.getByRole('button', { name: 'Ver Detalle' }).first();
+      await assertTappable(detalle, 'ver detalle'); await detalle.tap();
+      await p.waitForURL(/\/checkout\/confirmacion\?order=/);
+      await expectText(p, 'Pedido registrado');
+      await assertNoHorizontalOverflow(p, 'detalle del pedido');
+      // Enlace de seguimiento en un navegador nuevo (sin sesión ni localStorage), también en móvil.
+      const ctxB = await browser.newContext(MOBILE);
+      try {
+        const b = await ctxB.newPage();
+        const link = (o) => `${BASE}/checkout/confirmacion?order=${encodeURIComponent(o.order_number)}&token=${encodeURIComponent(o.public_token)}`;
+        await b.goto(link(pending));
+        await expectText(b, 'Pedido registrado');
+        await assertNoHorizontalOverflow(b, 'seguimiento (pendiente)');
+        await assertTappable(b.getByRole('button', { name: 'Pagar ahora' }), 'pagar ahora (enlace)');
+        await assertTappable(b.getByRole('button', { name: 'Cancelar pedido' }), 'cancelar pedido (enlace)');
+        await b.goto(link(paid));
+        await expectText(b, '¡Gracias por tu compra!');
+        await assertNoHorizontalOverflow(b, 'seguimiento (pagado)');
+      } finally { await ctxB.close(); }
+    }, browser, null, MOBILE);
+
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);
