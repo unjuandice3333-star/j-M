@@ -402,4 +402,12 @@ describe('Admin de clientes: ficha enlazada y pedidos enlazados', () => {
     expect(productLinkForSku(' JM-001 S/Negro ')).toBe('/admin/productos?q=JM-001+S%2FNegro');
     expect(productLinkForSku('')).toBeNull();
   });
+
+  it('inventoryLinkForProduct (ejecución 91): referencia, o el nombre si no hay referencia', async () => {
+    const { inventoryLinkForProduct } = await import('../utils/adminLists');
+    expect(inventoryLinkForProduct({ reference: ' POL-001 ', name: 'Polo' })).toBe('/admin/inventario?q=POL-001');
+    expect(inventoryLinkForProduct({ reference: '', name: 'Pantalón Cargo' })).toBe('/admin/inventario?q=Pantal%C3%B3n+Cargo');
+    expect(inventoryLinkForProduct({ reference: null, name: '  ' })).toBeNull();
+    expect(inventoryLinkForProduct(null)).toBeNull();
+  });
 });

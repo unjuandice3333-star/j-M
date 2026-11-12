@@ -921,6 +921,15 @@ async function main() {
       await p.waitForURL(/\/admin\/inventario\?q=pol-001$/, { timeout: 8000 });
       await expectText(p, 'POL-M-NEG');
       if (await p.locator('tr', { hasText: 'CAM-M-NEG' }).count()) throw new Error('la búsqueda por referencia del inventario no filtró');
+      // Ejecución 91: variante del inventario → su producto (?q=<sku>) → «Ver inventario» (?q=<referencia>)
+      await p.getByRole('link', { name: 'POL-M-NEG', exact: true }).click();
+      await p.waitForURL(/\/admin\/productos\?q=POL-M-NEG$/, { timeout: 8000 });
+      await expectText(p, 'Polo Clásico');
+      if (await p.getByText('Camiseta Básica').count()) throw new Error('el enlace del SKU no filtró el producto');
+      await p.getByRole('link', { name: 'Ver inventario de Polo Clásico' }).click();
+      await p.waitForURL(/\/admin\/inventario\?q=POL-001$/, { timeout: 8000 });
+      await expectText(p, 'POL-M-NEG');
+      if (await p.locator('tr', { hasText: 'CAM-M-NEG' }).count()) throw new Error('«Ver inventario» no filtró por la referencia');
       // pedidos: pagado → procesando → enviado (con guía)
       await p.goto(`${BASE}/admin/pedidos`); await expectText(p, num);
       // Paginación real: el total viene del conteo exacto de la BD (Content-Range), no de las filas cargadas.

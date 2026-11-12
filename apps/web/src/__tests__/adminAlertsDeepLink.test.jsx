@@ -291,3 +291,14 @@ describe('Inventario: búsqueda sin tildes y en la URL', () => {
     expect(rowSkus()).toEqual(['PAN-01']);
   });
 });
+
+describe('Inventario: cada variante enlaza a su producto (ejecución 91)', () => {
+  it('el SKU lleva a /admin/productos?q=<sku>', async () => {
+    supa.state.tables.inventories = [inv('POL-NEG-M', 5, 0, 1)];
+    await renderAt('/admin/inventario');
+    const link = container.querySelector('a[data-testid="inventory-sku-inv-POL-NEG-M"]');
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('/admin/productos?q=POL-NEG-M');
+    expect(rowSkus()).toEqual(['POL-NEG-M']);
+  });
+});

@@ -159,3 +159,14 @@ export function productLinkForSku(sku) {
   const s = String(sku ?? '').trim();
   return s ? `/admin/productos?${new URLSearchParams({ q: s })}` : null;
 }
+
+/**
+ * Ejecución 91: enlace de un producto del admin a sus variantes en /admin/inventario (`?q=`). Usa la referencia
+ * (la búsqueda del inventario compara la referencia del producto de cada variante); sin referencia, el nombre
+ * (el nombre de la variante empieza por el del producto). La búsqueda es por subcadena: una referencia prefijo
+ * de otra puede mostrar ambas (aceptado, igual que D61).
+ */
+export function inventoryLinkForProduct(product) {
+  const q = String(product?.reference ?? '').trim() || String(product?.name ?? '').trim();
+  return q ? `/admin/inventario?${new URLSearchParams({ q })}` : null;
+}

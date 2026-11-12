@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Filter, Edit, Trash2, Eye, RefreshCw, Sparkles, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, Eye, RefreshCw, Sparkles, AlertTriangle, Boxes } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { productService } from '../../services/productService';
 import { adminService } from '../../services/adminService';
@@ -8,6 +8,7 @@ import { formatCOP } from '../../utils/currency';
 import SafeProductImage from '../../components/Common/SafeImage';
 import { hasValidProductImage } from '../../utils/productUtils';
 import { normalizeText } from '../../utils/catalogFilters';
+import { inventoryLinkForProduct } from '../../utils/adminLists';
 
 const STATUS_LABEL = { todos: 'Todos', active: 'Publicado', draft: 'Borrador', archived: 'Archivado', agotado: 'Agotado' };
 // Ejecución 79: estado y búsqueda viven en la URL (?estado=, ?q=) como en pedidos e inventario.
@@ -253,6 +254,11 @@ export const AdminProductsPage = () => {
                       <Link to={`/producto/${prod.slug}`} target="_blank" style={actionIconBtn} title="Ver publicación de cliente">
                         <Eye size={16} />
                       </Link>
+                      {inventoryLinkForProduct(prod) && (
+                        <Link data-testid={`product-inventory-${prod.id}`} to={inventoryLinkForProduct(prod)} style={actionIconBtn} title="Ver inventario de sus variantes" aria-label={`Ver inventario de ${prod.name}`}>
+                          <Boxes size={16} />
+                        </Link>
+                      )}
                       <button onClick={() => navigate(`/admin/productos/nuevo?editId=${prod.id}`)} style={actionIconBtn} title="Editar prenda">
                         <Edit size={16} />
                       </button>

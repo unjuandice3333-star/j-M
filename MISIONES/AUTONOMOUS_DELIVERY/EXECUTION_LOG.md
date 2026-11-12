@@ -771,3 +771,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(aq) de Pendiente (productos ↔ inventario: «Ver inventario» por producto y variante → producto).
+
+## Ejecución 91 — 2026-11-12 14:09 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-3x1o5d` (= main, `2661f2a`); se partió de la rama autorizada = remoto `b3e534e`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(aq) de Pendiente. Enlaces productos ↔ inventario en el admin (D62).
+- Archivos: `apps/web/src/utils/adminLists.js` (`inventoryLinkForProduct`), `apps/web/src/pages/admin/AdminProductsPage.jsx` (icono «Ver inventario»), `apps/web/src/pages/admin/AdminInventoryPage.jsx` (SKU enlazado), `apps/web/src/__tests__/adminLists.test.jsx`, `adminProductsSearch.test.jsx`, `adminAlertsDeepLink.test.jsx` (1 prueba cada uno), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 10 ampliado: SKU → producto → «Ver inventario»).
+- Pruebas (ejecutadas aquí): las 3 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 485/485 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 28/28. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ar) de Pendiente (reseñas ↔ productos/clientes en el admin).

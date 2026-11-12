@@ -94,3 +94,13 @@ describe('AdminProductsPage: búsqueda y filtro en la URL', () => {
     expect(new URLSearchParams(loc.search).has('estado')).toBe(false);
   });
 });
+
+describe('AdminProductsPage: enlace al inventario (ejecución 91)', () => {
+  it('cada producto enlaza a /admin/inventario?q=<referencia>', async () => {
+    await render('/admin/productos');
+    const link = container.querySelector('a[data-testid="product-inventory-1"]');
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('/admin/inventario?q=REF-1');
+    expect(link.getAttribute('aria-label')).toBe('Ver inventario de Pantalón Cargo');
+  });
+});

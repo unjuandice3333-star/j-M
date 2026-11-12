@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Boxes, AlertTriangle, CheckCircle, Search, RefreshCw, MapPin } from 'lucide-react';
 import supabase from '../../config/supabase';
 import { adminService } from '../../services/adminService';
-import { fetchAllRows } from '../../utils/adminLists';
+import { fetchAllRows, productLinkForSku } from '../../utils/adminLists';
 import { normalizeText } from '../../utils/catalogFilters';
 
 /**
@@ -185,7 +185,9 @@ export const AdminInventoryPage = () => {
                 <tr key={item.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
                   <td style={tdInv}>
                     <div style={{ fontWeight: 800, color: '#09090B' }}>{item.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#71717A' }}>SKU: {item.sku}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#71717A' }}>SKU: {item.sku !== '—' && productLinkForSku(item.sku)
+                      ? <Link data-testid={`inventory-sku-${item.id}`} to={productLinkForSku(item.sku)} title="Ver producto en el admin" style={{ textDecoration: 'underline', color: '#3730A3', fontWeight: 700 }}>{item.sku}</Link>
+                      : item.sku}</div>
                   </td>
 
                   <td style={tdInv}>
