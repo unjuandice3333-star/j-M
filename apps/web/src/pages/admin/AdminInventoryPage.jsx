@@ -91,9 +91,9 @@ export const AdminInventoryPage = () => {
   ));
   const alertCount = inventoryItems.filter(isStockAlert).length;
 
-  const totalUnits = inventoryItems.reduce((acc, i) => acc + i.available, 0);
-  const lowStockCount = inventoryItems.filter((i) => i.status === 'low').length;
-  const outOfStockCount = inventoryItems.filter((i) => i.status === 'out').length;
+  const totalUnits = inventoryItems.reduce((acc, i) => acc + Math.max(0, i.available), 0);
+  // Misma regla que el filtro: «agotado» = disponible ≤ 0 (la tarjeta y la lista filtrada muestran el mismo número).
+  const outOfStockCount = inventoryItems.filter((i) => matchesStockFilter(i, 'agotado')).length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -109,20 +109,28 @@ export const AdminInventoryPage = () => {
         </div>
       </div>
 
-      {/* SUMMARY KPI CARDS */}
+      {/* SUMMARY KPI CARDS — ejecución 78: las de alerta son botones del filtro `?stock=` (pulsar de nuevo lo quita). */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
         <div style={kpiBox}>
-          <span style={{ fontSize: '0.75rem', color: '#71717A', fontWeight: 800 }}>UNIDADES TOTALES</span>
+          <span style={{ fontSize: '0.75rem', color: '#71717A', fontWeight: 800 }}>UNIDADES DISPONIBLES</span>
           <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#09090B' }}>{totalUnits} uds</span>
         </div>
-        <div style={kpiBox}>
-          <span style={{ fontSize: '0.75rem', color: '#71717A', fontWeight: 800 }}>ALERTAS STOCK BAJO</span>
-          <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#D97706' }}>{lowStockCount} refs</span>
-        </div>
-        <div style={kpiBox}>
-          <span style={{ fontSize: '0.75rem', color: '#71717A', fontWeight: 800 }}>REFERENCIAS AGOTADAS</span>
-          <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#E11D48' }}>{outOfStockCount} refs</span>
-        </div>
+        {[
+          { key: 'alerta', title: 'ALERTAS DE STOCK', hint: 'stock bajo o agotado', count: alertCount, color: '#D97706' },
+          { key: 'agotado', title: 'VARIANTES AGOTADAS', hint: 'agotadas', count: outOfStockCount, color: '#E11D48' },
+        ].map((card) => {
+          const active = stockFilter === card.key;
+          return (
+            <button key={card.key} type="button" aria-pressed={active}
+              aria-label={`${active ? 'Quitar filtro' : 'Filtrar'}: ${card.count} variante(s) ${card.hint}`}
+              onClick={() => setStockFilter(active ? 'todos' : card.key)}
+              style={{ ...kpiBox, textAlign: 'left', cursor: 'pointer', font: 'inherit', borderColor: active ? card.color : '#E4E4E7', boxShadow: active ? `0 0 0 1px ${card.color}` : 'none' }}>
+              <span style={{ fontSize: '0.75rem', color: '#71717A', fontWeight: 800 }}>{card.title}</span>
+              <span style={{ fontSize: '1.6rem', fontWeight: 900, color: card.color }}>{isLoading ? '—' : `${card.count} variante${card.count === 1 ? '' : 's'}`}</span>
+              <span style={{ fontSize: '0.72rem', color: '#71717A', fontWeight: 600 }}>{active ? 'Mostrando solo estas · quitar filtro' : 'Ver cuáles'}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* SEARCH & STOCK FILTER */}

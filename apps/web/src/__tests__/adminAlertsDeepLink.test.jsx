@@ -205,3 +205,39 @@ describe('Dashboard: tarjetas de alertas enlazadas', () => {
     expect(orderNumbers()).toEqual(['JM-1']);
   });
 });
+
+// Ejecución 78: las tarjetas KPI del inventario son botones del mismo filtro y cuentan con la misma regla que el dashboard.
+describe('Inventario: tarjetas KPI como filtro', () => {
+  beforeEach(() => { supa.state.tables.inventories = INVENTORY; });
+  const kpi = (title) => [...container.querySelectorAll('button[aria-pressed]')].find((b) => b.textContent.startsWith(title));
+
+  it('«ALERTAS DE STOCK» cuenta lo mismo que la métrica (agotadas incluidas, inactivas fuera)', async () => {
+    await renderAt('/admin/inventario');
+    expect(kpi('ALERTAS DE STOCK').textContent).toContain('2 variantes');
+    expect(kpi('VARIANTES AGOTADAS').textContent).toContain('1 variante');
+    expect(kpi('ALERTAS DE STOCK').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('pulsar una tarjeta filtra y pone la URL; pulsarla otra vez quita el filtro', async () => {
+    await renderAt('/admin/inventario');
+    await click(kpi('ALERTAS DE STOCK'));
+    expect(currentLocation.search).toBe('?stock=alerta');
+    expect(stockSelect().value).toBe('alerta');
+    expect(rowSkus().sort()).toEqual(['LOW-1', 'OUT-1']);
+    expect(kpi('ALERTAS DE STOCK').getAttribute('aria-pressed')).toBe('true');
+    await click(kpi('VARIANTES AGOTADAS'));
+    expect(currentLocation.search).toBe('?stock=agotado');
+    expect(rowSkus()).toEqual(['OUT-1']);
+    expect(kpi('ALERTAS DE STOCK').getAttribute('aria-pressed')).toBe('false');
+    await click(kpi('VARIANTES AGOTADAS'));
+    expect(currentLocation.search).toBe('');
+    expect(rowSkus()).toHaveLength(4);
+  });
+
+  it('las unidades disponibles no restan las sobrevendidas', async () => {
+    supa.state.tables.inventories = [inv('A', 5, 0, 1), inv('NEG', 1, 3, 1)];
+    await renderAt('/admin/inventario');
+    expect(container.textContent).toContain('UNIDADES DISPONIBLES');
+    expect(container.textContent).toContain('5 uds');
+  });
+});

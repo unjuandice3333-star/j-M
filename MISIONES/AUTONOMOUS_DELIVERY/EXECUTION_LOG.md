@@ -641,3 +641,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ad) de Pendiente (KPI del inventario como botones del filtro y misma regla de alerta que el dashboard).
+
+## Ejecución 78 — 2026-11-12 01:14 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-dlgjpn` (= main, `2661f2a`); se partió de la rama autorizada = remoto `afcc106`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ad) de Pendiente. Tarjetas KPI de `/admin/inventario` («ALERTAS DE STOCK», «VARIANTES AGOTADAS») como botones del filtro `?stock=`, con la misma regla que el dashboard; «UNIDADES DISPONIBLES» sin negativos.
+- Archivos: `apps/web/src/pages/admin/AdminInventoryPage.jsx`, `apps/web/src/__tests__/adminAlertsDeepLink.test.jsx` (3 pruebas nuevas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 10 ampliado).
+- Pruebas (ejecutadas aquí): las 3 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 434/434 (42 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 26/26. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ae) de Pendiente (`/admin/productos`: búsqueda sin tildes y por referencia, filtro y búsqueda en la URL).

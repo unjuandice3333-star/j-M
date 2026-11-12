@@ -742,6 +742,12 @@ async function main() {
         const shown = await p.locator('tbody tr').count();
         if (shown !== lowNow) throw new Error(`variantes en alerta mostradas ${shown} ≠ ${lowNow}`);
       } else await expectText(p, 'Ninguna variante coincide con el filtro.');
+      // Ejecución 78: la tarjeta KPI del inventario muestra el mismo número y, pulsada otra vez, quita el filtro
+      const kpiAlert = p.getByRole('button', { name: new RegExp(`^Quitar filtro: ${lowNow} variante\\(s\\) stock bajo o agotado$`) });
+      if ((await kpiAlert.getAttribute('aria-pressed')) !== 'true') throw new Error('tarjeta KPI de alertas no marcada');
+      await kpiAlert.click();
+      await p.waitForURL(/\/admin\/inventario$/, { timeout: 8000 });
+      if (await p.getByLabel('Filtrar por estado de stock').inputValue() !== 'todos') throw new Error('la tarjeta KPI no quitó el filtro');
       // tarjeta «Requieren revisión» → /admin/pedidos?revision=1 con la casilla marcada
       await p.goto(`${BASE}/admin/dashboard`);
       await p.getByRole('link', { name: /^Ver pedidos que requieren revisión/ }).click();
