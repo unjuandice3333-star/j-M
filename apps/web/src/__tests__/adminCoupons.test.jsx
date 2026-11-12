@@ -5,6 +5,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 
 /** Supabase falso que registra cada consulta encadenada (tabla, operación, filtros, payload). */
 function recordingSupabase() {
@@ -136,15 +137,18 @@ describe('AdminDiscountsPage (UI)', () => {
   const submit = (dialog) => act(async () => { dialog.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
   const btn = (text) => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 
-  beforeEach(async () => {
-    supa.state.tables = { coupons: [C] };
+  let location;
+  const Spy = () => { location = useLocation(); return null; };
+  const mount = async (url = '/admin/descuentos', coupons = [C]) => {
+    supa.state.tables = { coupons };
     host = document.createElement('div');
     document.body.appendChild(host);
     root = createRoot(host);
     const { AdminDiscountsPage } = await import('../pages/admin/AdminDiscountsPage.jsx');
-    await act(async () => root.render(<AdminDiscountsPage />));
+    await act(async () => root.render(<MemoryRouter initialEntries={[url]}><AdminDiscountsPage /><Spy /></MemoryRouter>));
     await flush();
-  });
+  };
+  beforeEach(async () => { await mount(); });
 
   it('editar muestra la fecha local y guardar sin cambios no desplaza la vigencia', async () => {
     await click(btn('Editar'));
@@ -175,4 +179,63 @@ describe('AdminDiscountsPage (UI)', () => {
     expect(supa.calls[0]).toMatchObject({ table: 'coupons', op: 'update', payload: { is_active: false } });
     expect(host.querySelector('[role="status"]').textContent).toMatch(/desactivado/);
   });
+
+  const OFF = { ...C, id: 'c-2', code: 'VIEJO', description: 'Liquidación', is_active: false };
+  const codes = () => [...host.querySelectorAll('tbody tr td:first-child')].map((td) => td.firstChild?.textContent);
+
+  it('?q= y ?estado= de la URL filtran la tabla al cargar', async () => {
+    root.unmount(); host.remove();
+    await mount('/admin/descuentos?q=liquidacion&estado=inactivos', [C, OFF]);
+    expect(host.querySelector('input[aria-label="Buscar cupones"]').value).toBe('liquidacion');
+    expect(host.querySelector('select[aria-label="Filtrar por estado"]').value).toBe('inactivos');
+    expect(codes()).toEqual(['VIEJO']);
+  });
+
+  it('escribir y elegir estado actualizan la URL; «Todos» y búsqueda vacía no se escriben', async () => {
+    root.unmount(); host.remove();
+    await mount('/admin/descuentos', [C, OFF]);
+    await typeIn(host.querySelector('input[aria-label="Buscar cupones"]'), 'bienvenida');
+    expect(new URLSearchParams(location.search).get('q')).toBe('bienvenida');
+    expect(codes()).toEqual(['BIENVENIDA10']);
+    const sel = host.querySelector('select[aria-label="Filtrar por estado"]');
+    await act(async () => { sel.value = 'inactivos'; sel.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(new URLSearchParams(location.search).get('estado')).toBe('inactivos');
+    expect(host.textContent).toMatch(/No hay cupones con este filtro/);
+    await act(async () => { sel.value = 'todos'; sel.dispatchEvent(new Event('change', { bubbles: true })); });
+    await typeIn(host.querySelector('input[aria-label="Buscar cupones"]'), '');
+    expect(location.search).toBe('');
+    expect(codes()).toEqual(['BIENVENIDA10', 'VIEJO']);
+  });
+
 });
+
+describe('filterCoupons / couponStatusFromParam (ejecución 85)', () => {
+  const now = new Date('2026-11-12T12:00:00Z');
+  const rows = [
+    { id: 'a', code: 'NAVIDAD', description: 'Campaña de diciembre', is_active: true, starts_at: '2026-12-01T05:00:00Z', expires_at: null, max_uses: null, used_count: 0 },
+    { id: 'b', code: 'VERANO', description: 'Promoción Jóvenes', is_active: true, starts_at: null, expires_at: '2026-10-01T05:00:00Z', max_uses: null, used_count: 0 },
+    { id: 'c', code: 'ENVIOGRATIS', description: null, is_active: true, starts_at: null, expires_at: null, max_uses: null, used_count: 0 },
+    { id: 'd', code: 'LIMITADO', description: 'Solo 5', is_active: true, starts_at: null, expires_at: null, max_uses: 5, used_count: 5 },
+    { id: 'e', code: 'VIEJO', description: '', is_active: false, starts_at: null, expires_at: null, max_uses: null, used_count: 0 },
+  ];
+  const ids = (r) => r.map((c) => c.id);
+  it('filtra por la misma clave que muestra la columna ESTADO', () => {
+    expect(ids(svc.filterCoupons(rows, '', 'todos', now))).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(ids(svc.filterCoupons(rows, '', 'programados', now))).toEqual(['a']);
+    expect(ids(svc.filterCoupons(rows, '', 'vencidos', now))).toEqual(['b']);
+    expect(ids(svc.filterCoupons(rows, '', 'activos', now))).toEqual(['c']);
+    expect(ids(svc.filterCoupons(rows, '', 'agotados', now))).toEqual(['d']);
+    expect(ids(svc.filterCoupons(rows, '', 'inactivos', now))).toEqual(['e']);
+  });
+  it('busca sin tildes ni mayúsculas en código y descripción', () => {
+    expect(ids(svc.filterCoupons(rows, 'jovenes', 'todos', now))).toEqual(['b']);
+    expect(ids(svc.filterCoupons(rows, '  navi ', 'todos', now))).toEqual(['a']);
+    expect(ids(svc.filterCoupons(rows, 'envio', 'vencidos', now))).toEqual([]);
+  });
+  it('estado desconocido o ausente → «todos»', () => {
+    expect(svc.couponStatusFromParam(null)).toBe('todos');
+    expect(svc.couponStatusFromParam('basura')).toBe('todos');
+    expect(svc.couponStatusFromParam('vencidos')).toBe('vencidos');
+  });
+});
+

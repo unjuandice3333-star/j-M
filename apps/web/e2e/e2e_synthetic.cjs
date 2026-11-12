@@ -5,6 +5,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const assert = require('assert');
 const { chromium } = require('playwright');
 const backend = require('./synthetic/backend.cjs');
 
@@ -585,6 +586,25 @@ async function main() {
       await p.locator('tbody tr', { hasText: 'boletin.admin@example.co' }).waitFor();
       if ((await p.getByLabel('Buscar suscriptores').inputValue()) !== 'BOLETIN.ADMIN') throw new Error('la búsqueda no se restauró');
       if ((await p.getByLabel('Filtrar por estado').inputValue()) !== 'todos') throw new Error('el estado no se restauró');
+    }, browser);
+
+    await journey('27. Admin: cupones, búsqueda sin tildes y estado en la URL', async (p) => {
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await p.goto(`${BASE}/admin/descuentos`);
+      const rowsOf = () => p.locator('tbody tr td:first-child').allInnerTexts();
+      await p.locator('tbody tr', { hasText: 'LIQUIDACION' }).waitFor();
+      await p.getByLabel('Buscar cupones').fill('PROMOCIÓN');
+      await p.waitForURL(/q=PROMOCI/);
+      assert.deepEqual((await rowsOf()).map((t) => t.split('\n')[0]), ['LIQUIDACION']);
+      await p.getByLabel('Filtrar por estado').selectOption('activos');
+      await p.getByText('No hay cupones con este filtro.').waitFor();
+      await p.getByLabel('Buscar cupones').fill('');
+      await p.waitForURL((u) => u.search === '?estado=activos');
+      await p.reload();
+      await p.locator('tbody tr', { hasText: 'JM10' }).waitFor();
+      assert.equal(await p.getByLabel('Filtrar por estado').inputValue(), 'activos');
+      assert.deepEqual((await rowsOf()).map((t) => t.split('\n')[0]), ['JM10']);
     }, browser);
 
     await journey('24. Cuenta: baja y alta del boletín desde «Mis datos»', async (p) => {

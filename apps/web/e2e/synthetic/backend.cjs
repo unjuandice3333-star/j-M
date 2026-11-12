@@ -43,7 +43,12 @@ function seed() {
       // Look activo para «Completa el look» (portada y ficha): camiseta con varias tallas/colores + polo de talla única disponible.
       collections: [{ id: 'col-look', slug: 'look-oficina', name: 'Look Oficina', subtitle: 'Para la semana', image_url: null, kind: 'look', is_active: true, sort_order: 1,
         collection_products: [{ product_id: 'p-cam', position: 1 }, { product_id: 'p-pol', position: 2 }] }],
-      product_reviews: [], coupons: [], customer_addresses: [], wishlist_items: [],
+      // Ejecución 85: filas de public.coupons solo para el listado de /admin/descuentos (el canje usa `coupons` de abajo).
+      product_reviews: [], customer_addresses: [], wishlist_items: [],
+      coupons: [
+        { id: 'cp-1', code: 'JM10', description: 'Diez por ciento', discount_type: 'percent', discount_value: 10, min_subtotal: 50000, max_uses: null, max_uses_per_email: null, used_count: 0, is_active: true, starts_at: null, expires_at: null, created_at: '2026-11-02T00:00:00Z' },
+        { id: 'cp-2', code: 'LIQUIDACION', description: 'Promoción de temporada', discount_type: 'fixed', discount_value: 20000, min_subtotal: 0, max_uses: null, max_uses_per_email: null, used_count: 0, is_active: false, starts_at: null, expires_at: null, created_at: '2026-11-01T00:00:00Z' },
+      ],
       shipping_methods: [{ code: 'standard', name: 'Estándar', cost: 12000, free_over_subtotal: 200000, eta_text: '3-5 días', sort_order: 1, is_active: true }],
       v_product_rating: [], online_orders: [], newsletter_subscribers: [], profiles: [{ id: adminId, role: 'admin', full_name: 'Admin Sintético', email: 'admin@jm.test' }],
     },

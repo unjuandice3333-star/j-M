@@ -11,6 +11,7 @@
 // =============================================================================
 import supabase from '../config/supabase';
 import { adminError } from './adminService';
+import { normalizeText } from '../utils/catalogFilters';
 
 export const PERCENT_MAX = 90;
 const CODE_RE = /^[A-Z0-9_-]{3,40}$/;
@@ -89,11 +90,26 @@ export function validateCoupon(form) {
 
 /** Estado visible del cupón (para la tabla del panel). */
 export function couponState(c, now = new Date()) {
-  if (!c.is_active) return { label: 'Inactivo', color: '#52525B' };
-  if (c.starts_at && new Date(c.starts_at) > now) return { label: 'Programado', color: '#1D4ED8' };
-  if (c.expires_at && new Date(c.expires_at) <= now) return { label: 'Vencido', color: '#B91C1C' };
-  if (c.max_uses && c.used_count >= c.max_uses) return { label: 'Agotado', color: '#B91C1C' };
-  return { label: 'Activo', color: '#065F46' };
+  if (!c.is_active) return { key: 'inactivos', label: 'Inactivo', color: '#52525B' };
+  if (c.starts_at && new Date(c.starts_at) > now) return { key: 'programados', label: 'Programado', color: '#1D4ED8' };
+  if (c.expires_at && new Date(c.expires_at) <= now) return { key: 'vencidos', label: 'Vencido', color: '#B91C1C' };
+  if (c.max_uses && c.used_count >= c.max_uses) return { key: 'agotados', label: 'Agotado', color: '#B91C1C' };
+  return { key: 'activos', label: 'Activo', color: '#065F46' };
+}
+
+// Filtro de estado de /admin/descuentos (`?estado=`, ejecución 85). Las claves son las de couponState.
+export const COUPON_STATUS_FILTERS = [
+  ['todos', 'Todos'], ['activos', 'Activos'], ['programados', 'Programados'],
+  ['vencidos', 'Vencidos'], ['agotados', 'Agotados'], ['inactivos', 'Inactivos'],
+];
+/** Valor de `?estado=` → filtro válido; lo desconocido o ausente cae en «todos». */
+export const couponStatusFromParam = (v) => (COUPON_STATUS_FILTERS.some(([k]) => k === v) ? v : 'todos');
+
+/** Búsqueda sin tildes/mayúsculas en código y descripción + filtro por estado calculado (couponState). */
+export function filterCoupons(rows, query = '', status = 'todos', now = new Date()) {
+  const q = normalizeText(query);
+  return (rows ?? []).filter((c) => (status === 'todos' || couponState(c, now).key === status)
+    && (!q || [c.code, c.description].some((v) => normalizeText(v).includes(q))));
 }
 
 const notFound = () => Object.assign(new Error('El cupón ya no existe o no tienes permiso para editarlo.'), { hint: 'NOT_FOUND' });

@@ -711,3 +711,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ak) de Pendiente (`/admin/descuentos`: búsqueda por código y filtro de estado en la URL).
+
+## Ejecución 85 — 2026-11-12 08:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-tux3p6` (= main, `2661f2a`); se partió de la rama autorizada = remoto `8258743`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ak) de Pendiente. `/admin/descuentos`: búsqueda sin tildes/mayúsculas por código y descripción, filtro por estado calculado (mismas claves que la columna ESTADO), ambos en la URL (`?q=`, `?estado=`), contador «N de M» y mensaje de filtro vacío.
+- Archivos: `apps/web/src/services/couponsAdminService.js` (`couponState` con `key`, `COUPON_STATUS_FILTERS`, `couponStatusFromParam`, `filterCoupons`), `apps/web/src/pages/admin/AdminDiscountsPage.jsx`, `apps/web/src/__tests__/adminCoupons.test.jsx` (5 pruebas nuevas; la página se monta en `MemoryRouter`), `apps/web/e2e/synthetic/backend.cjs` (2 cupones sembrados para el listado), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 27).
+- Pruebas (ejecutadas aquí): las 5 pruebas nuevas fallan sin el cambio (`git stash` de página y servicio); `pnpm test:unit` 460/460 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 27/27 (un primer intento abortó porque el recorrido nuevo no recibía `browser`; corregido). Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(al) de Pendiente (uso real de cada cupón en `/admin/descuentos` y confirmación al desactivar uno con usos).

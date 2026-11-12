@@ -3,11 +3,15 @@
 // quote_cart y create_order): tipo (percent | fixed | free_shipping), mínimo de compra, vigencia, usos totales y por
 // correo. M27: reescrito; antes eran 3 cupones simulados en el estado de React que no existían en la BD.
 // Ejecución 50: validación y acceso a datos en services/couponsAdminService.js (fechas en hora local, % máx. 90).
+// Ejecución 85: búsqueda sin tildes por código/descripción (`?q=`) y filtro de estado (`?estado=`) en la URL.
 // =============================================================================
-import React, { useEffect, useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Plus, Search, X } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
-import couponsAdminService, { couponState, emptyCouponForm, toCouponForm, PERCENT_MAX } from '../../services/couponsAdminService';
+import couponsAdminService, {
+  COUPON_STATUS_FILTERS, couponState, couponStatusFromParam, emptyCouponForm, filterCoupons, toCouponForm, PERCENT_MAX,
+} from '../../services/couponsAdminService';
 
 const TYPE_LABEL = { percent: 'Porcentaje', fixed: 'Valor fijo', free_shipping: 'Envío gratis' };
 
@@ -18,6 +22,15 @@ export const AdminDiscountsPage = () => {
   const [form, setForm] = useState(null);
   const [formError, setFormError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get('q') ?? '';
+  const status = couponStatusFromParam(searchParams.get('estado'));
+  const setParam = (key, value, empty) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === empty) next.delete(key); else next.set(key, value);
+    setSearchParams(next, { replace: true });
+  };
+  const filtered = useMemo(() => filterCoupons(coupons, query, status), [coupons, query, status]);
 
   const load = async () => {
     try { setCoupons(await couponsAdminService.list()); setLoadError(null); }
@@ -63,6 +76,17 @@ export const AdminDiscountsPage = () => {
       {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{loadError}</div>}
       {notice && <div role="status" style={{ color: '#065F46', fontWeight: 600 }}>{notice}</div>}
 
+      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#FFF', padding: '1rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', flex: 1, minWidth: 220 }}>
+          <Search size={16} color="#71717A" />
+          <input aria-label="Buscar cupones" placeholder="Buscar por código o descripción" value={query} onChange={(e) => setParam('q', e.target.value, '')} style={{ border: 'none', outline: 'none', flex: 1 }} />
+        </div>
+        <select aria-label="Filtrar por estado" value={status} onChange={(e) => setParam('estado', e.target.value, 'todos')} style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: '6px' }}>
+          {COUPON_STATUS_FILTERS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <span style={{ fontSize: '0.8rem', color: '#71717A' }}>{filtered.length} de {coupons.length}</span>
+      </div>
+
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
           <thead>
@@ -72,7 +96,8 @@ export const AdminDiscountsPage = () => {
           </thead>
           <tbody>
             {coupons.length === 0 && <tr><td colSpan={7} style={{ ...tdDisc, color: '#71717A' }}>No hay cupones.</td></tr>}
-            {coupons.map((c) => {
+            {coupons.length > 0 && filtered.length === 0 && <tr><td colSpan={7} style={{ ...tdDisc, color: '#71717A' }}>No hay cupones con este filtro.</td></tr>}
+            {filtered.map((c) => {
               const stt = couponState(c);
               return (
                 <tr key={c.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
