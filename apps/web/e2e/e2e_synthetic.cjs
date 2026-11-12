@@ -696,6 +696,11 @@ async function main() {
       const prodSel = p.getByLabel('Filtrar por producto');
       await prodSel.selectOption({ label: 'Polo Clásico (1 · 1 pendiente)' });
       await p.getByLabel('Buscar reseñas').fill('CUELLO');
+      // ejecución 83: producto y búsqueda viajan en la URL y sobreviven a recargar la página
+      await p.waitForURL(/\/admin\/reviews\?producto=[^&]+&q=CUELLO$/, { timeout: 8000 });
+      await p.reload();
+      await p.getByRole('tab', { name: 'Pendiente (1)', selected: true }).waitFor({ timeout: 8000 });
+      if ((await p.getByLabel('Buscar reseñas').inputValue()) !== 'CUELLO') throw new Error('la búsqueda de reseñas no sobrevivió a recargar');
       const card = p.getByRole('article', { name: /Buen polo/ });
       await card.getByLabel('Respuesta de la tienda').fill('¡Gracias, Marta! Nos alegra que te guste.');
       await card.getByRole('button', { name: 'Aprobar' }).click();

@@ -691,3 +691,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ai) de Pendiente (`?q=` en `/admin/reviews`, luego `/admin/boletin`).
+
+## Ejecución 83 — 2026-11-12 06:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-tqx4c6` (= main, `2661f2a`); se partió de la rama autorizada = remoto `d362cfc`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ai) de Pendiente. `/admin/reviews`: pestaña de estado (`?estado=`, desconocido → «Pendiente», por defecto no se escribe), producto (`?producto=`) y búsqueda (`?q=`) en la URL. Un `?producto=` sin reseñas se descarta, pero solo cuando terminó la carga (antes la lista de productos está vacía y borraría un filtro válido).
+- Archivos: `apps/web/src/pages/admin/AdminReviewsPage.jsx`, `apps/web/src/__tests__/adminReviews.test.jsx` (3 pruebas nuevas; la página se monta dentro de `MemoryRouter`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 26: URL con filtros y recarga).
+- Pruebas (ejecutadas aquí): las 3 pruebas nuevas fallan sin el cambio (`git stash` de la página); `pnpm test:unit` 452/452 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 26/26. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(aj) de Pendiente (`?q=` en `/admin/boletin`).

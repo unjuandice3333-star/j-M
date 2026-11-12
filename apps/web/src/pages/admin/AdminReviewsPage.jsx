@@ -2,22 +2,39 @@
 // Ejecución 73: se cargan todas las reseñas una vez (paginadas con fetchAllRows) y se filtran por estado,
 // producto y texto sin tildes; contadores por estado; «Guardar respuesta» sin cambiar el estado; la escritura
 // sin filas afectadas (RLS) ya no se presenta como éxito; el menú del admin recuenta las pendientes.
+// Ejecución 83: estado (`?estado=`), producto (`?producto=`) y búsqueda (`?q=`) viven en la URL, como en el
+// resto del admin: el enlace se puede compartir y «Atrás» conserva los filtros.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { fetchAdminReviews, moderateReview, saveReviewReply } from '../../services/reviewsAdminService';
 import { REVIEW_STATUS, REVIEW_REPLY_MAX, countReviewsByStatus, filterReviews, reviewProducts } from '../../utils/reviewsAdmin';
 
 const TABS = ['pending', 'approved', 'rejected', 'todas'];
+const DEFAULT_TAB = 'pending';
+// Valor desconocido o ausente en `?estado=` → «Pendiente» (la vista de trabajo del moderador).
+export const reviewTabFromParam = (value) => (TABS.includes(value) ? value : DEFAULT_TAB);
 const btn = { padding: '0.5rem 1rem', borderRadius: 6, fontWeight: 700, border: '1px solid #D4D4D8', backgroundColor: '#FFF', cursor: 'pointer' };
 
 export const AdminReviewsPage = () => {
   const userId = useAuthStore((s) => s.user?.id);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('pending');
-  const [productId, setProductId] = useState('');
-  const [query, setQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filter = reviewTabFromParam(searchParams.get('estado'));
+  const productId = searchParams.get('producto') ?? '';
+  const query = searchParams.get('q') ?? '';
+  const setParam = (key, value, empty) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (!value || value === empty) next.delete(key); else next.set(key, value);
+      return next;
+    }, { replace: true });
+  };
+  const setFilter = (value) => setParam('estado', value, DEFAULT_TAB);
+  const setProductId = (value) => setParam('producto', value, '');
+  const setQuery = (value) => setParam('q', value, '');
   const [notice, setNotice] = useState(null);
   const [replies, setReplies] = useState({});
   const [busy, setBusy] = useState(null);
@@ -39,8 +56,11 @@ export const AdminReviewsPage = () => {
   useEffect(() => { load(); }, []);
 
   const products = useMemo(() => reviewProducts(reviews), [reviews]);
-  // Si el producto elegido ya no tiene reseñas (p. ej. se eliminó), volver a «todos».
-  useEffect(() => { if (productId && !products.some((p) => p.id === productId)) setProductId(''); }, [products, productId]);
+  // Si el producto elegido (o el de un enlace viejo) ya no tiene reseñas, volver a «todos». Se espera a que
+  // termine la carga: antes de eso la lista de productos está vacía y borraría un `?producto=` válido.
+  useEffect(() => {
+    if (!loading && productId && !products.some((p) => p.id === productId)) setProductId('');
+  }, [loading, products, productId]); // eslint-disable-line react-hooks/exhaustive-deps
   const scoped = useMemo(() => filterReviews(reviews, { productId, query }), [reviews, productId, query]);
   const counts = useMemo(() => countReviewsByStatus(scoped), [scoped]);
   const visible = useMemo(() => filterReviews(scoped, { status: filter }), [scoped, filter]);

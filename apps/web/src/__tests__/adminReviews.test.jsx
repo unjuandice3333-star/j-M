@@ -6,7 +6,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { countReviewsByStatus, filterReviews, normalizeReply, reviewProducts, REVIEW_REPLY_MAX } from '../utils/reviewsAdmin';
 
 function fakeSupabase() {
@@ -73,11 +73,14 @@ describe('AdminReviewsPage', () => {
   afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); });
 
   const flush = async () => { await act(async () => { await new Promise((r) => setTimeout(r, 0)); }); };
-  const render = async () => {
+  let location;
+  const Spy = () => { location = useLocation(); return null; };
+  const render = async (url = '/admin/reviews') => {
     const { AdminReviewsPage } = await import('../pages/admin/AdminReviewsPage');
-    await act(async () => { root.render(<AdminReviewsPage />); });
+    await act(async () => { root.render(<MemoryRouter initialEntries={[url]}><AdminReviewsPage /><Spy /></MemoryRouter>); });
     await flush();
   };
+  const selected = () => container.querySelector('[role="tab"][aria-selected="true"]').textContent;
   const button = (label, scope = container) => [...scope.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(label));
   const card = (title) => [...container.querySelectorAll('article')].find((a) => a.textContent.includes(title));
   const change = async (el, value) => {
@@ -109,6 +112,40 @@ describe('AdminReviewsPage', () => {
     expect(card('Título 1')).toBeTruthy();
     await change(container.querySelector('input[aria-label="Buscar reseñas"]'), 'nada que coincida');
     expect(container.textContent).toContain('No hay reseñas con estos filtros.');
+  });
+
+  it('lee estado, producto y búsqueda de la URL (enlace compartible)', async () => {
+    supa.state.rows = [rv(1, { status: 'approved' }), rv(2, { status: 'approved', product_id: 'p2', products: { name: P2.name }, city: 'Medellín' }),
+      rv(3, { status: 'approved', product_id: 'p2', products: { name: P2.name } }), rv(4, { product_id: 'p2', products: { name: P2.name }, city: 'Medellín' })];
+    await render('/admin/reviews?estado=approved&producto=p2&q=MEDELLIN');
+    expect(selected()).toBe('Aprobada (1)');
+    expect(container.querySelector('select[aria-label="Filtrar por producto"]').value).toBe('p2');
+    expect(container.querySelector('input[aria-label="Buscar reseñas"]').value).toBe('MEDELLIN');
+    expect([...container.querySelectorAll('article')].map((a) => a.getAttribute('aria-label'))).toEqual(['Reseña de Autor 2: Título 2']);
+    expect(location.search).toBe('?estado=approved&producto=p2&q=MEDELLIN'); // el producto existe: no se borra al cargar
+  });
+
+  it('escribe los filtros en la URL y quita los valores por defecto', async () => {
+    supa.state.rows = [rv(1), rv(2, { product_id: 'p2', products: { name: P2.name } })];
+    await render();
+    expect(location.search).toBe('');
+    await act(async () => { button('Rechazada').click(); });
+    await change(container.querySelector('select[aria-label="Filtrar por producto"]'), 'p2');
+    await change(container.querySelector('input[aria-label="Buscar reseñas"]'), 'tela');
+    expect(new URLSearchParams(location.search).toString()).toBe('estado=rejected&producto=p2&q=tela');
+    await act(async () => { button('Pendiente').click(); });
+    await change(container.querySelector('select[aria-label="Filtrar por producto"]'), '');
+    await change(container.querySelector('input[aria-label="Buscar reseñas"]'), '');
+    expect(location.search).toBe('');
+  });
+
+  it('estado desconocido → Pendiente; producto sin reseñas se descarta de la URL', async () => {
+    supa.state.rows = [rv(1)];
+    await render('/admin/reviews?estado=xyz&producto=borrado&q=autor');
+    expect(selected()).toBe('Pendiente (1)');
+    expect(container.querySelector('select[aria-label="Filtrar por producto"]').value).toBe('');
+    expect(location.search).toBe('?estado=xyz&q=autor');
+    expect(container.querySelectorAll('article').length).toBe(1);
   });
 
   it('aprueba con respuesta y avisa al menú para recontar', async () => {
