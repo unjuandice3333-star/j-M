@@ -117,7 +117,7 @@ export const OrderConfirmationPage = () => {
             <ul>
               {orders.map((o) => (
                 <li key={o.id} style={{ marginBottom: '0.4rem' }}>
-                  <Link to={`/checkout/confirmacion?order=${encodeURIComponent(o.order_number)}&token=${encodeURIComponent(o.public_token)}`} style={{ textDecoration: 'underline', fontWeight: 700 }}>
+                  <Link to={`/checkout/confirmacion?order=${encodeURIComponent(o.order_number)}&token=${encodeURIComponent(o.public_token)}`} style={{ textDecoration: 'underline', fontWeight: 700, display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>
                     {o.order_number}
                   </Link>{' '}· {formatCOP(o.total)}
                 </li>
@@ -125,7 +125,7 @@ export const OrderConfirmationPage = () => {
             </ul>
           </div>
         )}
-        <Link to="/cuenta/pedidos" style={{ textDecoration: 'underline', fontWeight: 700 }}>Ir a mis pedidos</Link>
+        <Link to="/cuenta/pedidos" style={{ textDecoration: 'underline', fontWeight: 700, display: 'inline-flex', alignItems: 'center', minHeight: '36px' }}>Ir a mis pedidos</Link>
       </div>
     );
   }

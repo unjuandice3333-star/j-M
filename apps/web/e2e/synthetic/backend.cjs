@@ -337,13 +337,13 @@ function start(port = 54321) {
           const o = { id: `o-${n}`, order_number: `JM-${String(n).padStart(6, '0')}`, public_token: crypto.randomBytes(8).toString('hex'), user_id: body.user_id || null,
             customer_name: body.customer_name || 'Fixture', customer_email: String(body.customer_email || '').toLowerCase(), customer_phone: '3000000000', customer_document: null,
             shipping_department: 'A', shipping_city: 'B', shipping_address: 'C 123', shipping_neighborhood: null, shipping_notes: null, shipping_method_code: 'standard',
-            subtotal: 50000, discount_total: 0, shipping_cost: 12000, total: 62000, coupon_code: null, status: body.status || 'paid', created_at: now, payment_expires_at: null,
+            subtotal: 50000, discount_total: 0, shipping_cost: 12000, total: 62000, coupon_code: null, status: body.status || 'paid', created_at: now, payment_expires_at: body.payment_expires_at || null,
             paid_at: now, needs_attention: false, carrier: null, tracking_number: null, tracking_url: null, shipped_at: null, delivered_at: null,
             online_order_items: [], payment_transactions: [], order_events: [] };
           // Ejecución 90: opcionalmente con cupón (descuento fijo) y una línea con un SKU real del catálogo sintético.
           if (body.coupon_code) { o.coupon_code = String(body.coupon_code).toUpperCase(); o.discount_total = 5000; o.total = 57000; }
           if (body.sku) o.online_order_items = [{ id: `oi-${n}`, product_name: 'Fixture', sku: body.sku, size_code: 'M', color_name: 'Negro', unit_price: 50000, quantity: 1, line_total: 50000, image_url: null }];
-          S.tables.online_orders.unshift(o); return send(res, 200, { order_number: o.order_number });
+          S.tables.online_orders.unshift(o); return send(res, 200, { order_number: o.order_number, public_token: o.public_token });
         }
         // Ejecución 98: FIXTURE sintético — reseña YA aprobada (con respuesta de la tienda) de un producto del catálogo, para ver la ficha con reseñas publicadas.
         if (p === '/__synthetic-review') {

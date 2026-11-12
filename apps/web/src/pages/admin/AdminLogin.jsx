@@ -200,7 +200,9 @@ export const AdminLogin = () => {
                     fontWeight: 700,
                     cursor: 'pointer',
                     textDecoration: 'underline',
-                    padding: 0
+                    padding: 0,
+                    minHeight: '36px',
+                    flexShrink: 0
                   }}
                 >
                   <LogOut size={13} /> Cambiar cuenta

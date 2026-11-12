@@ -645,6 +645,58 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser, null, MOBILE);
 
+    await journey('35. Móvil 375×812: TODOS los controles de /admin/login, «No autorizado», ruta inexistente, confirmación rechazada/vencida/cerrada y estados vacíos', async (p) => {
+      const failures = [];
+      const check = async (scope, where, { min = 1 } = {}) => {
+        const n = await checkAllControls(p, scope, where, failures);
+        if (n < min) failures.push(`${where}: ${n} controles visibles (se esperaban ≥ ${min})`);
+      };
+      const visit = async (url, text) => {
+        await p.goto(`${BASE}${url}`);
+        if (text) await expectText(p, text);
+        await p.waitForLoadState('networkidle');
+        await assertNoHorizontalOverflow(p, url).catch((e) => failures.push(e.message));
+      };
+      // acceso del admin (fuera del layout público) y error de credenciales
+      await visit('/admin/login'); await check('body', '/admin/login', { min: 3 });
+      await p.locator('input[type=email]').fill('nadie@correo.co'); await p.locator('input[type=password]').fill('incorrecta-1');
+      await p.locator('button[type=submit]').tap(); await p.waitForLoadState('networkidle');
+      await check('body', '/admin/login · error', { min: 3 });
+      // «No autorizado» y ruta inexistente (redirige a la portada)
+      await visit('/unauthorized', 'Acceso Denegado'); await check('body', '/unauthorized'); // fuera del layout público (sin <main>)
+      if (await p.locator('a button, button a').count()) failures.push('/unauthorized: botón anidado dentro de un enlace');
+      await p.getByRole('button', { name: 'Volver al Inicio' }).tap(); await p.waitForURL(`${BASE}/`);
+      await p.goto(`${BASE}/ruta-que-no-existe`); await p.waitForURL(`${BASE}/`);
+      // estados vacíos sin sesión
+      await visit('/carrito', 'vacío'); await check('main', 'carrito vacío');
+      await visit('/ropa?q=zzzzqqq', 'No encontramos productos'); await check('main', 'búsqueda sin resultados', { min: 2 });
+      // confirmación: enlace inválido, pago que no se pudo abrir (?pago=error), ventana vencida y pedidos cerrados
+      await visit('/checkout/confirmacion?order=JM-999999&token=nope', 'Pedido no encontrado'); await check('main', 'confirmación · no encontrado');
+      const fixture = async (status, extra = {}) => (await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status, customer_email: 'fix@correo.co', ...extra }) })).json();
+      const conf = (o, q = '') => `/checkout/confirmacion?order=${o.order_number}&token=${o.public_token}${q}`;
+      const pend = await fixture('payment_pending', { payment_expires_at: new Date(Date.now() + 3600e3).toISOString() });
+      await visit(conf(pend, '&pago=error'), 'no se pudo abrir el pago'); await check('main', 'confirmación · pago rechazado/reintento', { min: 2 });
+      await fetch(`${API_URL}/__synthetic-expire-window/${pend.order_number}`);
+      await visit(conf(pend), 'El tiempo para pagar este pedido terminó'); await check('main', 'confirmación · ventana vencida');
+      for (const st of ['expired', 'cancelled']) { const o = await fixture(st); await visit(conf(o), 'Pedido cerrado'); await check('main', `confirmación · ${st}`, { min: 0 }); }
+      // con sesión: favoritos y pedidos vacíos
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).tap();
+      await p.getByPlaceholder(/Juan/i).first().fill('Eva Ruiz');
+      await p.locator('input[type=email]').fill('eva@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').tap();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await visit('/cuenta/favoritos'); await check('main', 'favoritos vacíos');
+      await visit('/cuenta/pedidos'); await check('main', 'pedidos vacíos');
+      // un cliente que intenta abrir el admin
+      await p.goto(`${BASE}/admin`); await p.waitForLoadState('networkidle');
+      if (/\/admin(\/|$)(?!login)/.test(new URL(p.url()).pathname) && !/login/.test(p.url())) failures.push(`un cliente quedó en ${p.url()}`);
+      await assertNoHorizontalOverflow(p, `cliente en ${new URL(p.url()).pathname}`).catch((e) => failures.push(e.message));
+      await check('body', `cliente en ${new URL(p.url()).pathname}`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser, /AdminLogin Password Exception/, MOBILE); // el error de credenciales se registra a propósito
+
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);

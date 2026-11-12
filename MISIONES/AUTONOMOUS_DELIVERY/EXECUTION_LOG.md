@@ -851,3 +851,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ay) de Pendiente (`/admin/login`, 404/«No autorizado», confirmación rechazada/vencida, estados vacíos).
+
+## Ejecución 99 — 2026-11-12 (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-wbs95z` (= main, `2661f2a`); se partió de la rama autorizada = remoto `bab5a67`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ay) de Pendiente. Recorrido E2E móvil 35: todos los controles visibles de `/admin/login` (y tras credenciales erróneas), `/unauthorized`, ruta inexistente, confirmación (no encontrada, `?pago=error` con reintento, ventana vencida, vencido, cancelado), carrito vacío, búsqueda sin resultados, favoritos y pedidos vacíos, cliente que abre `/admin` (D70).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (recorrido 35), `apps/web/e2e/synthetic/backend.cjs` (`/__synthetic-order` devuelve `public_token` y acepta `payment_expires_at`), `apps/web/src/pages/Unauthorized.jsx`, `apps/web/src/pages/OrderConfirmationPage.jsx`, `apps/web/src/pages/admin/AdminLogin.jsx`.
+- Pruebas (ejecutadas aquí): recorrido 35 falla sin los cambios de `src` (`git stash`: 3 fallos reales) y pasa con ellos; `pnpm test:unit` 487/487 (43 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 35/35. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni dispositivos reales.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(az) de Pendiente (teclado y foco en los modales de tienda y admin).
