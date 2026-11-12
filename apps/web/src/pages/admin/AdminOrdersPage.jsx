@@ -46,6 +46,14 @@ export const AdminOrdersPage = () => {
     if (st === 'todos') next.delete('estado'); else next.set('estado', st);
     setSearchParams(next, { replace: true });
   };
+  // Ejecución 77: «solo los que requieren revisión» (needs_attention: faltó stock al pagar, pago a reembolsar o anulado tras pagar) también
+  // vive en la URL (`?revision=1`) para enlazar desde la tarjeta de alertas del dashboard. Se combina con la pestaña.
+  const onlyAttention = searchParams.get('revision') === '1';
+  const setOnlyAttention = (on) => {
+    const next = new URLSearchParams(searchParams);
+    if (on) next.set('revision', '1'); else next.delete('revision');
+    setSearchParams(next, { replace: true });
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [methodFilter, setMethodFilter] = useState('todos');
   const [transitions, setTransitions] = useState([]);
@@ -74,6 +82,7 @@ export const AdminOrdersPage = () => {
     let q = supabase.from('online_orders').select(ORDER_SELECT, { count: 'exact' });
     if (filters.status !== 'todos') q = q.eq('status', filters.status);
     if (filters.method !== 'todos') q = q.eq('shipping_method_code', filters.method);
+    if (filters.attention) q = q.eq('needs_attention', true);
     const or = orderSearchFilter(filters.query);
     if (or) q = q.or(or);
     return q.order('created_at', { ascending: false }).order('id', { ascending: false })
@@ -81,12 +90,12 @@ export const AdminOrdersPage = () => {
   };
 
   const fetchSummary = async () => {
-    const { data, error } = await fetchAllRows(() => supabase.from('online_orders').select('id, status, shipping_method_code')
+    const { data, error } = await fetchAllRows(() => supabase.from('online_orders').select('id, status, shipping_method_code, needs_attention')
       .order('created_at', { ascending: false }).order('id', { ascending: false }));
     setSummaryRows(error ? [] : data);
   };
 
-  const filters = { status: selectedStatusTab, method: methodFilter, query: debouncedQuery };
+  const filters = { status: selectedStatusTab, method: methodFilter, query: debouncedQuery, attention: onlyAttention };
 
   const fetchDbOrders = async ({ append = false } = {}) => {
     const seq = ++requestSeq.current;
@@ -109,7 +118,7 @@ export const AdminOrdersPage = () => {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  useEffect(() => { fetchDbOrders(); }, [selectedStatusTab, methodFilter, debouncedQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchDbOrders(); }, [selectedStatusTab, methodFilter, debouncedQuery, onlyAttention]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchSummary();
@@ -119,6 +128,7 @@ export const AdminOrdersPage = () => {
   }, []);
 
   const statusCounts = countByStatus(summaryRows);
+  const attentionCount = summaryRows.filter((r) => r.needs_attention).length;
   const methodOptions = shippingMethodOptions(summaryRows, shippingMethods);
   const hasMore = totalCount !== null ? dbOrders.length < totalCount : false;
 
@@ -191,6 +201,11 @@ export const AdminOrdersPage = () => {
           <option value="todos">Todos los envíos</option>
           {methodOptions.map((c) => <option key={c} value={c}>{shippingMethodLabel(c, shippingMethods)}</option>)}
         </select>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 700, color: attentionCount > 0 ? '#B91C1C' : '#52525B' }}>
+          <input type="checkbox" checked={onlyAttention} onChange={(e) => setOnlyAttention(e.target.checked)} />
+          Solo los que requieren revisión ({attentionCount})
+        </label>
 
         {/* Status Tabs */}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>

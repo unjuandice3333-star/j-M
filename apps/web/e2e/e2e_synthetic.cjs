@@ -729,6 +729,24 @@ async function main() {
       await expectText(p, num);
       await p.reload();
       await p.getByRole('button', { name: `Pagado (${paidCount})`, pressed: true }).waitFor({ timeout: 8000 });
+      // Ejecución 77: tarjeta «Alertas de stock» del dashboard → /admin/inventario?stock=alerta con las mismas variantes
+      const lowNow = (await state()).inventories.filter((x) => x.stock - x.reserved <= 2).length; // min_stock = 2 en la BD sintética
+      await p.goto(`${BASE}/admin/dashboard`);
+      const stockCard = p.getByRole('link', { name: /^Ver variantes con stock bajo o agotado/ });
+      await stockCard.filter({ hasText: `${lowNow} variante` }).waitFor({ timeout: 8000 });
+      await stockCard.click();
+      await p.waitForURL(/\/admin\/inventario\?stock=alerta$/, { timeout: 8000 });
+      if (await p.getByLabel('Filtrar por estado de stock').inputValue() !== 'alerta') throw new Error('filtro de stock no aplicado');
+      if (lowNow > 0) {
+        await p.locator('tbody tr').nth(lowNow - 1).waitFor({ timeout: 8000 });
+        const shown = await p.locator('tbody tr').count();
+        if (shown !== lowNow) throw new Error(`variantes en alerta mostradas ${shown} ≠ ${lowNow}`);
+      } else await expectText(p, 'Ninguna variante coincide con el filtro.');
+      // tarjeta «Requieren revisión» → /admin/pedidos?revision=1 con la casilla marcada
+      await p.goto(`${BASE}/admin/dashboard`);
+      await p.getByRole('link', { name: /^Ver pedidos que requieren revisión/ }).click();
+      await p.waitForURL(/\/admin\/pedidos\?revision=1$/, { timeout: 8000 });
+      if (!(await p.getByLabel(/^Solo los que requieren revisión/).isChecked())) throw new Error('casilla de revisión sin marcar');
       // inventario: ajuste con motivo
       await p.goto(`${BASE}/admin/inventario`);
       await expectText(p, 'INVENTARIO (5 variantes)');

@@ -1,11 +1,33 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Boxes, AlertTriangle, CheckCircle, Search, RefreshCw, MapPin } from 'lucide-react';
 import supabase from '../../config/supabase';
 import { adminService } from '../../services/adminService';
 import { fetchAllRows } from '../../utils/adminLists';
 
+/**
+ * Ejecución 77: filtro de stock en la URL (`?stock=alerta|agotado`) para enlazar desde la tarjeta del dashboard.
+ * «alerta» usa la MISMA regla que `admin_dashboard_metrics.low_stock_variants`: variante activa y disponible
+ * (stock − reservado) ≤ mínimo; incluye las agotadas. Valor desconocido → todas.
+ */
+export const STOCK_FILTERS = { todos: 'Todas las variantes', alerta: 'Stock bajo o agotado', agotado: 'Agotadas' };
+export const stockFilterFromParam = (value) => (Object.hasOwn(STOCK_FILTERS, value) ? value : 'todos');
+export const isStockAlert = (item) => item.variantActive && item.available <= item.min;
+export const matchesStockFilter = (item, filter) => {
+  if (filter === 'alerta') return isStockAlert(item);
+  if (filter === 'agotado') return item.available <= 0;
+  return true;
+};
+
 export const AdminInventoryPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const stockFilter = stockFilterFromParam(searchParams.get('stock'));
+  const setStockFilter = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 'todos') next.delete('stock'); else next.set('stock', value);
+    setSearchParams(next, { replace: true });
+  };
   const [inventoryItems, setInventoryItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [adjustingId, setAdjustingId] = useState(null);
@@ -33,6 +55,7 @@ export const AdminInventoryPage = () => {
         name: `${p?.name ?? '—'} — ${colorName} / ${v?.sizes?.code ?? '—'}`, sku: v?.sku ?? '—',
         location: inv.location_shelf || 'Bodega principal', total: inv.stock, reserved: inv.reserved, available, min: inv.min_stock,
         status: available <= 0 ? 'out' : available <= inv.min_stock ? 'low' : 'ok', inactive: !v?.is_active || p?.status !== 'active',
+        variantActive: !!v?.is_active,
       };
     }));
     setIsLoading(false);
@@ -62,10 +85,11 @@ export const AdminInventoryPage = () => {
     }
   };
 
-  const filteredItems = inventoryItems.filter((item) =>
+  const filteredItems = inventoryItems.filter((item) => matchesStockFilter(item, stockFilter) && (
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.sku.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ));
+  const alertCount = inventoryItems.filter(isStockAlert).length;
 
   const totalUnits = inventoryItems.reduce((acc, i) => acc + i.available, 0);
   const lowStockCount = inventoryItems.filter((i) => i.status === 'low').length;
@@ -101,7 +125,8 @@ export const AdminInventoryPage = () => {
         </div>
       </div>
 
-      {/* SEARCH */}
+      {/* SEARCH & STOCK FILTER */}
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
       <input
         type="search"
         value={searchQuery}
@@ -110,6 +135,13 @@ export const AdminInventoryPage = () => {
         aria-label="Buscar en inventario"
         style={{ padding: '0.7rem 0.9rem', border: '1px solid #E4E4E7', borderRadius: '8px', fontSize: '0.9rem', maxWidth: '420px', width: '100%' }}
       />
+      <select aria-label="Filtrar por estado de stock" value={stockFilter} onChange={(e) => setStockFilter(e.target.value)}
+        style={{ padding: '0.7rem 0.9rem', border: '1px solid #E4E4E7', borderRadius: '8px', fontSize: '0.9rem' }}>
+        {Object.entries(STOCK_FILTERS).map(([k, label]) => (
+          <option key={k} value={k}>{k === 'alerta' && !isLoading ? `${label} (${alertCount})` : label}</option>
+        ))}
+      </select>
+      </div>
 
       {/* INVENTORY TABLE */}
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
@@ -121,7 +153,7 @@ export const AdminInventoryPage = () => {
           </div>
         ) : filteredItems.length === 0 ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
-            No hay registros ni movimientos de inventario.
+            {inventoryItems.length > 0 ? 'Ninguna variante coincide con el filtro.' : 'No hay registros ni movimientos de inventario.'}
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>

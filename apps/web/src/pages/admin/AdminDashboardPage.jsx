@@ -117,8 +117,15 @@ export const AdminDashboardPage = () => {
           detail={toPrepare === null ? 'No se pudo contar los pedidos pagados.' : 'Pagados, de cualquier fecha · Ver pedidos →'}
           warn={toPrepare === null || toPrepare > 0} icon={PackageCheck} />
         <KpiCard title="EN PREPARACIÓN / ENVIADOS" value={`${byStatus.processing ?? 0} / ${byStatus.shipped ?? 0}`} detail="pedidos del periodo" icon={Truck} />
-        <KpiCard title="ALERTAS" value={`${metrics.low_stock_variants} variantes`} detail={`stock bajo · ${metrics.needs_attention} pedido(s) por revisar`}
-          warn={Number(metrics.low_stock_variants) > 0 || Number(metrics.needs_attention) > 0} icon={AlertTriangle} />
+        {/* Ejecución 77: las alertas llevan a la lista ya filtrada (antes era un texto sin enlace). */}
+        <KpiCard title="ALERTAS DE STOCK" to="/admin/inventario?stock=alerta" linkLabel="Ver variantes con stock bajo o agotado"
+          value={`${metrics.low_stock_variants} variante${Number(metrics.low_stock_variants) === 1 ? '' : 's'}`}
+          detail="Disponible en el mínimo o por debajo · Ver inventario →"
+          warn={Number(metrics.low_stock_variants) > 0} icon={AlertTriangle} />
+        <KpiCard title="REQUIEREN REVISIÓN" to="/admin/pedidos?revision=1" linkLabel="Ver pedidos que requieren revisión"
+          value={`${metrics.needs_attention} pedido${Number(metrics.needs_attention) === 1 ? '' : 's'}`}
+          detail="Stock faltante, reembolso o pago anulado · Ver pedidos →"
+          warn={Number(metrics.needs_attention) > 0} icon={AlertTriangle} />
       </div>
       )}
 

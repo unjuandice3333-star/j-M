@@ -631,3 +631,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ac) de Pendiente (tarjeta «ALERTAS» del dashboard enlazada a inventario con stock bajo y pedidos que requieren revisión).
+
+## Ejecución 77 — 2026-11-12 00:10 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-4g7cup` (= main, `2661f2a`); se partió de la rama autorizada = remoto `580ab6f`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ac) de Pendiente. Filtro de stock en `/admin/inventario` (`?stock=alerta|agotado`), casilla «Solo los que requieren revisión» en `/admin/pedidos` (`?revision=1`, filtrada en la BD) y dos tarjetas del dashboard enlazadas («ALERTAS DE STOCK», «REQUIEREN REVISIÓN») en lugar de la tarjeta de texto «ALERTAS».
+- Archivos: `apps/web/src/pages/admin/AdminInventoryPage.jsx`, `apps/web/src/pages/admin/AdminOrdersPage.jsx`, `apps/web/src/pages/admin/AdminDashboardPage.jsx`, `apps/web/src/__tests__/adminAlertsDeepLink.test.jsx` (nuevo, 8 pruebas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 10 ampliado).
+- Pruebas (ejecutadas aquí): las 8 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 431/431 (42 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 26/26. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. Detectado (no corregido, queda como 0(ad)): el KPI «ALERTAS STOCK BAJO» de `/admin/inventario` usa otra regla que el dashboard.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ad) de Pendiente (KPI del inventario como botones del filtro y misma regla de alerta que el dashboard).
