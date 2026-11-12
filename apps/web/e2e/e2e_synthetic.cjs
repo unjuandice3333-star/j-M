@@ -605,6 +605,16 @@ async function main() {
       await p.locator('tbody tr', { hasText: 'JM10' }).waitFor();
       assert.equal(await p.getByLabel('Filtrar por estado').inputValue(), 'activos');
       assert.deepEqual((await rowsOf()).map((t) => t.split('\n')[0]), ['JM10']);
+      // Ejecución 86: uso real (canjes pagados/pendientes; el liberado no cuenta) y confirmación al desactivar.
+      const usos = await p.getByTestId('usos-JM10').innerText();
+      assert.match(usos, /8\.000 descontados/); assert.match(usos, /\+1 con pago pendiente/);
+      let asked = '';
+      p.removeAllListeners('dialog'); // el page() global acepta todo; aquí se cancela para comprobar que no desactiva
+      p.once('dialog', (d) => { asked = d.message(); d.dismiss().catch(() => {}); });
+      await p.locator('tbody tr', { hasText: 'JM10' }).getByRole('button', { name: 'Desactivar' }).click();
+      assert.match(asked, /JM10.*2 pedidos.*1 con pago pendiente/);
+      await p.waitForTimeout(300);
+      assert.equal(await p.locator('tbody tr', { hasText: 'JM10' }).locator('td').nth(5).innerText(), 'Activo');
     }, browser);
 
     await journey('24. Cuenta: baja y alta del boletín desde «Mis datos»', async (p) => {

@@ -46,8 +46,14 @@ function seed() {
       // Ejecución 85: filas de public.coupons solo para el listado de /admin/descuentos (el canje usa `coupons` de abajo).
       product_reviews: [], customer_addresses: [], wishlist_items: [],
       coupons: [
-        { id: 'cp-1', code: 'JM10', description: 'Diez por ciento', discount_type: 'percent', discount_value: 10, min_subtotal: 50000, max_uses: null, max_uses_per_email: null, used_count: 0, is_active: true, starts_at: null, expires_at: null, created_at: '2026-11-02T00:00:00Z' },
+        { id: 'cp-1', code: 'JM10', description: 'Diez por ciento', discount_type: 'percent', discount_value: 10, min_subtotal: 50000, max_uses: null, max_uses_per_email: null, used_count: 1, is_active: true, starts_at: null, expires_at: null, created_at: '2026-11-02T00:00:00Z' },
         { id: 'cp-2', code: 'LIQUIDACION', description: 'Promoción de temporada', discount_type: 'fixed', discount_value: 20000, min_subtotal: 0, max_uses: null, max_uses_per_email: null, used_count: 0, is_active: false, starts_at: null, expires_at: null, created_at: '2026-11-01T00:00:00Z' },
+      ],
+      // Ejecución 86: canjes de JM10 para la columna USOS de /admin/descuentos (RLS coupon_redemptions_admin_read: solo admin).
+      coupon_redemptions: [
+        { id: 'rd-1', coupon_id: 'cp-1', order_id: 'o-hist-1', customer_email: 'hist@jm.test', discount_amount: 8000, status: 'confirmed' },
+        { id: 'rd-2', coupon_id: 'cp-1', order_id: 'o-hist-2', customer_email: 'hist2@jm.test', discount_amount: 6000, status: 'reserved' },
+        { id: 'rd-3', coupon_id: 'cp-1', order_id: 'o-hist-3', customer_email: 'hist3@jm.test', discount_amount: 5000, status: 'released' },
       ],
       shipping_methods: [{ code: 'standard', name: 'Estándar', cost: 12000, free_over_subtotal: 200000, eta_text: '3-5 días', sort_order: 1, is_active: true }],
       v_product_rating: [], online_orders: [], newsletter_subscribers: [], profiles: [{ id: adminId, role: 'admin', full_name: 'Admin Sintético', email: 'admin@jm.test' }],
@@ -253,6 +259,7 @@ function start(port = 54321) {
     else if (table === 'v_variant_availability') data = S.inventories.map((i) => ({ variant_id: i.variant_id, product_id: i.variants.products.id, available: avail(i) }));
     else if (table === 'online_orders') data = ctx.role === 'admin' ? S.tables.online_orders : S.tables.online_orders.filter((o) => ctx.userId && o.user_id === ctx.userId);
     else if (table === 'profiles') data = ctx.role === 'admin' ? S.tables.profiles : S.tables.profiles.filter((p) => p.id === ctx.userId);
+    else if (table === 'coupon_redemptions') data = ctx.role === 'admin' ? S.tables.coupon_redemptions : []; // RLS coupon_redemptions_admin_read
     else if (table === 'newsletter_subscribers') data = ctx.role === 'admin' ? S.tables.newsletter_subscribers : []; // RLS newsletter_admin_read
     else if (table === 'product_reviews') data = ctx.role === 'admin' ? S.tables.product_reviews : S.tables.product_reviews.filter((r) => r.status === 'approved'); // RLS product_reviews_read
     else if (table === 'customer_addresses') data = ctx.role === 'admin' ? S.tables.customer_addresses : S.tables.customer_addresses.filter((a) => ctx.userId && a.user_id === ctx.userId);

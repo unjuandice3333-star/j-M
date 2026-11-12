@@ -3,6 +3,8 @@
 // quote_cart y create_order): tipo (percent | fixed | free_shipping), mínimo de compra, vigencia, usos totales y por
 // correo. M27: reescrito; antes eran 3 cupones simulados en el estado de React que no existían en la BD.
 // Ejecución 50: validación y acceso a datos en services/couponsAdminService.js (fechas en hora local, % máx. 90).
+// Ejecución 86: uso real por cupón (pedidos pagados, descuento otorgado y pagos pendientes, de coupon_redemptions) y
+// confirmación antes de desactivar un cupón con usos.
 // Ejecución 85: búsqueda sin tildes por código/descripción (`?q=`) y filtro de estado (`?estado=`) en la URL.
 // =============================================================================
 import React, { useEffect, useMemo, useState } from 'react';
@@ -10,7 +12,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, X } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
 import couponsAdminService, {
-  COUPON_STATUS_FILTERS, couponState, couponStatusFromParam, emptyCouponForm, filterCoupons, toCouponForm, PERCENT_MAX,
+  COUPON_STATUS_FILTERS, couponState, couponStatusFromParam, couponUseCount, emptyCouponForm, filterCoupons, toCouponForm, PERCENT_MAX,
 } from '../../services/couponsAdminService';
 
 const TYPE_LABEL = { percent: 'Porcentaje', fixed: 'Valor fijo', free_shipping: 'Envío gratis' };
@@ -18,6 +20,8 @@ const TYPE_LABEL = { percent: 'Porcentaje', fixed: 'Valor fijo', free_shipping: 
 export const AdminDiscountsPage = () => {
   const [coupons, setCoupons] = useState([]);
   const [loadError, setLoadError] = useState(null);
+  const [usage, setUsage] = useState({});
+  const [usageError, setUsageError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [form, setForm] = useState(null);
   const [formError, setFormError] = useState(null);
@@ -35,6 +39,9 @@ export const AdminDiscountsPage = () => {
   const load = async () => {
     try { setCoupons(await couponsAdminService.list()); setLoadError(null); }
     catch (e) { setLoadError(e.message || 'No se pudieron cargar los cupones.'); }
+    // El uso es complementario: si falla, la tabla y las acciones siguen disponibles.
+    try { setUsage(await couponsAdminService.usage()); setUsageError(null); }
+    catch (e) { setUsageError(e.message || 'No se pudo cargar el uso de los cupones.'); }
   };
   useEffect(() => { load(); }, []);
 
@@ -55,6 +62,13 @@ export const AdminDiscountsPage = () => {
   };
 
   const toggleActive = async (c) => {
+    const uses = couponUseCount(c, usage[c.id]);
+    const pending = usage[c.id]?.pending ?? 0;
+    if (c.is_active && uses > 0 && !window.confirm(
+      `¿Desactivar ${c.code}? Ya se usó en ${uses} ${uses === 1 ? 'pedido' : 'pedidos'}`
+      + (pending ? ` (${pending} con pago pendiente; esos pedidos conservan su descuento)` : '')
+      + '. Dejará de aceptarse en nuevas compras.',
+    )) return;
     try {
       await couponsAdminService.setActive(c.id, !c.is_active);
       setNotice(`Cupón ${c.code} ${c.is_active ? 'desactivado' : 'activado'}.`);
@@ -74,6 +88,7 @@ export const AdminDiscountsPage = () => {
         </button>
       </div>
       {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{loadError}</div>}
+      {usageError && <div role="alert" style={{ color: '#B45309', fontWeight: 600 }}>{usageError} La columna USOS muestra solo el contador.</div>}
       {notice && <div role="status" style={{ color: '#065F46', fontWeight: 600 }}>{notice}</div>}
 
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#FFF', padding: '1rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
@@ -104,7 +119,11 @@ export const AdminDiscountsPage = () => {
                   <td style={{ ...tdDisc, fontWeight: 900 }}>{c.code}<div style={{ fontSize: '0.72rem', color: '#71717A', fontWeight: 500 }}>{c.description}</div></td>
                   <td style={tdDisc}>{c.discount_type === 'percent' ? `${c.discount_value}%` : c.discount_type === 'fixed' ? formatCOP(Number(c.discount_value)) : 'Envío gratis'}</td>
                   <td style={tdDisc}>{Number(c.min_subtotal) > 0 ? formatCOP(Number(c.min_subtotal)) : '—'}</td>
-                  <td style={tdDisc}>{c.used_count}{c.max_uses ? ` / ${c.max_uses}` : ''}{c.max_uses_per_email ? ` (máx. ${c.max_uses_per_email} por correo)` : ''}</td>
+                  <td style={tdDisc} data-testid={`usos-${c.code}`}>
+                    {c.used_count}{c.max_uses ? ` / ${c.max_uses}` : ''}{c.max_uses_per_email ? ` (máx. ${c.max_uses_per_email} por correo)` : ''}
+                    {usage[c.id]?.paidDiscount > 0 && <div style={{ fontSize: '0.72rem', color: '#065F46' }}>{formatCOP(usage[c.id].paidDiscount)} descontados</div>}
+                    {usage[c.id]?.pending > 0 && <div style={{ fontSize: '0.72rem', color: '#B45309' }}>+{usage[c.id].pending} con pago pendiente</div>}
+                  </td>
                   <td style={{ ...tdDisc, color: '#71717A', fontSize: '0.78rem' }}>
                     {c.starts_at ? `desde ${new Date(c.starts_at).toLocaleDateString('es-CO')}` : 'sin inicio'} · {c.expires_at ? `hasta ${new Date(c.expires_at).toLocaleDateString('es-CO')}` : 'sin fin'}
                   </td>

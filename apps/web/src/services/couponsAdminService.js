@@ -112,6 +112,24 @@ export function filterCoupons(rows, query = '', status = 'todos', now = new Date
     && (!q || [c.code, c.description].some((v) => normalizeText(v).includes(q))));
 }
 
+// Uso real por cupón (ejecución 86): public.coupon_redemptions (RLS coupon_redemptions_admin_read: solo admin).
+// `confirmed` = pedido pagado (es lo que suma coupons.used_count); `reserved` = pedido creado y pago pendiente;
+// `released` (pedido cancelado/vencido) no cuenta. Solo lectura, sin migración.
+/** Filas de coupon_redemptions → { [coupon_id]: { paid, paidDiscount, pending, pendingDiscount } }. */
+export function summarizeRedemptions(rows) {
+  const out = {};
+  for (const r of rows ?? []) {
+    if (r.status !== 'confirmed' && r.status !== 'reserved') continue;
+    const u = out[r.coupon_id] ??= { paid: 0, paidDiscount: 0, pending: 0, pendingDiscount: 0 };
+    const amount = Number(r.discount_amount) || 0;
+    if (r.status === 'confirmed') { u.paid += 1; u.paidDiscount += amount; } else { u.pending += 1; u.pendingDiscount += amount; }
+  }
+  return out;
+}
+
+/** Pedidos pagados o pendientes que usan el cupón (para pedir confirmación antes de desactivarlo). */
+export const couponUseCount = (c, usage) => Math.max(Number(c?.used_count) || 0, usage?.paid ?? 0) + (usage?.pending ?? 0);
+
 const notFound = () => Object.assign(new Error('El cupón ya no existe o no tienes permiso para editarlo.'), { hint: 'NOT_FOUND' });
 
 export const couponsAdminService = {
@@ -119,6 +137,14 @@ export const couponsAdminService = {
     const { data, error } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
     if (error) throw adminError(error, 'No se pudieron cargar los cupones.');
     return data ?? [];
+  },
+
+  /** Uso real de cada cupón (ver summarizeRedemptions). */
+  async usage() {
+    const { data, error } = await supabase.from('coupon_redemptions')
+      .select('coupon_id, status, discount_amount').in('status', ['reserved', 'confirmed']);
+    if (error) throw adminError(error, 'No se pudo cargar el uso de los cupones.');
+    return summarizeRedemptions(data);
   },
 
   /** Crea (sin id) o actualiza. Devuelve la fila enviada. */

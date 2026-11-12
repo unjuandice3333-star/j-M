@@ -721,3 +721,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(al) de Pendiente (uso real de cada cupón en `/admin/descuentos` y confirmación al desactivar uno con usos).
+
+## Ejecución 86 — 2026-11-12 09:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-lwiydh` (= main, `2661f2a`); se partió de la rama autorizada = remoto `f863626`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(al) de Pendiente. `/admin/descuentos`: uso real por cupón desde `coupon_redemptions` (descuento otorgado en pagados, «+N con pago pendiente») y confirmación antes de desactivar un cupón con usos.
+- Archivos: `apps/web/src/services/couponsAdminService.js` (`summarizeRedemptions`, `couponUseCount`, `usage()`), `apps/web/src/pages/admin/AdminDiscountsPage.jsx`, `apps/web/src/__tests__/adminCoupons.test.jsx` (doble con `.in`; 5 pruebas nuevas de UI + 2 de funciones), `apps/web/e2e/synthetic/backend.cjs` (`coupon_redemptions` solo admin, 3 canjes de JM10), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 27 ampliado).
+- Pruebas (ejecutadas aquí): 5 pruebas nuevas fallan sin el cambio (`git stash` de página y servicio); `pnpm test:unit` 466/466 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 27/27 (primer intento falló porque el manejador global de diálogos ya aceptaba el `confirm`; la prueba lo retira antes de cancelar). Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(am) de Pendiente (`/admin/pedidos?cupon=` y enlace desde USOS de `/admin/descuentos`).

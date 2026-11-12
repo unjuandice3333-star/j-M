@@ -26,6 +26,7 @@ function recordingSupabase() {
       insert: (p) => { call.op = 'insert'; call.payload = p; return q; },
       update: (p) => { call.op = 'update'; call.payload = p; return q; },
       eq: (c, v) => { call.filters.push(['eq', c, v]); return q; },
+      in: (c, v) => { call.filters.push(['in', c, v]); return q; },
       single: async () => result(),
       then: (res, rej) => Promise.resolve(result()).then(res, rej),
     };
@@ -139,8 +140,8 @@ describe('AdminDiscountsPage (UI)', () => {
 
   let location;
   const Spy = () => { location = useLocation(); return null; };
-  const mount = async (url = '/admin/descuentos', coupons = [C]) => {
-    supa.state.tables = { coupons };
+  const mount = async (url = '/admin/descuentos', coupons = [C], redemptions = []) => {
+    supa.state.tables = { coupons, coupon_redemptions: redemptions };
     host = document.createElement('div');
     document.body.appendChild(host);
     root = createRoot(host);
@@ -172,12 +173,72 @@ describe('AdminDiscountsPage (UI)', () => {
     expect(supa.calls).toHaveLength(0);
   });
 
-  it('desactivar actualiza is_active y confirma', async () => {
+  const FRESH = { ...C, id: 'c-9', code: 'SINUSO', used_count: 0 };
+  const RED = [
+    { coupon_id: 'c-1', status: 'confirmed', discount_amount: 15000 },
+    { coupon_id: 'c-1', status: 'confirmed', discount_amount: 12000 },
+    { coupon_id: 'c-1', status: 'confirmed', discount_amount: 10000 },
+    { coupon_id: 'c-1', status: 'reserved', discount_amount: 9000 },
+  ];
+
+  it('desactivar un cupón sin usos actualiza is_active sin pedir confirmación', async () => {
+    root.unmount(); host.remove();
+    await mount('/admin/descuentos', [FRESH]);
+    const confirm = vi.spyOn(window, 'confirm');
     supa.calls.length = 0;
     await click(btn('Desactivar'));
     await flush();
+    expect(confirm).not.toHaveBeenCalled();
     expect(supa.calls[0]).toMatchObject({ table: 'coupons', op: 'update', payload: { is_active: false } });
     expect(host.querySelector('[role="status"]').textContent).toMatch(/desactivado/);
+    confirm.mockRestore();
+  });
+
+  it('desactivar un cupón con usos pide confirmación; cancelar no toca la BD', async () => {
+    root.unmount(); host.remove();
+    await mount('/admin/descuentos', [C], RED);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    supa.calls.length = 0;
+    await click(btn('Desactivar'));
+    await flush();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm.mock.calls[0][0]).toMatch(/BIENVENIDA10.*4 pedidos.*1 con pago pendiente/);
+    expect(supa.calls.filter((c) => c.op === 'update')).toHaveLength(0);
+    confirm.mockReturnValue(true);
+    await click(btn('Desactivar'));
+    await flush();
+    expect(supa.calls.find((c) => c.op === 'update')).toMatchObject({ table: 'coupons', payload: { is_active: false } });
+    confirm.mockRestore();
+  });
+
+  it('activar un cupón inactivo con usos no pide confirmación', async () => {
+    root.unmount(); host.remove();
+    await mount('/admin/descuentos', [{ ...C, is_active: false }], RED);
+    const confirm = vi.spyOn(window, 'confirm');
+    await click(btn('Activar'));
+    await flush();
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it('USOS muestra el descuento otorgado en pedidos pagados y los pagos pendientes', async () => {
+    root.unmount(); host.remove();
+    await mount('/admin/descuentos', [C, FRESH], RED);
+    const red = supa.calls.find((c) => c.table === 'coupon_redemptions');
+    expect(red.filters).toEqual([['in', 'status', ['reserved', 'confirmed']]]);
+    const cell = host.querySelector('[data-testid="usos-BIENVENIDA10"]').textContent.replace(/\s/g, ' ');
+    expect(cell).toMatch(/3 \/ 50/);
+    expect(cell).toMatch(/37\.000 descontados/);
+    expect(cell).toMatch(/\+1 con pago pendiente/);
+    expect(host.querySelector('[data-testid="usos-SINUSO"]').textContent).not.toMatch(/descontados|pendiente/);
+  });
+
+  it('si falla el uso, la tabla sigue visible con un aviso', async () => {
+    root.unmount(); host.remove();
+    supa.state.fail['coupon_redemptions.select'] = { code: '42501', message: 'permission denied' };
+    await mount('/admin/descuentos', [C]);
+    expect(codes()).toEqual(['BIENVENIDA10']);
+    expect([...host.querySelectorAll('[role="alert"]')].some((a) => /solo el contador/.test(a.textContent))).toBe(true);
   });
 
   const OFF = { ...C, id: 'c-2', code: 'VIEJO', description: 'Liquidación', is_active: false };
@@ -239,3 +300,22 @@ describe('filterCoupons / couponStatusFromParam (ejecución 85)', () => {
   });
 });
 
+describe('summarizeRedemptions / couponUseCount (ejecución 86)', () => {
+  it('suma pagados y pendientes por cupón e ignora los liberados', () => {
+    const u = svc.summarizeRedemptions([
+      { coupon_id: 'a', status: 'confirmed', discount_amount: 1000 },
+      { coupon_id: 'a', status: 'confirmed', discount_amount: '2500' },
+      { coupon_id: 'a', status: 'reserved', discount_amount: 700 },
+      { coupon_id: 'a', status: 'released', discount_amount: 99999 },
+      { coupon_id: 'b', status: 'released', discount_amount: 5 },
+    ]);
+    expect(u).toEqual({ a: { paid: 2, paidDiscount: 3500, pending: 1, pendingDiscount: 700 } });
+    expect(svc.summarizeRedemptions(null)).toEqual({});
+  });
+  it('couponUseCount usa el mayor entre used_count y los pagados, más los pendientes', () => {
+    expect(svc.couponUseCount({ used_count: 0 }, undefined)).toBe(0);
+    expect(svc.couponUseCount({ used_count: 3 }, undefined)).toBe(3);
+    expect(svc.couponUseCount({ used_count: 3 }, { paid: 3, pending: 2 })).toBe(5);
+    expect(svc.couponUseCount({ used_count: 0 }, { paid: 0, pending: 1 })).toBe(1);
+  });
+});
