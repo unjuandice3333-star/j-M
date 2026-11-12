@@ -7,7 +7,7 @@ import { adminService } from '../../services/adminService';
 import { orderService } from '../../services/orderService';
 import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
-import { ADMIN_ORDERS_PAGE_SIZE, countByStatus, fetchAllRows, couponFromParam, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
+import { ADMIN_ORDERS_PAGE_SIZE, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_SELECT = `
@@ -71,6 +71,30 @@ export const AdminOrdersPage = () => {
     next.delete('cupon');
     setSearchParams(next, { replace: true });
   };
+  // Ejecución 88: pedidos de un cliente (`?cliente=<id>`), enlazado desde /admin/clientes. Se lee su perfil para aplicar
+  // la misma atribución que la lista de clientes (cuenta + pedidos de invitado con su correo) y mostrar su nombre.
+  const customerId = customerFromParam(searchParams.get('cliente'));
+  const [customer, setCustomer] = useState({ id: null, status: 'idle', profile: null });
+  const clearCustomerFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('cliente');
+    setSearchParams(next, { replace: true });
+  };
+  useEffect(() => {
+    if (!customerId) { setCustomer({ id: null, status: 'idle', profile: null }); return undefined; }
+    let alive = true;
+    setCustomer({ id: customerId, status: 'loading', profile: null });
+    supabase.from('profiles').select('id, email, full_name').eq('id', customerId).maybeSingle()
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) setCustomer({ id: customerId, status: 'error', profile: null });
+        else setCustomer({ id: customerId, status: data ? 'ok' : 'missing', profile: data ?? { id: customerId } });
+      });
+    return () => { alive = false; };
+  }, [customerId]);
+  const customerReady = !customerId || (customer.id === customerId && customer.status !== 'loading');
+  // Sin perfil (no existe o falló la lectura) se filtra solo por user_id: nunca se muestran pedidos de otros clientes.
+  const customerFilter = customerId && customerReady ? customerOrdersFilter(customer.profile ?? { id: customerId }) : null;
   const [searchQuery, setSearchQuery] = useState(urlQuery);
   const lastWrittenQuery = useRef(urlQuery);
   const [transitions, setTransitions] = useState([]);
@@ -101,7 +125,7 @@ export const AdminOrdersPage = () => {
     if (filters.method !== 'todos') q = q.eq('shipping_method_code', filters.method);
     if (filters.attention) q = q.eq('needs_attention', true);
     if (filters.coupon) q = q.eq('coupon_code', filters.coupon);
-    const or = orderSearchFilter(filters.query);
+    const or = combineOrFilters(filters.customer, orderSearchFilter(filters.query));
     if (or) q = q.or(or);
     return q.order('created_at', { ascending: false }).order('id', { ascending: false })
       .range(from, from + ADMIN_ORDERS_PAGE_SIZE - 1);
@@ -113,7 +137,7 @@ export const AdminOrdersPage = () => {
     setSummaryRows(error ? [] : data);
   };
 
-  const filters = { status: selectedStatusTab, method: methodFilter, query: debouncedQuery, attention: onlyAttention, coupon: couponFilter };
+  const filters = { status: selectedStatusTab, method: methodFilter, query: debouncedQuery, attention: onlyAttention, coupon: couponFilter, customer: customerFilter };
 
   const fetchDbOrders = async ({ append = false } = {}) => {
     const seq = ++requestSeq.current;
@@ -149,7 +173,10 @@ export const AdminOrdersPage = () => {
     if (urlQuery !== lastWrittenQuery.current) { lastWrittenQuery.current = urlQuery; setSearchQuery(urlQuery); }
   }, [urlQuery]);
 
-  useEffect(() => { fetchDbOrders(); }, [selectedStatusTab, methodFilter, debouncedQuery, onlyAttention, couponFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!customerReady) { requestSeq.current += 1; setIsLoading(true); return; } // espera el perfil del cliente
+    fetchDbOrders();
+  }, [selectedStatusTab, methodFilter, debouncedQuery, onlyAttention, couponFilter, customerFilter, customerReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchSummary();
@@ -232,6 +259,14 @@ export const AdminOrdersPage = () => {
           <option value="todos">Todos los envíos</option>
           {(methodFilter !== 'todos' && !methodOptions.includes(methodFilter) ? [...methodOptions, methodFilter] : methodOptions).map((c) => <option key={c} value={c}>{shippingMethodLabel(c, shippingMethods)}</option>)}
         </select>
+
+        {customerId && (
+          <span data-testid="orders-customer-filter" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.6rem', borderRadius: '999px', background: '#ECFDF5', color: '#065F46', fontSize: '0.8rem', fontWeight: 800 }}>
+            Cliente: {customer.status === 'ok' ? (customer.profile.full_name || customer.profile.email) : customer.status === 'loading' ? '…' : 'no encontrado'}
+            <button type="button" onClick={clearCustomerFilter} aria-label="Quitar filtro del cliente"
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#065F46', fontWeight: 900, padding: 0 }}>×</button>
+          </span>
+        )}
 
         {couponFilter && (
           <span data-testid="orders-coupon-filter" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.6rem', borderRadius: '999px', background: '#EEF2FF', color: '#3730A3', fontSize: '0.8rem', fontWeight: 800 }}>

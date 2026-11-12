@@ -741,3 +741,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(an) de Pendiente (`/admin/clientes`: «Ver pedidos» por cliente → `/admin/pedidos?q=<correo>`).
+
+## Ejecución 88 — 2026-11-12 11:09 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-v4hbmd` (= main, `2661f2a`); se partió de la rama autorizada = remoto `927d187`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(an) de Pendiente. «Ver pedidos (N)» por cliente en `/admin/clientes` → `/admin/pedidos?cliente=<id>` con la misma atribución que la lista (D59).
+- Archivos: `apps/web/src/utils/adminLists.js` (`customerFromParam`, `customerOrdersFilter`, `combineOrFilters`), `apps/web/src/pages/admin/AdminOrdersPage.jsx`, `apps/web/src/pages/admin/AdminCustomersPage.jsx`, `apps/web/src/__tests__/adminOrdersDeepLink.test.jsx` (3 pruebas), `apps/web/src/__tests__/adminLists.test.jsx` (2 pruebas), `apps/web/e2e/synthetic/backend.cjs` (árbol lógico `or/and`, ids UUID, fixture `/__synthetic-order`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 28).
+- Pruebas (ejecutadas aquí): las 5 pruebas nuevas fallan sin el cambio (`git stash` de páginas y utils); `pnpm test:unit` 475/475 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 28/28 (primer intento 27/28: el recorrido creaba pedidos con `create_order` sobre una variante con stock 1 compartido entre recorridos → se usa un fixture sintético que no toca inventario). Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No verificado contra PostgREST real el `or` anidado con valor entre comillas.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ao) de Pendiente (enlaces cruzados pedido ↔ cliente en el admin).

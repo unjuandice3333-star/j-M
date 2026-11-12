@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
+const crypto = require('crypto');
 const { chromium } = require('playwright');
 const backend = require('./synthetic/backend.cjs');
 
@@ -626,6 +627,36 @@ async function main() {
       assert.deepEqual(shown, expected);
       await p.getByRole('button', { name: 'Quitar filtro del cupón JM10' }).click();
       await p.waitForURL((u) => !u.searchParams.has('cupon'));
+    }, browser);
+
+    await journey('28. Admin: «Ver pedidos» de un cliente con la misma atribución que la lista', async (p) => {
+      // Ejecución 88: cuenta con 1 pedido propio, 1 pedido de invitado con su correo (suyo) y otra cuenta que usó su correo (no es suyo).
+      const tag = crypto.randomBytes(3).toString('hex'); const email = `cliente.${tag}@jm.test`;
+      const signup = async (mail, name) => (await fetch(`${API_URL}/auth/v1/signup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: mail, password: 'Clave-Segura-1', data: { full_name: name } }) })).json();
+      const ana = await signup(email, `Ana ${tag}`); const otro = await signup(`otro.${tag}@jm.test`, `Otro ${tag}`);
+      const order = (userId, status) => fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, customer_email: email, customer_name: `Ana ${tag}`, status }) }).then(j);
+      const own = await order(ana.user.id, 'paid'); const guest = await order(null, 'payment_pending'); const foreign = await order(otro.user.id, 'paid');
+      const nums = (x) => x.order_number;
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await p.goto(`${BASE}/admin/clientes?q=${email}`);
+      const link = p.getByTestId(`pedidos-cliente-${ana.user.id}`);
+      await link.waitFor();
+      assert.equal((await link.innerText()).trim(), 'Ver pedidos (2)');
+      await link.click();
+      await p.waitForURL((u) => u.pathname === '/admin/pedidos' && u.searchParams.get('cliente') === ana.user.id);
+      await p.getByTestId('orders-customer-filter').filter({ hasText: `Cliente: Ana ${tag}` }).waitFor();
+      const shownNow = async () => (await p.locator('tbody tr td:first-child').allInnerTexts()).map((t) => t.trim()).filter((t) => /^JM-/.test(t)).sort();
+      await p.waitForFunction(() => !document.body.innerText.includes('Cargando') && document.querySelectorAll('tbody tr').length >= 2, null, { timeout: 8000 }).catch(() => {});
+      assert.deepEqual(await shownNow(), [nums(own), nums(guest)].sort());
+      assert.ok(!(await shownNow()).includes(nums(foreign)), 'mostró el pedido de otra cuenta');
+      // combinado con la búsqueda: un solo filtro lógico
+      await p.getByLabel('Buscar pedidos').fill(nums(guest));
+      await p.waitForURL((u) => u.searchParams.get('q') === nums(guest) && u.searchParams.has('cliente'), { timeout: 8000 });
+      await p.waitForFunction((n) => [...document.querySelectorAll('tbody tr td:first-child')].map((td) => td.innerText.trim()).filter((t) => t.startsWith('JM-')).join() === n, nums(guest), { timeout: 8000 });
+      await p.getByRole('button', { name: 'Quitar filtro del cliente' }).click();
+      await p.waitForURL((u) => !u.searchParams.has('cliente') && u.searchParams.get('q') === nums(guest));
     }, browser);
 
     await journey('24. Cuenta: baja y alta del boletín desde «Mis datos»', async (p) => {

@@ -306,3 +306,38 @@ describe('Admin de clientes: búsqueda sin tildes y en la URL', () => {
     expect(names()).toEqual(['José Pérez', 'María Gómez']);
   });
 });
+
+// Ejecución 88: «Ver pedidos» por cliente → /admin/pedidos?cliente=<id>, con la misma atribución que la lista.
+describe('Admin de clientes: enlace a sus pedidos', () => {
+  it('muestra «Ver pedidos (N)» con todos sus pedidos (cualquier estado) y lo omite si no tiene', async () => {
+    supa.state.tables.profiles = [
+      { id: 'u1', email: 'ana@x.co', full_name: 'Ana', role: 'customer', created_at: '2026-10-01T00:00:00Z' },
+      { id: 'u2', email: 'luis@x.co', full_name: 'Luis', role: 'customer', created_at: '2026-10-02T00:00:00Z' },
+    ];
+    supa.state.tables.online_orders = [order(1, { user_id: 'u1' }), order(2, { user_id: null, customer_email: 'ana@x.co', status: 'payment_pending' }),
+      order(3, { user_id: 'u2', customer_email: 'ana@x.co' })];
+    const { AdminCustomersPage } = await import('../pages/admin/AdminCustomersPage');
+    await act(async () => { root.render(<MemoryRouter><AdminCustomersPage /></MemoryRouter>); });
+    await flush();
+    const ana = container.querySelector('[data-testid="pedidos-cliente-u1"]');
+    expect(ana.getAttribute('href')).toBe('/admin/pedidos?cliente=u1');
+    expect(ana.textContent.trim()).toBe('Ver pedidos (2)');
+    expect(container.querySelector('[data-testid="pedidos-cliente-u2"]').textContent.trim()).toBe('Ver pedidos (1)');
+    supa.state.tables.online_orders = [];
+  });
+
+  it('customerFromParam/customerOrdersFilter/combineOrFilters', async () => {
+    const { customerFromParam, customerOrdersFilter, combineOrFilters } = await import('../utils/adminLists');
+    const id = 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA';
+    expect(customerFromParam(` ${id} `)).toBe(id.toLowerCase());
+    expect(customerFromParam('u1,or(x)')).toBeNull();
+    expect(customerFromParam(null)).toBeNull();
+    expect(customerOrdersFilter({ id, email: ' Ana"O\\@X.co ' })).toBe(`user_id.eq.${id.toLowerCase()},and(user_id.is.null,customer_email.eq."ana\\"o\\\\@x.co")`);
+    expect(customerOrdersFilter({ id })).toBe(`user_id.eq.${id.toLowerCase()}`);
+    expect(customerOrdersFilter({ id: 'x' })).toBeNull();
+    expect(combineOrFilters(null, 'b')).toBe('b');
+    expect(combineOrFilters('a', null)).toBe('a');
+    expect(combineOrFilters(null, null)).toBeNull();
+    expect(combineOrFilters('a', 'b')).toBe('and(or(a),or(b))');
+  });
+});

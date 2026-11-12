@@ -252,6 +252,36 @@ function start(port = 54321) {
     o.order_events.unshift({ event_type: 'status', from_status: from, to_status: to, actor, note: note || null, created_at: new Date().toISOString() });
   }
 
+  // Divide por comas de primer nivel (respeta paréntesis y valores entre comillas con escapes \).
+  function splitTop(str) {
+    const out = []; let depth = 0; let quoted = false; let cur = '';
+    for (let i = 0; i < str.length; i += 1) {
+      const ch = str[i];
+      if (quoted && ch === '\\') { cur += ch + str[i + 1]; i += 1; continue; }
+      if (ch === '"') quoted = !quoted;
+      else if (!quoted && ch === '(') depth += 1;
+      else if (!quoted && ch === ')') depth -= 1;
+      if (!quoted && depth === 0 && ch === ',') { out.push(cur); cur = ''; } else cur += ch;
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+  function parseLogic(op, inner) {
+    const preds = splitTop(inner).map((part) => {
+      const g = /^(and|or)\((.*)\)$/.exec(part);
+      if (g) return parseLogic(g[1], g[2]);
+      const m = /^([a-z_]+)\.(eq|is|ilike)\.(.*)$/.exec(part);
+      if (!m) throw new Error(`filtro no soportado por el backend sintético: ${part}`);
+      let [, col, kind, val] = m;
+      if (/^".*"$/.test(val)) val = val.slice(1, -1).replace(/\\(.)/g, '$1');
+      if (kind === 'is') return (r) => (val === 'null' ? r[col] == null : String(r[col]) === val);
+      if (kind === 'eq') return (r) => String(r[col] ?? '') === val && r[col] != null;
+      const t = val.replace(/^\*|\*$/g, '').toLowerCase();
+      return (r) => String(r[col] ?? '').toLowerCase().includes(t);
+    });
+    return op === 'and' ? (r) => preds.every((p) => p(r)) : (r) => preds.some((p) => p(r));
+  }
+
   function rows(table, q, ctx) {
     let data;
     if (table === 'products') data = S.products;
@@ -266,9 +296,9 @@ function start(port = 54321) {
     else data = S.tables[table] || [];
     for (const [k, v] of Object.entries(q)) {
       if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
-      if (k === 'or') { // solo la forma que usa el admin: (col.ilike.*texto*,col2.ilike.*texto*)
-        const conds = v.replace(/^\(|\)$/g, '').split(',').map((c) => /^([a-z_]+)\.ilike\.\*(.*)\*$/.exec(c)).filter(Boolean);
-        data = data.filter((r) => conds.some(([, col, t]) => String(r[col] ?? '').toLowerCase().includes(t.toLowerCase())));
+      if (k === 'or') { // árbol lógico de PostgREST: or(...)/and(...) anidados con eq, is.null e ilike (ejecución 88)
+        const pred = parseLogic('or', v.replace(/^\(|\)$/g, ''));
+        data = data.filter(pred);
         continue;
       }
       const m = /^(eq|in|neq)\.(.*)$/.exec(v); if (!m) continue;
@@ -300,11 +330,22 @@ function start(port = 54321) {
         // Ejecución 59: ventana de pago vencida sin que el job de expiración haya pasado (estado sigue payment_pending).
         if (p.startsWith('/__synthetic-expire-window/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); o.payment_expires_at = new Date(Date.now() - 60e3).toISOString(); return send(res, 200, { payment_expires_at: o.payment_expires_at }); }
         // Ejecución 72: entrega SINTÉTICA (paid → processing → shipped → delivered), para probar lo que sigue a la entrega.
+        // Ejecución 88: FIXTURE sintético — inserta un pedido mínimo sin tocar inventario (los recorridos corren en paralelo y el stock es compartido).
+        if (p === '/__synthetic-order') {
+          const n = ++S.seq; const now = new Date().toISOString();
+          const o = { id: `o-${n}`, order_number: `JM-${String(n).padStart(6, '0')}`, public_token: crypto.randomBytes(8).toString('hex'), user_id: body.user_id || null,
+            customer_name: body.customer_name || 'Fixture', customer_email: String(body.customer_email || '').toLowerCase(), customer_phone: '3000000000', customer_document: null,
+            shipping_department: 'A', shipping_city: 'B', shipping_address: 'C 123', shipping_neighborhood: null, shipping_notes: null, shipping_method_code: 'standard',
+            subtotal: 50000, discount_total: 0, shipping_cost: 12000, total: 62000, coupon_code: null, status: body.status || 'paid', created_at: now, payment_expires_at: null,
+            paid_at: now, needs_attention: false, carrier: null, tracking_number: null, tracking_url: null, shipped_at: null, delivered_at: null,
+            online_order_items: [], payment_transactions: [], order_events: [] };
+          S.tables.online_orders.unshift(o); return send(res, 200, { order_number: o.order_number });
+        }
         if (p.startsWith('/__synthetic-mark-delivered/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o || o.status !== 'paid') return send(res, 404, {}); for (const st of ['processing', 'shipped', 'delivered']) transition(o, st, 'sintético'); return send(res, 200, { status: o.status }); }
         if (p.startsWith('/__synthetic-mark-paid/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); inv.reserved -= it.quantity; inv.stock -= it.quantity; } transition(o, 'paid', 'sintético'); return send(res, 200, { status: 'paid' }); }
         if (p === '/auth/v1/signup') {
           if (S.users.some((u) => u.email === body.email)) return send(res, 422, { code: 'user_already_exists', msg: 'User already registered', message: 'User already registered' });
-          const u = { id: `u-${crypto.randomBytes(4).toString('hex')}`, email: body.email, password: body.password, role: 'customer', full_name: body.data?.full_name || '' };
+          const u = { id: crypto.randomUUID(), email: body.email, password: body.password, role: 'customer', full_name: body.data?.full_name || '' };
           S.users.push(u); S.tables.profiles.push({ id: u.id, role: 'customer', full_name: u.full_name, email: u.email }); return send(res, 200, session(u));
         }
         if (p === '/auth/v1/token') {

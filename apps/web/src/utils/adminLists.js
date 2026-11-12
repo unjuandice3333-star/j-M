@@ -92,3 +92,33 @@ export function couponFromParam(value) {
   const code = String(value ?? '').trim().toUpperCase();
   return /^[A-Z0-9_-]{3,40}$/.test(code) ? code : null;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** Ejecución 88: id de cliente leído de `?cliente=` en /admin/pedidos; solo un UUID válido (si no, null = sin filtro). */
+export function customerFromParam(value) {
+  const id = String(value ?? '').trim().toLowerCase();
+  return UUID_RE.test(id) ? id : null;
+}
+
+/**
+ * Ejecución 88: filtro `or` de PostgREST con la MISMA regla de atribución que `buildCustomers`: los pedidos con
+ * `user_id` de la cuenta y, de los pedidos sin cuenta (invitado), los de su correo. `online_orders.customer_email`
+ * siempre está en minúsculas (CHECK de la BD), así que basta `eq` con el correo normalizado, entre comillas.
+ * @param {{id:string, email?:string}} profile
+ */
+export function customerOrdersFilter(profile) {
+  const id = customerFromParam(profile?.id);
+  if (!id) return null;
+  const email = norm(profile.email);
+  if (!email) return `user_id.eq.${id}`;
+  const quoted = `"${email.replace(/[\\"]/g, (ch) => `\\${ch}`)}"`;
+  return `user_id.eq.${id},and(user_id.is.null,customer_email.eq.${quoted})`;
+}
+
+/** Combina dos filtros `or` en uno solo (PostgREST: un único parámetro `or`), o devuelve el que exista. */
+export function combineOrFilters(a, b) {
+  if (!a) return b || null;
+  if (!b) return a;
+  return `and(or(${a}),or(${b}))`;
+}

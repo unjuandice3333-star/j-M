@@ -16,12 +16,21 @@ function fakeSupabase() {
       eq: (c, v) => { rec.eq.push([c, v]); return q; },
       or: (f) => { rec.or = f; return q; }, order: () => q, limit: () => q,
       range: (a, b) => { rec.range = [a, b]; return q; },
+      maybeSingle: () => {
+        state.queries.push(rec);
+        let rows = state.tables[table] ?? [];
+        rec.eq.forEach(([c, v]) => { rows = rows.filter((r) => r[c] === v); });
+        return Promise.resolve({ data: rows[0] ?? null, error: null });
+      },
       then: (res, rej) => {
         state.queries.push(rec);
         if (rec.head && state.failHeadCount) return Promise.resolve({ data: null, error: { message: 'permission denied' } }).then(res, rej);
         let rows = state.tables[table] ?? [];
         rec.eq.forEach(([c, v]) => { rows = rows.filter((r) => r[c] === v); });
-        if (rec.or) {
+        // Ejecución 88: filtro de cliente (user_id de la cuenta o pedido de invitado con su correo), opcionalmente con búsqueda.
+        const cust = rec.or && /user_id\.eq\.([0-9a-f-]+)(?:,and\(user_id\.is\.null,customer_email\.eq\."(.*?)"\))?/.exec(rec.or);
+        if (cust) rows = rows.filter((r) => (r.user_id ? r.user_id === cust[1] : cust[2] !== undefined && r.customer_email === cust[2]));
+        if (rec.or && /ilike/.test(rec.or)) {
           const needle = rec.or.match(/ilike\.\*(.*?)\*/)?.[1]?.toLowerCase() ?? '';
           rows = rows.filter((r) => [r.order_number, r.customer_name, r.customer_email].some((v) => String(v ?? '').toLowerCase().includes(needle)));
         }
@@ -256,5 +265,50 @@ describe('Dashboard: tarjeta «Por preparar»', () => {
     expect(card.textContent).toContain('No se pudo contar los pedidos pagados.');
     expect(container.textContent).toContain('VENTAS PAGADAS');
     expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+});
+
+describe('Pedidos de un cliente (?cliente=)', () => {
+  const ANA = '11111111-1111-4111-8111-111111111111';
+  const LUIS = '22222222-2222-4222-8222-222222222222';
+  beforeEach(() => {
+    supa.state.tables.profiles = [{ id: ANA, email: 'Ana@X.co', full_name: 'Ana Ruiz' }, { id: LUIS, email: 'luis@x.co', full_name: 'Luis' }];
+    supa.state.tables.online_orders = [
+      order(1, 'paid', { user_id: ANA, customer_email: 'otro@x.co' }), // su cuenta, aunque pagó con otro correo
+      order(2, 'payment_pending', { customer_email: 'ana@x.co' }), // invitado con su correo
+      order(3, 'paid', { user_id: LUIS, customer_email: 'ana@x.co' }), // otra cuenta con su correo: no es de Ana
+      order(4, 'delivered', { customer_email: 'luis@x.co' }),
+    ];
+  });
+  const chip = () => container.querySelector('[data-testid="orders-customer-filter"]');
+
+  it('aplica en la BD la misma atribución que la lista de clientes y muestra su nombre', async () => {
+    await renderAt(`/admin/pedidos?cliente=${ANA}`);
+    expect(lastListQuery().or).toBe(`user_id.eq.${ANA},and(user_id.is.null,customer_email.eq."ana@x.co")`);
+    expect(orderNumbers().sort()).toEqual(['JM-1', 'JM-2']);
+    expect(chip().textContent).toContain('Cliente: Ana Ruiz');
+  });
+
+  it('se combina con la búsqueda en un único filtro y quitarlo conserva los demás parámetros', async () => {
+    await renderAt(`/admin/pedidos?estado=paid&q=JM-1&cliente=${ANA}`);
+    expect(lastListQuery().or).toBe(`and(or(user_id.eq.${ANA},and(user_id.is.null,customer_email.eq."ana@x.co")),or(order_number.ilike.*JM-1*,customer_name.ilike.*JM-1*,customer_email.ilike.*JM-1*,customer_phone.ilike.*JM-1*,tracking_number.ilike.*JM-1*))`);
+    expect(orderNumbers()).toEqual(['JM-1']);
+    await act(async () => { chip().querySelector('button').click(); });
+    await flush();
+    expect(currentLocation.search).toBe('?estado=paid&q=JM-1');
+    expect(chip()).toBeNull();
+  });
+
+  it('un cliente inexistente filtra solo por su id (no muestra pedidos ajenos) y un id inválido se ignora', async () => {
+    const GHOST = '33333333-3333-4333-8333-333333333333';
+    await renderAt(`/admin/pedidos?cliente=${GHOST}`);
+    expect(lastListQuery().or).toBe(`user_id.eq.${GHOST}`);
+    expect(orderNumbers()).toEqual([]);
+    expect(chip().textContent).toContain('no encontrado');
+    act(() => root.unmount()); root = createRoot(container);
+    await renderAt('/admin/pedidos?cliente=1,or(x');
+    expect(lastListQuery().or).toBeNull();
+    expect(chip()).toBeNull();
+    expect(orderNumbers()).toHaveLength(4);
   });
 });

@@ -4,7 +4,7 @@
 // M27: reescrito; antes mostraba 0 compras, ciudad fija y un "nivel" inventado a partir del rol.
 // =============================================================================
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
@@ -117,7 +117,15 @@ export const AdminCustomersPage = () => {
                 <td style={{ ...td, fontWeight: 800 }}>{formatCOP(c.totalSpent)}</td>
                 <td style={td}>{formatCOP(c.avgTicket)}</td>
                 <td style={td}>{c.lastPurchase ? new Date(c.lastPurchase).toLocaleDateString('es-CO') : '—'}</td>
-                <td style={td}><button onClick={() => open(c)} style={{ textDecoration: 'underline', fontWeight: 700 }}>Ver detalle</button></td>
+                <td style={td}>
+                  <button onClick={() => open(c)} style={{ textDecoration: 'underline', fontWeight: 700 }}>Ver detalle</button>
+                  {/* Ejecución 88: todos sus pedidos (cualquier estado) en /admin/pedidos, con la misma atribución que esta lista. */}
+                  {c.orders.length > 0 && (
+                    <div><Link data-testid={`pedidos-cliente-${c.id}`} to={`/admin/pedidos?cliente=${c.id}`} style={{ fontSize: '0.75rem', textDecoration: 'underline', color: '#3730A3' }}>
+                      Ver pedidos ({c.orders.length})
+                    </Link></div>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
