@@ -651,3 +651,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ae) de Pendiente (`/admin/productos`: búsqueda sin tildes y por referencia, filtro y búsqueda en la URL).
+
+## Ejecución 79 — 2026-11-12 02:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-0n2jk8` (= main, `2661f2a`); se partió de la rama autorizada = remoto `43586fb`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ae) de Pendiente. `/admin/productos`: búsqueda sin tildes/mayúsculas por nombre, slug, referencia y SKU; filtro de estado y búsqueda en la URL (`?estado=`, `?q=`); botones de estado con `aria-pressed`; valores inválidos de `?estado=` caen en «Todos».
+- Archivos: `apps/web/src/pages/admin/AdminProductsPage.jsx`, `apps/web/src/__tests__/adminProductsSearch.test.jsx` (4 pruebas nuevas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 10 ampliado).
+- Pruebas (ejecutadas aquí): las 4 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 438/438 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 26/26. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(af) de Pendiente (búsqueda de `/admin/inventario` sin tildes y en `?q=`).

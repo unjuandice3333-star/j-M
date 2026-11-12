@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Filter, Edit, Trash2, Eye, RefreshCw, Sparkles, AlertTriangle } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { productService } from '../../services/productService';
@@ -7,8 +7,22 @@ import { adminService } from '../../services/adminService';
 import { formatCOP } from '../../utils/currency';
 import SafeProductImage from '../../components/Common/SafeImage';
 import { hasValidProductImage } from '../../utils/productUtils';
+import { normalizeText } from '../../utils/catalogFilters';
 
 const STATUS_LABEL = { todos: 'Todos', active: 'Publicado', draft: 'Borrador', archived: 'Archivado', agotado: 'Agotado' };
+// Ejecución 79: estado y búsqueda viven en la URL (?estado=, ?q=) como en pedidos e inventario.
+export const productStatusFromParam = (value) => (Object.hasOwn(STATUS_LABEL, value) ? value : 'todos');
+export const matchesProductStatus = (p, filter) => {
+  if (filter === 'agotado') return p.status === 'active' && !p.inStock;
+  return filter === 'todos' || p.status === filter;
+};
+/** Búsqueda sin tildes ni mayúsculas por nombre, slug, referencia o SKU de variante. */
+export const matchesProductSearch = (p, query) => {
+  const q = normalizeText(query);
+  if (!q) return true;
+  const fields = [p.name, p.slug, p.reference, ...(p.rawVariants ?? []).map((v) => v.sku)];
+  return fields.some((f) => normalizeText(f).includes(q));
+};
 
 export const AdminProductsPage = () => {
   const navigate = useNavigate();
@@ -32,18 +46,18 @@ export const AdminProductsPage = () => {
     } catch (e) { setActionMsg({ ok: false, text: e.message }); }
   };
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('todos');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q') ?? '';
+  const statusFilter = productStatusFromParam(searchParams.get('estado'));
+  const setParam = (key, value, empty) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === empty) next.delete(key); else next.set(key, value);
+    setSearchParams(next, { replace: true });
+  };
+  const setSearchQuery = (value) => setParam('q', value, '');
+  const setStatusFilter = (value) => setParam('estado', value, 'todos');
 
-  const filteredProducts = products.filter((p) => {
-    if (statusFilter === 'agotado' ? !(p.status === 'active' && !p.inStock) : statusFilter !== 'todos' && p.status !== statusFilter) {
-      return false;
-    }
-    if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase()) && !p.slug.includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-    return true;
-  });
+  const filteredProducts = products.filter((p) => matchesProductStatus(p, statusFilter) && matchesProductSearch(p, searchQuery));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -117,7 +131,8 @@ export const AdminProductsPage = () => {
           <Search size={16} color="#71717A" />
           <input
             type="text"
-            placeholder="Buscar por nombre, SKU..."
+            placeholder="Buscar por nombre, referencia o SKU..."
+            aria-label="Buscar productos"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.85rem' }}
@@ -129,6 +144,7 @@ export const AdminProductsPage = () => {
           {['todos', 'active', 'draft', 'agotado', 'archived'].map((st) => (
             <button
               key={st}
+              aria-pressed={statusFilter === st}
               onClick={() => setStatusFilter(st)}
               style={{
                 padding: '0.4rem 0.8rem',

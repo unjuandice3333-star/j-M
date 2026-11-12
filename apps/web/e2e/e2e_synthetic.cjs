@@ -753,6 +753,14 @@ async function main() {
       await p.getByRole('link', { name: /^Ver pedidos que requieren revisión/ }).click();
       await p.waitForURL(/\/admin\/pedidos\?revision=1$/, { timeout: 8000 });
       if (!(await p.getByLabel(/^Solo los que requieren revisión/).isChecked())) throw new Error('casilla de revisión sin marcar');
+      // Ejecución 79: /admin/productos busca sin tildes y por referencia; la búsqueda queda en ?q=
+      await p.goto(`${BASE}/admin/productos?q=basica`);
+      await expectText(p, 'Camiseta Básica');
+      if (await p.getByText('Polo Clásico').count()) throw new Error('la búsqueda «basica» no filtró');
+      await p.getByLabel('Buscar productos').fill('POL-001');
+      await p.waitForURL(/\/admin\/productos\?q=POL-001$/, { timeout: 8000 });
+      await expectText(p, 'Polo Clásico');
+      if (await p.getByText('Camiseta Básica').count()) throw new Error('la búsqueda por referencia no filtró');
       // inventario: ajuste con motivo
       await p.goto(`${BASE}/admin/inventario`);
       await expectText(p, 'INVENTARIO (5 variantes)');
