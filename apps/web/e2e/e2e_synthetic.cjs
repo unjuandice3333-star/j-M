@@ -578,6 +578,13 @@ async function main() {
       const csv = fs.readFileSync(await dl.path(), 'utf8');
       if (!/^\uFEFFcorreo,estado,origen/.test(csv) || !csv.includes('boletin.admin@example.co,activo,home')) throw new Error(`CSV: ${csv.slice(0, 200)}`);
       if (!/^suscriptores-boletin-todos-\d{4}-\d{2}-\d{2}\.csv$/.test(dl.suggestedFilename())) throw new Error(`nombre: ${dl.suggestedFilename()}`);
+      // filtros en la URL (ejecución 84): sobreviven a la recarga
+      const u = new URL(p.url());
+      if (u.searchParams.get('q') !== 'BOLETIN.ADMIN' || u.searchParams.get('estado') !== 'todos') throw new Error(`URL: ${p.url()}`);
+      await p.reload();
+      await p.locator('tbody tr', { hasText: 'boletin.admin@example.co' }).waitFor();
+      if ((await p.getByLabel('Buscar suscriptores').inputValue()) !== 'BOLETIN.ADMIN') throw new Error('la búsqueda no se restauró');
+      if ((await p.getByLabel('Filtrar por estado').inputValue()) !== 'todos') throw new Error('el estado no se restauró');
     }, browser);
 
     await journey('24. Cuenta: baja y alta del boletín desde «Mis datos»', async (p) => {

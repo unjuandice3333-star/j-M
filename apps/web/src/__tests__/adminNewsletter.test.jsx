@@ -5,7 +5,8 @@ import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
-import { csvCell, filterSubscribers, subscribersToCsv, summarizeSubscribers } from '../utils/newsletterAdmin';
+import { MemoryRouter, useLocation } from 'react-router-dom';
+import { csvCell, filterSubscribers, subscriberStatusFromParam, subscribersToCsv, summarizeSubscribers } from '../utils/newsletterAdmin';
 
 function fakeSupabase() {
   const state = { rows: [], error: null, updateBlocked: false, ranges: [], updates: [] };
@@ -50,6 +51,14 @@ describe('utilidades del boletín', () => {
     expect(filterSubscribers(rows, 'CHECKOUT', 'activos').map((r) => r.id)).toEqual(['id-3']);
     expect(summarizeSubscribers(rows)).toEqual({ total: 3, active: 2, unsubscribed: 1 });
   });
+  it('busca sin tildes y valida ?estado=', () => {
+    const r = [sub(1, { email: 'josé@correo.co', source: 'Pié de página' })];
+    expect(filterSubscribers(r, 'JOSE', 'activos')).toHaveLength(1);
+    expect(filterSubscribers(r, 'pie de', 'activos')).toHaveLength(1);
+    expect(subscriberStatusFromParam('bajas')).toBe('bajas');
+    expect(subscriberStatusFromParam('raro')).toBe('activos');
+    expect(subscriberStatusFromParam(null)).toBe('activos');
+  });
   it('CSV con BOM, comillas y celdas de fórmula neutralizadas', () => {
     expect(csvCell('=HYPERLINK("x")')).toBe(`"'=HYPERLINK(""x"")"`);
     expect(csvCell('+57')).toBe("'+57");
@@ -66,9 +75,11 @@ describe('AdminNewsletterPage', () => {
   beforeEach(() => { supa = fakeSupabase(); container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); });
   afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); });
 
-  const render = async () => {
+  let location;
+  const Spy = () => { location = useLocation(); return null; };
+  const render = async (url = '/admin/boletin') => {
     const { AdminNewsletterPage } = await import('../pages/admin/AdminNewsletterPage');
-    await act(async () => { root.render(<AdminNewsletterPage />); });
+    await act(async () => { root.render(<MemoryRouter initialEntries={[url]}><AdminNewsletterPage /><Spy /></MemoryRouter>); });
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
   };
   const button = (label) => [...container.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === label || b.textContent.includes(label));
@@ -134,5 +145,32 @@ describe('AdminNewsletterPage', () => {
     const text = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsText(blobs[0]); });
     expect(text).toContain('persona1@correo.co,activo');
     expect(text).not.toContain('persona2@correo.co');
+  });
+
+  it('lee ?q= y ?estado= de la URL al cargar', async () => {
+    supa.state.rows = [sub(1), sub(2, { unsubscribed_at: '2026-11-05T00:00:00Z' }), sub(3, { unsubscribed_at: '2026-11-05T00:00:00Z' })];
+    await render('/admin/boletin?estado=bajas&q=PERSONA3');
+    expect(container.querySelector('input[aria-label="Buscar suscriptores"]').value).toBe('PERSONA3');
+    expect(container.querySelector('select[aria-label="Filtrar por estado"]').value).toBe('bajas');
+    expect([...container.querySelectorAll('tbody tr')].map((tr) => tr.textContent)).toEqual([expect.stringContaining('persona3@correo.co')]);
+  });
+
+  it('escribe la búsqueda y el estado en la URL y omite el valor por defecto', async () => {
+    supa.state.rows = [sub(1)];
+    await render('/admin/boletin?estado=desconocido');
+    const select = container.querySelector('select[aria-label="Filtrar por estado"]');
+    expect(select.value).toBe('activos');
+    const input = container.querySelector('input[aria-label="Buscar suscriptores"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    await act(async () => { setter.call(input, 'josé'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+    await act(async () => { select.value = 'todos'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    let params = new URLSearchParams(location.search);
+    expect(params.get('q')).toBe('josé');
+    expect(params.get('estado')).toBe('todos');
+    await act(async () => { select.value = 'activos'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    await act(async () => { setter.call(input, ''); input.dispatchEvent(new Event('input', { bubbles: true })); });
+    params = new URLSearchParams(location.search);
+    expect(params.has('estado')).toBe(false);
+    expect(params.has('q')).toBe(false);
   });
 });

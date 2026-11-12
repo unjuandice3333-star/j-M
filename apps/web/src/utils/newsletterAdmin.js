@@ -1,12 +1,17 @@
 // Utilidades puras del admin del boletín (ejecución 69): filtro, resumen y CSV.
+import { normalizeText } from './catalogFilters';
+
+export const SUBSCRIBER_STATUSES = ['activos', 'bajas', 'todos'];
+/** Valor de `?estado=` → filtro válido; lo desconocido o ausente cae en «activos» (ejecución 84). */
+export const subscriberStatusFromParam = (v) => (SUBSCRIBER_STATUSES.includes(v) ? v : 'activos');
 
 export const isActiveSubscriber = (s) => !s.unsubscribed_at;
 
-/** status: 'activos' | 'bajas' | 'todos'. Búsqueda sin distinguir mayúsculas en correo y origen. */
+/** status: 'activos' | 'bajas' | 'todos'. Búsqueda sin distinguir mayúsculas ni tildes en correo y origen. */
 export function filterSubscribers(rows, query = '', status = 'activos') {
-  const q = String(query).trim().toLowerCase();
+  const q = normalizeText(query);
   return (rows ?? []).filter((s) => (status === 'todos' || (status === 'activos') === isActiveSubscriber(s))
-    && (!q || [s.email, s.source].some((v) => String(v ?? '').toLowerCase().includes(q))));
+    && (!q || [s.email, s.source].some((v) => normalizeText(v).includes(q))));
 }
 
 export function summarizeSubscribers(rows) {

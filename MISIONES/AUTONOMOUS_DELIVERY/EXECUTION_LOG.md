@@ -701,3 +701,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(aj) de Pendiente (`?q=` en `/admin/boletin`).
+
+## Ejecución 84 — 2026-11-12 07:10 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-yc75cu` (= main, `2661f2a`); se partió de la rama autorizada = remoto `e4ed682`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(aj) de Pendiente. `/admin/boletin`: búsqueda sin tildes/mayúsculas por correo y origen; búsqueda (`?q=`) y estado (`?estado=`, desconocido → «Activos», por defecto no se escribe) en la URL.
+- Archivos: `apps/web/src/pages/admin/AdminNewsletterPage.jsx`, `apps/web/src/utils/newsletterAdmin.js`, `apps/web/src/__tests__/adminNewsletter.test.jsx` (3 pruebas nuevas; la página se monta en `MemoryRouter`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido del boletín: URL y recarga).
+- Pruebas (ejecutadas aquí): las 3 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 455/455 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 26/26. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ak) de Pendiente (`/admin/descuentos`: búsqueda por código y filtro de estado en la URL).

@@ -4,9 +4,10 @@
 // RLS: solo is_admin() lee y solo puede cambiar unsubscribed_at.
 // =============================================================================
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Download, Search } from 'lucide-react';
 import { fetchNewsletterSubscribers, setNewsletterSubscriberActive } from '../../services/newsletterService';
-import { downloadCsv, filterSubscribers, isActiveSubscriber, subscribersToCsv, summarizeSubscribers } from '../../utils/newsletterAdmin';
+import { downloadCsv, filterSubscribers, isActiveSubscriber, subscriberStatusFromParam, subscribersToCsv, summarizeSubscribers } from '../../utils/newsletterAdmin';
 
 const fmtDate = (v) => (v ? new Date(v).toLocaleDateString('es-CO') : '—');
 
@@ -15,8 +16,17 @@ export const AdminNewsletterPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [notice, setNotice] = useState(null);
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('activos');
+  // Búsqueda y estado en la URL (`?q=`, `?estado=`) para compartir o recargar la vista (ejecución 84).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get('q') ?? '';
+  const status = subscriberStatusFromParam(searchParams.get('estado'));
+  const setParam = (key, value, empty) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === empty) next.delete(key); else next.set(key, value);
+    setSearchParams(next, { replace: true });
+  };
+  const setQuery = (value) => setParam('q', value, '');
+  const setStatus = (value) => setParam('estado', value, 'activos');
   const [busyId, setBusyId] = useState(null);
 
   useEffect(() => {
