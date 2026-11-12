@@ -69,11 +69,11 @@ export const Footer = () => {
           <div>
             <h4 style={columnTitleStyle}>COMPRAR</h4>
             <ul style={ulStyle}>
-              <li><Link to="/ropa" style={linkStyle}>Ropa</Link></li>
-              <li><Link to="/calzado" style={linkStyle}>Calzado</Link></li>
-              <li><Link to="/accesorios" style={linkStyle}>Accesorios</Link></li>
-              <li><Link to="/ofertas" style={{ ...linkStyle, color: '#E11D48', fontWeight: 700 }}>Ofertas</Link></li>
-              <li><Link to="/nuevo" style={linkStyle}>Novedades</Link></li>
+              <li><Link to="/ropa" className="jm-tap-inline" style={linkStyle}>Ropa</Link></li>
+              <li><Link to="/calzado" className="jm-tap-inline" style={linkStyle}>Calzado</Link></li>
+              <li><Link to="/accesorios" className="jm-tap-inline" style={linkStyle}>Accesorios</Link></li>
+              <li><Link to="/ofertas" className="jm-tap-inline" style={{ ...linkStyle, color: '#E11D48', fontWeight: 700 }}>Ofertas</Link></li>
+              <li><Link to="/nuevo" className="jm-tap-inline" style={linkStyle}>Novedades</Link></li>
             </ul>
           </div>
 
@@ -81,11 +81,11 @@ export const Footer = () => {
           <div>
             <h4 style={columnTitleStyle}>AYUDA</h4>
             <ul style={ulStyle}>
-              <li><Link to="/guia-de-tallas" style={linkStyle}>Guía de tallas</Link></li>
-              <li><Link to="/envios" style={linkStyle}>Envíos</Link></li>
-              <li><Link to="/cambios-y-devoluciones" style={linkStyle}>Cambios y devoluciones</Link></li>
-              <li><Link to="/preguntas-frecuentes" style={linkStyle}>Preguntas frecuentes</Link></li>
-              <li><Link to="/contacto" style={linkStyle}>Contacto</Link></li>
+              <li><Link to="/guia-de-tallas" className="jm-tap-inline" style={linkStyle}>Guía de tallas</Link></li>
+              <li><Link to="/envios" className="jm-tap-inline" style={linkStyle}>Envíos</Link></li>
+              <li><Link to="/cambios-y-devoluciones" className="jm-tap-inline" style={linkStyle}>Cambios y devoluciones</Link></li>
+              <li><Link to="/preguntas-frecuentes" className="jm-tap-inline" style={linkStyle}>Preguntas frecuentes</Link></li>
+              <li><Link to="/contacto" className="jm-tap-inline" style={linkStyle}>Contacto</Link></li>
             </ul>
           </div>
 
@@ -93,10 +93,10 @@ export const Footer = () => {
           <div>
             <h4 style={columnTitleStyle}>J&M</h4>
             <ul style={ulStyle}>
-              <li><Link to="/nosotros" style={linkStyle}>Sobre nosotros</Link></li>
-              <li><Link to="/tiendas" style={linkStyle}>Tiendas</Link></li>
-              <li><a href="https://instagram.com" target="_blank" rel="noreferrer" style={linkStyle}>Instagram</a></li>
-              <li><a href="https://wa.me/573000000000" target="_blank" rel="noreferrer" style={linkStyle}>WhatsApp</a></li>
+              <li><Link to="/nosotros" className="jm-tap-inline" style={linkStyle}>Sobre nosotros</Link></li>
+              <li><Link to="/tiendas" className="jm-tap-inline" style={linkStyle}>Tiendas</Link></li>
+              <li><a href="https://instagram.com" target="_blank" rel="noreferrer" className="jm-tap-inline" style={linkStyle}>Instagram</a></li>
+              <li><a href="https://wa.me/573000000000" target="_blank" rel="noreferrer" className="jm-tap-inline" style={linkStyle}>WhatsApp</a></li>
             </ul>
           </div>
 
@@ -104,9 +104,9 @@ export const Footer = () => {
           <div>
             <h4 style={columnTitleStyle}>LEGAL</h4>
             <ul style={ulStyle}>
-              <li><Link to="/terminos" style={linkStyle}>Términos y condiciones</Link></li>
-              <li><Link to="/privacidad" style={linkStyle}>Política de privacidad</Link></li>
-              <li><Link to="/politica-de-cambios" style={linkStyle}>Política de cambios</Link></li>
+              <li><Link to="/terminos" className="jm-tap-inline" style={linkStyle}>Términos y condiciones</Link></li>
+              <li><Link to="/privacidad" className="jm-tap-inline" style={linkStyle}>Política de privacidad</Link></li>
+              <li><Link to="/politica-de-cambios" className="jm-tap-inline" style={linkStyle}>Política de cambios</Link></li>
             </ul>
           </div>
         </div>

@@ -595,6 +595,63 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser, null, MOBILE);
 
+    await journey('34. Móvil 375×812: TODOS los controles de páginas informativas, pie, login, confirmación del pedido, restablecer contraseña y ficha con reseñas', async (p) => {
+      const failures = [];
+      const check = async (scope, where, { min = 1 } = {}) => {
+        const n = await checkAllControls(p, scope, where, failures);
+        if (n < min) failures.push(`${where}: ${n} controles visibles (se esperaban ≥ ${min})`);
+      };
+      const visit = async (url, text) => {
+        await p.goto(`${BASE}${url}`);
+        if (text) await expectText(p, text); else await p.locator('main h1, main h2').first().waitFor({ timeout: 8000 });
+        await p.waitForLoadState('networkidle');
+        await assertNoHorizontalOverflow(p, url).catch((e) => failures.push(e.message));
+      };
+      // páginas informativas (sin sesión) y pie de página
+      for (const url of ['/guia-de-tallas', '/envios', '/cambios-y-devoluciones', '/preguntas-frecuentes', '/contacto', '/nosotros', '/tiendas', '/terminos', '/privacidad']) {
+        await visit(url); await check('main', url, { min: 0 });
+      }
+      await check('footer', 'pie de página', { min: 4 });
+      // login: inicio, alternar a registro y «¿Olvidaste tu contraseña?»
+      await visit('/login', 'Crear cuenta');
+      await check('body', '/login', { min: 3 }); // /login no usa PublicLayout (sin <main>)
+      await p.getByRole('button', { name: 'Crear cuenta' }).tap();
+      await p.getByPlaceholder(/Juan/i).first().waitFor();
+      await check('body', '/login · registro', { min: 4 });
+      // registro real → compra → confirmación con pago pendiente (pagar / cancelar)
+      await p.getByPlaceholder(/Juan/i).first().fill('Sara Ruiz');
+      await p.locator('input[type=email]').fill('sara@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').tap();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'sara@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).tap();
+      await p.waitForURL(/\/checkout\/confirmacion/); await expectText(p, 'Pedido registrado');
+      await p.waitForLoadState('networkidle');
+      await assertNoHorizontalOverflow(p, 'confirmación pendiente').catch((e) => failures.push(e.message));
+      await check('main', 'confirmación pendiente', { min: 2 });
+      // pagado y entregado: confirmación y seguimiento desde el enlace del pedido
+      const num = (await state()).orders[0].order_number;
+      await fetch(`${API_URL}/__synthetic-mark-paid/${num}`);
+      await fetch(`${API_URL}/__synthetic-mark-delivered/${num}`);
+      await p.reload(); await expectText(p, num);
+      await p.waitForLoadState('networkidle');
+      await assertNoHorizontalOverflow(p, 'confirmación entregado').catch((e) => failures.push(e.message));
+      await check('main', 'confirmación entregado', { min: 1 });
+      // restablecer contraseña con sesión: formulario visible
+      await visit('/cuenta/restablecer', 'Crear una contraseña nueva');
+      await p.locator('main input[type=password]').first().waitFor({ timeout: 8000 });
+      await check('main', '/cuenta/restablecer', { min: 3 });
+      // ficha con reseña aprobada (con respuesta de J&M) y el formulario de reseña de esta compra
+      await fetch(`${API_URL}/__synthetic-review`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug: 'camiseta-basica', title: 'Muy buena', admin_reply: '¡Gracias, Ana!' }) });
+      await visit('/producto/camiseta-basica', 'Camiseta Básica');
+      await p.getByText('Muy buena').first().waitFor({ timeout: 8000 });
+      await p.getByTestId('review-form').getByRole('button', { name: 'Enviar opinión' }).waitFor({ timeout: 8000 });
+      await check('main', 'ficha con reseñas y formulario', { min: 10 });
+      await check('[data-testid=review-form]', 'formulario de reseña', { min: 7 });
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser, null, MOBILE);
+
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);

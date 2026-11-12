@@ -238,7 +238,7 @@ export const OrderConfirmationPage = () => {
           </p>
         )}
         <div style={{ textAlign: 'center' }}>
-          <Link to="/ropa" style={{ textDecoration: 'underline', fontWeight: 700 }}>Seguir comprando</Link>
+          <Link to="/ropa" className="jm-tap-inline" style={{ textDecoration: 'underline', fontWeight: 700 }}>Seguir comprando</Link>
         </div>
       </div>
     </div>

@@ -841,3 +841,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ax) de Pendiente (misma comprobación en páginas informativas, pie, confirmación, login/restablecer y ficha con reseñas).
+
+## Ejecución 98 — 2026-11-12 21:13 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-u3e2d9` (= main, `2661f2a`); se partió de la rama autorizada = remoto `906820c`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ax) de Pendiente. Recorrido E2E 34 móvil 375×812: todos los controles de páginas informativas, pie, `/login`, confirmación del pedido, `/cuenta/restablecer` y ficha con reseñas y formulario; corrección de lo encontrado (D69).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (recorrido 34), `apps/web/e2e/synthetic/backend.cjs` (`/__synthetic-review`), `apps/web/src/components/Footer/Footer.jsx`, `components/Product/ProductReviewForm.jsx`, `pages/OrderConfirmationPage.jsx`.
+- Pruebas (ejecutadas aquí): recorrido 34 falla sin los cambios de `src` (`git stash`: 31 fallos; además 0 controles en `/login` por buscar `main`, corregido en la prueba) y pasa con ellos; `pnpm test:unit` 487/487 (43 archivos); ESLint `apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 34/34. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni dispositivos reales.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ay) de Pendiente (teclado/foco en los modales de la tienda).

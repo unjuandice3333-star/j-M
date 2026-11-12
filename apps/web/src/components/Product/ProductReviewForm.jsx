@@ -130,7 +130,7 @@ export const ProductReviewForm = ({ productId }) => {
             <legend style={label}>Calificación</legend>
             <div style={{ display: 'flex', gap: '0.25rem' }}>
               {[1, 2, 3, 4, 5].map((n) => (
-                <button key={n} type="button" aria-pressed={rating === n} aria-label={`${n} de 5 estrellas`} onClick={() => setRating(n)}
+                <button key={n} type="button" aria-pressed={rating === n} aria-label={`${n} de 5 estrellas`} className="jm-tap" onClick={() => setRating(n)}
                   style={{ background: 'none', border: 0, padding: 2, cursor: 'pointer' }}>
                   <Star size={22} fill={n <= rating ? '#D4AF37' : 'none'} color="#D4AF37" />
                 </button>
