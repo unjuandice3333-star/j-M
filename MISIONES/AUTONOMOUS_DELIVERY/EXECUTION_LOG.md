@@ -731,3 +731,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(am) de Pendiente (`/admin/pedidos?cupon=` y enlace desde USOS de `/admin/descuentos`).
+
+## Ejecución 87 — 2026-11-12 10:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-70uks8` (= main, `2661f2a`); se partió de la rama autorizada = remoto `59bc5da`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(am) de Pendiente. `/admin/pedidos?cupon=CODIGO` (filtro en la BD, chip para quitarlo) y enlace «Ver pedidos» desde USOS en `/admin/descuentos`.
+- Archivos: `apps/web/src/utils/adminLists.js` (`couponFromParam`), `apps/web/src/pages/admin/AdminOrdersPage.jsx`, `apps/web/src/pages/admin/AdminDiscountsPage.jsx`, `apps/web/src/__tests__/adminOrdersDeepLink.test.jsx` (3 pruebas), `apps/web/src/__tests__/adminCoupons.test.jsx` (1 prueba), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 27 ampliado).
+- Pruebas (ejecutadas aquí): 3 de las 4 pruebas nuevas fallan sin el cambio (`git stash` de páginas y utils; la de código inválido pasa también sin él, por diseño); `pnpm test:unit` 470/470 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 27/27. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(an) de Pendiente (`/admin/clientes`: «Ver pedidos» por cliente → `/admin/pedidos?q=<correo>`).

@@ -7,7 +7,7 @@ import { adminService } from '../../services/adminService';
 import { orderService } from '../../services/orderService';
 import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
-import { ADMIN_ORDERS_PAGE_SIZE, countByStatus, fetchAllRows, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
+import { ADMIN_ORDERS_PAGE_SIZE, countByStatus, fetchAllRows, couponFromParam, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_SELECT = `
@@ -63,6 +63,14 @@ export const AdminOrdersPage = () => {
     if (!code || code === 'todos') next.delete('envio'); else next.set('envio', code);
     setSearchParams(next, { replace: true });
   };
+  // Ejecución 87: filtro por cupón (`?cupon=CODIGO`, sobre online_orders.coupon_code) para enlazar desde la columna USOS
+  // de /admin/descuentos. El código se normaliza como la BD (mayúsculas, sin espacios); uno inválido se ignora.
+  const couponFilter = couponFromParam(searchParams.get('cupon'));
+  const clearCouponFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('cupon');
+    setSearchParams(next, { replace: true });
+  };
   const [searchQuery, setSearchQuery] = useState(urlQuery);
   const lastWrittenQuery = useRef(urlQuery);
   const [transitions, setTransitions] = useState([]);
@@ -92,6 +100,7 @@ export const AdminOrdersPage = () => {
     if (filters.status !== 'todos') q = q.eq('status', filters.status);
     if (filters.method !== 'todos') q = q.eq('shipping_method_code', filters.method);
     if (filters.attention) q = q.eq('needs_attention', true);
+    if (filters.coupon) q = q.eq('coupon_code', filters.coupon);
     const or = orderSearchFilter(filters.query);
     if (or) q = q.or(or);
     return q.order('created_at', { ascending: false }).order('id', { ascending: false })
@@ -104,7 +113,7 @@ export const AdminOrdersPage = () => {
     setSummaryRows(error ? [] : data);
   };
 
-  const filters = { status: selectedStatusTab, method: methodFilter, query: debouncedQuery, attention: onlyAttention };
+  const filters = { status: selectedStatusTab, method: methodFilter, query: debouncedQuery, attention: onlyAttention, coupon: couponFilter };
 
   const fetchDbOrders = async ({ append = false } = {}) => {
     const seq = ++requestSeq.current;
@@ -140,7 +149,7 @@ export const AdminOrdersPage = () => {
     if (urlQuery !== lastWrittenQuery.current) { lastWrittenQuery.current = urlQuery; setSearchQuery(urlQuery); }
   }, [urlQuery]);
 
-  useEffect(() => { fetchDbOrders(); }, [selectedStatusTab, methodFilter, debouncedQuery, onlyAttention]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchDbOrders(); }, [selectedStatusTab, methodFilter, debouncedQuery, onlyAttention, couponFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchSummary();
@@ -223,6 +232,14 @@ export const AdminOrdersPage = () => {
           <option value="todos">Todos los envíos</option>
           {(methodFilter !== 'todos' && !methodOptions.includes(methodFilter) ? [...methodOptions, methodFilter] : methodOptions).map((c) => <option key={c} value={c}>{shippingMethodLabel(c, shippingMethods)}</option>)}
         </select>
+
+        {couponFilter && (
+          <span data-testid="orders-coupon-filter" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.6rem', borderRadius: '999px', background: '#EEF2FF', color: '#3730A3', fontSize: '0.8rem', fontWeight: 800 }}>
+            Cupón: {couponFilter}
+            <button type="button" onClick={clearCouponFilter} aria-label={`Quitar filtro del cupón ${couponFilter}`}
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#3730A3', fontWeight: 900, padding: 0 }}>×</button>
+          </span>
+        )}
 
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 700, color: attentionCount > 0 ? '#B91C1C' : '#52525B' }}>
           <input type="checkbox" checked={onlyAttention} onChange={(e) => setOnlyAttention(e.target.checked)} />

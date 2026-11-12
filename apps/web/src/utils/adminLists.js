@@ -82,3 +82,13 @@ export function buildCustomers(profiles, orders) {
     };
   });
 }
+
+/**
+ * Ejecución 87: código de cupón leído de `?cupon=` en /admin/pedidos. Se normaliza igual que la BD
+ * (`upper(btrim(code))`) y se valida contra la restricción de `coupons.code` (`^[A-Z0-9_-]{3,40}$`); cualquier otro
+ * valor devuelve null (sin filtro) en vez de mandar a PostgREST un texto arbitrario.
+ */
+export function couponFromParam(value) {
+  const code = String(value ?? '').trim().toUpperCase();
+  return /^[A-Z0-9_-]{3,40}$/.test(code) ? code : null;
+}

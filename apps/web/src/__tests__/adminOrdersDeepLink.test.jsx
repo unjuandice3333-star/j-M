@@ -186,6 +186,40 @@ describe('Pedidos: búsqueda y método de envío desde la URL (ejecución 82)', 
   });
 });
 
+describe('Pedidos: filtro por cupón desde la URL (ejecución 87)', () => {
+  beforeEach(() => {
+    supa.state.tables.online_orders = [
+      order(1, 'paid', { coupon_code: 'JM10' }), order(2, 'paid'), order(3, 'shipped', { coupon_code: 'JM10' }), order(4, 'paid', { coupon_code: 'OTRO' }),
+    ];
+  });
+  const chip = () => container.querySelector('[data-testid="orders-coupon-filter"]');
+
+  it('?cupon= filtra en la BD por coupon_code (normalizado) y muestra el filtro activo', async () => {
+    await renderAt('/admin/pedidos?cupon=%20jm10%20');
+    expect(lastListQuery().eq).toEqual([['coupon_code', 'JM10']]);
+    expect(orderNumbers().sort()).toEqual(['JM-1', 'JM-3']);
+    expect(chip().textContent).toContain('Cupón: JM10');
+  });
+
+  it('se combina con ?estado= y quitar el filtro conserva los demás parámetros', async () => {
+    await renderAt('/admin/pedidos?estado=paid&cupon=JM10');
+    expect(lastListQuery().eq).toEqual([['status', 'paid'], ['coupon_code', 'JM10']]);
+    expect(orderNumbers()).toEqual(['JM-1']);
+    await act(async () => { chip().querySelector('button').click(); });
+    await flush();
+    expect(currentLocation.search).toBe('?estado=paid');
+    expect(chip()).toBeNull();
+    expect(orderNumbers().sort()).toEqual(['JM-1', 'JM-2', 'JM-4']);
+  });
+
+  it('un código inválido en ?cupon= se ignora (no se envía a la BD)', async () => {
+    await renderAt('/admin/pedidos?cupon=a*b,or(');
+    expect(lastListQuery().eq).toEqual([]);
+    expect(chip()).toBeNull();
+    expect(orderNumbers()).toHaveLength(4);
+  });
+});
+
 describe('Dashboard: tarjeta «Por preparar»', () => {
   it('cuenta los pagados de cualquier fecha y lleva a la pestaña «Pagado»', async () => {
     // Pedidos pagados fuera del periodo elegido: las métricas del periodo no los incluyen, la tarjeta sí.

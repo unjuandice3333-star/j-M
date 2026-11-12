@@ -233,6 +233,13 @@ describe('AdminDiscountsPage (UI)', () => {
     expect(host.querySelector('[data-testid="usos-SINUSO"]').textContent).not.toMatch(/descontados|pendiente/);
   });
 
+  it('USOS enlaza a /admin/pedidos?cupon=CODIGO solo si el cupón tiene usos (ejecución 87)', async () => {
+    root.unmount(); host.remove();
+    await mount('/admin/descuentos', [C, FRESH], RED);
+    expect(host.querySelector('[data-testid="pedidos-cupon-BIENVENIDA10"]').getAttribute('href')).toBe('/admin/pedidos?cupon=BIENVENIDA10');
+    expect(host.querySelector('[data-testid="pedidos-cupon-SINUSO"]')).toBeNull();
+  });
+
   it('si falla el uso, la tabla sigue visible con un aviso', async () => {
     root.unmount(); host.remove();
     supa.state.fail['coupon_redemptions.select'] = { code: '42501', message: 'permission denied' };

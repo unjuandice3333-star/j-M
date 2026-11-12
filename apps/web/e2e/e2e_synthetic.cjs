@@ -615,6 +615,17 @@ async function main() {
       assert.match(asked, /JM10.*2 pedidos.*1 con pago pendiente/);
       await p.waitForTimeout(300);
       assert.equal(await p.locator('tbody tr', { hasText: 'JM10' }).locator('td').nth(5).innerText(), 'Activo');
+      // Ejecución 87: «Ver pedidos» en USOS abre /admin/pedidos filtrado por el cupón; quitar el filtro limpia la URL.
+      await p.getByTestId('pedidos-cupon-JM10').click();
+      await p.waitForURL((u) => u.pathname === '/admin/pedidos' && u.searchParams.get('cupon') === 'JM10');
+      await p.getByTestId('orders-coupon-filter').filter({ hasText: 'Cupón: JM10' }).waitFor();
+      const st = await (await fetch(`${API_URL}/__state`)).json();
+      const expected = st.orders.filter((o) => o.coupon_code === 'JM10').map((o) => o.order_number).sort();
+      await p.waitForFunction((n) => !document.body.innerText.includes('Cargando') && document.querySelectorAll('tbody tr').length >= n, expected.length, { timeout: 8000 }).catch(() => {});
+      const shown = (await p.locator('tbody tr td:first-child').allInnerTexts()).map((t) => t.trim()).filter((t) => /^JM-/.test(t)).sort();
+      assert.deepEqual(shown, expected);
+      await p.getByRole('button', { name: 'Quitar filtro del cupón JM10' }).click();
+      await p.waitForURL((u) => !u.searchParams.has('cupon'));
     }, browser);
 
     await journey('24. Cuenta: baja y alta del boletín desde «Mis datos»', async (p) => {

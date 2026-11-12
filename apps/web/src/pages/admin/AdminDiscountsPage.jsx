@@ -5,10 +5,11 @@
 // Ejecución 50: validación y acceso a datos en services/couponsAdminService.js (fechas en hora local, % máx. 90).
 // Ejecución 86: uso real por cupón (pedidos pagados, descuento otorgado y pagos pendientes, de coupon_redemptions) y
 // confirmación antes de desactivar un cupón con usos.
+// Ejecución 87: «Ver pedidos» en USOS enlaza a /admin/pedidos?cupon=CODIGO.
 // Ejecución 85: búsqueda sin tildes por código/descripción (`?q=`) y filtro de estado (`?estado=`) en la URL.
 // =============================================================================
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, X } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
 import couponsAdminService, {
@@ -123,6 +124,12 @@ export const AdminDiscountsPage = () => {
                     {c.used_count}{c.max_uses ? ` / ${c.max_uses}` : ''}{c.max_uses_per_email ? ` (máx. ${c.max_uses_per_email} por correo)` : ''}
                     {usage[c.id]?.paidDiscount > 0 && <div style={{ fontSize: '0.72rem', color: '#065F46' }}>{formatCOP(usage[c.id].paidDiscount)} descontados</div>}
                     {usage[c.id]?.pending > 0 && <div style={{ fontSize: '0.72rem', color: '#B45309' }}>+{usage[c.id].pending} con pago pendiente</div>}
+                    {couponUseCount(c, usage[c.id]) > 0 && (
+                      <Link to={`/admin/pedidos?cupon=${encodeURIComponent(c.code)}`} data-testid={`pedidos-cupon-${c.code}`}
+                        style={{ display: 'inline-block', marginTop: '0.2rem', fontSize: '0.72rem', fontWeight: 700, color: '#4338CA' }}>
+                        Ver pedidos
+                      </Link>
+                    )}
                   </td>
                   <td style={{ ...tdDisc, color: '#71717A', fontSize: '0.78rem' }}>
                     {c.starts_at ? `desde ${new Date(c.starts_at).toLocaleDateString('es-CO')}` : 'sin inicio'} · {c.expires_at ? `hasta ${new Date(c.expires_at).toLocaleDateString('es-CO')}` : 'sin fin'}
