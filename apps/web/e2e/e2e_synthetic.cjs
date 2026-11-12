@@ -438,6 +438,56 @@ async function main() {
       } finally { await ctxB.close(); }
     }, browser, null, MOBILE);
 
+    await journey('31. Móvil 375×812: admin (login, menú, dashboard, pedidos con detalle, inventario y productos) sin desbordes', async (p) => {
+      // un pedido pagado (sintético) para que el dashboard y la lista de pedidos tengan filas reales
+      await addToCart(p, 'polo-clasico', 'M'); await p.goto(`${BASE}/checkout`); await fillCheckout(p);
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).tap(); await p.waitForURL(/\/checkout\/confirmacion/);
+      const num = (await state()).orders[0].order_number;
+      await fetch(`${API_URL}/__synthetic-mark-paid/${num}`);
+      await p.evaluate(() => localStorage.clear());
+      await p.goto(`${BASE}/admin/login`);
+      await assertNoHorizontalOverflow(p, 'login admin');
+      await p.locator('input[type=email]').fill('admin@jm.test'); await p.locator('input[type=password]').fill('Admin-Sintetico-1');
+      const entrar = p.getByRole('button', { name: 'INICIAR SESIÓN ADM' });
+      await assertTappable(entrar, 'iniciar sesión admin'); await entrar.tap();
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await expectText(p, num);
+      await assertNoHorizontalOverflow(p, 'dashboard');
+      // menú lateral: oculto en móvil, se abre con ☰ y navega
+      const menu = p.getByRole('button', { name: 'Abrir menú' });
+      await assertTappable(menu, 'abrir menú'); await menu.tap();
+      const pedidosLink = p.getByRole('link', { name: /^Pedidos/ });
+      await assertTappable(pedidosLink, 'menú → pedidos'); await pedidosLink.tap();
+      await p.waitForURL(/\/admin\/pedidos$/, { timeout: 8000 });
+      await expectText(p, num);
+      await assertNoHorizontalOverflow(p, 'pedidos');
+      const gestionar = p.locator('tr', { hasText: num }).getByRole('button', { name: 'GESTIONAR' });
+      await assertTappable(gestionar, 'gestionar pedido'); await gestionar.tap();
+      const guardar = p.getByRole('button', { name: 'GUARDAR CAMBIOS' });
+      await guardar.waitFor({ timeout: 8000 });
+      await assertNoHorizontalOverflow(p, 'detalle del pedido');
+      await assertTappable(guardar, 'guardar cambios del pedido');
+      for (const [url, text] of [['/admin/inventario', 'INVENTARIO (5 variantes)'], ['/admin/productos', 'Polo Clásico'], ['/admin/clientes', 'CLIENTES']]) {
+        await p.goto(`${BASE}${url}`);
+        await expectText(p, text);
+        await p.waitForLoadState('networkidle');
+        await assertNoHorizontalOverflow(p, url);
+      }
+      // productos: acciones de la fila y formulario de edición
+      await p.goto(`${BASE}/admin/productos?q=POL-001`);
+      await assertTappable(p.getByRole('link', { name: 'Ver inventario de Polo Clásico' }), 'ver inventario del producto');
+      const editar = p.locator('tr', { hasText: 'Polo Clásico' }).getByTitle('Editar prenda');
+      await assertTappable(editar, 'editar prenda'); await editar.tap();
+      await p.waitForURL(/\/admin\/productos\/nuevo\?editId=/, { timeout: 8000 });
+      await p.waitForLoadState('networkidle');
+      await assertNoHorizontalOverflow(p, 'formulario de producto');
+      const row = p.locator('tr', { hasText: 'POL-M-NEG' });
+      await p.goto(`${BASE}/admin/inventario`); await row.waitFor();
+      await assertTappable(row.getByLabel('Cantidad a ajustar POL-M-NEG'), 'cantidad del ajuste');
+      await assertTappable(row.getByLabel('Motivo del ajuste POL-M-NEG'), 'motivo del ajuste');
+      await assertTappable(row.getByRole('button').first(), 'aplicar ajuste de inventario');
+    }, browser, null, MOBILE);
+
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);

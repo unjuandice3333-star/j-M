@@ -366,7 +366,8 @@ export const AdminOrdersPage = () => {
                         borderRadius: '4px',
                         fontSize: '0.75rem',
                         fontWeight: 800,
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        minHeight: '36px'
                       }}
                     >
                       GESTIONAR

@@ -220,7 +220,7 @@ export const AdminInventoryPage = () => {
                         value={adjustmentValue[item.id] || ''}
                         onChange={(e) => setAdjustmentValue({ ...adjustmentValue, [item.id]: e.target.value })}
                         aria-label={`Cantidad a ajustar ${item.sku}`}
-                        style={{ width: '80px', padding: '0.3rem', border: '1px solid #D4D4D8', borderRadius: '4px', textAlign: 'center', fontWeight: 700 }}
+                        style={{ width: '80px', minHeight: '36px', padding: '0.3rem', border: '1px solid #D4D4D8', borderRadius: '4px', textAlign: 'center', fontWeight: 700 }}
                       />
                       <input
                         type="text"
@@ -228,12 +228,12 @@ export const AdminInventoryPage = () => {
                         aria-label={`Motivo del ajuste ${item.sku}`}
                         value={reasons[item.id] || ''}
                         onChange={(e) => setReasons({ ...reasons, [item.id]: e.target.value })}
-                        style={{ width: '150px', padding: '0.3rem', border: '1px solid #D4D4D8', borderRadius: '4px' }}
+                        style={{ width: '150px', minHeight: '36px', padding: '0.3rem', border: '1px solid #D4D4D8', borderRadius: '4px' }}
                       />
                       <button
                         onClick={() => handleStockAdjustment(item)}
                         disabled={adjustingId === item.id}
-                        style={{ backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.35rem 0.75rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, opacity: adjustingId === item.id ? 0.7 : 1 }}
+                        style={{ backgroundColor: '#09090B', color: '#FFFFFF', minHeight: '36px', padding: '0.35rem 0.75rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, opacity: adjustingId === item.id ? 0.7 : 1 }}
                       >
                         {adjustingId === item.id ? 'Ajustando...' : 'Ajustar'}
                       </button>

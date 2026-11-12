@@ -811,3 +811,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(au) de Pendiente (recorrido móvil 375×812 del admin).
+
+## Ejecución 95 — 2026-11-12 18:10 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-o69cju` (= main, `2661f2a`); se partió de la rama autorizada = remoto `53f615b`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(au) de Pendiente. Recorrido E2E móvil 375×812 del admin y corrección de lo encontrado (D66).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (recorrido 31), `apps/web/src/pages/admin/AdminOrdersPage.jsx`, `apps/web/src/pages/admin/AdminInventoryPage.jsx`.
+- Pruebas (ejecutadas aquí): recorrido 31 falla sin los cambios de `src` (`git stash`: «GESTIONAR» 28 px; antes de la 2.ª corrección: «Ajustar» 26 px) y pasa con ellos; `pnpm test:unit` 487/487 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 31/31. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni dispositivos reales.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(av) de Pendiente (recorrido móvil 375×812 del resto del admin).
