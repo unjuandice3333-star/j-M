@@ -671,3 +671,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ag) de Pendiente (búsqueda de `/admin/clientes` sin tildes y en `?q=`).
+
+## Ejecución 81 — 2026-11-12 04:10 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-smzl19` (= main, `2661f2a`); se partió de la rama autorizada = remoto `0bf6f50`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ag) de Pendiente. `/admin/clientes`: búsqueda sin tildes/mayúsculas por nombre, correo, teléfono y ciudad; el teléfono coincide ignorando espacios, guiones y paréntesis; búsqueda (`?q=`) y rol (`?rol=`, valor desconocido → «Clientes») en la URL.
+- Archivos: `apps/web/src/pages/admin/AdminCustomersPage.jsx`, `apps/web/src/__tests__/adminLists.test.jsx` (4 pruebas nuevas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 10 ampliado, solo con el perfil admin porque los recorridos corren en paralelo).
+- Pruebas (ejecutadas aquí): 3 de las 4 pruebas nuevas fallan sin el cambio (`git stash`; la 4.ª cubre el valor por defecto); `pnpm test:unit` 445/445 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 26/26 (un primer intento falló porque el paso dependía de un cliente creado en otro recorrido paralelo; corregido). Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ah) de Pendiente (búsqueda de `/admin/pedidos` en `?q=`).

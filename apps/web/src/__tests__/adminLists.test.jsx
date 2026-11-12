@@ -6,7 +6,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 
 function fakeSupabase() {
   const state = { tables: {}, rpc: {}, errors: {}, queries: [] };
@@ -247,5 +247,62 @@ describe('Dashboard del admin', () => {
     expect(container.textContent).toContain('VENTAS PAGADAS');
     expect(container.querySelector('.lucide-arrow-up-right, .lucide-arrow-down-right')).toBeNull();
     expect(container.querySelectorAll('[data-warn="true"]').length).toBe(0);
+  });
+});
+
+// Ejecución 81: búsqueda de clientes sin tildes, por ciudad y teléfono con formato, en la URL (`?q=`, `?rol=`).
+describe('Admin de clientes: búsqueda sin tildes y en la URL', () => {
+  let loc;
+  const Spy = () => { loc = useLocation(); return null; };
+  const names = () => [...container.querySelectorAll('tbody tr td:first-child > div:first-child')].map((d) => d.textContent);
+  const renderAt = async (url) => {
+    const { AdminCustomersPage } = await import('../pages/admin/AdminCustomersPage');
+    await act(async () => { root.render(<MemoryRouter initialEntries={[url]}><AdminCustomersPage /><Spy /></MemoryRouter>); });
+    await flush();
+  };
+  const type = async (el, value) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    await act(async () => { setter.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); });
+    await flush();
+  };
+  beforeEach(() => {
+    supa.state.tables.profiles = [
+      { id: 'u1', email: 'jose@x.co', full_name: 'José Pérez', phone: '300 123-4567', role: 'customer', created_at: '2026-10-01T00:00:00Z' },
+      { id: 'u2', email: 'maria@x.co', full_name: 'María Gómez', phone: '3109998877', role: 'customer', created_at: '2026-10-02T00:00:00Z' },
+      { id: 'u3', email: 'admin@x.co', full_name: 'Ángela Admin', phone: null, role: 'admin', created_at: '2026-10-03T00:00:00Z' },
+    ];
+    supa.state.tables.online_orders = [order(1, { user_id: 'u2', shipping_city: 'Bogotá' })];
+  });
+
+  it('?q= sin tildes encuentra el nombre con tilde y la ciudad del último pedido', async () => {
+    await renderAt('/admin/clientes?q=PEREZ');
+    expect(container.querySelector('input[aria-label="Buscar clientes"]').value).toBe('PEREZ');
+    expect(names()).toEqual(['José Pérez']);
+    await act(async () => { root.unmount(); });
+    root = createRoot(container);
+    await renderAt('/admin/clientes?q=bogota');
+    expect(names()).toEqual(['María Gómez']);
+  });
+
+  it('el teléfono coincide sin espacios ni guiones', async () => {
+    await renderAt('/admin/clientes?q=3001234');
+    expect(names()).toEqual(['José Pérez']);
+  });
+
+  it('?rol= filtra por rol y escribir/borrar la búsqueda actualiza ?q= sin perder ?rol=', async () => {
+    await renderAt('/admin/clientes?rol=admin');
+    expect(container.querySelector('select[aria-label="Filtrar por rol"]').value).toBe('admin');
+    expect(names()).toEqual(['Ángela Admin']);
+    await type(container.querySelector('input[aria-label="Buscar clientes"]'), 'angela');
+    expect(new URLSearchParams(loc.search).get('q')).toBe('angela');
+    expect(new URLSearchParams(loc.search).get('rol')).toBe('admin');
+    expect(names()).toEqual(['Ángela Admin']);
+    await type(container.querySelector('input[aria-label="Buscar clientes"]'), '');
+    expect(loc.search).toBe('?rol=admin');
+  });
+
+  it('un ?rol= desconocido vuelve a «Clientes»', async () => {
+    await renderAt('/admin/clientes?rol=hacker');
+    expect(names()).toEqual(['José Pérez', 'María Gómez']);
   });
 });

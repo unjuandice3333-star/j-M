@@ -4,21 +4,47 @@
 // M27: reescrito; antes mostraba 0 compras, ciudad fija y un "nivel" inventado a partir del rol.
 // =============================================================================
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { STATUS_LABEL } from './AdminOrdersPage';
 import { buildCustomers, fetchAllRows } from '../../utils/adminLists';
+import { normalizeText } from '../../utils/catalogFilters';
 
 const ROLE_LABEL = { customer: 'Cliente', admin: 'Administrador', super_admin: 'Super administrador' };
+const ROLE_FILTERS = ['customer', 'admin', 'super_admin', 'todos'];
+export const roleFilterFromParam = (value) => (ROLE_FILTERS.includes(value) ? value : 'customer');
+
+/**
+ * Ejecución 81: búsqueda sin tildes ni mayúsculas por nombre, correo, teléfono o ciudad.
+ * El teléfono también coincide ignorando espacios, guiones y paréntesis («300 123-45» ≈ «30012345»).
+ */
+export const matchesCustomerSearch = (c, query) => {
+  const q = normalizeText(query);
+  if (!q) return true;
+  if ([c.full_name, c.email, c.phone, c.city].some((v) => normalizeText(v).includes(q))) return true;
+  const digits = q.replace(/\D/g, '');
+  return digits.length >= 3 && digits.length === q.replace(/[\s+().-]/g, '').length
+    && String(c.phone ?? '').replace(/\D/g, '').includes(digits);
+};
 
 export const AdminCustomersPage = () => {
   const [profiles, setProfiles] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loadError, setLoadError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('customer');
+  // Búsqueda y rol en la URL (`?q=`, `?rol=`) para poder compartir o recargar la vista (ejecución 81).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q') ?? '';
+  const roleFilter = roleFilterFromParam(searchParams.get('rol'));
+  const setParam = (key, value, empty) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === empty) next.delete(key); else next.set(key, value);
+    setSearchParams(next, { replace: true });
+  };
+  const setSearchQuery = (value) => setParam('q', value, '');
+  const setRoleFilter = (value) => setParam('rol', value, 'customer');
   const [selected, setSelected] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [addressError, setAddressError] = useState(null);
@@ -43,9 +69,7 @@ export const AdminCustomersPage = () => {
 
   const customers = useMemo(() => buildCustomers(profiles, orders), [profiles, orders]);
 
-  const q = searchQuery.trim().toLowerCase();
-  const filtered = customers.filter((c) => (roleFilter === 'todos' || c.role === roleFilter)
-    && (!q || [c.full_name, c.email, c.phone].some((v) => String(v ?? '').toLowerCase().includes(q))));
+  const filtered = customers.filter((c) => (roleFilter === 'todos' || c.role === roleFilter) && matchesCustomerSearch(c, searchQuery));
 
   const open = async (c) => {
     setSelected(c); setAddresses([]); setAddressError(null);
@@ -64,7 +88,7 @@ export const AdminCustomersPage = () => {
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#FFF', padding: '1rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', flex: 1, minWidth: 240 }}>
           <Search size={16} color="#71717A" />
-          <input aria-label="Buscar clientes" placeholder="Buscar por nombre, correo o teléfono" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', outline: 'none', flex: 1 }} />
+          <input aria-label="Buscar clientes" type="search" placeholder="Buscar por nombre, correo, teléfono o ciudad" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', outline: 'none', flex: 1 }} />
         </div>
         <select aria-label="Filtrar por rol" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: '6px' }}>
           <option value="customer">Clientes</option>

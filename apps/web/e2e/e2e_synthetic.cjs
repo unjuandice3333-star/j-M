@@ -761,6 +761,16 @@ async function main() {
       await p.waitForURL(/\/admin\/productos\?q=POL-001$/, { timeout: 8000 });
       await expectText(p, 'Polo Clásico');
       if (await p.getByText('Camiseta Básica').count()) throw new Error('la búsqueda por referencia no filtró');
+      // Ejecución 81: /admin/clientes busca sin tildes; búsqueda y rol quedan en ?q= y ?rol=
+      // (solo el perfil admin: los recorridos corren en paralelo y los clientes varían)
+      await p.goto(`${BASE}/admin/clientes?q=SINTETICO`);
+      await expectText(p, 'No hay resultados.');
+      await p.getByLabel('Filtrar por rol').selectOption('todos');
+      await p.waitForURL(/\/admin\/clientes\?q=SINTETICO&rol=todos$/, { timeout: 8000 });
+      await expectText(p, 'Admin Sintético');
+      await p.getByLabel('Buscar clientes').fill('zz-nadie');
+      await p.waitForURL(/\/admin\/clientes\?q=zz-nadie&rol=todos$/, { timeout: 8000 });
+      await expectText(p, 'No hay resultados.');
       // inventario: ajuste con motivo
       await p.goto(`${BASE}/admin/inventario`);
       await expectText(p, 'INVENTARIO (5 variantes)');
