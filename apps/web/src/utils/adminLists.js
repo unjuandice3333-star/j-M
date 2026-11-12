@@ -141,3 +141,21 @@ export function orderLink(orderNumber) {
   const n = String(orderNumber ?? '').trim();
   return n ? `/admin/pedidos?${new URLSearchParams({ q: n })}` : null;
 }
+
+/**
+ * Ejecución 90: enlace del cupón de un pedido a /admin/descuentos (`?q=<código>`). `coupon_code` es la instantánea del
+ * código al crear el pedido; se normaliza y valida como `couponFromParam`, así que un valor inválido no genera enlace.
+ */
+export function couponLink(code) {
+  const c = couponFromParam(code);
+  return c ? `/admin/descuentos?${new URLSearchParams({ q: c })}` : null;
+}
+
+/**
+ * Ejecución 90: enlace de una línea del pedido a /admin/productos buscando por su SKU (`?q=<sku>`). La búsqueda del
+ * admin de productos incluye borradores/archivados (`estado` por defecto = todos) y compara SKU de variantes.
+ */
+export function productLinkForSku(sku) {
+  const s = String(sku ?? '').trim();
+  return s ? `/admin/productos?${new URLSearchParams({ q: s })}` : null;
+}

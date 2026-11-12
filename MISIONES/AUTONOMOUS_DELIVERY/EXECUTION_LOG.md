@@ -761,3 +761,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ap) de Pendiente (en el detalle del pedido, cupón → `/admin/descuentos?q=` y líneas → `/admin/productos?q=<sku>`).
+
+## Ejecución 90 — 2026-11-12 13:10 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-u0fsa2` (= main, `2661f2a`); se partió de la rama autorizada = remoto `2b7a9e3`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ap) de Pendiente. Detalle del pedido en el admin: cupón → `/admin/descuentos?q=<código>`, SKU de cada línea → `/admin/productos?q=<sku>` (D61).
+- Archivos: `apps/web/src/utils/adminLists.js` (`couponLink`, `productLinkForSku`), `apps/web/src/pages/admin/AdminOrdersPage.jsx`, `apps/web/src/__tests__/adminLists.test.jsx` (1 prueba), `apps/web/src/__tests__/adminOrdersDeepLink.test.jsx` (2 pruebas), `apps/web/e2e/synthetic/backend.cjs` (fixture con `coupon_code`/`sku`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 27 ampliado).
+- Pruebas (ejecutadas aquí): 2 de las 3 pruebas nuevas fallan sin el cambio (`git stash`; la tercera comprueba la ausencia de enlaces); `pnpm test:unit` 482/482 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 28/28 (intentos previos 27/28 por MI recorrido: sin pedidos con JM10 en el backend → fixture; lectura de la tabla antes de cargar → espera explícita). Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(aq) de Pendiente (productos ↔ inventario: «Ver inventario» por producto y variante → producto).

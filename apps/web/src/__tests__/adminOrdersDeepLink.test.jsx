@@ -338,3 +338,36 @@ describe('Detalle del pedido: enlace al cliente', () => {
     expect(b.textContent).toBe('Buscar cliente por correo');
   });
 });
+
+// Ejecución 90: en el detalle del pedido el cupón enlaza a /admin/descuentos y cada SKU a /admin/productos.
+describe('Detalle del pedido: enlaces a cupón y productos', () => {
+  const item = (sku) => ({ product_name: 'Blusa', sku, size_code: 'M', color_name: 'Negro', unit_price: 50000, quantity: 1, line_total: 50000, image_url: null });
+  const open = async (n) => {
+    const row = [...container.querySelectorAll('tbody tr')].find((tr) => tr.querySelector('td')?.textContent.trim() === `JM-${n}`);
+    await act(async () => { row.querySelector('td:last-child button').click(); });
+    await flush();
+  };
+  beforeEach(() => {
+    supa.state.tables.online_orders = [
+      order(1, 'paid', { coupon_code: 'JM10', discount_total: 10000, online_order_items: [item('BL-01-M-NEG'), item('BL-01-L-NEG')] }),
+      order(2, 'paid', { online_order_items: [item('')] }),
+    ];
+  });
+
+  it('cupón → /admin/descuentos?q=CÓDIGO y cada línea → /admin/productos?q=SKU', async () => {
+    await renderAt('/admin/pedidos');
+    await open(1);
+    const coupon = container.querySelector('[data-testid="order-coupon-link"]');
+    expect(coupon.getAttribute('href')).toBe('/admin/descuentos?q=JM10');
+    expect(coupon.textContent).toBe('JM10');
+    expect(container.querySelector('[data-testid="order-item-sku-0"]').getAttribute('href')).toBe('/admin/productos?q=BL-01-M-NEG');
+    expect(container.querySelector('[data-testid="order-item-sku-1"]').getAttribute('href')).toBe('/admin/productos?q=BL-01-L-NEG');
+  });
+
+  it('sin cupón ni SKU no hay enlaces', async () => {
+    await renderAt('/admin/pedidos');
+    await open(2);
+    expect(container.querySelector('[data-testid="order-coupon-link"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-item-sku-0"]')).toBeNull();
+  });
+});

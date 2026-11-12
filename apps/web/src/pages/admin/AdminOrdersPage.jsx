@@ -7,7 +7,7 @@ import { adminService } from '../../services/adminService';
 import { orderService } from '../../services/orderService';
 import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
-import { ADMIN_ORDERS_PAGE_SIZE, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
+import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_SELECT = `
@@ -478,14 +478,22 @@ export const AdminOrdersPage = () => {
                 <div key={idx} style={{ display: 'flex', gap: '1rem', alignItems: 'center', borderBottom: '1px solid #F4F4F5', paddingBottom: '0.75rem' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{item.product_name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#71717A' }}>SKU {item.sku} • Talla: {item.size_code} • Color: {item.color_name} • Cant: {item.quantity}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#71717A' }}>SKU {productLinkForSku(item.sku)
+                      ? <Link data-testid={`order-item-sku-${idx}`} to={productLinkForSku(item.sku)} title="Ver producto en el admin" style={{ textDecoration: 'underline', color: '#3730A3', fontWeight: 700 }}>{item.sku}</Link>
+                      : item.sku} • Talla: {item.size_code} • Color: {item.color_name} • Cant: {item.quantity}</div>
                   </div>
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{formatCOP(Number(item.line_total))}</div>
                 </div>
               ))}
               <div style={{ fontSize: '0.85rem', textAlign: 'right' }}>
                 Subtotal {formatCOP(Number(selectedOrder.subtotal))}
-                {Number(selectedOrder.discount_total) > 0 && ` · Descuento -${formatCOP(Number(selectedOrder.discount_total))}${selectedOrder.coupon_code ? ` (${selectedOrder.coupon_code})` : ''}`}
+                {/* Ejecución 90: el cupón enlaza a /admin/descuentos?q=<código>. */}
+                {Number(selectedOrder.discount_total) > 0 && <>
+                  {` · Descuento -${formatCOP(Number(selectedOrder.discount_total))}`}
+                  {selectedOrder.coupon_code && <> ({couponLink(selectedOrder.coupon_code)
+                    ? <Link data-testid="order-coupon-link" to={couponLink(selectedOrder.coupon_code)} title="Ver cupón" style={{ textDecoration: 'underline', color: '#3730A3', fontWeight: 700 }}>{selectedOrder.coupon_code}</Link>
+                    : selectedOrder.coupon_code})</>}
+                </>}
                 {` · Envío${selectedOrder.shipping_method_code ? ` (${shippingMethodLabel(selectedOrder.shipping_method_code, shippingMethods)})` : ''} ${formatCOP(Number(selectedOrder.shipping_cost))} · `}<strong>Total {formatCOP(selectedOrder.total)}</strong>
               </div>
             </div>

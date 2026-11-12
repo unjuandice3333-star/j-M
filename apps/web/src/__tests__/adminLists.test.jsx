@@ -392,4 +392,14 @@ describe('Admin de clientes: ficha enlazada y pedidos enlazados', () => {
     expect(orderLink('JM-000007')).toBe('/admin/pedidos?q=JM-000007');
     expect(orderLink('  ')).toBeNull();
   });
+
+  it('couponLink / productLinkForSku (ejecución 90)', async () => {
+    const { couponLink, productLinkForSku } = await import('../utils/adminLists');
+    expect(couponLink(' jm10 ')).toBe('/admin/descuentos?q=JM10');
+    expect(couponLink('x')).toBeNull();
+    expect(couponLink('a,or(b)')).toBeNull();
+    expect(couponLink(null)).toBeNull();
+    expect(productLinkForSku(' JM-001 S/Negro ')).toBe('/admin/productos?q=JM-001+S%2FNegro');
+    expect(productLinkForSku('')).toBeNull();
+  });
 });

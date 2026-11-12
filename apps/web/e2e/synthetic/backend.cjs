@@ -339,6 +339,9 @@ function start(port = 54321) {
             subtotal: 50000, discount_total: 0, shipping_cost: 12000, total: 62000, coupon_code: null, status: body.status || 'paid', created_at: now, payment_expires_at: null,
             paid_at: now, needs_attention: false, carrier: null, tracking_number: null, tracking_url: null, shipped_at: null, delivered_at: null,
             online_order_items: [], payment_transactions: [], order_events: [] };
+          // Ejecución 90: opcionalmente con cupón (descuento fijo) y una línea con un SKU real del catálogo sintético.
+          if (body.coupon_code) { o.coupon_code = String(body.coupon_code).toUpperCase(); o.discount_total = 5000; o.total = 57000; }
+          if (body.sku) o.online_order_items = [{ id: `oi-${n}`, product_name: 'Fixture', sku: body.sku, size_code: 'M', color_name: 'Negro', unit_price: 50000, quantity: 1, line_total: 50000, image_url: null }];
           S.tables.online_orders.unshift(o); return send(res, 200, { order_number: o.order_number });
         }
         if (p.startsWith('/__synthetic-mark-delivered/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o || o.status !== 'paid') return send(res, 404, {}); for (const st of ['processing', 'shipped', 'delivered']) transition(o, st, 'sintético'); return send(res, 200, { status: o.status }); }

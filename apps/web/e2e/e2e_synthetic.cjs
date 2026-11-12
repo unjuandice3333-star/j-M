@@ -627,6 +627,25 @@ async function main() {
       assert.deepEqual(shown, expected);
       await p.getByRole('button', { name: 'Quitar filtro del cupón JM10' }).click();
       await p.waitForURL((u) => !u.searchParams.has('cupon'));
+      // Ejecución 90: desde el detalle de un pedido con JM10, el SKU abre el producto y el cupón abre /admin/descuentos.
+      const fixtureSku = st.inventories[0].sku;
+      const withCoupon = await (await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ customer_email: 'cupon.fixture@jm.test', coupon_code: 'JM10', sku: fixtureSku }) })).json();
+      await p.goto(`${BASE}/admin/pedidos?q=${withCoupon.order_number}`);
+      await p.locator('tbody tr').filter({ hasText: withCoupon.order_number }).locator('td:last-child button').click();
+      const skuLink = p.getByTestId('order-item-sku-0');
+      const sku = (await skuLink.innerText()).trim();
+      assert.equal(sku, fixtureSku);
+      await skuLink.click();
+      await p.waitForURL((u) => u.pathname === '/admin/productos' && u.searchParams.get('q') === sku);
+      assert.equal(await p.getByPlaceholder('Buscar por nombre, referencia o SKU...').inputValue(), sku);
+      await p.waitForFunction(() => document.querySelectorAll('tbody tr').length >= 1 && !document.body.innerText.includes('No hay productos'), null, { timeout: 8000 });
+      await p.goBack();
+      await p.locator('tbody tr').filter({ hasText: withCoupon.order_number }).locator('td:last-child button').click();
+      await p.getByTestId('order-coupon-link').click();
+      await p.waitForURL((u) => u.pathname === '/admin/descuentos' && u.searchParams.get('q') === 'JM10');
+      await p.locator('tbody tr', { hasText: 'JM10' }).waitFor();
+      assert.deepEqual((await rowsOf()).map((t) => t.split('\n')[0]), ['JM10']);
     }, browser);
 
     await journey('28. Admin: «Ver pedidos» de un cliente con la misma atribución que la lista y enlaces pedido ↔ cliente', async (p) => {
