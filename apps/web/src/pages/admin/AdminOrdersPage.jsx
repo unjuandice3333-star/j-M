@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ClipboardList, Search, Eye, Truck, Check, Printer, ChevronDown, X } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
@@ -7,11 +7,11 @@ import { adminService } from '../../services/adminService';
 import { orderService } from '../../services/orderService';
 import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
-import { ADMIN_ORDERS_PAGE_SIZE, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
+import { ADMIN_ORDERS_PAGE_SIZE, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_SELECT = `
-        id, order_number, customer_name, customer_email, customer_phone, customer_document,
+        id, order_number, user_id, customer_name, customer_email, customer_phone, customer_document,
         shipping_department, shipping_city, shipping_address, shipping_neighborhood, shipping_notes, shipping_method_code,
         subtotal, discount_total, shipping_cost, total, coupon_code, status, created_at, paid_at, needs_attention,
         carrier, tracking_number, tracking_url,
@@ -426,7 +426,15 @@ export const AdminOrdersPage = () => {
 
             <div style={{ fontSize: '0.85rem', marginBottom: '1rem', display: 'grid', gap: '0.25rem' }}>
               <div><strong>Estado:</strong> {STATUS_LABEL[selectedOrder.status]} · <strong>Creado:</strong> {selectedOrder.date}</div>
-              <div><strong>Cliente:</strong> {selectedOrder.customer_name} · {selectedOrder.customer_email} · {selectedOrder.customer_phone}</div>
+              <div><strong>Cliente:</strong> {selectedOrder.customer_name} · {selectedOrder.customer_email} · {selectedOrder.customer_phone}
+                {/* Ejecución 89: enlace a la ficha del cliente (cuenta) o a la búsqueda por su correo (pedido de invitado). */}
+                {(() => {
+                  const link = customerLinkForOrder(selectedOrder);
+                  return link && (
+                    <> · <Link data-testid="order-customer-link" to={link.to} style={{ textDecoration: 'underline', color: '#3730A3', fontWeight: 700 }}>{link.label}</Link></>
+                  );
+                })()}
+              </div>
               <div><strong>Envío:</strong> {selectedOrder.shippingAddress}{selectedOrder.shipping_notes ? ` · Nota: ${selectedOrder.shipping_notes}` : ''}</div>
               {selectedOrder.shipping_method_code && <div data-testid="order-shipping-method"><strong>Método de envío:</strong> {shippingMethodLabel(selectedOrder.shipping_method_code, shippingMethods)} · {Number(selectedOrder.shipping_cost) === 0 ? 'gratis' : formatCOP(Number(selectedOrder.shipping_cost))}</div>}
               <div><strong>Pago:</strong> {(selectedOrder.payment_transactions ?? []).map((t) => `${t.reference} ${t.status}`).join(' · ') || 'sin intentos de pago'}</div>

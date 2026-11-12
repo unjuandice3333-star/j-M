@@ -629,7 +629,7 @@ async function main() {
       await p.waitForURL((u) => !u.searchParams.has('cupon'));
     }, browser);
 
-    await journey('28. Admin: «Ver pedidos» de un cliente con la misma atribución que la lista', async (p) => {
+    await journey('28. Admin: «Ver pedidos» de un cliente con la misma atribución que la lista y enlaces pedido ↔ cliente', async (p) => {
       // Ejecución 88: cuenta con 1 pedido propio, 1 pedido de invitado con su correo (suyo) y otra cuenta que usó su correo (no es suyo).
       const tag = crypto.randomBytes(3).toString('hex'); const email = `cliente.${tag}@jm.test`;
       const signup = async (mail, name) => (await fetch(`${API_URL}/auth/v1/signup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: mail, password: 'Clave-Segura-1', data: { full_name: name } }) })).json();
@@ -657,6 +657,26 @@ async function main() {
       await p.waitForFunction((n) => [...document.querySelectorAll('tbody tr td:first-child')].map((td) => td.innerText.trim()).filter((t) => t.startsWith('JM-')).join() === n, nums(guest), { timeout: 8000 });
       await p.getByRole('button', { name: 'Quitar filtro del cliente' }).click();
       await p.waitForURL((u) => !u.searchParams.has('cliente') && u.searchParams.get('q') === nums(guest));
+      // Ejecución 89: enlaces cruzados. Detalle de su pedido con cuenta → ficha del cliente → su pedido de invitado.
+      await p.goto(`${BASE}/admin/pedidos?q=${nums(own)}`);
+      const ownRow = p.locator('tbody tr').filter({ hasText: nums(own) });
+      await ownRow.locator('td:last-child button').click();
+      const toCustomer = p.getByTestId('order-customer-link');
+      assert.equal((await toCustomer.innerText()).trim(), 'Ver ficha del cliente');
+      await toCustomer.click();
+      await p.waitForURL((u) => u.pathname === '/admin/clientes' && u.searchParams.get('cliente') === ana.user.id);
+      const dialog = p.getByRole('dialog', { name: `Cliente Ana ${tag}` });
+      await dialog.waitFor();
+      await dialog.getByTestId(`pedido-${nums(guest)}`).click();
+      await p.waitForURL((u) => u.pathname === '/admin/pedidos' && u.searchParams.get('q') === nums(guest));
+      await p.waitForFunction((n) => [...document.querySelectorAll('tbody tr td:first-child')].map((td) => td.innerText.trim()).filter((t) => t.startsWith('JM-')).join() === n, nums(guest), { timeout: 8000 });
+      // pedido de invitado → búsqueda por su correo en todos los roles
+      await p.locator('tbody tr').filter({ hasText: nums(guest) }).locator('td:last-child button').click();
+      const toSearch = p.getByTestId('order-customer-link');
+      assert.equal((await toSearch.innerText()).trim(), 'Buscar cliente por correo');
+      await toSearch.click();
+      await p.waitForURL((u) => u.pathname === '/admin/clientes' && u.searchParams.get('q') === email && u.searchParams.get('rol') === 'todos');
+      await p.getByTestId(`pedidos-cliente-${ana.user.id}`).waitFor();
     }, browser);
 
     await journey('24. Cuenta: baja y alta del boletín desde «Mis datos»', async (p) => {

@@ -312,3 +312,29 @@ describe('Pedidos de un cliente (?cliente=)', () => {
     expect(orderNumbers()).toHaveLength(4);
   });
 });
+
+// Ejecución 89: el detalle del pedido enlaza a la ficha del cliente (cuenta) o a la búsqueda por su correo (invitado).
+describe('Detalle del pedido: enlace al cliente', () => {
+  const ANA = '11111111-1111-4111-8111-111111111111';
+  const openOrder = async (n) => {
+    const row = [...container.querySelectorAll('tbody tr')].find((tr) => tr.querySelector('td')?.textContent.trim() === `JM-${n}`);
+    await act(async () => { row.querySelector('td:last-child button').click(); });
+    await flush();
+    return container.querySelector('[data-testid="order-customer-link"]');
+  };
+  beforeEach(() => {
+    supa.state.tables.online_orders = [order(1, 'paid', { user_id: ANA }), order(2, 'paid', { customer_email: 'ana+1@x.co' })];
+  });
+
+  it('pedido con cuenta → ficha del cliente; pedido de invitado → búsqueda por correo en todos los roles', async () => {
+    await renderAt('/admin/pedidos');
+    const a = await openOrder(1);
+    expect(a.getAttribute('href')).toBe(`/admin/clientes?cliente=${ANA}`);
+    expect(a.textContent).toBe('Ver ficha del cliente');
+    act(() => root.unmount()); root = createRoot(container);
+    await renderAt('/admin/pedidos');
+    const b = await openOrder(2);
+    expect(b.getAttribute('href')).toBe('/admin/clientes?q=ana%2B1%40x.co&rol=todos');
+    expect(b.textContent).toBe('Buscar cliente por correo');
+  });
+});

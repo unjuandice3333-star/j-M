@@ -751,3 +751,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ao) de Pendiente (enlaces cruzados pedido ↔ cliente en el admin).
+
+## Ejecución 89 — 2026-11-12 12:10 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-8c5wji` (= main, `2661f2a`); se partió de la rama autorizada = remoto `77a7e90`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ao) de Pendiente. Enlaces cruzados en el admin: detalle del pedido → cliente (ficha `?cliente=<id>` o búsqueda por correo para invitados) y ficha del cliente → cada pedido (`/admin/pedidos?q=<número>`) (D60).
+- Archivos: `apps/web/src/utils/adminLists.js` (`customerLinkForOrder`, `orderLink`), `apps/web/src/pages/admin/AdminOrdersPage.jsx` (`user_id` en la selección, enlace en el detalle), `apps/web/src/pages/admin/AdminCustomersPage.jsx` (`?cliente=` abre la ficha, aviso si no existe, pedidos enlazados), `apps/web/src/__tests__/adminLists.test.jsx` (3 pruebas), `apps/web/src/__tests__/adminOrdersDeepLink.test.jsx` (1 prueba), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 28 ampliado).
+- Pruebas (ejecutadas aquí): las 4 pruebas nuevas fallan sin el cambio (`git stash` de páginas y utils); `pnpm test:unit` 479/479 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 28/28. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ap) de Pendiente (en el detalle del pedido, cupón → `/admin/descuentos?q=` y líneas → `/admin/productos?q=<sku>`).

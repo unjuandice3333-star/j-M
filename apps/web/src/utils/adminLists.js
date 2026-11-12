@@ -122,3 +122,22 @@ export function combineOrFilters(a, b) {
   if (!b) return a;
   return `and(or(${a}),or(${b}))`;
 }
+
+/**
+ * Ejecución 89: enlace del detalle de un pedido a /admin/clientes. Con cuenta (`user_id`) abre directamente la ficha de
+ * esa cuenta (`?cliente=<id>`); un pedido de invitado busca su correo entre todos los roles (`?q=<correo>&rol=todos`),
+ * igual que `buildCustomers` atribuye los pedidos de invitado por correo. Sin datos útiles devuelve null.
+ */
+export function customerLinkForOrder(order) {
+  const id = customerFromParam(order?.user_id);
+  if (id) return { to: `/admin/clientes?cliente=${id}`, label: 'Ver ficha del cliente' };
+  const email = norm(order?.customer_email);
+  if (!email) return null;
+  return { to: `/admin/clientes?${new URLSearchParams({ q: email, rol: 'todos' })}`, label: 'Buscar cliente por correo' };
+}
+
+/** Ejecución 89: enlace de un pedido (por su número, único) a /admin/pedidos. */
+export function orderLink(orderNumber) {
+  const n = String(orderNumber ?? '').trim();
+  return n ? `/admin/pedidos?${new URLSearchParams({ q: n })}` : null;
+}

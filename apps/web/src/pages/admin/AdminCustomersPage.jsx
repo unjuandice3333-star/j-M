@@ -9,7 +9,7 @@ import { Search, X } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { STATUS_LABEL } from './AdminOrdersPage';
-import { buildCustomers, fetchAllRows } from '../../utils/adminLists';
+import { buildCustomers, customerFromParam, fetchAllRows, orderLink } from '../../utils/adminLists';
 import { normalizeText } from '../../utils/catalogFilters';
 
 const ROLE_LABEL = { customer: 'Cliente', admin: 'Administrador', super_admin: 'Super administrador' };
@@ -48,6 +48,9 @@ export const AdminCustomersPage = () => {
   const [selected, setSelected] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [addressError, setAddressError] = useState(null);
+  // Ejecución 89: `?cliente=<id>` (enlazado desde el detalle de un pedido) abre la ficha de esa cuenta, sea cual sea el rol.
+  const linkedId = customerFromParam(searchParams.get('cliente'));
+  const [linkedMissing, setLinkedMissing] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -77,6 +80,18 @@ export const AdminCustomersPage = () => {
     if (error) setAddressError('No se pudieron cargar las direcciones.');
     else setAddresses(data ?? []);
   };
+  const close = () => {
+    setSelected(null);
+    if (searchParams.has('cliente')) setParam('cliente', '', '');
+  };
+
+  useEffect(() => {
+    if (isLoading || !linkedId) { setLinkedMissing(false); return; }
+    const c = customers.find((x) => x.id === linkedId);
+    setLinkedMissing(!c);
+    if (c && selected?.id !== c.id) open(c);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, linkedId, customers]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -98,6 +113,7 @@ export const AdminCustomersPage = () => {
         </select>
       </div>
       {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{loadError}</div>}
+      {linkedMissing && !loadError && <div role="status" data-testid="linked-customer-missing" style={{ color: '#71717A', fontWeight: 600 }}>No se encontró la cuenta enlazada.</div>}
 
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -133,11 +149,11 @@ export const AdminCustomersPage = () => {
       </div>
 
       {selected && (
-        <div className="modal-overlay" onClick={() => setSelected(null)}>
+        <div className="modal-overlay" onClick={close}>
           <div role="dialog" aria-label={`Cliente ${selected.full_name || selected.email}`} onClick={(e) => e.stopPropagation()} style={{ backgroundColor: '#FFF', width: '100%', maxWidth: '640px', borderRadius: '12px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 900 }}>{selected.full_name || selected.email}</h2>
-              <button onClick={() => setSelected(null)} aria-label="Cerrar"><X size={20} /></button>
+              <button onClick={close} aria-label="Cerrar"><X size={20} /></button>
             </div>
             <div style={{ fontSize: '0.88rem', display: 'grid', gap: '0.3rem', marginBottom: '1rem' }}>
               <div>{selected.email} · {selected.phone || 'sin teléfono'} · {ROLE_LABEL[selected.role]}</div>
@@ -147,7 +163,7 @@ export const AdminCustomersPage = () => {
             <h3 style={{ fontSize: '0.9rem', fontWeight: 800, margin: '1rem 0 0.4rem' }}>Pedidos</h3>
             {selected.orders.length === 0 ? <div style={{ color: '#71717A', fontSize: '0.85rem' }}>Sin pedidos.</div> : (
               <ul style={{ fontSize: '0.85rem', display: 'grid', gap: '0.3rem' }}>
-                {selected.orders.map((o) => <li key={o.id}>{o.order_number} · {new Date(o.created_at).toLocaleDateString('es-CO')} · {STATUS_LABEL[o.status]} · {formatCOP(Number(o.total))}</li>)}
+                {selected.orders.map((o) => <li key={o.id}><Link data-testid={`pedido-${o.order_number}`} to={orderLink(o.order_number)} style={{ textDecoration: 'underline', color: '#3730A3', fontWeight: 700 }}>{o.order_number}</Link> · {new Date(o.created_at).toLocaleDateString('es-CO')} · {STATUS_LABEL[o.status]} · {formatCOP(Number(o.total))}</li>)}
               </ul>
             )}
             <h3 style={{ fontSize: '0.9rem', fontWeight: 800, margin: '1rem 0 0.4rem' }}>Direcciones guardadas</h3>

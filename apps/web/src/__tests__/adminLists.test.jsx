@@ -341,3 +341,55 @@ describe('Admin de clientes: enlace a sus pedidos', () => {
     expect(combineOrFilters('a', 'b')).toBe('and(or(a),or(b))');
   });
 });
+
+// Ejecución 89: enlaces cruzados pedido ↔ cliente. `?cliente=<id>` abre la ficha (cualquier rol) y cada pedido de la ficha
+// enlaza a /admin/pedidos?q=<número>.
+describe('Admin de clientes: ficha enlazada y pedidos enlazados', () => {
+  const ANA = '11111111-1111-4111-8111-111111111111';
+  let loc;
+  const Spy = () => { loc = useLocation(); return null; };
+  const renderAt = async (url) => {
+    const { AdminCustomersPage } = await import('../pages/admin/AdminCustomersPage');
+    await act(async () => { root.render(<MemoryRouter initialEntries={[url]}><AdminCustomersPage /><Spy /></MemoryRouter>); });
+    await flush();
+  };
+  beforeEach(() => {
+    supa.state.tables.profiles = [
+      { id: ANA, email: 'ana@x.co', full_name: 'Ana Admin', role: 'admin', created_at: '2026-10-01T00:00:00Z' },
+      { id: 'u2', email: 'luis@x.co', full_name: 'Luis', role: 'customer', created_at: '2026-10-02T00:00:00Z' },
+    ];
+    supa.state.tables.online_orders = [order('000007', { user_id: ANA }), order('000008', { user_id: null, customer_email: 'ana@x.co', status: 'cancelled' })];
+    supa.state.tables.customer_addresses = [];
+  });
+
+  it('?cliente= abre la ficha aunque el rol no sea el filtrado, enlaza sus pedidos y cerrar quita el parámetro', async () => {
+    await renderAt(`/admin/clientes?q=zzz&cliente=${ANA}`);
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog.getAttribute('aria-label')).toBe('Cliente Ana Admin');
+    const links = [...dialog.querySelectorAll('li a')].map((a) => [a.textContent, a.getAttribute('href')]);
+    expect(links).toEqual([['JM-000007', '/admin/pedidos?q=JM-000007'], ['JM-000008', '/admin/pedidos?q=JM-000008']]);
+    await act(async () => { dialog.querySelector('button[aria-label="Cerrar"]').click(); });
+    await flush();
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(loc.search).toBe('?q=zzz');
+  });
+
+  it('una cuenta enlazada inexistente avisa y un id inválido se ignora', async () => {
+    await renderAt('/admin/clientes?cliente=33333333-3333-4333-8333-333333333333');
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(container.querySelector('[data-testid="linked-customer-missing"]')).not.toBeNull();
+    act(() => root.unmount()); root = createRoot(container);
+    await renderAt('/admin/clientes?cliente=u2');
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(container.querySelector('[data-testid="linked-customer-missing"]')).toBeNull();
+  });
+
+  it('customerLinkForOrder / orderLink', async () => {
+    const { customerLinkForOrder, orderLink } = await import('../utils/adminLists');
+    expect(customerLinkForOrder({ user_id: ANA, customer_email: 'x@x.co' })).toEqual({ to: `/admin/clientes?cliente=${ANA}`, label: 'Ver ficha del cliente' });
+    expect(customerLinkForOrder({ user_id: null, customer_email: ' Ana+1@X.co ' }).to).toBe('/admin/clientes?q=ana%2B1%40x.co&rol=todos');
+    expect(customerLinkForOrder({ user_id: 'no-uuid', customer_email: '' })).toBeNull();
+    expect(orderLink('JM-000007')).toBe('/admin/pedidos?q=JM-000007');
+    expect(orderLink('  ')).toBeNull();
+  });
+});
