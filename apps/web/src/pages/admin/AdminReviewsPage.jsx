@@ -4,11 +4,13 @@
 // sin filas afectadas (RLS) ya no se presenta como éxito; el menú del admin recuenta las pendientes.
 // Ejecución 83: estado (`?estado=`), producto (`?producto=`) y búsqueda (`?q=`) viven en la URL, como en el
 // resto del admin: el enlace se puede compartir y «Atrás» conserva los filtros.
+// Ejecución 92: el producto de cada reseña enlaza a /admin/productos?q=<slug> y a su ficha pública.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { fetchAdminReviews, moderateReview, saveReviewReply } from '../../services/reviewsAdminService';
+import { productLinkForReview, storefrontLinkForProduct } from '../../utils/adminLists';
 import { REVIEW_STATUS, REVIEW_REPLY_MAX, countReviewsByStatus, filterReviews, reviewProducts } from '../../utils/reviewsAdmin';
 
 const TABS = ['pending', 'approved', 'rejected', 'todas'];
@@ -16,6 +18,20 @@ const DEFAULT_TAB = 'pending';
 // Valor desconocido o ausente en `?estado=` → «Pendiente» (la vista de trabajo del moderador).
 export const reviewTabFromParam = (value) => (TABS.includes(value) ? value : DEFAULT_TAB);
 const btn = { padding: '0.5rem 1rem', borderRadius: 6, fontWeight: 700, border: '1px solid #D4D4D8', backgroundColor: '#FFF', cursor: 'pointer' };
+
+const linkStyle = { color: '#09090B', fontWeight: 700, textDecoration: 'underline' };
+// Nombre del producto con enlace al admin y a la tienda; sin producto embebido se muestra solo el texto.
+const ReviewProduct = ({ product }) => {
+  const admin = productLinkForReview(product);
+  const shop = storefrontLinkForProduct(product);
+  if (!admin) return <span>Producto no disponible</span>;
+  return (
+    <>
+      <Link to={admin} style={linkStyle} aria-label={`Ver ${product.name ?? 'producto'} en productos`}>{product.name ?? product.slug}</Link>
+      {shop && <> (<a href={shop} target="_blank" rel="noopener noreferrer" style={{ color: '#52525B', fontSize: '0.8rem' }} aria-label={`Ver ${product.name ?? 'producto'} en la tienda`}>ver en la tienda</a>)</>}
+    </>
+  );
+};
 
 export const AdminReviewsPage = () => {
   const userId = useAuthStore((s) => s.user?.id);
@@ -122,7 +138,7 @@ export const AdminReviewsPage = () => {
         return (
           <article key={r.id} aria-label={`Reseña de ${r.author_name}: ${r.title}`} style={{ backgroundColor: '#FFF', border: '1px solid #E4E4E7', borderRadius: 10, padding: '1.25rem', display: 'grid', gap: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-              <div><strong>{r.author_name}</strong>{r.city ? ` (${r.city})` : ''} · {r.products?.name} · {new Date(r.created_at).toLocaleDateString('es-CO')}{r.is_verified_buyer ? ' · compra verificada' : ''}</div>
+              <div><strong>{r.author_name}</strong>{r.city ? ` (${r.city})` : ''} · <ReviewProduct product={r.products} /> · {new Date(r.created_at).toLocaleDateString('es-CO')}{r.is_verified_buyer ? ' · compra verificada' : ''}</div>
               <span style={{ fontWeight: 800 }}>{REVIEW_STATUS[r.status]}</span>
             </div>
             <div style={{ display: 'flex', gap: 2 }} role="img" aria-label={`${r.rating} de 5`}>{[...Array(r.rating)].map((_, i) => <Star key={i} size={14} fill="#D4AF37" color="#D4AF37" />)}</div>

@@ -781,3 +781,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ar) de Pendiente (reseñas ↔ productos/clientes en el admin).
+
+## Ejecución 92 — 2026-11-12 15:10 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-c49tmf` (= main, `2661f2a`); se partió de la rama autorizada = remoto `b25bf29`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ar) de Pendiente. Reseña → producto en `/admin/reviews` (D63); cliente → reseñas descartado por D48.
+- Archivos: `apps/web/src/utils/adminLists.js` (`productLinkForReview`, `storefrontLinkForProduct`), `apps/web/src/pages/admin/AdminReviewsPage.jsx` (`ReviewProduct`), `apps/web/src/__tests__/adminReviews.test.jsx`, `apps/web/src/__tests__/adminLists.test.jsx` (1 prueba cada uno), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 26 ampliado).
+- Pruebas (ejecutadas aquí): las 2 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 487/487 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 28/28. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(as) de Pendiente (recorrido E2E sintético móvil 375×812 catálogo → checkout).

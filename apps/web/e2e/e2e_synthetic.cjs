@@ -825,6 +825,14 @@ async function main() {
       await p.getByText('Reseña de Marta G.: aprobada.').waitFor({ timeout: 8000 });
       await p.getByRole('tab', { name: 'Pendiente (0)' }).waitFor({ timeout: 8000 });
       await p.waitForFunction(() => !document.querySelector('[aria-label="1 reseña pendiente"]'), null, { timeout: 8000 });
+      // ejecución 92: el producto de la reseña enlaza a /admin/productos con la búsqueda por slug
+      await p.getByRole('tab', { name: /^Todas/ }).click();
+      const revCard = p.getByRole('article', { name: /Buen polo/ });
+      if ((await revCard.getByRole('link', { name: 'Ver Polo Clásico en la tienda' }).getAttribute('href')) !== '/producto/polo-clasico') throw new Error('enlace de la reseña a la tienda incorrecto');
+      await revCard.getByRole('link', { name: 'Ver Polo Clásico en productos' }).click();
+      await p.waitForURL(/\/admin\/productos\?q=polo-clasico$/, { timeout: 8000 });
+      await p.getByText('Polo Clásico').first().waitFor({ timeout: 8000 });
+      if ((await p.getByLabel('Buscar productos').inputValue()) !== 'polo-clasico') throw new Error('la búsqueda de productos no recibió el slug de la reseña');
       // el público ve la reseña y la respuesta de J&M
       await p.evaluate(() => localStorage.clear());
       await p.goto(`${BASE}/producto/polo-clasico`);

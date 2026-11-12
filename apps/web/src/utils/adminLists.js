@@ -170,3 +170,19 @@ export function inventoryLinkForProduct(product) {
   const q = String(product?.reference ?? '').trim() || String(product?.name ?? '').trim();
   return q ? `/admin/inventario?${new URLSearchParams({ q })}` : null;
 }
+
+/**
+ * Ejecución 92: enlace de una reseña de /admin/reviews a su producto en /admin/productos (`?q=`). Usa el slug
+ * (único y ya presente en el embed `products ( name, slug )`; la búsqueda del admin compara nombre, slug,
+ * referencia y SKU) y, sin slug, el nombre. Sin producto embebido (borrado o RLS) → null (texto sin enlace).
+ */
+export function productLinkForReview(product) {
+  const q = String(product?.slug ?? '').trim() || String(product?.name ?? '').trim();
+  return q ? `/admin/productos?${new URLSearchParams({ q })}` : null;
+}
+
+/** Ejecución 92: ficha pública del producto (`/producto/:slug`); solo con slug. */
+export function storefrontLinkForProduct(product) {
+  const s = String(product?.slug ?? '').trim();
+  return s ? `/producto/${encodeURIComponent(s)}` : null;
+}

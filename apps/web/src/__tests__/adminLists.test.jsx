@@ -410,4 +410,14 @@ describe('Admin de clientes: ficha enlazada y pedidos enlazados', () => {
     expect(inventoryLinkForProduct({ reference: null, name: '  ' })).toBeNull();
     expect(inventoryLinkForProduct(null)).toBeNull();
   });
+
+  it('productLinkForReview / storefrontLinkForProduct (ejecución 92): slug, nombre o nada', async () => {
+    const { productLinkForReview, storefrontLinkForProduct } = await import('../utils/adminLists');
+    expect(productLinkForReview({ slug: ' polo-clasico ', name: 'Polo' })).toBe('/admin/productos?q=polo-clasico');
+    expect(productLinkForReview({ slug: '', name: 'Pantalón Cargo' })).toBe('/admin/productos?q=Pantal%C3%B3n+Cargo');
+    expect(productLinkForReview(null)).toBeNull();
+    expect(storefrontLinkForProduct({ slug: 'polo-clasico' })).toBe('/producto/polo-clasico');
+    expect(storefrontLinkForProduct({ slug: 'a b/c' })).toBe('/producto/a%20b%2Fc');
+    expect(storefrontLinkForProduct({ name: 'Polo' })).toBeNull();
+  });
 });

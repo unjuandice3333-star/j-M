@@ -148,6 +148,25 @@ describe('AdminReviewsPage', () => {
     expect(container.querySelectorAll('article').length).toBe(1);
   });
 
+  it('ejecución 92: el producto de cada reseña enlaza al admin (por slug) y a la ficha pública', async () => {
+    supa.state.rows = [rv(1), rv(2, { product_id: 'p2', products: { name: P2.name } }), rv(3, { product_id: 'p3', products: null })];
+    await render('/admin/reviews?estado=todas');
+    const a1 = card('Título 1').querySelector('a[aria-label="Ver Polo Clásico en productos"]');
+    expect(a1.getAttribute('href')).toBe('/admin/productos?q=polo');
+    const shop = card('Título 1').querySelector('a[aria-label="Ver Polo Clásico en la tienda"]');
+    expect(shop.getAttribute('href')).toBe('/producto/polo');
+    expect(shop.getAttribute('rel')).toBe('noopener noreferrer');
+    // sin slug: enlace al admin por nombre y sin enlace a la tienda
+    expect(card('Título 2').querySelector('a[aria-label="Ver Pantalón Cargo en productos"]').getAttribute('href')).toBe('/admin/productos?q=Pantal%C3%B3n+Cargo');
+    expect(card('Título 2').querySelector('a[aria-label$="en la tienda"]')).toBeNull();
+    // sin producto embebido: texto sin enlace y la tarjeta sigue renderizando
+    expect(card('Título 3').querySelector('a')).toBeNull();
+    expect(card('Título 3').textContent).toContain('Producto no disponible');
+    // clic en el enlace del admin navega a la búsqueda de productos
+    await act(async () => { a1.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })); });
+    expect(location.pathname + location.search).toBe('/admin/productos?q=polo');
+  });
+
   it('aprueba con respuesta y avisa al menú para recontar', async () => {
     supa.state.rows = [rv(1)];
     const heard = vi.fn(); window.addEventListener('jm:admin-reviews-changed', heard);
