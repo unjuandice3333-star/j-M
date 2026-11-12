@@ -681,3 +681,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ah) de Pendiente (búsqueda de `/admin/pedidos` en `?q=`).
+
+## Ejecución 82 — 2026-11-12 05:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-ve8fxu` (= main, `2661f2a`); se partió de la rama autorizada = remoto `4d9bfc1`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ah) de Pendiente. `/admin/pedidos`: búsqueda en `?q=` (debounce de 300 ms antes de escribir la URL y consultar la BD; cambios externos de la URL se reflejan en el campo) y método de envío en `?envio=`; combinables con `?estado=` y `?revision=`.
+- Archivos: `apps/web/src/pages/admin/AdminOrdersPage.jsx`, `apps/web/src/__tests__/adminOrdersDeepLink.test.jsx` (4 pruebas nuevas; el doble de Supabase ahora aplica `.or(ilike)`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 10 ampliado).
+- Pruebas (ejecutadas aquí): las 4 pruebas nuevas fallan sin el cambio (`git stash`); `pnpm test:unit` 449/449 (43 archivos); ESLint `apps packages scripts` 0; `pnpm build` OK; `pnpm test:e2e-synthetic` 26/26. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ai) de Pendiente (`?q=` en `/admin/reviews`, luego `/admin/boletin`).

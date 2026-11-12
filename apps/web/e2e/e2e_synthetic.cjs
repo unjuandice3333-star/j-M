@@ -771,6 +771,15 @@ async function main() {
       await p.getByLabel('Buscar clientes').fill('zz-nadie');
       await p.waitForURL(/\/admin\/clientes\?q=zz-nadie&rol=todos$/, { timeout: 8000 });
       await expectText(p, 'No hay resultados.');
+      // Ejecución 82: /admin/pedidos conserva búsqueda (?q=) y método de envío (?envio=) en la URL
+      await p.goto(`${BASE}/admin/pedidos?q=zz-nadie`);
+      await expectText(p, 'No hay pedidos con estos filtros.');
+      if ((await p.getByLabel('Buscar pedidos').inputValue()) !== 'zz-nadie') throw new Error('?q= no llenó la búsqueda de pedidos');
+      await p.getByLabel('Buscar pedidos').fill('');
+      await p.waitForURL(/\/admin\/pedidos$/, { timeout: 8000 });
+      await p.getByLabel('Buscar pedidos').fill('zz-otro');
+      await p.waitForURL(/\/admin\/pedidos\?q=zz-otro$/, { timeout: 8000 });
+      await expectText(p, 'No hay pedidos con estos filtros.');
       // inventario: ajuste con motivo
       await p.goto(`${BASE}/admin/inventario`);
       await expectText(p, 'INVENTARIO (5 variantes)');

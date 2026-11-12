@@ -10,17 +10,21 @@ import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 function fakeSupabase() {
   const state = { tables: {}, rpc: {}, failHeadCount: false, queries: [] };
   const from = vi.fn((table) => {
-    const rec = { table, eq: [], range: null, count: null, head: false };
+    const rec = { table, eq: [], or: null, range: null, count: null, head: false };
     const q = {
       select: (_cols, opts) => { rec.count = opts?.count ?? null; rec.head = !!opts?.head; return q; },
       eq: (c, v) => { rec.eq.push([c, v]); return q; },
-      or: () => q, order: () => q, limit: () => q,
+      or: (f) => { rec.or = f; return q; }, order: () => q, limit: () => q,
       range: (a, b) => { rec.range = [a, b]; return q; },
       then: (res, rej) => {
         state.queries.push(rec);
         if (rec.head && state.failHeadCount) return Promise.resolve({ data: null, error: { message: 'permission denied' } }).then(res, rej);
         let rows = state.tables[table] ?? [];
         rec.eq.forEach(([c, v]) => { rows = rows.filter((r) => r[c] === v); });
+        if (rec.or) {
+          const needle = rec.or.match(/ilike\.\*(.*?)\*/)?.[1]?.toLowerCase() ?? '';
+          rows = rows.filter((r) => [r.order_number, r.customer_name, r.customer_email].some((v) => String(v ?? '').toLowerCase().includes(needle)));
+        }
         const total = rows.length;
         if (rec.range) rows = rows.slice(rec.range[0], rec.range[1] + 1);
         return Promise.resolve({ data: rec.head ? null : rows, error: null, count: rec.count === 'exact' ? total : null }).then(res, rej);
@@ -119,6 +123,66 @@ describe('Pedidos: pestaña de estado desde la URL', () => {
     await flush();
     expect(currentLocation.search).toBe('');
     expect(orderNumbers()).toHaveLength(4);
+  });
+});
+
+describe('Pedidos: búsqueda y método de envío desde la URL (ejecución 82)', () => {
+  beforeEach(() => {
+    supa.state.tables.online_orders = [
+      order(1, 'paid', { customer_name: 'Ana Pérez' }), order(2, 'paid', { customer_name: 'Luis Gómez', shipping_method_code: 'express' }),
+      order(3, 'shipped', { customer_name: 'Ana Ruiz', shipping_method_code: 'express' }),
+    ];
+  });
+  const input = () => container.querySelector('input[aria-label="Buscar pedidos"]');
+  const typeInto = async (el, value) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    await act(async () => { setter.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); });
+  };
+
+  it('?q= llena el campo y filtra en la BD, combinable con ?estado=', async () => {
+    await renderAt('/admin/pedidos?estado=paid&q=ana');
+    expect(input().value).toBe('ana');
+    expect(lastListQuery().or).toContain('ilike.*ana*');
+    expect(lastListQuery().eq).toEqual([['status', 'paid']]);
+    expect(orderNumbers()).toEqual(['JM-1']);
+  });
+
+  it('escribir en el campo actualiza ?q= tras el debounce y vaciarlo lo quita', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await renderAt('/admin/pedidos?estado=paid');
+      await typeInto(input(), 'luis');
+      expect(currentLocation.search).toBe('?estado=paid');
+      await act(async () => { vi.advanceTimersByTime(350); });
+      await flush();
+      expect(new URLSearchParams(currentLocation.search).get('q')).toBe('luis');
+      expect(new URLSearchParams(currentLocation.search).get('estado')).toBe('paid');
+      expect(orderNumbers()).toEqual(['JM-2']);
+      await typeInto(input(), '');
+      await act(async () => { vi.advanceTimersByTime(350); });
+      await flush();
+      expect(currentLocation.search).toBe('?estado=paid');
+      expect(orderNumbers().sort()).toEqual(['JM-1', 'JM-2']);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('?envio= selecciona el método y filtra en la BD; «Todos los envíos» lo quita', async () => {
+    await renderAt('/admin/pedidos?envio=express');
+    const select = container.querySelector('select[aria-label="Filtrar por método de envío"]');
+    expect(select.value).toBe('express');
+    expect(lastListQuery().eq).toEqual([['shipping_method_code', 'express']]);
+    expect(orderNumbers().sort()).toEqual(['JM-2', 'JM-3']);
+    await act(async () => { select.value = 'todos'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    await flush();
+    expect(currentLocation.search).toBe('');
+    expect(orderNumbers()).toHaveLength(3);
+  });
+
+  it('un método desconocido en ?envio= se muestra seleccionado (no se oculta el filtro)', async () => {
+    await renderAt('/admin/pedidos?envio=retirado');
+    const select = container.querySelector('select[aria-label="Filtrar por método de envío"]');
+    expect(select.value).toBe('retirado');
+    expect(orderNumbers()).toEqual([]);
   });
 });
 

@@ -54,8 +54,17 @@ export const AdminOrdersPage = () => {
     if (on) next.set('revision', '1'); else next.delete('revision');
     setSearchParams(next, { replace: true });
   };
-  const [searchQuery, setSearchQuery] = useState('');
-  const [methodFilter, setMethodFilter] = useState('todos');
+  // Ejecución 82: la búsqueda (`?q=`) y el método de envío (`?envio=`) también viven en la URL para enlazar una búsqueda
+  // y conservarla al recargar. El campo responde al instante; la URL (y la consulta a la BD) se actualizan tras el debounce.
+  const urlQuery = searchParams.get('q') ?? '';
+  const methodFilter = searchParams.get('envio') || 'todos';
+  const setMethodFilter = (code) => {
+    const next = new URLSearchParams(searchParams);
+    if (!code || code === 'todos') next.delete('envio'); else next.set('envio', code);
+    setSearchParams(next, { replace: true });
+  };
+  const [searchQuery, setSearchQuery] = useState(urlQuery);
+  const lastWrittenQuery = useRef(urlQuery);
   const [transitions, setTransitions] = useState([]);
   const [shippingMethods, setShippingMethods] = useState([]);
 
@@ -72,7 +81,7 @@ export const AdminOrdersPage = () => {
   const [totalCount, setTotalCount] = useState(null);
   const [summaryRows, setSummaryRows] = useState([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const debouncedQuery = urlQuery;
   const requestSeq = useRef(0);
 
   // Paginación real (ejecución 54): antes se cargaban solo los 200 más recientes y los filtros, la búsqueda y los
@@ -114,9 +123,22 @@ export const AdminOrdersPage = () => {
   const refreshAll = async () => { await Promise.all([fetchDbOrders(), fetchSummary()]); };
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(searchQuery), SEARCH_DEBOUNCE_MS);
+    const t = setTimeout(() => {
+      if (searchQuery === lastWrittenQuery.current) return;
+      lastWrittenQuery.current = searchQuery;
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (searchQuery.trim()) next.set('q', searchQuery); else next.delete('q');
+        return next;
+      }, { replace: true });
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [searchQuery]);
+  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Si la URL cambia desde fuera (enlace, atrás/adelante), el campo la refleja sin pisar lo que se está escribiendo.
+  useEffect(() => {
+    if (urlQuery !== lastWrittenQuery.current) { lastWrittenQuery.current = urlQuery; setSearchQuery(urlQuery); }
+  }, [urlQuery]);
 
   useEffect(() => { fetchDbOrders(); }, [selectedStatusTab, methodFilter, debouncedQuery, onlyAttention]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -199,7 +221,7 @@ export const AdminOrdersPage = () => {
         <select aria-label="Filtrar por método de envío" value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)}
           style={{ padding: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem' }}>
           <option value="todos">Todos los envíos</option>
-          {methodOptions.map((c) => <option key={c} value={c}>{shippingMethodLabel(c, shippingMethods)}</option>)}
+          {(methodFilter !== 'todos' && !methodOptions.includes(methodFilter) ? [...methodOptions, methodFilter] : methodOptions).map((c) => <option key={c} value={c}>{shippingMethodLabel(c, shippingMethods)}</option>)}
         </select>
 
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 700, color: attentionCount > 0 ? '#B91C1C' : '#52525B' }}>
