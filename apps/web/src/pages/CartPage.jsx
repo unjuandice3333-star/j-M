@@ -68,7 +68,7 @@ export const CartPage = () => {
           </div>
         )}
         {/* BREADCRUMB */}
-        <div style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '1.5rem' }}>
+        <div className="jm-breadcrumb" style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '1.5rem' }}>
           <Link to="/" style={{ color: '#71717A' }}>Inicio</Link>
           <span style={{ margin: '0 0.4rem' }}>/</span>
           <strong style={{ color: '#09090B' }}>Mi Carrito de Compras</strong>
@@ -162,7 +162,7 @@ export const CartPage = () => {
                     />
 
                     <div style={{ minWidth: 0 }}>
-                      <Link to={`/producto/${item.slug}`} style={{ textDecoration: 'none' }}>
+                      <Link to={`/producto/${item.slug}`} className="jm-tap-inline" style={{ textDecoration: 'none' }}>
                         <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#09090B', marginBottom: '0.3rem' }}>
                           {item.name}
                         </h3>
@@ -177,14 +177,14 @@ export const CartPage = () => {
                         return (
                           <div style={{ fontSize: '0.82rem', color: '#71717A', marginBottom: '0.8rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
                             <label>Talla{' '}
-                              <select aria-label={`Talla de ${item.name}`} value={item.size} disabled={!prod} style={sel}
+                              <select aria-label={`Talla de ${item.name}`} value={item.size} disabled={!prod} className="jm-tap" style={sel}
                                 onChange={(e) => onChangeVariant(item, e.target.value, item.color)}>
                                 {sizes.map((v) => <option key={v.id} value={v.size} disabled={v.id !== item.variantId && v.available <= 0}>{v.size}{v.available <= 0 ? ' (agotada)' : ''}</option>)}
                                 {!sizes.some((v) => v.size === item.size) && <option value={item.size}>{item.size}</option>}
                               </select>
                             </label>
                             <label>Color{' '}
-                              <select aria-label={`Color de ${item.name}`} value={item.color} disabled={!prod || colors.length < 2} style={sel}
+                              <select aria-label={`Color de ${item.name}`} value={item.color} disabled={!prod || colors.length < 2} className="jm-tap" style={sel}
                                 onChange={(e) => {
                                   const c = e.target.value;
                                   const same = vs.find((v) => v.color === c && v.size === item.size && v.available > 0);
@@ -199,7 +199,7 @@ export const CartPage = () => {
                         );
                       })()}
 
-                      <div className="cart-line-actions" style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div className="cart-line-actions jm-tap-area" style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         {/* Quantity Counter */}
                         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E4E4E7', borderRadius: '4px' }}>
                           <button

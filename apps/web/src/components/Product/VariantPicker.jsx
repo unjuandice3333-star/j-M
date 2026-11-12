@@ -18,7 +18,7 @@ export function VariantPicker({ product, selection, onChange }) {
   return (
     <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.4rem' }} onClick={stop}>
       {colors.length > 1 ? (
-        <select aria-label={`Color de ${product.name}`} value={selection.color ?? ''} style={selectStyle}
+        <select aria-label={`Color de ${product.name}`} value={selection.color ?? ''} className="jm-tap" style={selectStyle}
           onChange={(e) => onChange(changeLookColor(product, selection, e.target.value))}>
           {colors.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
@@ -28,7 +28,7 @@ export function VariantPicker({ product, selection, onChange }) {
       {isOneSize(product) ? (
         <span style={{ fontSize: '0.75rem', color: '#71717A', alignSelf: 'center' }}>Talla única</span>
       ) : (
-        <select aria-label={`Talla de ${product.name}`} value={selection.size ?? ''} style={selectStyle}
+        <select aria-label={`Talla de ${product.name}`} value={selection.size ?? ''} className="jm-tap" style={selectStyle}
           onChange={(e) => onChange({ color: selection.color, size: e.target.value || null })}>
           <option value="">Elige talla</option>
           {sizes.map(({ size, available }) => (

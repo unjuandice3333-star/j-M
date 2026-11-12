@@ -315,7 +315,7 @@ export const CatalogPage = () => {
     <div style={{ backgroundColor: '#FFFFFF', minHeight: '80vh', padding: '2.5rem 0 5rem 0' }}>
       <div className="jm-container">
         {/* BREADCRUMB */}
-        <div style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '1.25rem' }}>
+        <div className="jm-breadcrumb" style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '1.25rem' }}>
           <Link to="/" style={{ color: '#71717A' }}>Inicio</Link>
           <span style={{ margin: '0 0.4rem' }}>/</span>
           <Link to="/ropa" style={{ color: '#71717A' }}>Moda Masculina</Link>
@@ -454,6 +454,7 @@ export const CatalogPage = () => {
         <div className="modal-overlay" style={{ justifyContent: 'flex-start', padding: 0 }} onClick={() => setIsMobileFilterOpen(false)}>
           <div
             onClick={(e) => e.stopPropagation()}
+            className="jm-tap-area"
             style={{
               width: '85%',
               maxWidth: '340px',
@@ -467,7 +468,7 @@ export const CatalogPage = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>FILTROS</span>
-              <button onClick={() => setIsMobileFilterOpen(false)}>
+              <button type="button" aria-label="Cerrar filtros" onClick={() => setIsMobileFilterOpen(false)} style={{ minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={22} />
               </button>
             </div>

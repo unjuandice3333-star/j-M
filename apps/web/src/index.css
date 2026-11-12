@@ -132,6 +132,16 @@ button {
   }
 }
 
+/* Móvil: áreas táctiles mínimas (D68). Solo se aplican en pantallas estrechas; el aspecto en escritorio no cambia. */
+@media (max-width: 768px) {
+  .jm-tap { min-height: 36px; }
+  .jm-tap-inline { min-height: 36px; display: inline-flex; align-items: center; }
+  .jm-tap-area button, .jm-tap-area select { min-height: 36px; }
+  .jm-breadcrumb a { display: inline-flex; align-items: center; min-height: 36px; }
+  .header-action-btn { min-width: 36px; min-height: 36px; }
+  input[type=range] { height: 32px; }
+}
+
 /* Accessibility: Prefers Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

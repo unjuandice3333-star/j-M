@@ -83,7 +83,7 @@ export const InfoPage = () => {
       <div className="jm-container" style={{ maxWidth: '1000px' }}>
         
         {/* BREADCRUMB */}
-        <div style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '2rem' }}>
+        <div className="jm-breadcrumb" style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '2rem' }}>
           <Link to="/" style={{ color: '#71717A' }}>Inicio</Link>
           <span style={{ margin: '0 0.5rem' }}>/</span>
           <strong style={{ color: '#09090B', textTransform: 'capitalize' }}>

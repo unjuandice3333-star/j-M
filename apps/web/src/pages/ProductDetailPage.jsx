@@ -235,7 +235,7 @@ export const ProductDetailPage = () => {
     <div style={{ backgroundColor: '#FFFFFF', padding: '2rem 0 5rem 0' }}>
       <div className="jm-container">
         {/* BREADCRUMB */}
-        <div style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '1.5rem' }}>
+        <div className="jm-breadcrumb" style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '1.5rem' }}>
           <Link to="/" style={{ color: '#71717A' }}>Inicio</Link>
           <span style={{ margin: '0 0.4rem' }}>/</span>
           <Link to={`/ropa/${product.category}`} style={{ color: '#71717A', textTransform: 'capitalize' }}>
@@ -373,6 +373,7 @@ export const ProductDetailPage = () => {
               </div>
               <button
                 onClick={openFitGuide}
+                className="jm-tap"
                 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#09090B', textDecoration: 'underline', cursor: 'pointer' }}
               >
                 ¿Qué significa el Fit?
@@ -416,6 +417,7 @@ export const ProductDetailPage = () => {
                   {sizeHelp.recommender && (
                     <button
                       onClick={() => openSizeRecommender(product)}
+                      className="jm-tap"
                       style={{ fontSize: '0.78rem', fontWeight: 700, color: '#D4AF37', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
                     >
                       <Sparkles size={14} /> Encuentra tu talla
@@ -424,6 +426,7 @@ export const ProductDetailPage = () => {
                   {sizeHelp.guide && (
                     <button
                       onClick={() => openSizeGuide(product.category, product.sizeGroup)}
+                      className="jm-tap"
                       style={{ fontSize: '0.78rem', fontWeight: 700, color: '#71717A', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
                     >
                       <Ruler size={14} /> Guía de medidas

@@ -96,6 +96,19 @@ async function assertTappable(locator, where) {
   if (b.x < 0 || b.x + b.width > vw + 1) throw new Error(`${where}: control fuera de pantalla (${Math.round(b.x)}–${Math.round(b.x + b.width)} de ${vw})`);
   if (b.height < 32) throw new Error(`${where}: control de ${Math.round(b.height)} px de alto (< 32)`);
 }
+// Móvil: comprueba TODOS los controles visibles de `scope` (botones, enlaces, selectores y campos de texto) y
+// acumula los fallos en `failures`; los enlaces dentro de una frase —`p a`— quedan fuera (excepción de
+// enlace en línea de WCAG 2.5.8). Devuelve cuántos controles comprobó.
+async function checkAllControls(page, scope, where, failures) {
+  const controls = page.locator(['button', 'a:not(p a)', 'select', 'input:not([type=checkbox]):not([type=radio]):not([type=file])', 'textarea'].map((x) => `${scope} ${x}:visible`).join(', '));
+  const n = await controls.count();
+  for (let i = 0; i < n; i++) {
+    const c = controls.nth(i);
+    const label = ((await c.getAttribute('aria-label')) || (await c.innerText().catch(() => '')) || (await c.getAttribute('placeholder')) || '').trim().slice(0, 30);
+    await assertTappable(c, `${where} «${label}»`).catch((e) => failures.push(e.message));
+  }
+  return n;
+}
 const MOBILE = { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 };
 
 async function main() {
@@ -381,7 +394,7 @@ async function main() {
       if (st.orders.length !== 1 || st.orders[0].total !== 172000) throw new Error(`pedido: ${JSON.stringify(st.orders.map((o) => o.total))} (se esperaba 1 de 172.000 = 2×80.000 + 12.000)`);
     }, browser, null, MOBILE);
 
-    await journey('30. Móvil 375×812: registro, cuenta, «Mis pedidos» y enlace de seguimiento sin desbordes', async (p, ctx) => {
+    await journey('30. Móvil 375×812: registro, cuenta, «Mis pedidos» y enlace de seguimiento sin desbordes', async (p) => {
       await p.goto(`${BASE}/cuenta`);
       await assertNoHorizontalOverflow(p, '/cuenta sin sesión');
       await assertTappable(p.getByRole('button', { name: '¿Olvidaste tu contraseña?' }), 'olvidé mi contraseña');
@@ -494,18 +507,7 @@ async function main() {
       const pages = [['/admin/descuentos', 'JM10'], ['/admin/reviews', 'RESEÑAS'], ['/admin/boletin', 'BOLETÍN'], ['/admin/imagenes', 'IMÁGENES'],
         ['/admin/colecciones', 'COLECCIONES'], ['/admin/analytics', 'ANALÍTICA'], ['/admin/configuracion', 'ENVÍO'], ['/admin/clientes?rol=todos', 'Ver detalle']];
       const failures = [];
-      // todos los controles visibles (no solo uno): botones, enlaces, selectores y campos de texto; los enlaces
-      // dentro de una frase —`p a`— quedan fuera (excepción de enlace en línea de WCAG 2.5.8)
-      const checkControls = async (scope, where) => {
-        const controls = p.locator(['button', 'a:not(p a)', 'select', 'input:not([type=checkbox]):not([type=radio]):not([type=file])', 'textarea'].map((x) => `${scope} ${x}:visible`).join(', '));
-        const n = await controls.count();
-        for (let i = 0; i < n; i++) {
-          const c = controls.nth(i);
-          const label = ((await c.getAttribute('aria-label')) || (await c.innerText().catch(() => '')) || (await c.getAttribute('placeholder')) || '').trim().slice(0, 30);
-          await assertTappable(c, `${where} «${label}»`).catch((e) => failures.push(e.message));
-        }
-        return n;
-      };
+      const checkControls = (scope, where) => checkAllControls(p, scope, where, failures);
       for (const [url, text] of pages) {
         await p.goto(`${BASE}${url}`);
         await expectText(p, text);
@@ -526,6 +528,70 @@ async function main() {
         await assertNoHorizontalOverflow(p, `${url} · ${dialog}`).catch((e) => failures.push(e.message));
         if (!(await checkControls('[role=dialog]', `${url} · ${dialog}`))) failures.push(`${url} · ${dialog}: sin controles visibles`);
       }
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser, null, MOBILE);
+
+    await journey('33. Móvil 375×812: TODOS los controles visibles de la tienda (cabecera, menú, catálogo y filtros, ficha y sus guías, carrito, checkout, favoritos y cuenta)', async (p) => {
+      const failures = [];
+      const check = async (scope, where, { min = 1 } = {}) => {
+        const n = await checkAllControls(p, scope, where, failures);
+        if (n < min) failures.push(`${where}: ${n} controles visibles (se esperaban ≥ ${min})`);
+      };
+      const visit = async (url, text) => {
+        await p.goto(`${BASE}${url}`);
+        if (text) await expectText(p, text);
+        await p.waitForLoadState('networkidle');
+        await assertNoHorizontalOverflow(p, url).catch((e) => failures.push(e.message));
+      };
+      // sesión de cliente (favoritos y cuenta la requieren)
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).tap();
+      await p.getByPlaceholder(/Juan/i).first().fill('Nora Gil');
+      await p.locator('input[type=email]').fill('nora@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').tap();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      // portada: cabecera, contenido y barra inferior; menú de navegación
+      await visit('/');
+      await check('header', 'cabecera', { min: 2 });
+      await check('main', 'portada');
+      await check('.mobile-only-bottom-bar', 'barra inferior', { min: 2 });
+      await p.getByRole('button', { name: 'Abrir menú de navegación' }).tap();
+      await p.locator('.modal-overlay').first().waitFor();
+      await check('.modal-overlay', 'menú de navegación', { min: 3 });
+      await p.keyboard.press('Escape'); await p.goto(`${BASE}/ropa`);
+      // catálogo y panel de filtros
+      await visit('/ropa', 'MOSTRANDO 2 PRENDAS');
+      await check('main', '/ropa', { min: 2 });
+      await p.getByRole('button', { name: /FILTRAR/ }).tap();
+      await p.locator('.modal-overlay').getByText('PRECIO MÁXIMO').waitFor();
+      await check('.modal-overlay', 'panel de filtros', { min: 3 });
+      // ficha de producto (selector, reseñas, «Completa el look») y sus dos guías
+      await visit('/producto/camiseta-basica', 'Camiseta Básica');
+      await check('main', 'ficha de producto', { min: 5 });
+      for (const [opener, where] of [[/Guía de medidas/, 'guía de medidas'], [/Encuentra tu talla/, 'encuentra tu talla']]) {
+        await p.getByRole('button', { name: opener }).first().tap();
+        await p.locator('.modal-overlay').first().waitFor();
+        await assertNoHorizontalOverflow(p, where).catch((e) => failures.push(e.message));
+        await check('.modal-overlay', where, { min: 1 });
+        await p.goto(`${BASE}/producto/camiseta-basica`); await expectText(p, 'Camiseta Básica');
+      }
+      // favoritos con una prenda guardada (desde la tarjeta del catálogo)
+      await p.goto(`${BASE}/ropa`); await expectText(p, 'MOSTRANDO 2 PRENDAS');
+      await p.getByRole('button', { name: 'Guardar en favoritos: Camiseta Básica' }).tap();
+      await p.getByRole('button', { name: 'Quitar de favoritos: Camiseta Básica' }).waitFor();
+      await p.waitForLoadState('networkidle');
+      if ((await state()).wishlist.length !== 1) throw new Error('el favorito no se guardó en la cuenta');
+      await visit('/cuenta/favoritos', 'AGREGAR TODO AL CARRITO');
+      await check('main', 'favoritos', { min: 4 });
+      // carrito y checkout
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await visit('/carrito', 'Camiseta Básica');
+      await check('main', 'carrito', { min: 3 });
+      await visit('/checkout');
+      await p.locator('input[name=email]').waitFor();
+      await check('main', 'checkout', { min: 6 });
+      // cuenta
+      for (const url of ['/cuenta', '/cuenta/pedidos', '/cuenta/datos', '/cuenta/direcciones']) { await visit(url); await check('main', url); }
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser, null, MOBILE);
 

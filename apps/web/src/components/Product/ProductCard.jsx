@@ -175,6 +175,7 @@ export const ProductCard = ({ product }) => {
                 type="button"
                 onClick={(e) => handleQuickAdd(e, sz)}
                 disabled={available <= 0}
+                className="jm-tap"
                 aria-label={available <= 0 ? `Talla ${sz} agotada en ${quickColor}` : `Agregar talla ${sz} en ${quickColor} al carrito`}
                 style={{
                   opacity: available <= 0 ? 0.4 : 1,
@@ -211,7 +212,7 @@ export const ProductCard = ({ product }) => {
             {product.category}
           </span>
           {/* Muestras de color: eligen el color del agregado rápido (las agotadas no se pueden elegir) */}
-          <div style={{ display: 'flex', gap: '4px' }} role="group" aria-label={`Colores de ${product.name}`}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end' }} role="group" aria-label={`Colores de ${product.name}`}>
             {product.colors.map((c, idx) => {
               const inStock = stockColors.includes(c.name);
               const selected = c.name === quickColor;
@@ -225,25 +226,35 @@ export const ProductCard = ({ product }) => {
                   disabled={!inStock}
                   onClick={(e) => chooseColor(e, c.name)}
                   style={{
+                    // área táctil de 24×32 px (D68); el círculo visible sigue midiendo 14 px
+                    width: '24px',
+                    height: '32px',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'transparent',
+                    opacity: inStock ? 1 : 0.35,
+                    cursor: inStock ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  <span aria-hidden="true" style={{
                     width: '14px',
                     height: '14px',
-                    padding: 0,
                     borderRadius: '50%',
                     backgroundColor: c.hex,
                     border: c.hex === '#FFFFFF' ? '1px solid #D4D4D8' : '1px solid transparent',
                     outline: selected ? '2px solid #09090B' : 'none',
-                    outlineOffset: '1px',
-                    opacity: inStock ? 1 : 0.35,
-                    cursor: inStock ? 'pointer' : 'not-allowed'
-                  }}
-                />
+                    outlineOffset: '1px'
+                  }} />
+                </button>
               );
             })}
           </div>
         </div>
 
         {/* TITLE */}
-        <Link to={`/producto/${product.slug}`} style={{ textDecoration: 'none' }}>
+        <Link to={`/producto/${product.slug}`} className="jm-tap-inline" style={{ textDecoration: 'none' }}>
           <h3 style={{
             fontSize: '0.92rem',
             fontWeight: 600,

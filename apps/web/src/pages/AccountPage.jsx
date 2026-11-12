@@ -322,6 +322,7 @@ export const AccountPage = () => {
 
               <Link
                 to="/ropa"
+                className="jm-tap-inline"
                 style={{
                   fontSize: '0.85rem',
                   fontWeight: 700,

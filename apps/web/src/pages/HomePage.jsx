@@ -927,7 +927,7 @@ export const HomePage = () => {
                 MÁS VENDIDOS
               </h2>
             </div>
-            <Link to="/mas-vendidos" style={{ fontSize: '0.85rem', fontWeight: 700, color: '#09090B', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <Link to="/mas-vendidos" className="jm-tap-inline" style={{ fontSize: '0.85rem', fontWeight: 700, color: '#09090B', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               VER TODOS <ChevronRight size={18} />
             </Link>
           </div>

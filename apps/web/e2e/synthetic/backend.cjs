@@ -293,6 +293,7 @@ function start(port = 54321) {
     else if (table === 'newsletter_subscribers') data = ctx.role === 'admin' ? S.tables.newsletter_subscribers : []; // RLS newsletter_admin_read
     else if (table === 'product_reviews') data = ctx.role === 'admin' ? S.tables.product_reviews : S.tables.product_reviews.filter((r) => r.status === 'approved'); // RLS product_reviews_read
     else if (table === 'customer_addresses') data = ctx.role === 'admin' ? S.tables.customer_addresses : S.tables.customer_addresses.filter((a) => ctx.userId && a.user_id === ctx.userId);
+    else if (table === 'wishlist_items') data = S.tables.wishlist_items.filter((w) => ctx.userId && w.user_id === ctx.userId); // RLS: solo el propietario (también el admin)
     else data = S.tables[table] || [];
     for (const [k, v] of Object.entries(q)) {
       if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
@@ -325,7 +326,7 @@ function start(port = 54321) {
       try {
         if (p === '/__health') return send(res, 200, { ok: true });
         if (p === '/__reset') { S = seed(); return send(res, 200, { ok: true }); }
-        if (p === '/__state') return send(res, 200, { orders: S.tables.online_orders, newsletter: S.tables.newsletter_subscribers, reviews: S.tables.product_reviews, inventories: S.inventories.map((i) => ({ sku: i.variants.sku, stock: i.stock, reserved: i.reserved })) });
+        if (p === '/__state') return send(res, 200, { orders: S.tables.online_orders, newsletter: S.tables.newsletter_subscribers, reviews: S.tables.product_reviews, wishlist: S.tables.wishlist_items, inventories: S.inventories.map((i) => ({ sku: i.variants.sku, stock: i.stock, reserved: i.reserved })) });
         // Simula la confirmación del webhook de pago. NO es Wompi: solo mueve el pedido a "paid" para probar lo que sigue.
         // Ejecución 59: ventana de pago vencida sin que el job de expiración haya pasado (estado sigue payment_pending).
         if (p.startsWith('/__synthetic-expire-window/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); o.payment_expires_at = new Date(Date.now() - 60e3).toISOString(); return send(res, 200, { payment_expires_at: o.payment_expires_at }); }
@@ -420,6 +421,17 @@ function start(port = 54321) {
             if (req.method === 'DELETE') { S.tables.customer_addresses = all.filter((r) => !hit.includes(r)); return reply(hit); }
             for (const r of hit) if (dupDefault({ ...r, ...body }, all)) return send(res, 409, { code: '23505', message: 'duplicate key value violates unique constraint "uq_customer_addresses_default"' });
             for (const r of hit) Object.assign(r, body, { user_id: r.user_id }); return reply(hit);
+          }
+          // Ejecución 97: lista de deseos (M28). PK (user_id, product_id) ⇒ upsert con ignoreDuplicates = ON CONFLICT DO NOTHING; RLS del propietario.
+          if (table === 'wishlist_items' && ['POST', 'DELETE'].includes(req.method)) {
+            if (!ctx.userId) return send(res, 401, { code: '42501', message: 'permission denied for table wishlist_items' });
+            if (req.method === 'DELETE') { const hit = rows(table, q, ctx); S.tables.wishlist_items = S.tables.wishlist_items.filter((r) => !hit.includes(r)); return reply(hit); }
+            const list = Array.isArray(body) ? body : [body]; const added = [];
+            for (const r of list) {
+              if (r.user_id !== ctx.userId) return send(res, 403, { code: '42501', message: 'new row violates row-level security policy for table "wishlist_items"' });
+              if (!S.tables.wishlist_items.some((w) => w.user_id === r.user_id && w.product_id === r.product_id)) { const row = { created_at: new Date().toISOString(), ...r }; S.tables.wishlist_items.push(row); added.push(row); }
+            }
+            return reply(added);
           }
           if (table === 'profiles' && req.method === 'PATCH') {
             const allowed = ['full_name', 'phone', 'avatar_url', 'preferred_size', 'preferred_fit', 'marketing_opt_in'];

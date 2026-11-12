@@ -831,3 +831,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(aw) de Pendiente (comprobación de todos los controles visibles en la tienda móvil).
+
+## Ejecución 97 — 2026-11-12 20:18 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-g1zevv` (= main, `2661f2a`); se partió de la rama autorizada = remoto `1c3b8d1`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(aw) de Pendiente. Recorrido E2E móvil 375×812 de la tienda comprobando todos los controles visibles; corrección de lo encontrado (D68).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (helper `checkAllControls`, recorrido 33, aviso ESLint previo), `apps/web/e2e/synthetic/backend.cjs` (`wishlist_items`), `apps/web/src/index.css`, `components/Product/ProductCard.jsx`, `components/Product/VariantPicker.jsx`, `pages/HomePage.jsx`, `CatalogPage.jsx`, `ProductDetailPage.jsx`, `CartPage.jsx`, `AccountPage.jsx`, `WishlistPage.jsx`, `InfoPage.jsx`.
+- Pruebas (ejecutadas aquí): recorrido 33 falla sin los cambios de `src` (`git stash`: 67 fallos) y pasa con ellos; `pnpm test:unit` 487/487 (43 archivos); ESLint `apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 33/33. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni dispositivos reales.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ax) de Pendiente (misma comprobación en páginas informativas, pie, confirmación, login/restablecer y ficha con reseñas).

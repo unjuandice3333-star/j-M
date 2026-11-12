@@ -34,7 +34,7 @@ export const WishlistPage = () => {
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
       <div className="jm-container">
         {/* BREADCRUMB */}
-        <div style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '1.5rem' }}>
+        <div className="jm-breadcrumb" style={{ fontSize: '0.8rem', color: '#71717A', marginBottom: '1.5rem' }}>
           <Link to="/" style={{ color: '#71717A' }}>Inicio</Link>
           <span style={{ margin: '0 0.4rem' }}>/</span>
           <strong style={{ color: '#09090B' }}>Mis Favoritos</strong>
