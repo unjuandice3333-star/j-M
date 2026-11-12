@@ -771,6 +771,14 @@ async function main() {
       // el ajuste es asíncrono: sondear la BD sintética (hasta 10 s) en vez de leer justo tras el clic
       let inv; for (let i = 0; i < 50; i++) { inv = (await state()).inventories.find((x) => x.sku === 'POL-M-NEG'); if (inv.stock === 16) break; await new Promise((r) => setTimeout(r, 200)); }
       if (inv.stock !== 16) throw new Error(`stock tras el ajuste ${inv.stock} ≠ 16 (10 − 1 vendida + 7)`);
+      // Ejecución 80: el inventario busca sin tildes y por referencia; la búsqueda queda en ?q=
+      await p.goto(`${BASE}/admin/inventario?q=BASICA`);
+      await expectText(p, 'CAM-M-NEG');
+      if (await p.locator('tr', { hasText: 'POL-M-NEG' }).count()) throw new Error('la búsqueda «BASICA» del inventario no filtró');
+      await p.getByLabel('Buscar en inventario').fill('pol-001');
+      await p.waitForURL(/\/admin\/inventario\?q=pol-001$/, { timeout: 8000 });
+      await expectText(p, 'POL-M-NEG');
+      if (await p.locator('tr', { hasText: 'CAM-M-NEG' }).count()) throw new Error('la búsqueda por referencia del inventario no filtró');
       // pedidos: pagado → procesando → enviado (con guía)
       await p.goto(`${BASE}/admin/pedidos`); await expectText(p, num);
       // Paginación real: el total viene del conteo exacto de la BD (Content-Range), no de las filas cargadas.

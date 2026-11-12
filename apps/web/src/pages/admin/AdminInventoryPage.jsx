@@ -4,6 +4,7 @@ import { Boxes, AlertTriangle, CheckCircle, Search, RefreshCw, MapPin } from 'lu
 import supabase from '../../config/supabase';
 import { adminService } from '../../services/adminService';
 import { fetchAllRows } from '../../utils/adminLists';
+import { normalizeText } from '../../utils/catalogFilters';
 
 /**
  * Ejecución 77: filtro de stock en la URL (`?stock=alerta|agotado`) para enlazar desde la tarjeta del dashboard.
@@ -18,16 +19,24 @@ export const matchesStockFilter = (item, filter) => {
   if (filter === 'agotado') return item.available <= 0;
   return true;
 };
+/** Ejecución 80: búsqueda sin tildes ni mayúsculas por nombre (producto, color, talla), SKU, referencia o ubicación. */
+export const matchesInventorySearch = (item, query) => {
+  const q = normalizeText(query);
+  if (!q) return true;
+  return [item.name, item.sku, item.reference, item.location].some((f) => normalizeText(f).includes(q));
+};
 
 export const AdminInventoryPage = () => {
-  const [searchQuery, setSearchQuery] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   const stockFilter = stockFilterFromParam(searchParams.get('stock'));
-  const setStockFilter = (value) => {
+  const searchQuery = searchParams.get('q') ?? '';
+  const setParam = (key, value, empty) => {
     const next = new URLSearchParams(searchParams);
-    if (value === 'todos') next.delete('stock'); else next.set('stock', value);
+    if (value === empty) next.delete(key); else next.set(key, value);
     setSearchParams(next, { replace: true });
   };
+  const setStockFilter = (value) => setParam('stock', value, 'todos');
+  const setSearchQuery = (value) => setParam('q', value, '');
   const [inventoryItems, setInventoryItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [adjustingId, setAdjustingId] = useState(null);
@@ -52,7 +61,7 @@ export const AdminInventoryPage = () => {
       const available = inv.stock - inv.reserved;
       return {
         id: inv.id, variantId: inv.variant_id, branchId: inv.branch_id,
-        name: `${p?.name ?? '—'} — ${colorName} / ${v?.sizes?.code ?? '—'}`, sku: v?.sku ?? '—',
+        name: `${p?.name ?? '—'} — ${colorName} / ${v?.sizes?.code ?? '—'}`, sku: v?.sku ?? '—', reference: p?.reference ?? '',
         location: inv.location_shelf || 'Bodega principal', total: inv.stock, reserved: inv.reserved, available, min: inv.min_stock,
         status: available <= 0 ? 'out' : available <= inv.min_stock ? 'low' : 'ok', inactive: !v?.is_active || p?.status !== 'active',
         variantActive: !!v?.is_active,
@@ -85,10 +94,7 @@ export const AdminInventoryPage = () => {
     }
   };
 
-  const filteredItems = inventoryItems.filter((item) => matchesStockFilter(item, stockFilter) && (
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.sku.toLowerCase().includes(searchQuery.toLowerCase())
-  ));
+  const filteredItems = inventoryItems.filter((item) => matchesStockFilter(item, stockFilter) && matchesInventorySearch(item, searchQuery));
   const alertCount = inventoryItems.filter(isStockAlert).length;
 
   const totalUnits = inventoryItems.reduce((acc, i) => acc + Math.max(0, i.available), 0);
@@ -139,7 +145,7 @@ export const AdminInventoryPage = () => {
         type="search"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="Buscar por nombre o SKU"
+        placeholder="Buscar por nombre, SKU, referencia o ubicación"
         aria-label="Buscar en inventario"
         style={{ padding: '0.7rem 0.9rem', border: '1px solid #E4E4E7', borderRadius: '8px', fontSize: '0.9rem', maxWidth: '420px', width: '100%' }}
       />

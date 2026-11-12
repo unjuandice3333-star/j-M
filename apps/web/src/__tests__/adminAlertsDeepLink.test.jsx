@@ -241,3 +241,53 @@ describe('Inventario: tarjetas KPI como filtro', () => {
     expect(container.textContent).toContain('5 uds');
   });
 });
+
+// Ejecución 80: búsqueda del inventario sin tildes y en la URL (`?q=`), combinable con `?stock=`.
+describe('Inventario: búsqueda sin tildes y en la URL', () => {
+  const invNamed = (sku, name, reference, shelf, stock = 20) => {
+    const row = inv(sku, stock, 0, 5);
+    row.location_shelf = shelf;
+    row.variants.products = { ...row.variants.products, name, reference };
+    return row;
+  };
+  beforeEach(() => {
+    supa.state.tables.inventories = [
+      invNamed('CAM-01', 'Camisa Algodón', 'REF-CAM', 'Estante A'),
+      invNamed('PAN-01', 'Pantalón Lino', 'REF-PAN', 'Bodega Norte', 2),
+      invNamed('POL-01', 'Polo Básico', 'REF-POL', null),
+    ];
+  });
+  const searchBox = () => container.querySelector('input[aria-label="Buscar en inventario"]');
+  const type = async (el, value) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    await act(async () => { setter.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); });
+    await flush();
+  };
+
+  it('?q= sin tildes ni mayúsculas encuentra el nombre con tilde', async () => {
+    await renderAt('/admin/inventario?q=PANTALON');
+    expect(searchBox().value).toBe('PANTALON');
+    expect(rowSkus()).toEqual(['PAN-01']);
+  });
+
+  it('busca por referencia del producto y por ubicación', async () => {
+    await renderAt('/admin/inventario?q=ref-cam');
+    expect(rowSkus()).toEqual(['CAM-01']);
+    await act(async () => { root.unmount(); });
+    root = createRoot(container);
+    await renderAt('/admin/inventario?q=bodega norte');
+    expect(rowSkus()).toEqual(['PAN-01']);
+  });
+
+  it('escribir pone ?q= en la URL junto a ?stock= y borrar la quita', async () => {
+    await renderAt('/admin/inventario?stock=alerta');
+    expect(rowSkus()).toEqual(['PAN-01']);
+    await type(searchBox(), 'camisa');
+    expect(new URLSearchParams(currentLocation.search).get('q')).toBe('camisa');
+    expect(new URLSearchParams(currentLocation.search).get('stock')).toBe('alerta');
+    expect(container.textContent).toContain('Ninguna variante coincide con el filtro.');
+    await type(searchBox(), '');
+    expect(currentLocation.search).toBe('?stock=alerta');
+    expect(rowSkus()).toEqual(['PAN-01']);
+  });
+});
