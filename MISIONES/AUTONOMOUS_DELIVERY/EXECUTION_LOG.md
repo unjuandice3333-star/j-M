@@ -841,3 +841,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ax) de Pendiente (misma comprobación en páginas informativas, pie, confirmación, login/restablecer y ficha con reseñas).
+
+## Ejecución 98 — 2026-11-12
+- Estado inicial: rama `mission/m26-dev-qa-environments` en `906820c`, árbol limpio; ejecución 97 completada.
+- Tarea: punto 0(ax) de Pendiente. Recorrido E2E móvil 34: todos los controles visibles de páginas informativas, pie, `/login`, `/cuenta/restablecer`, confirmación (pendiente y pagada) y ficha con reseña aprobada + formulario de reseña (D69).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (recorrido 34), `apps/web/e2e/synthetic/backend.cjs` (fixture `/__synthetic-review`), `apps/web/src/components/Footer/Footer.jsx`, `apps/web/src/pages/OrderConfirmationPage.jsx`, `apps/web/src/components/Product/ProductReviewForm.jsx`.
+- Pruebas (ejecutadas aquí): recorrido 34 falla sin los cambios de `src` (`git stash`: 23 fallos reales) y pasa con ellos; `pnpm test:unit` 487/487; `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 34/34. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni dispositivos reales.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ay) de Pendiente (`/admin/login`, 404/«No autorizado», confirmación rechazada/vencida, estados vacíos).

@@ -128,10 +128,10 @@ export const ProductReviewForm = ({ productId }) => {
 
           <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
             <legend style={label}>Calificación</legend>
-            <div style={{ display: 'flex', gap: '0.25rem' }}>
+            <div style={{ display: 'flex', gap: 0 }}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <button key={n} type="button" aria-pressed={rating === n} aria-label={`${n} de 5 estrellas`} onClick={() => setRating(n)}
-                  style={{ background: 'none', border: 0, padding: 2, cursor: 'pointer' }}>
+                  style={{ background: 'none', border: 0, padding: 7, cursor: 'pointer', minWidth: 36, minHeight: 36 }}>
                   <Star size={22} fill={n <= rating ? '#D4AF37' : 'none'} color="#D4AF37" />
                 </button>
               ))}

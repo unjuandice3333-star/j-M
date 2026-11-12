@@ -595,6 +595,56 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser, null, MOBILE);
 
+    await journey('34. Móvil 375×812: TODOS los controles de páginas informativas, pie, login/restablecer, confirmación del pedido y ficha con reseñas', async (p) => {
+      const failures = [];
+      const check = async (scope, where, { min = 1 } = {}) => {
+        const n = await checkAllControls(p, scope, where, failures);
+        if (n < min) failures.push(`${where}: ${n} controles visibles (se esperaban ≥ ${min})`);
+      };
+      const visit = async (url, text) => {
+        await p.goto(`${BASE}${url}`);
+        if (text) await expectText(p, text);
+        await p.waitForLoadState('networkidle');
+        await assertNoHorizontalOverflow(p, url).catch((e) => failures.push(e.message));
+      };
+      // páginas informativas (sin sesión) y pie de página
+      for (const url of ['/guia-de-tallas', '/envios', '/cambios-y-devoluciones', '/preguntas-frecuentes', '/contacto', '/nosotros', '/tiendas', '/terminos', '/privacidad']) {
+        await visit(url); await check('main', url, { min: 0 });
+      }
+      await check('footer', 'pie de página', { min: 5 });
+      // acceso, registro, recuperación y restablecimiento
+      // /login vive fuera del layout público (sin <main>); /cuenta/restablecer sin enlace de recuperación solo muestra un aviso con enlace en línea
+      await visit('/login'); await check('body', '/login', { min: 3 });
+      await p.getByRole('button', { name: 'Crear cuenta' }).tap(); await check('body', '/login · crear cuenta', { min: 4 });
+      await visit('/cuenta/restablecer', 'Crear una contraseña nueva'); await check('main', '/cuenta/restablecer', { min: 0 });
+      // ficha con reseña aprobada (fixture) y formulario de reseña de un comprador con pedido entregado
+      await fetch(`${API_URL}/__synthetic-review`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug: 'polo-clasico', author_name: 'Luis P.', title: 'Gran polo', comment: 'Tela gruesa y buen ajuste en los hombros.', admin_reply: '¡Gracias, Luis!' }) });
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).tap();
+      await p.getByPlaceholder(/Juan/i).first().fill('Rosa Díaz');
+      await p.locator('input[type=email]').fill('rosa@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').tap();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'rosa@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).tap(); await p.waitForURL(/\/checkout\/confirmacion/);
+      const num = (await state()).orders[0].order_number;
+      // confirmación con pago pendiente (sin Wompi configurado) y después pagada (webhook SINTÉTICO)
+      await expectText(p, num); await p.waitForLoadState('networkidle');
+      await assertNoHorizontalOverflow(p, 'confirmación pendiente').catch((e) => failures.push(e.message));
+      await check('main', 'confirmación pendiente');
+      await fetch(`${API_URL}/__synthetic-mark-paid/${num}`);
+      await p.reload(); await expectText(p, num); await p.waitForLoadState('networkidle');
+      await assertNoHorizontalOverflow(p, 'confirmación pagada').catch((e) => failures.push(e.message));
+      await check('main', 'confirmación pagada');
+      await fetch(`${API_URL}/__synthetic-mark-delivered/${num}`);
+      await visit('/producto/polo-clasico', 'Gran polo');
+      await p.getByTestId('review-form').getByText(num).waitFor({ timeout: 8000 });
+      await check('main', 'ficha con reseñas y formulario', { min: 8 });
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser, null, MOBILE);
+
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);

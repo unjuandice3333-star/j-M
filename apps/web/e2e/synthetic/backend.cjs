@@ -345,6 +345,14 @@ function start(port = 54321) {
           if (body.sku) o.online_order_items = [{ id: `oi-${n}`, product_name: 'Fixture', sku: body.sku, size_code: 'M', color_name: 'Negro', unit_price: 50000, quantity: 1, line_total: 50000, image_url: null }];
           S.tables.online_orders.unshift(o); return send(res, 200, { order_number: o.order_number });
         }
+        // Ejecución 98: FIXTURE sintético — reseña YA aprobada (con respuesta de la tienda) de un producto del catálogo, para ver la ficha con reseñas publicadas.
+        if (p === '/__synthetic-review') {
+          const pr = S.products.find((x) => x.slug === body.slug); if (!pr) return send(res, 404, {});
+          const row = { id: crypto.randomUUID(), product_id: pr.id, order_item_id: null, user_id: null, author_name: body.author_name || 'Cliente J&M', city: body.city || null,
+            rating: body.rating || 5, title: body.title || 'Muy buena', comment: body.comment || 'Buena tela y buen ajuste.', is_verified_buyer: true, status: 'approved',
+            admin_reply: body.admin_reply || null, created_at: new Date().toISOString() };
+          S.tables.product_reviews.push(row); return send(res, 200, { id: row.id });
+        }
         if (p.startsWith('/__synthetic-mark-delivered/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o || o.status !== 'paid') return send(res, 404, {}); for (const st of ['processing', 'shipped', 'delivered']) transition(o, st, 'sintético'); return send(res, 200, { status: o.status }); }
         if (p.startsWith('/__synthetic-mark-paid/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); inv.reserved -= it.quantity; inv.stock -= it.quantity; } transition(o, 'paid', 'sintético'); return send(res, 200, { status: 'paid' }); }
         if (p === '/auth/v1/signup') {

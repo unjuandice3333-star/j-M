@@ -127,12 +127,12 @@ export const Footer = () => {
             © 2026 J&M Fashion Store. Todos los derechos reservados.
           </div>
 
-          <div style={{ display: 'flex', gap: '1.25rem' }}>
-            <Link to="/terminos" style={{ color: '#71717A', transition: 'color 0.15s' }}>Términos y condiciones</Link>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: '1.25rem' }}>
+            <Link to="/terminos" style={{ color: '#71717A', transition: 'color 0.15s', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>Términos y condiciones</Link>
             <span>|</span>
-            <Link to="/privacidad" style={{ color: '#71717A', transition: 'color 0.15s' }}>Privacidad</Link>
+            <Link to="/privacidad" style={{ color: '#71717A', transition: 'color 0.15s', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>Privacidad</Link>
             <span>|</span>
-            <Link to="/politica-de-cambios" style={{ color: '#71717A', transition: 'color 0.15s' }}>Cambios y devoluciones</Link>
+            <Link to="/politica-de-cambios" style={{ color: '#71717A', transition: 'color 0.15s', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>Cambios y devoluciones</Link>
           </div>
         </div>
       </div>
@@ -153,10 +153,14 @@ const ulStyle = {
   listStyle: 'none',
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.6rem'
+  gap: '0.1rem'
 };
 
+// Móvil: área táctil ≥ 32 px (D69); el hueco entre filas se redujo para conservar el ritmo visual.
 const linkStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: '32px',
   fontSize: '0.85rem',
   color: '#A1A1AA',
   transition: 'color 0.15s'
