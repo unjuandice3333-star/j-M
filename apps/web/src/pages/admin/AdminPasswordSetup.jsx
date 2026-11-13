@@ -230,6 +230,7 @@ export const AdminPasswordSetup = () => {
 
         <form
           onSubmit={handleSubmit}
+          noValidate
           style={{
             display: 'flex',
             flexDirection: 'column',

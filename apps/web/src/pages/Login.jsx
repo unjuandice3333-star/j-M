@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
 import { Button, Input } from '@jm/ui';
+import { validateAuthForm, serverErrorField } from '../utils/authForm.js';
 import styles from './Login.module.css';
+
+// Ejecución 114 (D85): `noValidate` + validación propia. Antes `required` hacía que Chromium mostrara su globo nativo
+// y el error de la página no salía; ahora el aviso va debajo del campo culpable, enlazado (aria-describedby) y con foco.
+const FIELD_IDS = { fullName: 'login-fullname', email: 'login-email', password: 'login-password' };
+const ERROR_ID = 'login-field-error';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -10,16 +16,32 @@ export const Login = () => {
   const [fullName, setFullName] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [notice, setNotice] = useState('');
+  const [fieldError, setFieldError] = useState(null); // { field, message }
+  const formRef = useRef(null);
   const { login, signUp, isLoading, error } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
   const fromPath = location.state?.from?.pathname || '/admin/dashboard';
 
+  const showFieldError = (fe) => {
+    setFieldError(fe);
+    formRef.current?.querySelector(`#${FIELD_IDS[fe.field]}`)?.focus();
+  };
+  const fieldA11y = (field) => (fieldError?.field === field
+    ? { 'aria-invalid': true, 'aria-describedby': ERROR_ID }
+    : { 'aria-invalid': false });
+  const fieldErrorText = (field) => (fieldError?.field === field
+    ? <p id={ERROR_ID} role="alert" className={styles.fieldError}>{fieldError.message}</p>
+    : null);
+  const clearFieldError = (field) => { if (fieldError?.field === field) setFieldError(null); };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) return;
     setNotice('');
+    const invalid = validateAuthForm({ email, password, fullName, register: isRegistering });
+    if (invalid) { showFieldError(invalid); return; }
+    setFieldError(null);
     try {
       if (isRegistering) {
         await signUp(email, password, fullName);
@@ -35,6 +57,8 @@ export const Login = () => {
       }
     } catch (err) {
       console.error('[Login Exception]:', err);
+      const message = err?.message || 'No fue posible continuar. Inténtalo de nuevo.';
+      showFieldError({ field: serverErrorField(message, isRegistering), message });
     }
   };
 
@@ -49,8 +73,8 @@ export const Login = () => {
           <span className={styles.tagline}>FASHION STORE • ACCESO SISTEMA</span>
         </div>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          {error && <div className={styles.errorBanner}>{error}</div>}
+        <form ref={formRef} onSubmit={handleSubmit} noValidate className={styles.form}>
+          {error && !fieldError && <div className={styles.errorBanner} role="alert">{error}</div>}
           {notice && !error && <div className={styles.noticeBanner} role="status">{notice}</div>}
 
           {isRegistering && (
@@ -59,31 +83,40 @@ export const Login = () => {
               type="text"
               placeholder="Ej. Juan Pérez"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => { setFullName(e.target.value); clearFieldError('fullName'); }}
+              {...fieldA11y('fullName')}
               required
               id="login-fullname"
+              autoComplete="name"
             />
           )}
+          {isRegistering && fieldErrorText('fullName')}
 
           <Input
             label="Correo Electrónico"
             type="email"
             placeholder="ejemplo@jmfashion.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
+            {...fieldA11y('email')}
             required
             id="login-email"
+            autoComplete="email"
           />
+          {fieldErrorText('email')}
 
           <Input
             label="Contraseña"
             type="password"
             placeholder="••••••••"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
+            {...fieldA11y('password')}
             required
             id="login-password"
+            autoComplete={isRegistering ? 'new-password' : 'current-password'}
           />
+          {fieldErrorText('password')}
 
           <Button type="submit" variant="primary" isLoading={isLoading} className={styles.submitBtn}>
             {isRegistering ? 'Crear Cuenta' : 'Iniciar Sesión'}
@@ -94,7 +127,7 @@ export const Login = () => {
           {isRegistering ? '¿Ya tienes una cuenta? ' : '¿Necesitas registrarte? '}
           <button
             type="button"
-            onClick={() => setIsRegistering(!isRegistering)}
+            onClick={() => { setIsRegistering(!isRegistering); setFieldError(null); }}
             style={{ border: 'none', background: 'none', fontWeight: 700, color: '#60A5FA', cursor: 'pointer', minHeight: 44, padding: '0 0.5rem', fontSize: 'inherit' }}
           >
             {isRegistering ? 'Inicia sesión' : 'Crear cuenta'}

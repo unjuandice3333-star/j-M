@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Package,
@@ -22,6 +22,11 @@ import { AccountDetails } from '../components/Account/AccountDetails';
 import { AccountSectionNav, useAccountSectionFocus } from '../components/Account/AccountSectionNav';
 import { ReviewInvitations } from '../components/Account/ReviewInvitations';
 import { wompiService } from '../services/wompi';
+import { validateAuthForm, validateEmailField, serverErrorField } from '../utils/authForm.js';
+
+// Ejecución 114 (D85): formulario de acceso de /cuenta sin sesión con etiquetas asociadas y aviso enlazado al campo.
+const AUTH_FIELD_IDS = { fullName: 'account-auth-name', email: 'account-auth-email', password: 'account-auth-password' };
+const AUTH_ERROR_ID = 'account-auth-error';
 
 // Respuestas de /api/wompi/signature que indican que la lista quedó vieja (pagado, vencido o cancelado en otro lado).
 const STALE_PAYMENT_CODES = new Set(['JM_ORDER_NOT_PAYABLE', 'JM_PAYMENT_WINDOW_EXPIRED', 'JM_ORDER_NOT_FOUND']);
@@ -48,6 +53,23 @@ export const AccountPage = () => {
   const [inputName, setInputName] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [formError, setFormError] = useState(null);
+  // Ejecución 114 (D85): campo al que pertenece formError ('fullName' | 'email' | 'password' | null = aviso general).
+  const [formErrorField, setFormErrorField] = useState(null);
+  const authFormRef = useRef(null);
+  const failAuth = (message, field = null) => {
+    setFormError(message); setFormErrorField(field);
+    if (field) authFormRef.current?.querySelector(`#${AUTH_FIELD_IDS[field]}`)?.focus();
+  };
+  const authFieldA11y = (field) => (formError && formErrorField === field
+    ? { 'aria-invalid': true, 'aria-describedby': AUTH_ERROR_ID }
+    : { 'aria-invalid': false });
+  const authFieldError = (field) => (formError && formErrorField === field
+    ? <p id={AUTH_ERROR_ID} role="alert" style={{ color: '#991B1B', fontSize: '0.8rem', fontWeight: 600, margin: '0.35rem 0 0' }}>{formError}</p>
+    : null);
+  const editAuthField = (field, setter) => (e) => {
+    setter(e.target.value);
+    if (formErrorField === field) { setFormError(null); setFormErrorField(null); }
+  };
 
   // Orders State for Authenticated Customer
   const [userOrders, setUserOrders] = useState([]);
@@ -60,11 +82,11 @@ export const AccountPage = () => {
   const openOrder = (o) => { rememberOrder(o); navigate(trackUrl(o)); };
 
   const handleForgotPassword = async () => {
-    setFormError(null); setResetInfo(null);
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(inputEmail.trim())) { setFormError('Escribe tu correo para enviarte el enlace de recuperación.'); return; }
+    setFormError(null); setFormErrorField(null); setResetInfo(null);
+    if (validateEmailField(inputEmail)) { failAuth('Escribe tu correo para enviarte el enlace de recuperación.', 'email'); return; }
     const { error: err } = await supabase.auth.resetPasswordForEmail(inputEmail.trim(), { redirectTo: `${window.location.origin}/cuenta/restablecer` });
     // Mismo mensaje exista o no la cuenta (no revela qué correos están registrados)
-    if (err && !/rate limit/i.test(err.message)) setFormError('No pudimos enviar el correo. Inténtalo de nuevo en unos minutos.');
+    if (err && !/rate limit/i.test(err.message)) failAuth('No pudimos enviar el correo. Inténtalo de nuevo en unos minutos.');
     else setResetInfo('Si el correo está registrado, te enviamos un enlace para crear una nueva contraseña.');
   };
 
@@ -122,26 +144,21 @@ export const AccountPage = () => {
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    setFormError(null);
+    setFormError(null); setFormErrorField(null); setResetInfo(null);
 
-    if (!inputEmail || !inputPassword) {
-      setFormError('Por favor ingresa tu correo y contraseña.');
-      return;
-    }
+    const invalid = validateAuthForm({ email: inputEmail, password: inputPassword, fullName: inputName, register: isRegisterMode });
+    if (invalid) { failAuth(invalid.message, invalid.field); return; }
 
     try {
       if (isRegisterMode) {
-        if (!inputName) {
-          setFormError('Por favor ingresa tu nombre completo.');
-          return;
-        }
-        await signUp(inputEmail, inputPassword, inputName);
+        await signUp(inputEmail.trim(), inputPassword, inputName.trim());
       } else {
-        await login(inputEmail, inputPassword);
+        await login(inputEmail.trim(), inputPassword);
         if (safeReturn) navigate(safeReturn, { replace: true });
       }
     } catch (err) {
-      setFormError(err.message || 'Error durante la autenticación.');
+      const message = err.message || 'Error durante la autenticación.';
+      failAuth(message, serverErrorField(message, isRegisterMode));
     }
   };
 
@@ -155,7 +172,7 @@ export const AccountPage = () => {
       });
       if (error) throw error;
     } catch (err) {
-      setFormError(err.message || 'Google OAuth requiere configuración en el panel de Supabase.');
+      failAuth(err.message || 'Google OAuth requiere configuración en el panel de Supabase.');
     }
   };
 
@@ -633,8 +650,8 @@ export const AccountPage = () => {
             </p>
           </div>
 
-          {(formError || error) && (
-            <div style={{
+          {((formError && !formErrorField) || (error && !formError)) && (
+            <div role="alert" style={{
               backgroundColor: '#FEF2F2',
               color: '#991B1B',
               padding: '0.75rem 1rem',
@@ -647,49 +664,61 @@ export const AccountPage = () => {
             </div>
           )}
 
-          <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form ref={authFormRef} onSubmit={handleAuthSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {isRegisterMode && (
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#09090B', marginBottom: '0.4rem' }}>
+                <label htmlFor="account-auth-name" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#09090B', marginBottom: '0.4rem' }}>
                   Nombre completo
                 </label>
                 <input
+                  id="account-auth-name"
                   type="text"
                   required
+                  autoComplete="name"
                   placeholder="Ej. Juan Pérez"
                   value={inputName}
-                  onChange={(e) => setInputName(e.target.value)}
-                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #2563EB', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                  onChange={editAuthField('fullName', setInputName)}
+                  {...authFieldA11y('fullName')}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #2563EB', borderRadius: '8px', fontSize: '0.9rem' }}
                 />
+                {authFieldError('fullName')}
               </div>
             )}
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#09090B', marginBottom: '0.4rem' }}>
+              <label htmlFor="account-auth-email" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#09090B', marginBottom: '0.4rem' }}>
                 Correo electrónico
               </label>
               <input
+                id="account-auth-email"
                 type="email"
                 required
+                autoComplete="email"
                 placeholder="ejemplo@correo.com"
                 value={inputEmail}
-                onChange={(e) => setInputEmail(e.target.value)}
-                style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #2563EB', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                onChange={editAuthField('email', setInputEmail)}
+                {...authFieldA11y('email')}
+                style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #2563EB', borderRadius: '8px', fontSize: '0.9rem' }}
               />
+              {authFieldError('email')}
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#09090B', marginBottom: '0.4rem' }}>
+              <label htmlFor="account-auth-password" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#09090B', marginBottom: '0.4rem' }}>
                 Contraseña
               </label>
               <input
+                id="account-auth-password"
                 type="password"
                 required
+                autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
                 placeholder="••••••••"
                 value={inputPassword}
-                onChange={(e) => setInputPassword(e.target.value)}
-                style={{ width: '100%', padding: '0.85rem 1rem', border: '1px solid #D4D4D8', borderRadius: '8px', fontSize: '0.9rem', outline: 'none' }}
+                onChange={editAuthField('password', setInputPassword)}
+                {...authFieldA11y('password')}
+                style={{ width: '100%', padding: '0.85rem 1rem', border: '1px solid #D4D4D8', borderRadius: '8px', fontSize: '0.9rem' }}
               />
+              {authFieldError('password')}
             </div>
 
             <button
@@ -758,7 +787,7 @@ export const AccountPage = () => {
             {isRegisterMode ? '¿Ya tienes una cuenta? ' : '¿Eres nuevo en J&M? '}
             <button
               type="button"
-              onClick={() => { setIsRegisterMode(!isRegisterMode); setFormError(null); }}
+              onClick={() => { setIsRegisterMode(!isRegisterMode); setFormError(null); setFormErrorField(null); }}
               style={{ border: 'none', background: 'none', fontWeight: 700, color: '#2563EB', cursor: 'pointer', minHeight: 44, padding: '0 0.5rem', fontSize: 'inherit' }}
             >
               {isRegisterMode ? 'Inicia sesión →' : 'Empieza →'}

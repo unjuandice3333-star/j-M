@@ -226,6 +226,42 @@ async function auditA11y(page, where, failures, scope = null) {
 }
 const MOBILE = { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 };
 
+// Ejecución 113/114: tras un envío inválido, el foco debe quedar en el control culpable con aria-invalid y un aviso
+// enlazado (aria-describedby) que exista, se vea y esté dentro de la pantalla. Lo usan los recorridos 45 y 46.
+function makeFocusChecker(p, failures, checked) {
+  return async (where, { text, invalid = true, name = null } = {}) => {
+    await p.waitForTimeout(150); // el foco se mueve en el siguiente frame (requestAnimationFrame)
+    const r = await p.evaluate(() => {
+      const el = document.activeElement;
+      if (!el || el === document.body) return { none: true };
+      const vh = window.innerHeight; const vw = window.innerWidth;
+      const inView = (n) => { const b = n.getBoundingClientRect(); return b.width > 0 && b.height > 0 && b.bottom > 0 && b.top < vh && b.right > 0 && b.left < vw; };
+      const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+      const msgs = ids.map((id) => {
+        const m = document.getElementById(id);
+        if (!m) return { id, missing: true };
+        const cs = getComputedStyle(m); const b = m.getBoundingClientRect();
+        return { id, text: m.textContent.trim(), visible: cs.display !== 'none' && cs.visibility !== 'hidden' && b.width > 0 && b.height > 0, inView: inView(m) };
+      });
+      const label = el.getAttribute('aria-label') || (el.labels && el.labels[0] ? el.labels[0].textContent.trim() : '') || el.id || el.tagName;
+      return { tag: el.tagName, label, invalid: el.getAttribute('aria-invalid'), msgs, fieldInView: inView(el) };
+    });
+    if (r.none) { failures.push(`${where}: el foco no quedó en ningún control`); return; }
+    const who = `${where} [${r.tag} «${r.label}»]`;
+    if (name && !name.test(r.label)) failures.push(`${who}: el foco quedó en otro control (se esperaba ${name})`);
+    if (invalid && r.invalid !== 'true') failures.push(`${who}: aria-invalid=${r.invalid}`);
+    if (!r.msgs.length) failures.push(`${who}: sin aria-describedby`);
+    for (const m of r.msgs) {
+      if (m.missing) failures.push(`${who}: aria-describedby → #${m.id} no existe`);
+      else if (!m.visible || !m.text) failures.push(`${who}: el aviso #${m.id} no es visible`);
+      else if (!m.inView) failures.push(`${who}: el aviso #${m.id} queda fuera de la pantalla`);
+    }
+    if (text && !r.msgs.some((m) => text.test(m.text || ''))) failures.push(`${who}: el aviso no dice ${text} (dice «${r.msgs.map((m) => m.text).join(' | ')}»)`);
+    if (!r.fieldInView) failures.push(`${who}: el campo con foco queda fuera de la pantalla`);
+    checked.push(where);
+  };
+}
+
 async function main() {
   const be = await backend.start(API);
   const env = { ...process.env, ...ciEnv() };
@@ -1228,37 +1264,7 @@ async function main() {
     // pantalla (si el aviso queda fuera, quien ve la pantalla no sabe por qué no se envió).
     await journey('45. Errores de formulario en Chromium: foco en el campo culpable y aviso enlazado visible (tienda y admin, escritorio y móvil)', async (p) => {
       const failures = []; const checked = [];
-      const expectFocusLinked = async (where, { text, invalid = true, name = null } = {}) => {
-        await p.waitForTimeout(150); // el foco se mueve en el siguiente frame (requestAnimationFrame)
-        const r = await p.evaluate(() => {
-          const el = document.activeElement;
-          if (!el || el === document.body) return { none: true };
-          const vh = window.innerHeight; const vw = window.innerWidth;
-          const inView = (n) => { const b = n.getBoundingClientRect(); return b.width > 0 && b.height > 0 && b.bottom > 0 && b.top < vh && b.right > 0 && b.left < vw; };
-          const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
-          const msgs = ids.map((id) => {
-            const m = document.getElementById(id);
-            if (!m) return { id, missing: true };
-            const cs = getComputedStyle(m); const b = m.getBoundingClientRect();
-            return { id, text: m.textContent.trim(), visible: cs.display !== 'none' && cs.visibility !== 'hidden' && b.width > 0 && b.height > 0, inView: inView(m) };
-          });
-          const label = el.getAttribute('aria-label') || (el.labels && el.labels[0] ? el.labels[0].textContent.trim() : '') || el.id || el.tagName;
-          return { tag: el.tagName, label, invalid: el.getAttribute('aria-invalid'), msgs, fieldInView: inView(el) };
-        });
-        if (r.none) { failures.push(`${where}: el foco no quedó en ningún control`); return; }
-        const who = `${where} [${r.tag} «${r.label}»]`;
-        if (name && !name.test(r.label)) failures.push(`${who}: el foco quedó en otro control (se esperaba ${name})`);
-        if (invalid && r.invalid !== 'true') failures.push(`${who}: aria-invalid=${r.invalid}`);
-        if (!r.msgs.length) failures.push(`${who}: sin aria-describedby`);
-        for (const m of r.msgs) {
-          if (m.missing) failures.push(`${who}: aria-describedby → #${m.id} no existe`);
-          else if (!m.visible || !m.text) failures.push(`${who}: el aviso #${m.id} no es visible`);
-          else if (!m.inView) failures.push(`${who}: el aviso #${m.id} queda fuera de la pantalla`);
-        }
-        if (text && !r.msgs.some((m) => text.test(m.text || ''))) failures.push(`${who}: el aviso no dice ${text} (dice «${r.msgs.map((m) => m.text).join(' | ')}»)`);
-        if (!r.fieldInView) failures.push(`${who}: el campo con foco queda fuera de la pantalla`);
-        checked.push(where);
-      };
+      const expectFocusLinked = makeFocusChecker(p, failures, checked);
       const submitIn = (scope) => p.locator(`${scope} button[type=submit]`).first().click();
 
       const store = async (sfx) => {
@@ -1365,6 +1371,91 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
       if (checked.length !== 27) throw new Error(`solo se comprobaron ${checked.length}/27 envíos inválidos: ${checked.join(', ')}`);
     }, browser);
+
+    // Ejecución 114 (D85): el resto de formularios con `required` nativo. /login y /cuenta sin sesión no tenían
+    // `noValidate`: Chromium mostraba su globo y el aviso de la página no salía; /cuenta además no asociaba etiquetas.
+    await journey('46. Errores de formulario en Chromium (2): acceso de la tienda, checkout y «Mi cuenta» (escritorio y móvil)', async (p) => {
+      const failures = []; const checked = [];
+      const expectFocusLinked = makeFocusChecker(p, failures, checked);
+      const formOf = (sel) => p.locator('form', { has: p.locator(sel) });
+      const sendForm = (sel) => formOf(sel).locator('button[type=submit]').first().click();
+
+      const access = async (sfx) => {
+        // /login (Login.jsx)
+        await p.goto(`${BASE}/login`); await p.evaluate(() => localStorage.clear()); await p.reload();
+        await p.locator('#login-email').waitFor({ timeout: 8000 });
+        await sendForm('#login-email');
+        await expectFocusLinked(`/login vacío${sfx}`, { text: /Escribe tu correo/, name: /Correo/ });
+        await p.locator('#login-email').fill('ana@'); await sendForm('#login-email');
+        await expectFocusLinked(`/login correo incompleto${sfx}`, { text: /nombre@dominio/, name: /Correo/ });
+        await p.locator('#login-email').fill('admin@jm.test'); await sendForm('#login-email');
+        await expectFocusLinked(`/login sin contraseña${sfx}`, { text: /Escribe tu contraseña/, name: /Contraseña/ });
+        await p.locator('#login-password').fill('Clave-Equivocada-9'); await sendForm('#login-email');
+        await p.locator('#login-field-error').waitFor({ timeout: 8000 });
+        await expectFocusLinked(`/login credenciales erróneas${sfx}`, { text: /incorrectos/, name: /Contraseña/ });
+        await p.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
+        await p.locator('#login-fullname').waitFor({ timeout: 8000 }); await sendForm('#login-email');
+        await expectFocusLinked(`/login registro sin nombre${sfx}`, { text: /nombre completo/, name: /Nombre/ });
+        await p.locator('#login-fullname').fill('Rita Foco'); await p.locator('#login-password').fill('corta'); await sendForm('#login-email');
+        await expectFocusLinked(`/login registro contraseña corta${sfx}`, { text: /al menos 8/, name: /Contraseña/ });
+
+        // /cuenta sin sesión (AccountPage)
+        await p.goto(`${BASE}/cuenta`); await p.locator('#account-auth-email').waitFor({ timeout: 8000 });
+        await sendForm('#account-auth-email');
+        await expectFocusLinked(`/cuenta vacío${sfx}`, { text: /Escribe tu correo/, name: /Correo/ });
+        await p.getByRole('button', { name: /Olvidaste tu contraseña/ }).click();
+        await expectFocusLinked(`/cuenta recuperar sin correo${sfx}`, { text: /recuperación/, name: /Correo/ });
+        await p.locator('#account-auth-email').fill('admin@jm.test'); await p.locator('#account-auth-password').fill('Clave-Equivocada-9');
+        await sendForm('#account-auth-email');
+        await p.locator('#account-auth-error').waitFor({ timeout: 8000 });
+        await expectFocusLinked(`/cuenta credenciales erróneas${sfx}`, { text: /incorrectos/, name: /Contraseña/ });
+        await p.getByRole('button', { name: /Empieza/ }).click();
+        await p.locator('#account-auth-name').waitFor({ timeout: 8000 }); await sendForm('#account-auth-email');
+        await expectFocusLinked(`/cuenta registro sin nombre${sfx}`, { text: /nombre completo/, name: /Nombre/ });
+        await p.locator('#account-auth-name').fill('Rita Foco'); await p.locator('#account-auth-password').fill('corta');
+        await sendForm('#account-auth-email');
+        await expectFocusLinked(`/cuenta registro contraseña corta${sfx}`, { text: /al menos 8/, name: /Contraseña/ });
+
+        // checkout sin sesión
+        await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+        await p.goto(`${BASE}/checkout`); await p.locator('input[name=firstName]').waitFor({ timeout: 8000 });
+        await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+        await expectFocusLinked(`checkout vacío${sfx}`, { text: /Escribe tu nombre/, name: /Nombre/ });
+        await fillCheckout(p, { email: 'juan@correo' });
+        await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+        await expectFocusLinked(`checkout correo inválido${sfx}`, { text: /correo válido/, name: /Correo|Email/i });
+      };
+      await access('');
+      await p.setViewportSize({ width: 375, height: 812 });
+      await access(' (móvil)');
+      await p.setViewportSize({ width: 1280, height: 900 });
+
+      // «Mi cuenta» con sesión: datos, direcciones y contraseña
+      await p.evaluate(() => localStorage.clear());
+      await p.goto(`${BASE}/login`); await p.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
+      await p.locator('#login-fullname').fill('Rita Cuenta');
+      await p.locator('#login-email').fill('rita.cuenta@correo.co'); await p.locator('#login-password').fill('Clave-Segura-1');
+      await sendForm('#login-email');
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      for (const [vp, sfx] of [[{ width: 1280, height: 900 }, ''], [{ width: 375, height: 812 }, ' (móvil)']]) {
+        await p.setViewportSize(vp);
+        await p.goto(`${BASE}/cuenta`); const nameIn = p.locator('#profile-full-name');
+        await nameIn.waitFor({ timeout: 8000 }); await nameIn.fill(' ');
+        await p.getByRole('button', { name: 'Guardar datos' }).click();
+        await expectFocusLinked(`mis datos sin nombre${sfx}`, { text: /nombre completo/, name: /Nombre completo/ });
+        await p.getByRole('button', { name: /Agregar dirección/ }).click();
+        await p.getByTestId('address-form').waitFor({ timeout: 8000 });
+        await p.locator('#addr-recipient_name').fill('');
+        await p.getByRole('button', { name: 'Guardar dirección' }).click();
+        await expectFocusLinked(`dirección vacía${sfx}`, { text: /quien recibe/, name: /Quien recibe/ });
+        await p.getByTestId('address-form').getByRole('button', { name: 'Cancelar' }).click();
+        await p.locator('#acc-new-password').fill('corta');
+        await p.getByRole('button', { name: 'Cambiar contraseña' }).click();
+        await expectFocusLinked(`contraseña corta${sfx}`, { text: /al menos 8/, name: /Nueva contraseña/ });
+      }
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+      if (checked.length !== 32) throw new Error(`solo se comprobaron ${checked.length}/32 envíos inválidos: ${checked.join(', ')}`);
+    }, browser, /Login Exception|Invalid login|400/);
 
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');

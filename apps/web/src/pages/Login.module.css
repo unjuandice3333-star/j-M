@@ -106,3 +106,12 @@
   font-size: 0.875rem;
   font-weight: 500;
 }
+
+/* Ejecución 114: aviso debajo del campo culpable (≈7:1 sobre #18181b). El hueco del formulario lo separa del campo,
+   así que se acerca con margen negativo. */
+.fieldError {
+  margin: -0.5rem 0 0;
+  color: #fca5a5;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
