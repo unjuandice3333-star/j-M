@@ -2,6 +2,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
 import { DialogPanel } from '../components/Common/DialogPanel';
+import { SkipToContent, useRouteFocus, MAIN_ID } from '../components/Common/RouteFocus';
+import { AdminGlobalSearch } from '../components/Common/AdminGlobalSearch';
 import { countPendingReviews, REVIEWS_CHANGED_EVENT } from '../services/reviewsAdminService.js';
 import { countOrdersToPrepare, ORDERS_CHANGED_EVENT, ORDERS_POLL_MS } from '../services/adminService.js';
 import {
@@ -19,7 +21,6 @@ import {
   Image,
   ArrowLeft,
   Bell,
-  Search,
   LogOut,
   X
 } from 'lucide-react';
@@ -47,6 +48,8 @@ const useNarrow = () => {
 export const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  // Ejecución 104 (pendiente 0(bd)): igual que la tienda (D74): «Ir al contenido» y foco al <h1> al cambiar de página.
+  useRouteFocus();
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
   const narrow = useNarrow();
@@ -109,6 +112,7 @@ export const AdminLayout = () => {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F4F4F5', fontFamily: 'var(--font-sans)' }}>
+      <SkipToContent />
       {/* M27: en pantallas pequeñas el menú lateral se oculta y se abre con el botón ☰ (antes ocupaba 2/3 del móvil) */}
       <style>{`
         @media (max-width: 900px) {
@@ -253,19 +257,12 @@ export const AdminLayout = () => {
           {/* Global Admin Search Input */}
           <button type="button" className="jm-admin-menu-btn" aria-label="Abrir menú" aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}
             style={{ display: 'none', border: '1px solid #E4E4E7', borderRadius: '6px', padding: '0.4rem 0.6rem', fontSize: '1.1rem', fontWeight: 800 }}>☰</button>
-          <div className="jm-admin-search" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', backgroundColor: '#FAFAFA', padding: '0.5rem 0.9rem', borderRadius: '6px', border: '1px solid #E4E4E7', width: '320px' }}>
-            <Search size={16} color="#71717A" />
-            <input
-              type="text"
-              placeholder="Buscar SKU, pedido, cliente..."
-              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem', width: '100%' }}
-            />
-          </div>
+          <AdminGlobalSearch className="jm-admin-search" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', backgroundColor: '#FAFAFA', padding: '0.5rem 0.9rem', borderRadius: '6px', border: '1px solid #E4E4E7', width: '320px' }} />
 
           {/* Admin User Profile Action */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             <div style={{ position: 'relative' }}>
-              <Bell size={20} color="#71717A" style={{ cursor: 'pointer' }} />
+              <Bell size={20} color="#71717A" aria-hidden="true" />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderLeft: '1px solid #E4E4E7', paddingLeft: '1.5rem' }}>
@@ -281,7 +278,7 @@ export const AdminLayout = () => {
         </header>
 
         {/* PAGE BODY */}
-        <main className="jm-admin-main" style={{ flex: 1, padding: '2rem', overflowX: 'auto' }}>
+        <main id={MAIN_ID} tabIndex={-1} className="jm-admin-main" style={{ flex: 1, padding: '2rem', overflowX: 'auto', outline: 'none' }}>
           <Outlet />
         </main>
       </div>

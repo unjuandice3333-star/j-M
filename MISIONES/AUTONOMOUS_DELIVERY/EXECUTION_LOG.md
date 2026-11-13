@@ -901,3 +901,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bd) de Pendiente (lo mismo en el admin).
+
+## Ejecución 104 — 2026-11-13 04:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-70r1kj` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `5b74790`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bd) de Pendiente. «Ir al contenido», foco al `<h1>` y un `<h1>` por página en el admin; además, el buscador de la cabecera del admin, que era decorativo, ahora funciona (D75).
+- Archivos: nuevo `apps/web/src/components/Common/AdminGlobalSearch.jsx`, nuevo `apps/web/src/__tests__/adminGlobalSearch.test.jsx`; `apps/web/src/layouts/AdminLayout.jsx`, `apps/web/src/pages/admin/AdminLogin.jsx` (`<main>`), `apps/web/src/pages/admin/AdminProductFormPage.jsx` (`<h1>` mientras carga); `apps/web/e2e/e2e_synthetic.cjs` (recorrido 40).
+- Pruebas (ejecutadas aquí): recorrido 40 falla sin los cambios de `src` (`git stash`) y pasa con ellos; `adminGlobalSearch.test.jsx` 6/6; `pnpm test:unit` 515/515 (48 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 40/40 en la primera pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(be) de Pendiente (campana del admin: aviso real o retirarla; luego revisión de contraste/nombres accesibles).

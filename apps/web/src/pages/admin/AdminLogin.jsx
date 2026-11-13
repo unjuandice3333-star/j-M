@@ -108,7 +108,7 @@ export const AdminLogin = () => {
   };
 
   return (
-    <div style={{
+    <main style={{
       minHeight: '100vh',
       backgroundColor: '#09090B',
       display: 'flex',
@@ -353,7 +353,7 @@ export const AdminLogin = () => {
           Autorización perimetral basada en roles PostgreSQL (<code style={{ color: '#D4AF37' }}>public.profiles</code>).
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 

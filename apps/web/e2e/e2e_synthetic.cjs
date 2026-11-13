@@ -916,6 +916,77 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('40. Accesibilidad del admin: «Ir al contenido», foco al <h1> al cambiar de página, un <h1> por ruta y buscador de la cabecera', async (p) => {
+      const failures = [];
+      const active = () => p.evaluate(() => { const a = document.activeElement; return { tag: a?.tagName, text: (a?.textContent || '').trim().slice(0, 60), inMain: !!a?.closest('main') }; });
+      const landsOnH1 = async (where, re) => {
+        try { await p.waitForFunction((src) => { const a = document.activeElement; return a?.tagName === 'H1' && !!a.closest('main') && new RegExp(src, 'i').test(a.textContent); }, re.source, { timeout: 8000 }); }
+        catch { const x = await active(); failures.push(`${where}: el foco quedó en ${x.tag} «${x.text}»`); }
+      };
+      // /admin/login: un <h1> y landmark <main>
+      await p.goto(`${BASE}/admin/login`); await p.locator('h1').first().waitFor();
+      if (await p.locator('h1').count() !== 1) failures.push(`/admin/login: ${await p.locator('h1').count()} <h1>`);
+      if (await p.locator('main').count() !== 1) failures.push('/admin/login: sin landmark <main>');
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      // 1) primer Tab = «Ir al contenido»; Enter → <h1> del dashboard sin cambiar la URL
+      await p.goto(`${BASE}/admin/dashboard`); await p.locator('main h1').waitFor();
+      await p.keyboard.press('Tab');
+      let a = await active();
+      if (a.tag !== 'A' || a.text !== 'Ir al contenido') failures.push(`primer Tab en el admin: ${a.tag} «${a.text}»`);
+      else {
+        await p.keyboard.press('Enter'); a = await active();
+        if (a.tag !== 'H1' || !a.inMain) failures.push(`«Ir al contenido» dejó el foco en ${a.tag} «${a.text}»`);
+        if (!/\/admin\/dashboard$/.test(p.url())) failures.push(`«Ir al contenido» cambió la URL: ${p.url()}`);
+      }
+      // 2) cada enlace del menú lateral lleva el foco al <h1> de la página nueva, que es único
+      const pages = [['Productos', /\/admin\/productos$/, /productos/], ['Inventario', /\/admin\/inventario$/, /inventario/], ['Pedidos', /\/admin\/pedidos$/, /pedidos/],
+        ['Clientes', /\/admin\/clientes$/, /clientes/], ['Boletín', /\/admin\/boletin$/, /bolet/], ['Colecciones', /\/admin\/colecciones$/, /colecciones/],
+        ['Imágenes', /\/admin\/imagenes$/, /im[aá]genes/], ['Descuentos', /\/admin\/descuentos$/, /cupones/], ['Reviews', /\/admin\/reviews$/, /rese/],
+        ['Analytics', /\/admin\/analytics$/, /anal/], ['Configuración', /\/admin\/configuracion$/, /configuraci/], ['Dashboard', /\/admin\/dashboard$/, /./]];
+      const side = p.locator('aside nav');
+      for (const [label, url, re] of pages) {
+        const link = side.getByRole('link', { name: new RegExp(`^${label}`) }).first();
+        if (!(await link.count())) { failures.push(`menú sin «${label}»`); continue; }
+        await link.click(); await p.waitForURL(url);
+        await landsOnH1(`menú → ${label}`, re);
+        await p.waitForTimeout(300);
+        const n = await p.locator('h1').count();
+        if (n !== 1) failures.push(`${label}: ${n} <h1>`);
+      }
+      // nuevo producto (también mientras carga) y edición
+      await p.goto(`${BASE}/admin/productos`); await p.locator('main h1').waitFor();
+      await p.getByRole('button', { name: /nuevo producto/i }).first().click().catch(() => failures.push('sin botón «Nuevo producto»'));
+      await p.waitForURL(/\/admin\/productos\/nuevo/).catch(() => {});
+      await landsOnH1('productos → nuevo', /nuevo producto/);
+      // 3) buscador de la cabecera: Enter va a la lista más probable; las 4 listas se ofrecen como enlaces
+      const search = p.getByRole('searchbox', { name: 'Buscar SKU, pedido o cliente' });
+      await search.fill('JM-000001'); await search.press('Enter');
+      try { await p.waitForURL(/\/admin\/pedidos\?q=JM-000001$/, { timeout: 5000 }); } catch { failures.push(`Enter con número de pedido → ${p.url()}`); }
+      await landsOnH1('buscador → pedidos', /pedidos/);
+      if (await search.inputValue() !== '') failures.push('el buscador no se vació tras buscar');
+      await search.fill('cliente@correo.co'); await search.press('Enter');
+      try { await p.waitForURL(/\/admin\/clientes\?q=cliente%40correo\.co$/, { timeout: 5000 }); } catch { failures.push(`Enter con correo → ${p.url()}`); }
+      await search.fill('CAM-M-NEG');
+      const opt = p.getByRole('link', { name: /Buscar «CAM-M-NEG» en Inventario/ });
+      try { await opt.waitFor({ timeout: 3000 }); } catch { failures.push('no se ofrecen las listas al escribir'); }
+      if (await p.getByRole('search', { name: 'Buscar en el admin' }).getByRole('link').count() !== 4) failures.push('el buscador no ofrece 4 listas');
+      await search.press('Escape');
+      if (await opt.count()) failures.push('Escape no cierra las opciones del buscador');
+      await search.fill(''); await search.fill('CAM-M-NEG'); await opt.click();
+      try { await p.waitForURL(/\/admin\/inventario\?q=CAM-M-NEG$/, { timeout: 5000 }); } catch { failures.push(`opción Inventario → ${p.url()}`); }
+      try { await p.getByText('CAM-M-NEG').first().waitFor({ timeout: 8000 }); } catch { failures.push('inventario filtrado sin la variante CAM-M-NEG'); }
+      await search.fill('camiseta'); await search.press('Enter');
+      try { await p.waitForURL(/\/admin\/productos\?q=camiseta$/, { timeout: 5000 }); } catch { failures.push(`Enter con texto → ${p.url()}`); }
+      try { await p.getByText(/camiseta b[aá]sica/i).first().waitFor({ timeout: 8000 }); } catch { failures.push('productos filtrados sin «Camiseta básica»'); }
+      // 4) móvil: enlace del cajón → foco al <h1> nuevo (no vuelve al botón ☰)
+      await p.setViewportSize({ width: 375, height: 812 });
+      await p.getByRole('button', { name: 'Abrir menú' }).click();
+      await p.getByRole('dialog', { name: 'Menú de administración' }).getByRole('link', { name: /^Clientes/ }).click();
+      await p.waitForURL(/\/admin\/clientes$/); await landsOnH1('cajón móvil → Clientes', /clientes/);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);

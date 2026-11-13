@@ -165,7 +165,13 @@ export const AdminProductFormPage = () => {
     } finally { setBusy(false); }
   };
 
-  if (!ref) return <div role="status" style={{ padding: '2rem' }}>{message?.text ?? 'Cargando…'}</div>;
+  // Ejecución 104: también mientras carga (o si falla la carga) la página tiene su <h1> (foco al cambiar de ruta, D74).
+  if (!ref) return (
+    <div style={{ padding: '2rem' }}>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>{editId ? 'EDITAR PRODUCTO' : 'NUEVO PRODUCTO'}</h1>
+      <div role="status">{message?.text ?? 'Cargando…'}</div>
+    </div>
+  );
   const Err = ({ k }) => (errors[k] ? <div role="alert" style={{ color: '#E11D48', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.25rem' }}>{errors[k]}</div> : null);
 
   return (
