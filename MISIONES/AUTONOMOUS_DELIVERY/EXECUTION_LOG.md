@@ -998,3 +998,14 @@
 - Commits: el de código + el de documentación; publicados en la rama autorizada y en la rama de sesión.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bm) de Pendiente.
+
+## Ejecución 113 — 2026-11-13 14:26 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-n529zb` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `61bfcbc`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bm) de Pendiente. Recorrido E2E 45: errores de formulario comprobados en Chromium real (foco, `aria-invalid`, aviso enlazado visible y en pantalla), tienda y admin, escritorio y móvil (D84).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (recorrido 45), `apps/web/src/pages/admin/AdminLogin.jsx` (`noValidate`), `apps/web/src/pages/admin/AdminInventoryPage.jsx` (aviso de validación en la fila), `apps/web/src/__tests__/adminAuthInventoryErrors.test.jsx` (2 aserciones).
+- Pruebas (ejecutadas aquí): recorrido 45 sin los cambios de `src`: 2 defectos reales (login admin con globo nativo, aviso de inventario fuera de pantalla en móvil) + 2 fallos de mi propia prueba (regex del cupón, corregida); con los cambios PASS; las 2 aserciones vitest nuevas fallan sin los cambios (`git stash`) y pasan con ellos; `pnpm test:unit` 556/556 (55 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 45/45 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: formularios con `required` nativo no cubiertos por el recorrido 45 (checkout, login/registro de la tienda, «Mi cuenta», contacto). No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: el de código + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bn) de Pendiente.
