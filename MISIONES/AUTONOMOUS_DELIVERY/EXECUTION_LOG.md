@@ -1082,3 +1082,15 @@
 - Commits: `2e1c4c8` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bs) de Pendiente.
+
+## Ejecución 120 — 2026-11-13 21:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-9s7mfa` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `aac7c82`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bs)(2) de Pendiente. El carrito lateral (`Header.jsx`) avisa por línea cuando la BD informa que una variante se agotó o tiene menos stock, con «Quitar del carrito», «Ajustar a N» y «Ajustar el carrito al stock disponible»; cotiza al abrirse, al cambiar el carrito y al volver a la pestaña; no cotiza en `/checkout` ni `/carrito` (D93).
+- Archivos: `apps/web/src/components/Header/Header.jsx`, nuevo `apps/web/src/__tests__/cartDrawerStock.test.jsx` (6), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 54).
+- Pruebas (ejecutadas aquí): `cartDrawerStock.test.jsx` 6/6 (4 fallan sin el cambio de `Header.jsx`, `git stash`; las 2 restantes —`/checkout` sin cotizar y sin conexión— pasan en ambos casos por diseño); recorrido 54 pasa y falla sin el cambio; `pnpm test:unit` 602/602 (60 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 54/54 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Defecto real corregido: el carrito lateral mostraba líneas agotadas como comprables y solo se enteraba el cliente al llegar al checkout; el resumen ahora solo cuenta líneas presentes en el carrito (una cotización con líneas ya quitadas no genera avisos fantasma).
+- Errores pendientes: el checkout solo muestra el mensaje general «Hay productos sin stock suficiente» (sin acción por línea) → punto 0(bt)(2). No probado en WebKit ni contra Supabase real.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `f880890` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bt) de Pendiente.
