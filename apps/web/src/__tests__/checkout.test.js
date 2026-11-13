@@ -159,4 +159,39 @@ describe('creación de pedido y prevención de duplicados', () => {
     expect(S().items).toHaveLength(0);
     expect(S().finalizePaidOrder('o1')).toBe(false); // idempotente
   });
+  // Ejecución 117: pago rechazado → el cliente cambia el carrito → paga el pedido desde «Mis pedidos».
+  it('pago aprobado tras modificar el carrito: solo se descuenta lo comprado; lo agregado después se conserva', async () => {
+    supa.state.rpc.create_order = rpcOrder();
+    await S().createOrder(input); // 2 × M/Negro
+    S().addItem(product, 'S', 'Blanco', 1); // agregado después del pedido
+    S().updateQuantity('v-m-neg', 3); // una unidad más de la misma variante
+    store.setState({ appliedCoupon: { code: 'JM10', discountAmount: 1, freeShipping: false } });
+    expect(S().finalizePaidOrder('o1')).toBe(true);
+    expect(S().items.map((i) => [i.variantId, i.quantity])).toEqual([['v-m-neg', 1], ['v-s-bla', 1]]);
+    expect(S().appliedCoupon).toBeNull();
+    expect(S().activeCheckoutOrderId).toBeNull();
+    expect(S().activeCheckoutItems).toBeNull();
+    expect(S().finalizePaidOrder('o1')).toBe(false); // idempotente: no descuenta dos veces
+    expect(S().items).toHaveLength(2);
+  });
+  it('si el cliente quitó lo comprado del carrito, el pago no borra lo demás ni deja cantidades negativas', async () => {
+    supa.state.rpc.create_order = rpcOrder();
+    await S().createOrder(input);
+    S().removeItem('v-m-neg');
+    S().addItem(product, 'L', 'Negro', 1);
+    expect(S().finalizePaidOrder('o1')).toBe(true);
+    expect(S().items.map((i) => [i.variantId, i.quantity])).toEqual([['v-l-neg', 1]]);
+  });
+  it('estado guardado antes de la ejecución 117 (sin líneas compradas): se vacía como antes', async () => {
+    supa.state.rpc.create_order = rpcOrder();
+    await S().createOrder(input);
+    store.setState({ activeCheckoutItems: null });
+    expect(S().finalizePaidOrder('o1')).toBe(true);
+    expect(S().items).toHaveLength(0);
+  });
+  it('las líneas compradas se guardan en el navegador (sobreviven a recargar)', async () => {
+    supa.state.rpc.create_order = rpcOrder();
+    await S().createOrder(input);
+    expect(JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14')).state.activeCheckoutItems).toEqual([{ variantId: 'v-m-neg', quantity: 2 }]);
+  });
 });

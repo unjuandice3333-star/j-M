@@ -1740,7 +1740,8 @@ async function main() {
       if (!left.includes(guest.order_number)) throw new Error(`se perdió el pedido de invitado: ${left}`);
       // la confirmación sin parámetros ya no lista el pedido de la cuenta (otra persona en este equipo)
       await p.goto(`${BASE}/checkout/confirmacion`);
-      await expectText(p, 'Pedidos hechos en este navegador');
+      await p.getByRole('heading', { level: 1, name: 'Pedidos hechos en este navegador' }).waitFor({ timeout: 8000 });
+      if (await p.getByText('Pedido no encontrado').count()) throw new Error('sin enlace no debe decir «Pedido no encontrado» (ejecución 117)');
       if (await p.getByRole('link', { name: mine.order_number }).count()) throw new Error('el pedido de la cuenta sigue visible tras cerrar sesión');
       await p.getByRole('link', { name: guest.order_number }).waitFor();
     }, browser);
@@ -1787,6 +1788,51 @@ async function main() {
           await page.locator('div').filter({ hasText: order.order_number }).filter({ has: page.getByText(/Compra completada/) }).last().waitFor({ timeout: 8000 });
         }
       } finally { await ctxB.close(); }
+    }, browser);
+
+    await journey('51. Pago rechazado → el cliente cambia el carrito → paga desde «Mis pedidos»: solo sale del carrito lo comprado', async (p) => {
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Nora Paz');
+      await p.locator('input[type=email]').fill('nora.paz@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      const cart = () => p.evaluate(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"items":[]}}').state.items.map((i) => `${i.sku}x${i.quantity}`).sort());
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { firstName: 'Nora', lastName: 'Paz', email: 'nora.paz@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      const order = (await state()).orders.find((o) => o.customer_email === 'nora.paz@correo.co');
+      if (!order || order.status !== 'payment_pending') throw new Error('pedido pendiente no creado');
+      const bought = await cart();
+      if (bought.length !== 1) throw new Error(`carrito tras crear el pedido: ${bought}`);
+      // el pago fue rechazado (vuelve con pago=error): el carrito se conserva y el cliente agrega otra prenda
+      await p.goto(`${BASE}/checkout/confirmacion?order=${order.order_number}&token=${order.public_token}&pago=error`);
+      await expectText(p, `Pedido registrado · ${order.order_number}`);
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      const before = await cart();
+      if (before.length !== 2) throw new Error(`carrito tras agregar: ${before}`);
+      // paga el pedido original desde «Mis pedidos» (la firma la pide con id + token; el webhook SINTÉTICO lo marca pagado)
+      let sent = null;
+      await p.route('**/api/wompi/signature', async (route) => {
+        sent = JSON.parse(route.request().postData() || '{}');
+        await fetch(`${API_URL}/__synthetic-mark-paid/${order.order_number}`);
+        await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'Este pedido ya no admite pagos.', code: 'JM_ORDER_NOT_PAYABLE' }) });
+      });
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      const card = p.locator('div').filter({ has: p.getByText(`PEDIDO #${order.order_number}`, { exact: true }) }).filter({ has: p.getByTestId('order-shipping-method') }).last();
+      await card.getByTestId('order-pay').click();
+      await card.getByText('Compra completada').waitFor({ timeout: 8000 });
+      if (!sent || sent.order_id !== order.id) throw new Error(`firma pedida con ${JSON.stringify(sent)}`);
+      await p.waitForFunction((n) => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14')).state.items.length === n, 1, { timeout: 8000 })
+        .catch(async () => { throw new Error(`carrito tras el pago: ${await cart()} (se esperaba solo la camiseta)`); });
+      const after = await cart();
+      if (after.length !== 1 || after[0] === bought[0]) throw new Error(`carrito tras el pago: ${after}; comprado: ${bought}`);
+      // la prenda agregada después sigue en el carrito visible y se puede comprar
+      await p.goto(`${BASE}/carrito`);
+      await p.locator('main').getByText('Camiseta Básica').first().waitFor({ timeout: 8000 });
+      if (await p.locator('main').getByText('Polo Clásico').count()) throw new Error('el polo ya pagado sigue en el carrito');
+      await p.unroute('**/api/wompi/signature');
     }, browser);
 
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {

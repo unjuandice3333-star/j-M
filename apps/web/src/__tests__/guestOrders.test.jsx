@@ -164,3 +164,44 @@ describe('Confirmación: enlace para el invitado', () => {
     expect(q('guest-order-link')).toBeNull();
   });
 });
+
+// Ejecución 117: /checkout/confirmacion sin número o sin token no es un «enlace inválido».
+describe('Confirmación sin enlace', () => {
+  const mount = async (url, orders = []) => {
+    const { useAuthStore } = await import('../store/authStore');
+    useAuthStore.setState({ isLoggedIn: false, isLoading: false, user: null, profile: null });
+    const { useECommerceStore } = await import('../store/eCommerceStore');
+    useECommerceStore.setState({ orders });
+    const { OrderConfirmationPage } = await import('../pages/OrderConfirmationPage');
+    await act(async () => { root.render(<MemoryRouter initialEntries={[url]}><OrderConfirmationPage /></MemoryRouter>); });
+    await flush();
+  };
+  const h1 = () => container.querySelector('h1').textContent;
+
+  it('con pedidos de este navegador: el título es la lista, sin «Pedido no encontrado» y sin consultar la BD', async () => {
+    await mount('/checkout/confirmacion', [remembered(GUEST_ID, 'JM-7')]);
+    expect(h1()).toBe('Pedidos hechos en este navegador');
+    expect(container.textContent).not.toContain('Pedido no encontrado');
+    expect(container.textContent).not.toContain('El enlace no es válido');
+    expect(container.querySelectorAll('h2').length).toBe(0); // sin título duplicado
+    const link = [...container.querySelectorAll('a')].find((a) => a.textContent === 'JM-7');
+    expect(link.getAttribute('href')).toBe(`/checkout/confirmacion?order=JM-7&token=${TOKEN}`);
+    expect(q('browser-orders').getAttribute('aria-label')).toBe('Pedidos hechos en este navegador');
+    expect(supa.rpc).not.toHaveBeenCalledWith('get_order_public', expect.anything());
+  });
+
+  it('sin pedidos: estado vacío que orienta (enlace o «Mis pedidos»)', async () => {
+    await mount('/checkout/confirmacion?order=JM-7'); // falta el token
+    expect(h1()).toBe('No hay un pedido para mostrar');
+    expect(container.textContent).toContain('Abre el enlace de tu pedido');
+    expect(q('browser-orders')).toBeNull();
+    expect(q('order-confirmation-fallback').dataset.state).toBe('nolink');
+  });
+
+  it('con un enlace que la BD no reconoce sigue diciendo «Pedido no encontrado» y lista aparte los del navegador', async () => {
+    supa.state.rpc.get_order_public = () => null;
+    await mount(`/checkout/confirmacion?order=JM-404&token=${TOKEN}`, [remembered(GUEST_ID, 'JM-7')]);
+    expect(h1()).toBe('Pedido no encontrado');
+    expect(container.querySelector('h2').textContent).toBe('Pedidos hechos en este navegador');
+  });
+});

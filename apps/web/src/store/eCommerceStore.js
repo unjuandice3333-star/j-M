@@ -77,6 +77,9 @@ export const useECommerceStore = create(
       isMobileMenuOpen: false,
       searchQuery: '',
       activeCheckoutOrderId: null,
+      // Ejecución 117: líneas compradas en el checkout en curso ({ variantId, quantity }). Al confirmarse el pago solo se
+      // descuentan estas del carrito: lo que el cliente agregó después (p. ej. tras un pago rechazado) se conserva.
+      activeCheckoutItems: null,
       appliedCoupon: null,   // { code, discountAmount, freeShipping } validado por la BD
       quote: null,           // última cotización de la BD (quote_cart) y la firma del carrito que la produjo
       cartNotice: null,      // avisos de reconciliación (productos retirados o sin stock)
@@ -212,7 +215,7 @@ export const useECommerceStore = create(
         }
       },
 
-      clearCart: () => set({ items: [], appliedCoupon: null, quote: null, activeCheckoutOrderId: null }),
+      clearCart: () => set({ items: [], appliedCoupon: null, quote: null, activeCheckoutOrderId: null, activeCheckoutItems: null }),
 
       /** Vacía el carrito solo si el pedido confirmado es el del checkout en curso. */
       finalizePaidOrder: (orderIdentifier) => {
@@ -220,7 +223,17 @@ export const useECommerceStore = create(
         if (!orderIdentifier || !activeCheckoutOrderId) return false;
         const current = orders.find((o) => o.id === orderIdentifier || o.order_number === orderIdentifier);
         if (activeCheckoutOrderId === orderIdentifier || current?.id === activeCheckoutOrderId) {
-          get().clearCart();
+          const bought = get().activeCheckoutItems;
+          if (!Array.isArray(bought)) { get().clearCart(); return true; } // estado guardado antes de la ejecución 117
+          const left = new Map(bought.map((b) => [b.variantId, Number(b.quantity) || 0]));
+          const items = get().items
+            .map((i) => {
+              const paid = left.get(i.variantId) ?? 0;
+              return paid > 0 ? { ...i, quantity: i.quantity - paid } : i;
+            })
+            .filter((i) => i.quantity > 0);
+          // El cupón y la cotización eran de la compra ya pagada: no se arrastran a lo que queda en el carrito.
+          set({ items, appliedCoupon: null, quote: null, activeCheckoutOrderId: null, activeCheckoutItems: null });
           return true;
         }
         return false;
@@ -303,7 +316,8 @@ export const useECommerceStore = create(
           const { orders, activeCheckoutOrderId } = get();
           const kept = orders.filter((o) => !o.owner);
           const activeKept = kept.some((o) => o.id === activeCheckoutOrderId) ? activeCheckoutOrderId : null;
-          set({ sessionUserId: null, orders: kept, activeCheckoutOrderId: activeKept });
+          set({ sessionUserId: null, orders: kept, activeCheckoutOrderId: activeKept,
+            activeCheckoutItems: activeKept ? get().activeCheckoutItems : null });
           return;
         }
         set({ sessionUserId: next });
@@ -392,7 +406,8 @@ export const useECommerceStore = create(
         const order = { id: r.order_id, order_number: r.order_number, public_token: r.public_token, status: r.status,
           total: Number(r.total), amount_in_cents: Number(r.amount_in_cents), payment_expires_at: r.payment_expires_at,
           created_at: new Date().toISOString(), isDuplicate: r.is_duplicate, owner: get().sessionUserId ?? null };
-        set({ orders: [order, ...orders.filter((o) => o.id !== order.id)].slice(0, 20), activeCheckoutOrderId: order.id });
+        set({ orders: [order, ...orders.filter((o) => o.id !== order.id)].slice(0, 20), activeCheckoutOrderId: order.id,
+          activeCheckoutItems: items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })) });
         return order;
       },
 
@@ -422,7 +437,7 @@ export const useECommerceStore = create(
       // v15 (M28): las imágenes de portada dejan de guardarse en el navegador (vienen de site_content).
       migrate: (persisted, version) => {
         if (version === 14 && persisted) { const { editorialImages: _drop, ...rest } = persisted; return rest; }
-        return { items: [], wishlist: [], appliedCoupon: null, savedAddresses: [], orders: [], activeCheckoutOrderId: null };
+        return { items: [], wishlist: [], appliedCoupon: null, savedAddresses: [], orders: [], activeCheckoutOrderId: null, activeCheckoutItems: null };
       },
       partialize: (state) => ({
         items: state.items,
@@ -432,6 +447,7 @@ export const useECommerceStore = create(
         savedAddresses: state.savedAddresses,
         orders: state.orders,
         activeCheckoutOrderId: state.activeCheckoutOrderId,
+        activeCheckoutItems: state.activeCheckoutItems,
       }),
     }
   )

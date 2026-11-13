@@ -82,14 +82,15 @@ export const OrderConfirmationPage = () => {
   const authLoading = useAuthStore((s) => s.isLoading);
 
   const [order, setOrder] = useState(null);
-  const [state, setState] = useState('loading'); // loading | ready | notfound | error
+  // nolink: se abrió /checkout/confirmacion sin número o sin token (p. ej. desde el historial): no es un enlace inválido.
+  const [state, setState] = useState(orderNumber && token ? 'loading' : 'nolink'); // loading | ready | notfound | error | nolink
   const [polls, setPolls] = useState(0);
   const [actionError, setActionError] = useState(null);
   const [busy, setBusy] = useState(false);
 
   // keepOnError: una relectura tras una acción no debe tapar el pedido (ni el aviso de la acción) si falla la red.
   const fetchOrder = useCallback(async ({ keepOnError = false } = {}) => {
-    if (!orderNumber || !token) { setState('notfound'); return null; }
+    if (!orderNumber || !token) { setState('nolink'); return null; }
     try {
       const data = await orderService.getPublicOrder(orderNumber, token);
       if (!data) { setState('notfound'); return null; }
@@ -101,7 +102,7 @@ export const OrderConfirmationPage = () => {
     }
   }, [orderNumber, token]);
 
-  useEffect(() => { fetchOrder(); }, [fetchOrder]);
+  useEffect(() => { if (orderNumber && token) setState('loading'); fetchOrder(); }, [fetchOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Consulta periódica mientras el pago está pendiente (el webhook actualiza la BD)
   useEffect(() => {
@@ -148,17 +149,22 @@ export const OrderConfirmationPage = () => {
     return <div className="jm-container" style={{ padding: '5rem 0', textAlign: 'center' }} role="status">Consultando tu pedido…</div>;
   }
   if (state !== 'ready') {
+    const noLink = state === 'nolink';
+    const title = state === 'error' ? 'No pudimos consultar el pedido'
+      : noLink ? (orders.length > 0 ? 'Pedidos hechos en este navegador' : 'No hay un pedido para mostrar')
+        : 'Pedido no encontrado';
+    const message = state === 'error' ? 'Revisa tu conexión e inténtalo de nuevo.'
+      : noLink ? (orders.length > 0
+        ? 'Elige un pedido para ver su estado, pagarlo o cancelarlo.'
+        : 'Abre el enlace de tu pedido o, si compraste con tu cuenta, encuéntralo en «Mis pedidos».')
+        : 'El enlace no es válido. Si tienes cuenta, encuentra tus pedidos en "Mi cuenta".';
     return (
-      <div className="jm-container" style={{ padding: '4rem 0', maxWidth: '720px' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem' }}>
-          {state === 'error' ? 'No pudimos consultar el pedido' : 'Pedido no encontrado'}
-        </h1>
-        <p style={{ color: '#71717A', marginBottom: '1.5rem' }}>
-          {state === 'error' ? 'Revisa tu conexión e inténtalo de nuevo.' : 'El enlace no es válido. Si tienes cuenta, encuentra tus pedidos en "Mi cuenta".'}
-        </p>
+      <div className="jm-container" style={{ padding: '4rem 0', maxWidth: '720px' }} data-testid="order-confirmation-fallback" data-state={state}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem' }}>{title}</h1>
+        <p style={{ color: '#71717A', marginBottom: '1.5rem' }}>{message}</p>
         {orders.length > 0 && (
-          <div>
-            <h2 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.5rem' }}>Pedidos hechos en este navegador</h2>
+          <section aria-labelledby={noLink ? undefined : 'browser-orders-title'} aria-label={noLink ? title : undefined} data-testid="browser-orders">
+            {!noLink && <h2 id="browser-orders-title" style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.5rem' }}>Pedidos hechos en este navegador</h2>}
             <ul>
               {orders.map((o) => (
                 <li key={o.id} style={{ marginBottom: '0.4rem' }}>
@@ -168,7 +174,7 @@ export const OrderConfirmationPage = () => {
                 </li>
               ))}
             </ul>
-          </div>
+          </section>
         )}
         <Link to="/cuenta/pedidos" style={{ textDecoration: 'underline', fontWeight: 700, display: 'inline-flex', alignItems: 'center', minHeight: '36px' }}>Ir a mis pedidos</Link>
       </div>
