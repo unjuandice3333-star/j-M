@@ -1094,3 +1094,15 @@
 - Commits: `f880890` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bt) de Pendiente.
+
+## Ejecución 121 — 2026-11-13 22:09 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-d5ed9e` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `00c397b`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bt)(2) de Pendiente. Aviso de stock por línea en el checkout con «Quitar del carrito» / «Ajustar a N» / ajuste global; nueva cotización al volver a la pestaña y tras rechazo por stock de `create_order` (D94).
+- Archivos: `apps/web/src/pages/CheckoutPage.jsx`, nuevo `apps/web/src/__tests__/checkoutStockShortage.test.jsx` (5), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 55).
+- Pruebas (ejecutadas aquí): `checkoutStockShortage.test.jsx` 5/5 (las 5 fallan sin el cambio de `CheckoutPage.jsx`, `git stash`); recorrido 55 pasa y falla sin el cambio; `pnpm test:unit` 607/607 (61 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 55/55 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Defecto real corregido: en el checkout no se indicaba qué línea se quedó sin stock ni había forma de resolverlo sin volver al carrito; además el mensaje de lo ajustado no aparecía mientras quedara otra línea sin stock (detectado por la prueba nueva y corregido).
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni contra Supabase real.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `d16d124` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bu) de Pendiente.
