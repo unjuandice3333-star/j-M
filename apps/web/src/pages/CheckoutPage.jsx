@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/authStore';
 import supabase from '../config/supabase';
 import { DEPARTMENTS } from '../utils/colombia';
 import { accountService, addressToCheckout, addressSummary } from '../services/accountService';
+import { PendingOrderNotice } from '../components/Checkout/PendingOrderNotice';
 
 // M28: borrador del envío en sessionStorage (se borra al cerrar la pestaña y al crear el pedido) para no perder lo
 // escrito si hay que volver a iniciar sesión a mitad del checkout.
@@ -212,6 +213,7 @@ export const CheckoutPage = () => {
           </div>
         </div>
 
+        <PendingOrderNotice />
         {sessionExpired && (
           <div role="alert" style={{ backgroundColor: '#FFFBEB', color: '#92400E', padding: '1rem 1.5rem', borderRadius: 8, marginBottom: '2rem', border: '1px solid #FCD34D', fontWeight: 600, display: 'grid', gap: '0.6rem' }}>
             <span>Tu sesión expiró. Inicia sesión de nuevo para que este pedido quede en tu cuenta. Tu carrito y los datos de envío se conservan.</span>

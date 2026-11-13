@@ -1835,6 +1835,46 @@ async function main() {
       await p.unroute('**/api/wompi/signature');
     }, browser);
 
+    await journey('52. Checkout con un pedido anterior pendiente: aviso, cancelarlo libera la reserva y se crea uno solo nuevo', async (p) => {
+      const polo = async () => (await state()).inventories.find((i) => i.sku === 'POL-M-NEG').reserved;
+      const reservedBefore = await polo();
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { firstName: 'Iris', lastName: 'Vega', email: 'iris.vega@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      const first = (await state()).orders.find((o) => o.customer_email === 'iris.vega@correo.co');
+      if (!first || first.status !== 'payment_pending') throw new Error('pedido pendiente no creado');
+      if (await polo() !== reservedBefore + 1) throw new Error('el pedido no reservó el polo');
+      // mismo carrito: el checkout avisa y ofrece pagarlo sin crear otro
+      await p.goto(`${BASE}/checkout`);
+      const notice = p.getByTestId('pending-order-notice');
+      await notice.waitFor({ timeout: 8000 });
+      if (await notice.getAttribute('data-same-cart') !== 'true') throw new Error('con el mismo carrito debía indicar que es el mismo pedido');
+      if (await p.getByTestId('pending-order-pay').getAttribute('href') !== `/checkout/confirmacion?order=${encodeURIComponent(first.order_number)}&token=${encodeURIComponent(first.public_token)}`) throw new Error('enlace de pago incorrecto');
+      // el cliente cambia el carrito: el aviso explica que el anterior seguiría reservando stock
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await p.goto(`${BASE}/checkout`);
+      await notice.waitFor({ timeout: 8000 });
+      if (await notice.getAttribute('data-same-cart') !== 'false') throw new Error('con el carrito cambiado debía avisar');
+      await expectText(p, 'seguirá reservando stock');
+      p.once('dialog', (d) => d.accept().catch(() => {}));
+      await p.getByTestId('pending-order-cancel').click();
+      await p.getByTestId('pending-order-cancelled').waitFor({ timeout: 8000 });
+      const cancelled = (await state()).orders.find((o) => o.id === first.id);
+      if (cancelled.status !== 'cancelled') throw new Error(`estado del pedido anterior: ${cancelled.status}`);
+      if (await polo() !== reservedBefore) throw new Error('cancelar no liberó la reserva del polo');
+      // confirmar ahora crea UN pedido nuevo con el carrito actual; no queda otro pendiente de esta clienta
+      await fillCheckout(p, { firstName: 'Iris', lastName: 'Vega', email: 'iris.vega@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      const mine = (await state()).orders.filter((o) => o.customer_email === 'iris.vega@correo.co');
+      const pendingNow = mine.filter((o) => o.status === 'payment_pending');
+      if (mine.length !== 2 || pendingNow.length !== 1 || pendingNow[0].online_order_items.length !== 2) {
+        throw new Error(`pedidos de la clienta: ${mine.map((o) => `${o.status}/${o.online_order_items.length}`).join(', ')}`);
+      }
+      if (await polo() !== reservedBefore + 1) throw new Error('el pedido nuevo no reservó el polo');
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });

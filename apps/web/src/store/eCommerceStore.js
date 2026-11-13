@@ -239,6 +239,18 @@ export const useECommerceStore = create(
         return false;
       },
 
+      /**
+       * Ejecución 118: el pedido del checkout en curso ya no admite pago (cancelado o vencido). Deja de ser el «pedido
+       * activo»: el carrito no se toca y el siguiente checkout crea un pedido nuevo.
+       */
+      releaseActiveCheckout: (orderId, status = null) => {
+        const { activeCheckoutOrderId, orders } = get();
+        if (!orderId || activeCheckoutOrderId !== orderId) return false;
+        set({ activeCheckoutOrderId: null, activeCheckoutItems: null,
+          orders: status ? orders.map((o) => (o.id === orderId ? { ...o, status } : o)) : orders });
+        return true;
+      },
+
       // ---------------------------------------------------------------- cupones y totales (BD)
       applyCoupon: async (code, email = null) => {
         const subtotal = get().items.reduce((n, i) => n + i.price * i.quantity, 0);
