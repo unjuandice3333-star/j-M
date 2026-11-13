@@ -246,6 +246,9 @@ async function main() {
       await p.goto(`${BASE}/`);
       const nav = p.locator('nav[aria-label="Navegación principal"]');
       await nav.locator('a[href="/linea/urbana"]').waitFor({ timeout: 8000 });
+      // `/linea/urbana` también está en el menú de respaldo (mientras carga la BD): esperar a que termine la lectura
+      // antes de mirar los enlaces (ejecución 102: falló 1 de 3 pasadas completas leyendo el respaldo).
+      await p.waitForLoadState('networkidle');
       // BD sintética: solo la línea Urbana y la categoría Camisetas (sin Calzado ni Accesorios)
       const desk = await nav.locator('a').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
       for (const stale of ['/linea/elegante', '/linea/casual', '/calzado', '/accesorios']) if (desk.includes(stale)) throw new Error(`enlace fijo en la cabecera: ${stale}`);
@@ -439,7 +442,15 @@ async function main() {
         await addToCart(p, 'camiseta-basica', 'M', 'Negro');
         await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'sara@correo.co' });
         await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).tap();
-        await p.waitForURL(/\/checkout\/confirmacion/);
+        // Pendiente 0(bb): falló UNA vez aquí (30 s) y no se reprodujo en 11 pasadas; si vuelve, el mensaje dice qué
+        // mostraba el checkout (alerta, campos marcados, botón) en lugar de solo «timeout».
+        try { await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 20000 }); }
+        catch (e) {
+          const why = await p.evaluate(() => ({ url: location.pathname, alerts: [...document.querySelectorAll('[role=alert]')].map((x) => x.textContent.trim()).filter(Boolean).slice(0, 3),
+            invalid: [...document.querySelectorAll('[aria-invalid=true]')].map((x) => x.name), button: document.querySelector('button[type=submit]')?.disabled,
+            session: Object.keys(localStorage).some((k) => k.includes('auth-token')) })).catch(() => ({}));
+          throw new Error(`pedido ${i + 1}: sin confirmación tras CONFIRMAR Y PAGAR · ${JSON.stringify(why)} · ${String(e.message).split('\n')[0]}`);
+        }
         await expectText(p, 'Pedido registrado');
       }
       const [pending, paid] = (await state()).orders; // unshift: el más reciente primero
@@ -803,9 +814,65 @@ async function main() {
       catch { failures.push(`el foco quedó en el menú cerrado tras navegar: ${await p.evaluate(() => document.activeElement.outerHTML.slice(0, 120))}`); }
       // escritorio: la barra lateral vuelve a ser navegable con Tab
       await p.setViewportSize({ width: 1280, height: 900 });
-      if (await p.locator('aside[inert]').count()) failures.push('la barra lateral sigue inert en escritorio');
+      // el cambio de matchMedia llega por evento y re-render: se espera (antes se miraba en el mismo instante y falló
+      // 2 de 5 pasadas completas en la ejecución 102 aunque el atributo se quitaba enseguida).
+      try { await p.waitForFunction(() => !document.querySelector('aside[inert]'), null, { timeout: 3000 }); }
+      catch { failures.push('la barra lateral sigue inert en escritorio'); }
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
       if (checked.length !== 2) throw new Error(`solo se comprobaron ${checked.length}/2 diálogos: ${checked.join(', ')}`);
+    }, browser);
+
+    await journey('38. Navegación: aria-current por segmentos, secciones de «Mi cuenta» y panel solo para admin', async (p) => {
+      const failures = [];
+      const cur = (loc) => loc.getAttribute('aria-current');
+      // escritorio: la línea y la categoría actuales quedan marcadas (página exacta = page, sección = true)
+      const mainNav = p.getByRole('navigation', { name: 'Navegación principal' });
+      await p.goto(`${BASE}/linea/urbana`); await mainNav.getByRole('link', { name: 'URBANA' }).waitFor();
+      if (await cur(mainNav.getByRole('link', { name: 'URBANA' })) !== 'page') failures.push('URBANA sin aria-current=page en /linea/urbana');
+      if (await cur(mainNav.getByRole('link', { name: 'ROPA', exact: true }))) failures.push('ROPA marcada en /linea/urbana');
+      await p.goto(`${BASE}/ropa/camisetas`); await mainNav.waitFor();
+      if (await cur(mainNav.getByRole('link', { name: 'ROPA', exact: true })) !== 'true') failures.push('ROPA sin aria-current=true en /ropa/camisetas');
+      // móvil, cliente recién registrado: menú sin acceso al panel y con la página actual marcada
+      await p.setViewportSize({ width: 375, height: 812 });
+      await p.goto(`${BASE}/login`); await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Nora Gil');
+      await p.locator('input[type=email]').fill('nora@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await p.goto(`${BASE}/ropa/camisetas`);
+      await p.getByRole('button', { name: 'Abrir menú de navegación' }).click();
+      const menu = p.getByRole('dialog', { name: 'Menú' });
+      await menu.getByRole('navigation', { name: 'Categorías' }).waitFor();
+      if (await menu.getByRole('link', { name: /Panel de Administración/ }).count()) failures.push('un cliente ve «Panel de Administración» en el menú móvil');
+      if (await cur(menu.getByRole('link', { name: /Camisetas/ })) !== 'page') failures.push('menú móvil: Camisetas sin aria-current=page');
+      await p.keyboard.press('Escape');
+      // cada ruta de la cuenta lleva a su sección (desplazamiento + foco en el título) y la marca en el menú de la cuenta
+      const accountNav = p.getByRole('navigation', { name: 'Secciones de mi cuenta' });
+      const lands = async (url, headingId, label) => {
+        try { await p.waitForFunction((id) => document.activeElement?.id === id, headingId, { timeout: 8000 }); }
+        catch { failures.push(`${url}: el foco no llegó a #${headingId} (está en ${await p.evaluate(() => document.activeElement?.id || document.activeElement?.tagName)})`); return; }
+        const top = await p.evaluate((id) => document.getElementById(id).getBoundingClientRect().top, headingId);
+        if (top < -1 || top > 812) failures.push(`${url}: el título no quedó en pantalla (top=${Math.round(top)})`);
+        if (await cur(accountNav.getByRole('link', { name: label, exact: true })) !== 'page') failures.push(`${url}: «${label}» sin aria-current=page`);
+        if (await accountNav.locator('[aria-current]').count() !== 1) failures.push(`${url}: más de una sección marcada`);
+      };
+      await p.goto(`${BASE}/cuenta/direcciones`); await lands('/cuenta/direcciones', 'direcciones-titulo', 'Direcciones');
+      await accountNav.getByRole('link', { name: 'Mis datos', exact: true }).click(); await p.waitForURL(/\/cuenta\/datos$/);
+      await lands('/cuenta/datos', 'perfil-titulo', 'Mis datos');
+      await accountNav.getByRole('link', { name: 'Mis pedidos', exact: true }).click(); await p.waitForURL(/\/cuenta\/pedidos$/);
+      await lands('/cuenta/pedidos', 'pedidos-titulo', 'Mis pedidos');
+      await p.goto(`${BASE}/cuenta`); await accountNav.waitFor();
+      if (await accountNav.locator('[aria-current]').count()) failures.push('/cuenta: una sección marcada en el resumen');
+      await p.goto(`${BASE}/cuenta/favoritos`);
+      if (await cur(accountNav.getByRole('link', { name: 'Favoritos', exact: true })) !== 'page') failures.push('/cuenta/favoritos: «Favoritos» sin aria-current=page');
+      // admin: el menú móvil sí ofrece el panel
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await p.goto(`${BASE}/`);
+      await p.getByRole('button', { name: 'Abrir menú de navegación' }).click();
+      try { await p.getByRole('dialog', { name: 'Menú' }).getByRole('link', { name: /Panel de Administración/ }).waitFor({ timeout: 8000 }); }
+      catch { failures.push('el admin no ve «Panel de Administración» en el menú móvil'); }
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {

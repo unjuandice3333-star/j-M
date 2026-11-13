@@ -881,3 +881,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bb) de Pendiente (intermitencia del recorrido 30; luego `aria-current`/foco en la navegación de la tienda).
+
+## Ejecución 102 — 2026-11-13 02:40 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-9hrh45` (= main, `2661f2a`); se trabajó en la rama autorizada = remoto `54b349a`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bb) de Pendiente. Intermitencia del recorrido 30 y `aria-current`/foco de la navegación de la tienda (D73).
+- Archivos: nuevo `apps/web/src/components/Account/AccountSectionNav.jsx`, nuevo `apps/web/src/__tests__/storefrontNavCurrent.test.jsx`; `apps/web/src/utils/navTaxonomy.js` (`navCurrent`), `components/Header/Header.jsx`, `pages/AccountPage.jsx`, `pages/WishlistPage.jsx`; `apps/web/e2e/e2e_synthetic.cjs` (recorrido 38, diagnóstico del 30, esperas en los recorridos 17 y 37).
+- Pruebas (ejecutadas aquí): recorrido 30: 9/9 aislado (8 con 4 procesos `yes` saturando la CPU) y 2 pasadas completas 37/37 ANTES de tocar nada → no reproducido; recorrido 38 falla sin los cambios de `src` y pasa con ellos; `storefrontNavCurrent.test.jsx` 5/5; `pnpm test:unit` 502/502 (46 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic`: 37/38 (recorrido 17, carrera de la prueba) → corregido, 5/5 aislado; luego 37/38 dos veces (recorrido 37, carrera de la prueba; 3/3 aislado) → corregido; final 38/38 en dos pasadas completas seguidas. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: intermitencia del recorrido 30 no reproducida (instrumentada). No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bc) de Pendiente (enlace «Ir al contenido» y foco/anuncio al cambiar de ruta en la tienda; un `<h1>` por página).

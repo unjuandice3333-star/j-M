@@ -21,7 +21,8 @@ import { useECommerceStore } from '../../store/eCommerceStore';
 import { formatCOP } from '../../utils/currency';
 import { useShippingPolicy } from '../../hooks/useShippingPolicy';
 import { useStorefrontTaxonomy } from '../../hooks/useStorefrontTaxonomy';
-import { buildNavTaxonomy } from '../../utils/navTaxonomy';
+import { buildNavTaxonomy, navCurrent } from '../../utils/navTaxonomy';
+import useAuthStore from '../../store/authStore';
 import { DialogPanel } from '../Common/DialogPanel';
 
 export const Header = () => {
@@ -77,10 +78,10 @@ export const Header = () => {
     }
   };
 
-  const isActivePath = (path) => {
-    if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path);
-  };
+  const current = (path) => navCurrent(location.pathname, path);
+  const isActivePath = (path) => Boolean(current(path));
+  // El acceso al panel solo se ofrece a quien puede usarlo (antes lo veía cualquier cliente en el menú móvil).
+  const showAdminLink = useAuthStore((s) => s.profile?.role === 'admin' || s.profile?.role === 'super_admin');
 
   return (
     <>
@@ -206,24 +207,26 @@ export const Header = () => {
             className="desktop-nav"
           >
             {nav.styleLines.map((l) => (
-              <Link key={l.slug} to={l.to} style={getNavLinkStyle(isActivePath(l.to), 'style')}>
+              <Link key={l.slug} to={l.to} aria-current={current(l.to)} style={getNavLinkStyle(isActivePath(l.to), 'style')}>
                 {l.label}
               </Link>
             ))}
             <span style={{ color: '#E4E4E7', fontWeight: 300, margin: '0 0.15rem' }}>|</span>
             <Link
               to="/ropa"
+              aria-current={current('/ropa')}
               style={getNavLinkStyle(isActivePath('/ropa'), 'category')}
             >
               ROPA
             </Link>
             {nav.topLevel.map((c) => (
-              <Link key={c.slug} to={c.to} style={getNavLinkStyle(isActivePath(c.to), 'category')}>
+              <Link key={c.slug} to={c.to} aria-current={current(c.to)} style={getNavLinkStyle(isActivePath(c.to), 'category')}>
                 {c.label}
               </Link>
             ))}
             <Link
               to="/ofertas"
+              aria-current={current('/ofertas')}
               style={getNavLinkStyle(isActivePath('/ofertas'), 'sale')}
             >
               OFERTAS
@@ -312,30 +315,32 @@ export const Header = () => {
               </button>
             </div>
 
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-              <MobileNavLink to="/nuevo" onClick={() => setMobileMenuOpen(false)}>NUEVO</MobileNavLink>
-              <MobileNavLink to="/ropa" onClick={() => setMobileMenuOpen(false)}>ROPA</MobileNavLink>
+            <nav aria-label="Categorías" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <MobileNavLink to="/nuevo" current={current('/nuevo')} onClick={() => setMobileMenuOpen(false)}>NUEVO</MobileNavLink>
+              <MobileNavLink to="/ropa" current={current('/ropa')} onClick={() => setMobileMenuOpen(false)}>ROPA</MobileNavLink>
               {nav.clothing.map((c) => (
-                <MobileNavLink key={c.slug} to={c.to} onClick={() => setMobileMenuOpen(false)}>└ {c.name}</MobileNavLink>
+                <MobileNavLink key={c.slug} to={c.to} current={current(c.to)} onClick={() => setMobileMenuOpen(false)}>└ {c.name}</MobileNavLink>
               ))}
               {nav.topLevel.map((c) => (
-                <MobileNavLink key={c.slug} to={c.to} onClick={() => setMobileMenuOpen(false)}>{c.label}</MobileNavLink>
+                <MobileNavLink key={c.slug} to={c.to} current={current(c.to)} onClick={() => setMobileMenuOpen(false)}>{c.label}</MobileNavLink>
               ))}
               {nav.styleLines.map((l) => (
-                <MobileNavLink key={l.slug} to={l.to} onClick={() => setMobileMenuOpen(false)}>{l.label}</MobileNavLink>
+                <MobileNavLink key={l.slug} to={l.to} current={current(l.to)} onClick={() => setMobileMenuOpen(false)}>{l.label}</MobileNavLink>
               ))}
-              <MobileNavLink to="/colecciones" onClick={() => setMobileMenuOpen(false)}>COLECCIONES</MobileNavLink>
-              <MobileNavLink to="/mas-vendidos" onClick={() => setMobileMenuOpen(false)}>MÁS VENDIDOS</MobileNavLink>
-              <MobileNavLink to="/ofertas" onClick={() => setMobileMenuOpen(false)} style={{ color: '#E11D48', fontWeight: 700 }}>OFERTAS</MobileNavLink>
+              <MobileNavLink to="/colecciones" current={current('/colecciones')} onClick={() => setMobileMenuOpen(false)}>COLECCIONES</MobileNavLink>
+              <MobileNavLink to="/mas-vendidos" current={current('/mas-vendidos')} onClick={() => setMobileMenuOpen(false)}>MÁS VENDIDOS</MobileNavLink>
+              <MobileNavLink to="/ofertas" current={current('/ofertas')} onClick={() => setMobileMenuOpen(false)} style={{ color: '#E11D48', fontWeight: 700 }}>OFERTAS</MobileNavLink>
             </nav>
 
             <div style={{ marginTop: 'auto', paddingTop: '2rem', borderTop: '1px solid #E4E4E7' }}>
               <Link to="/guia-de-tallas" onClick={() => setMobileMenuOpen(false)} style={{ display: 'block', padding: '0.5rem 0', fontSize: '0.9rem', color: '#71717A' }}>
                 Guía de Tallas
               </Link>
-              <Link to="/admin" onClick={() => setMobileMenuOpen(false)} style={{ display: 'block', padding: '0.5rem 0', fontSize: '0.9rem', color: '#09090B', fontWeight: 700 }}>
-                ⚙ Panel de Administración
-              </Link>
+              {showAdminLink && (
+                <Link to="/admin" onClick={() => setMobileMenuOpen(false)} style={{ display: 'block', padding: '0.5rem 0', fontSize: '0.9rem', color: '#09090B', fontWeight: 700 }}>
+                  ⚙ Panel de Administración
+                </Link>
+              )}
             </div>
           </DialogPanel>
         </div>
@@ -683,13 +688,17 @@ const badgeStyle = {
   justifyContent: 'center'
 };
 
-const MobileNavLink = ({ to, onClick, children, style }) => (
+// `current`: valor de aria-current (navCurrent). La página/sección activa se marca también a la vista.
+const MobileNavLink = ({ to, onClick, children, style, current }) => (
   <Link
     to={to}
     onClick={onClick}
+    aria-current={current}
     style={{
       fontSize: '1rem',
-      fontWeight: 600,
+      fontWeight: current ? 800 : 600,
+      textDecoration: current === 'page' ? 'underline' : 'none',
+      textUnderlineOffset: '4px',
       letterSpacing: '0.05em',
       color: '#09090B',
       textTransform: 'uppercase',

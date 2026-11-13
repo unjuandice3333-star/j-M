@@ -36,3 +36,19 @@ export function buildNavTaxonomy(taxonomy) {
 
   return { styleLines, clothing, topLevel };
 }
+
+/**
+ * Estado de un enlace del menú respecto a la ruta actual, por SEGMENTOS (antes `startsWith`: `/linea/urban` se
+ * marcaba activo en `/linea/urbano`). Devuelve el valor de `aria-current`: 'page' si es la página exacta, 'true'
+ * si es una sección que la contiene (ROPA en `/ropa/camisetas`) y undefined si no aplica.
+ * @param {string} pathname ruta actual (sin query).
+ * @param {string} to destino del enlace.
+ */
+export function navCurrent(pathname, to) {
+  const clean = (p) => (String(p || '/').split(/[?#]/)[0].replace(/\/+$/, '') || '/');
+  const here = clean(pathname);
+  const target = clean(to);
+  if (here === target) return 'page';
+  if (target !== '/' && here.startsWith(`${target}/`)) return 'true';
+  return undefined;
+}

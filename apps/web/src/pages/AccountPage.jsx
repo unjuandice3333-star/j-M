@@ -19,6 +19,7 @@ import { orderService } from '../services/orderService';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
 import { AccountDetails } from '../components/Account/AccountDetails';
+import { AccountSectionNav, useAccountSectionFocus } from '../components/Account/AccountSectionNav';
 import { ReviewInvitations } from '../components/Account/ReviewInvitations';
 import { wompiService } from '../services/wompi';
 
@@ -36,9 +37,11 @@ export const paymentWindow = (ord, now = Date.now()) => {
 export const AccountPage = () => {
   const navigate = useNavigate();
   // M28: volver a la página de origen (p. ej. el checkout tras una sesión vencida). Solo rutas internas.
-  const returnTo = useLocation().state?.from;
+  const location = useLocation();
+  const returnTo = location.state?.from;
   const safeReturn = typeof returnTo === 'string' && /^\/(?!\/)/.test(returnTo) ? returnTo : null;
   const { isLoggedIn, user, profile, login, signUp, logout, isLoading, error } = useAuthStore();
+  useAccountSectionFocus(location.pathname, Boolean(isLoggedIn && user));
 
   const [inputEmail, setInputEmail] = useState('');
   const [inputPassword, setInputPassword] = useState('');
@@ -300,12 +303,14 @@ export const AccountPage = () => {
             </button>
           </div>
 
+          <AccountSectionNav pathname={location.pathname} />
+
           {/* SECCIÓN "MIS PEDIDOS" */}
           <div style={{ marginBottom: '2.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <Package size={22} color="#09090B" />
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: 0 }}>
+                <h2 id="pedidos-titulo" style={{ fontSize: '1.25rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: 0 }}>
                   Mis Pedidos
                 </h2>
                 <span style={{

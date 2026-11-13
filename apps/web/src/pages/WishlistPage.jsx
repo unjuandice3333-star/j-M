@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useECommerceStore } from '../store/eCommerceStore';
 import ProductCard from '../components/Product/ProductCard';
+import { AccountSectionNav } from '../components/Account/AccountSectionNav';
 import { useAuthStore } from '../store/authStore';
 import { VariantPicker } from '../components/Product/VariantPicker';
 import { defaultLookSelection } from '../utils/lookSelection';
@@ -39,6 +40,8 @@ export const WishlistPage = () => {
           <span style={{ margin: '0 0.4rem' }}>/</span>
           <strong style={{ color: '#09090B' }}>Mis Favoritos</strong>
         </div>
+
+        {isLoggedIn && <AccountSectionNav pathname="/cuenta/favoritos" />}
 
         {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '1.25rem' }}>
