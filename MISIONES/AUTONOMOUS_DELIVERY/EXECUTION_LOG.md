@@ -954,3 +954,14 @@
 - Commits: `28106e3` (código) + el de documentación; publicados solo en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bi) de Pendiente (`aria-describedby`/foco al primer error en los formularios del admin).
+
+## Ejecución 109 — 2026-11-13 09:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-7h1tyc` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `9514061`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bi) de Pendiente. Errores de los formularios del admin (producto, cupón, colección, método de envío) enlazados a su campo y foco al primero (D80).
+- Archivos: nuevos `apps/web/src/utils/formErrors.js`, `apps/web/src/components/Common/FieldError.jsx`, `apps/web/src/__tests__/adminFormErrors.test.jsx`; `pages/admin/AdminProductFormPage.jsx`, `AdminDiscountsPage.jsx`, `AdminCollectionsPage.jsx`, `AdminSettingsPage.jsx`; `__tests__/adminCoupons.test.jsx` (aserción al comportamiento nuevo).
+- Pruebas (ejecutadas aquí): `adminFormErrors.test.jsx` 6/6; sin los cambios de `pages/` (`git stash`) fallan las 4 de UI; `pnpm test:unit` 538/538 (52 archivos; 1 fallo inicial en `adminCoupons` por el cambio de comportamiento esperado → aserción actualizada); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 44/44 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: formularios restantes del admin (imagen editorial, ajuste de inventario, guía del pedido, login y alta de contraseña del admin) sin el mismo patrón. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `dead6be` (código) + el de documentación; publicados solo en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bj) de Pendiente.
