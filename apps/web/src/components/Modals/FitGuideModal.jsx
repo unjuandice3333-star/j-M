@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Check } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { FITS_INFO } from '../../data/sizeGuide';
+import { DialogPanel } from '../Common/DialogPanel';
 
 export const FitGuideModal = () => {
   const { activeModal, closeModal } = useECommerceStore();
@@ -10,8 +11,7 @@ export const FitGuideModal = () => {
 
   return (
     <div className="modal-overlay" onClick={closeModal}>
-      <div
-        onClick={(e) => e.stopPropagation()}
+      <DialogPanel onClose={closeModal} aria-label="¿Qué significa el fit?"
         style={{
           backgroundColor: '#FFFFFF',
           width: '100%',
@@ -31,7 +31,7 @@ export const FitGuideModal = () => {
               Descubre las siluetas de prendas masculinas de J&M Fashion Store.
             </p>
           </div>
-          <button onClick={closeModal} style={{ padding: '0.5rem' }}>
+          <button type="button" aria-label="Cerrar" onClick={closeModal} style={{ padding: '0.5rem' }}>
             <X size={22} />
           </button>
         </div>
@@ -86,7 +86,7 @@ export const FitGuideModal = () => {
         >
           ENTENDIDO
         </button>
-      </div>
+      </DialogPanel>
     </div>
   );
 };

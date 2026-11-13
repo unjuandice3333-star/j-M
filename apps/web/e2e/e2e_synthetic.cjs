@@ -109,6 +109,32 @@ async function checkAllControls(page, scope, where, failures) {
   }
   return n;
 }
+// Teclado en modales (D71): abre con Enter desde el control enfocado, el foco entra en el diálogo, Tab y Mayús+Tab
+// no salen de él (una vuelta completa + 1), Escape lo cierra y el foco vuelve al control que lo abrió.
+async function checkDialogKeyboard(page, opener, dialogName, where, failures) {
+  const fail = (m) => { failures.push(`${where}: ${m}`); };
+  await opener.waitFor({ timeout: 8000 });
+  const handle = await opener.elementHandle();
+  await opener.focus();
+  await page.keyboard.press('Enter');
+  const dlg = page.getByRole('dialog', { name: dialogName });
+  try { await dlg.waitFor({ timeout: 8000 }); } catch { fail('no se abrió con Enter'); return false; }
+  await page.waitForTimeout(150);
+  const inside = () => dlg.evaluate((d) => d.contains(document.activeElement));
+  if (!(await inside())) fail('el foco no entró en el diálogo al abrir');
+  const n = await dlg.evaluate((d) => d.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])').length);
+  for (const key of ['Tab', 'Shift+Tab']) {
+    for (let i = 0; i <= n; i++) {
+      await page.keyboard.press(key);
+      if (!(await inside())) { fail(`${key} sacó el foco del diálogo (paso ${i + 1} de ${n + 1})`); break; }
+    }
+  }
+  await page.keyboard.press('Escape');
+  try { await dlg.waitFor({ state: 'detached', timeout: 5000 }); } catch { fail('Escape no cerró el diálogo'); return false; }
+  const back = await handle.evaluate((el) => el.isConnected && el === document.activeElement).catch(() => false);
+  if (!back) fail('el foco no volvió al control que abrió el diálogo');
+  return true;
+}
 const MOBILE = { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 };
 
 async function main() {
@@ -696,6 +722,50 @@ async function main() {
       await check('body', `cliente en ${new URL(p.url()).pathname}`);
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser, /AdminLogin Password Exception/, MOBILE); // el error de credenciales se registra a propósito
+
+    await journey('36. Teclado: todos los modales de la tienda y del admin (foco dentro, Tab atrapado, Escape cierra, foco de vuelta)', async (p) => {
+      const failures = []; const checked = [];
+      const kb = async (opener, name, where) => { if (await checkDialogKeyboard(p, opener, name, where, failures)) checked.push(where); };
+      // tienda en escritorio: búsqueda y carrito de la cabecera, ficha (foto ampliada y sus tres guías)
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await p.goto(`${BASE}/producto/camiseta-basica`); await expectText(p, 'Camiseta Básica');
+      await p.waitForLoadState('networkidle');
+      await kb(p.getByRole('button', { name: 'Buscar en la tienda' }), 'Buscar', 'búsqueda');
+      await kb(p.getByRole('button', { name: /^Abrir carrito/ }), 'Carrito', 'carrito');
+      await kb(p.getByRole('button', { name: 'Ampliar imagen de Camiseta Básica' }), 'Imagen ampliada', 'foto ampliada');
+      await kb(p.getByRole('button', { name: '¿Qué significa el Fit?' }), '¿Qué significa el fit?', 'guía de fit');
+      await kb(p.getByRole('button', { name: /Guía de medidas/ }).first(), 'Guía de tallas', 'guía de medidas');
+      await kb(p.getByRole('button', { name: /Encuentra tu talla/ }).first(), 'Encuentra tu talla ideal', 'encuentra tu talla');
+      // tienda en móvil: menú de navegación y panel de filtros
+      await p.setViewportSize({ width: 375, height: 812 });
+      await p.goto(`${BASE}/ropa`); await expectText(p, 'MOSTRANDO 2 PRENDAS');
+      await kb(p.getByRole('button', { name: 'Abrir menú de navegación' }), 'Menú', 'menú de navegación');
+      await kb(p.getByRole('button', { name: /FILTRAR/ }), 'Filtros', 'panel de filtros');
+      await p.setViewportSize({ width: 1280, height: 900 });
+      // pedido pagado para el detalle del admin
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p);
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click(); await p.waitForURL(/\/checkout\/confirmacion/);
+      const num = (await state()).orders[0].order_number;
+      await fetch(`${API_URL}/__synthetic-mark-paid/${num}`);
+      await p.evaluate(() => localStorage.clear());
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      const admin = [
+        ['/admin/pedidos', num, () => p.locator('tr', { hasText: num }).getByRole('button', { name: 'GESTIONAR' }), /^Orden #/, 'detalle de pedido'],
+        ['/admin/descuentos', 'JM10', () => p.locator('tbody tr', { hasText: 'JM10' }).getByRole('button', { name: 'Editar' }), 'Editar cupón', 'editar cupón'],
+        ['/admin/descuentos', 'JM10', () => p.getByRole('button', { name: /CREAR CUPÓN/ }), 'Crear cupón', 'crear cupón'],
+        ['/admin/colecciones', 'COLECCIONES', () => p.getByRole('button', { name: /NUEVA COLECCIÓN/ }), 'Nueva colección', 'nueva colección'],
+        ['/admin/configuracion', 'ENVÍO', () => p.getByRole('button', { name: /^Editar / }).first(), 'Editar método de envío', 'método de envío'],
+        ['/admin/imagenes', 'IMÁGENES', () => p.getByRole('button', { name: /^Cambiar imagen / }).first(), /^Editar /, 'imagen editorial'],
+        ['/admin/clientes?rol=todos', 'Ver detalle', () => p.getByRole('button', { name: 'Ver detalle' }).first(), /^Cliente /, 'ficha de cliente'],
+      ];
+      for (const [url, text, opener, name, where] of admin) {
+        await p.goto(`${BASE}${url}`); await expectText(p, text); await p.waitForLoadState('networkidle');
+        await kb(opener(), name, where);
+      }
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+      if (checked.length !== 15) throw new Error(`solo se comprobaron ${checked.length}/15 modales: ${checked.join(', ')}`);
+    }, browser);
 
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');

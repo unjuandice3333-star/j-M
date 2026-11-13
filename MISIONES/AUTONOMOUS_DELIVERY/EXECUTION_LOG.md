@@ -861,3 +861,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(az) de Pendiente (teclado y foco en los modales de tienda y admin).
+
+## Ejecución 100 — 2026-11-13 00:10 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-xwrz4i` (= main, `2661f2a`); se partió de la rama autorizada = remoto `34746a1`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(az) de Pendiente. Teclado en los modales de tienda y admin (D71).
+- Archivos: nuevo `apps/web/src/components/Common/DialogPanel.jsx`, nuevo `apps/web/src/__tests__/dialogPanel.test.jsx`; `components/Header/Header.jsx`, `components/Modals/SizeGuideModal.jsx`, `FitGuideModal.jsx`, `SizeRecommenderModal.jsx`, `pages/CatalogPage.jsx`, `pages/ProductDetailPage.jsx`, `pages/admin/AdminOrdersPage.jsx`, `AdminCustomersPage.jsx`, `AdminDiscountsPage.jsx`, `AdminEditorialImagesPage.jsx`, `AdminSettingsPage.jsx`, `AdminCollectionsPage.jsx`; `apps/web/e2e/e2e_synthetic.cjs` (helper `checkDialogKeyboard`, recorrido 36).
+- Pruebas (ejecutadas aquí): recorrido 36 falla sin los cambios de `src` (`git stash`) y pasa con ellos; `pnpm test:unit` 493/493 (44 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 36/36. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ba) de Pendiente (cajón del menú del admin en móvil y modal «Confirmar restauración» con fixture).

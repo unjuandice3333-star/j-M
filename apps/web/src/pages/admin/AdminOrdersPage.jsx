@@ -8,6 +8,7 @@ import { orderService } from '../../services/orderService';
 import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
+import { DialogPanel } from '../../components/Common/DialogPanel';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_SELECT = `
@@ -397,8 +398,7 @@ export const AdminOrdersPage = () => {
       {/* ORDER DETAIL & STATUS CHANGE MODAL */}
       {selectedOrder && (
         <div className="modal-overlay" onClick={() => setSelectedOrder(null)}>
-          <div
-            onClick={(e) => e.stopPropagation()}
+          <DialogPanel onClose={() => setSelectedOrder(null)} aria-label={`Orden #${selectedOrder.id}`}
             style={{
               backgroundColor: '#FFFFFF',
               width: '100%',
@@ -414,7 +414,7 @@ export const AdminOrdersPage = () => {
                 <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#71717A', letterSpacing: '0.1em' }}>GESTIÓN DE ORDEN</span>
                 <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#09090B' }}>ORDEN #{selectedOrder.id}</h2>
               </div>
-              <button onClick={() => setSelectedOrder(null)} style={{ padding: '0.4rem' }}>
+              <button type="button" aria-label="Cerrar" onClick={() => setSelectedOrder(null)} style={{ padding: '0.4rem' }}>
                 <X size={20} />
               </button>
             </div>
@@ -524,7 +524,7 @@ export const AdminOrdersPage = () => {
                 {isSaving ? 'GUARDANDO…' : 'GUARDAR CAMBIOS'}
               </button>
             </div>
-          </div>
+          </DialogPanel>
         </div>
       )}
     </div>

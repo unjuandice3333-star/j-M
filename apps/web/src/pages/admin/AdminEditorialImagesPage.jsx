@@ -11,6 +11,7 @@ import { useAuthStore } from '../../store/authStore';
 import siteContentService, { validateImageFile, publicUrl } from '../../services/siteContentService';
 import productService from '../../services/productService';
 import { buildEditorialItems } from '../../utils/homeTaxonomy';
+import { DialogPanel } from '../../components/Common/DialogPanel';
 
 const SECTION = { hero: 'Hero', styles: 'Línea de estilo', categories: 'Categoría', occasions: 'Ocasión', outfits: 'Outfit' };
 const TAB_LIST = [['hero', 'Hero'], ['styles', 'Líneas de estilo'], ['categories', 'Categorías'],
@@ -165,7 +166,7 @@ export const AdminEditorialImagesPage = () => {
 
       {editing && (
         <div className="modal-overlay" onClick={() => !saving && setEditing(null)}>
-          <div role="dialog" aria-label={`Editar ${editing.item.title}`} onClick={(e) => e.stopPropagation()}
+          <DialogPanel onClose={() => { if (!saving) setEditing(null); }} aria-label={`Editar ${editing.item.title}`}
             style={{ backgroundColor: '#FFF', width: '100%', maxWidth: 720, borderRadius: 12, padding: '1.5rem', maxHeight: '90vh', overflowY: 'auto', display: 'grid', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <h2 style={{ fontSize: '1.1rem', fontWeight: 900 }}>{editing.item.title}</h2>
@@ -207,19 +208,19 @@ export const AdminEditorialImagesPage = () => {
               <button style={btnLight} onClick={() => setEditing(null)} disabled={saving}>Cancelar</button>
               <button style={btnDark} onClick={save} disabled={saving || uploading || (!editing.storagePath && !editing.externalUrl.trim())}>{saving ? 'Guardando…' : 'Guardar y publicar'}</button>
             </div>
-          </div>
+          </DialogPanel>
         </div>
       )}
 
       {confirmReset && (
         <div className="modal-overlay" onClick={() => setConfirmReset(null)}>
-          <div role="dialog" aria-label="Confirmar restauración" onClick={(e) => e.stopPropagation()} style={{ backgroundColor: '#FFF', maxWidth: 420, width: '100%', borderRadius: 12, padding: '1.5rem', display: 'grid', gap: '1rem' }}>
+          <DialogPanel onClose={() => setConfirmReset(null)} aria-label="Confirmar restauración" style={{ backgroundColor: '#FFF', maxWidth: 420, width: '100%', borderRadius: 12, padding: '1.5rem', display: 'grid', gap: '1rem' }}>
             <div>¿Volver a la imagen original de «{confirmReset.title}»? La imagen subida seguirá en la biblioteca.</div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button style={btnLight} onClick={() => setConfirmReset(null)}>Cancelar</button>
               <button style={btnDark} onClick={() => reset(confirmReset)}>Restaurar</button>
             </div>
-          </div>
+          </DialogPanel>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Ruler } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { SIZE_CHART, SIZE_CHART_TABS, sizeChartTabFor } from '../../data/sizeGuide';
+import { DialogPanel } from '../Common/DialogPanel';
 
 // El modal está siempre montado en el layout: la pestaña inicial se calcula en cada apertura (componente
 // interno que se monta al abrir), no una sola vez al montar. Antes, abrir la guía desde un zapato mostraba camisetas.
@@ -19,8 +20,7 @@ const SizeGuideContent = ({ initialTab, closeModal }) => {
 
   return (
     <div className="modal-overlay" onClick={closeModal} data-testid="size-guide-modal" data-active-tab={activeTab}>
-      <div
-        onClick={(e) => e.stopPropagation()}
+      <DialogPanel onClose={closeModal} aria-label="Guía de tallas"
         style={{
           backgroundColor: '#FFFFFF',
           width: '100%',
@@ -41,7 +41,7 @@ const SizeGuideContent = ({ initialTab, closeModal }) => {
               <p style={{ fontSize: '0.82rem', color: '#71717A' }}>Medidas corporales de referencia en centímetros (cm)</p>
             </div>
           </div>
-          <button onClick={closeModal} style={{ padding: '0.5rem' }}>
+          <button type="button" aria-label="Cerrar" onClick={closeModal} style={{ padding: '0.5rem' }}>
             <X size={22} />
           </button>
         </div>
@@ -151,7 +151,7 @@ const SizeGuideContent = ({ initialTab, closeModal }) => {
             <li><strong>Largo de pie:</strong> Coloca el pie descalzo sobre una hoja de papel y mide desde el talón hasta el dedo más largo.</li>
           </ul>
         </div>
-      </div>
+      </DialogPanel>
     </div>
   );
 };

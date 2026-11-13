@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Edit, X } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
 import shippingAdminService, { CHECKOUT_METHOD, emptyShippingMethod, toShippingForm, validateShippingMethod } from '../../services/shippingAdminService';
+import { DialogPanel } from '../../components/Common/DialogPanel';
 
 const btnDark = { backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.7rem 1.2rem', borderRadius: 6, fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' };
 const btnLight = { backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', padding: '0.4rem 0.8rem', minHeight: 36, borderRadius: 4, fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' };
@@ -83,7 +84,7 @@ export const AdminSettingsPage = () => {
       </div>
 
       {form && (
-        <div role="dialog" aria-modal="true" aria-label={form.isNew ? 'Nuevo método de envío' : 'Editar método de envío'} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(9,9,11,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
+        <DialogPanel onClose={() => setForm(null)} aria-label={form.isNew ? 'Nuevo método de envío' : 'Editar método de envío'} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(9,9,11,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
           <form onSubmit={save} noValidate style={{ backgroundColor: '#FFF', borderRadius: 10, padding: '1.5rem', width: 'min(560px, 100%)', maxHeight: '90vh', overflowY: 'auto', display: 'grid', gap: '0.9rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontWeight: 900, textTransform: 'uppercase' }}>{form.isNew ? 'Nuevo método de envío' : 'Editar método de envío'}</h2>
@@ -108,7 +109,7 @@ export const AdminSettingsPage = () => {
               <button type="submit" disabled={saving} style={btnDark}>{saving ? 'Guardando…' : 'Guardar'}</button>
             </div>
           </form>
-        </div>
+        </DialogPanel>
       )}
     </div>
   );

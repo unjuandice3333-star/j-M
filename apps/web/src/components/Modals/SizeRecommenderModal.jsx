@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Sparkles, CheckCircle, ArrowRight } from 'lucide-react';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { recommendSize, explainRecommendation } from '../../utils/sizeAdvice';
+import { DialogPanel } from '../Common/DialogPanel';
 
 export const SizeRecommenderModal = () => {
   const { activeModal, selectedModalProduct, closeModal, applyRecommendedSize } = useECommerceStore();
@@ -32,8 +33,7 @@ export const SizeRecommenderModal = () => {
 
   return (
     <div className="modal-overlay" onClick={closeModal}>
-      <div
-        onClick={(e) => e.stopPropagation()}
+      <DialogPanel onClose={closeModal} aria-label="Encuentra tu talla ideal"
         style={{
           backgroundColor: '#FFFFFF',
           width: '100%',
@@ -51,7 +51,7 @@ export const SizeRecommenderModal = () => {
             <Sparkles size={22} color="#D4AF37" />
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '0.05em' }}>ENCUENTRA TU TALLA IDEAL</h2>
           </div>
-          <button onClick={closeModal} style={{ padding: '0.35rem' }}>
+          <button type="button" aria-label="Cerrar" onClick={closeModal} style={{ padding: '0.35rem' }}>
             <X size={20} />
           </button>
         </div>
@@ -199,7 +199,7 @@ export const SizeRecommenderModal = () => {
             </div>
           </div>
         )}
-      </div>
+      </DialogPanel>
     </div>
   );
 };

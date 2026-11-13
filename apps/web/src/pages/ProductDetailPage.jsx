@@ -27,6 +27,7 @@ import SafeProductImage from '../components/Common/SafeImage';
 
 import { analyticsService } from '../services/analytics';
 import { isOneSize, sizeHelpFor } from '../utils/sizeAdvice';
+import { DialogPanel } from '../components/Common/DialogPanel';
 
 export const ProductDetailPage = () => {
   const { slug } = useParams();
@@ -283,7 +284,11 @@ export const ProductDetailPage = () => {
 
             {/* Main Featured Photo with Zoom */}
             <div
+              role="button"
+              tabIndex={0}
+              aria-label={`Ampliar imagen de ${product.name}`}
               onClick={() => setIsZoomOpen(true)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsZoomOpen(true); } }}
               style={{ flex: 1, position: 'relative', borderRadius: '10px', overflow: 'hidden', aspectRatio: '3/4', cursor: 'zoom-in', backgroundColor: '#F4F4F5' }}
             >
               <SafeProductImage
@@ -765,8 +770,8 @@ export const ProductDetailPage = () => {
 
       {/* LIGHTBOX ZOOM MODAL */}
       {isZoomOpen && (
-        <div className="modal-overlay" style={{ backgroundColor: 'rgba(9, 9, 11, 0.95)', zIndex: 200 }} onClick={() => setIsZoomOpen(false)}>
-          <button onClick={() => setIsZoomOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', color: '#FFFFFF', padding: '0.5rem', cursor: 'pointer' }}>
+        <DialogPanel onClose={() => setIsZoomOpen(false)} aria-label="Imagen ampliada" className="modal-overlay" style={{ backgroundColor: 'rgba(9, 9, 11, 0.95)', zIndex: 200 }} onClick={() => setIsZoomOpen(false)}>
+          <button type="button" aria-label="Cerrar" onClick={() => setIsZoomOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', color: '#FFFFFF', padding: '0.5rem', cursor: 'pointer' }}>
             <X size={32} />
           </button>
           <img
@@ -777,7 +782,7 @@ export const ProductDetailPage = () => {
             }}
             style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px' }}
           />
-        </div>
+        </DialogPanel>
       )}
 
       {/* Responsive Breakpoint CSS for PDP Mobile Sticky Bar */}

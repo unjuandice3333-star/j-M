@@ -11,6 +11,7 @@ import supabase from '../../config/supabase';
 import { STATUS_LABEL } from './AdminOrdersPage';
 import { buildCustomers, customerFromParam, fetchAllRows, orderLink } from '../../utils/adminLists';
 import { normalizeText } from '../../utils/catalogFilters';
+import { DialogPanel } from '../../components/Common/DialogPanel';
 
 const ROLE_LABEL = { customer: 'Cliente', admin: 'Administrador', super_admin: 'Super administrador' };
 const ROLE_FILTERS = ['customer', 'admin', 'super_admin', 'todos'];
@@ -150,7 +151,7 @@ export const AdminCustomersPage = () => {
 
       {selected && (
         <div className="modal-overlay" onClick={close}>
-          <div role="dialog" aria-label={`Cliente ${selected.full_name || selected.email}`} onClick={(e) => e.stopPropagation()} style={{ backgroundColor: '#FFF', width: '100%', maxWidth: '640px', borderRadius: '12px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
+          <DialogPanel onClose={close} aria-label={`Cliente ${selected.full_name || selected.email}`} style={{ backgroundColor: '#FFF', width: '100%', maxWidth: '640px', borderRadius: '12px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 900 }}>{selected.full_name || selected.email}</h2>
               <button onClick={close} aria-label="Cerrar" style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
@@ -172,7 +173,7 @@ export const AdminCustomersPage = () => {
                 {addresses.map((a, i) => <li key={i}>{a.recipient_name} · {a.address_line}{a.neighborhood ? `, ${a.neighborhood}` : ''}, {a.city} ({a.department}){a.is_default ? ' · principal' : ''}</li>)}
               </ul>
             )}
-          </div>
+          </DialogPanel>
         </div>
       )}
     </div>

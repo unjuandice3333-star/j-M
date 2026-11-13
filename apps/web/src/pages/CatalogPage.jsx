@@ -4,6 +4,7 @@ import { Filter, SlidersHorizontal, X, ChevronDown, Check } from 'lucide-react';
 import ProductCard from '../components/Product/ProductCard';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { normalizeStyleLine } from '../utils/productUtils';
+import { DialogPanel } from '../components/Common/DialogPanel';
 import {
   PRICE_STEP, filterProducts, sortProducts, priceCeiling, sizeOptions, fitOptions, occasionOptions,
 } from '../utils/catalogFilters';
@@ -452,8 +453,7 @@ export const CatalogPage = () => {
       {/* MOBILE FILTERS DRAWER */}
       {isMobileFilterOpen && (
         <div className="modal-overlay" style={{ justifyContent: 'flex-start', padding: 0 }} onClick={() => setIsMobileFilterOpen(false)}>
-          <div
-            onClick={(e) => e.stopPropagation()}
+          <DialogPanel onClose={() => setIsMobileFilterOpen(false)} aria-label="Filtros"
             className="jm-tap-area"
             style={{
               width: '85%',
@@ -493,7 +493,7 @@ export const CatalogPage = () => {
             >
               VER RESULTADOS ({filteredProducts.length})
             </button>
-          </div>
+          </DialogPanel>
         </div>
       )}
 

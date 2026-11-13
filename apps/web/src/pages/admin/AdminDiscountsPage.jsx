@@ -12,6 +12,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, X } from 'lucide-react';
 import { formatCOP } from '../../utils/currency';
+import { DialogPanel } from '../../components/Common/DialogPanel';
 import couponsAdminService, {
   COUPON_STATUS_FILTERS, couponState, couponStatusFromParam, couponUseCount, emptyCouponForm, filterCoupons, toCouponForm, PERCENT_MAX,
 } from '../../services/couponsAdminService';
@@ -148,7 +149,7 @@ export const AdminDiscountsPage = () => {
 
       {form && (
         <div className="modal-overlay" onClick={() => setForm(null)}>
-          <div role="dialog" aria-label={form.id ? 'Editar cupón' : 'Crear cupón'} onClick={(e) => e.stopPropagation()} style={{ backgroundColor: '#FFF', width: '100%', maxWidth: '520px', borderRadius: '12px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
+          <DialogPanel onClose={() => setForm(null)} aria-label={form.id ? 'Editar cupón' : 'Crear cupón'} style={{ backgroundColor: '#FFF', width: '100%', maxWidth: '520px', borderRadius: '12px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 900 }}>{form.id ? `Editar ${form.code}` : 'Nuevo cupón'}</h2>
               <button onClick={() => setForm(null)} aria-label="Cerrar" style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
@@ -183,7 +184,7 @@ export const AdminDiscountsPage = () => {
                 {saving ? 'Guardando…' : 'Guardar cupón'}
               </button>
             </form>
-          </div>
+          </DialogPanel>
         </div>
       )}
     </div>

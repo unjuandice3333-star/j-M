@@ -22,6 +22,7 @@ import { formatCOP } from '../../utils/currency';
 import { useShippingPolicy } from '../../hooks/useShippingPolicy';
 import { useStorefrontTaxonomy } from '../../hooks/useStorefrontTaxonomy';
 import { buildNavTaxonomy } from '../../utils/navTaxonomy';
+import { DialogPanel } from '../Common/DialogPanel';
 
 export const Header = () => {
   const navigate = useNavigate();
@@ -291,8 +292,7 @@ export const Header = () => {
       {/* 3. MOBILE NAVIGATION DRAWER */}
       {isMobileMenuOpen && (
         <div className="modal-overlay" style={{ justifyContent: 'flex-start', padding: 0 }} onClick={() => setMobileMenuOpen(false)}>
-          <div
-            onClick={(e) => e.stopPropagation()}
+          <DialogPanel onClose={() => setMobileMenuOpen(false)} aria-label="Menú"
             style={{
               width: '85%',
               maxWidth: '360px',
@@ -307,7 +307,7 @@ export const Header = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <span style={{ fontWeight: 800, letterSpacing: '0.12em', fontSize: '1.1rem' }}>MENÚ</span>
-              <button onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem' }}>
+              <button type="button" aria-label="Cerrar" onClick={() => setMobileMenuOpen(false)} style={{ padding: '0.5rem' }}>
                 <X size={24} />
               </button>
             </div>
@@ -337,15 +337,14 @@ export const Header = () => {
                 ⚙ Panel de Administración
               </Link>
             </div>
-          </div>
+          </DialogPanel>
         </div>
       )}
 
       {/* 4. SEARCH MODAL / DRAWER */}
       {isSearchOpen && (
         <div className="modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '5vh' }} onClick={() => setSearchOpen(false)}>
-          <div
-            onClick={(e) => e.stopPropagation()}
+          <DialogPanel onClose={() => setSearchOpen(false)} aria-label="Buscar"
             style={{
               width: '100%',
               maxWidth: '680px',
@@ -357,7 +356,7 @@ export const Header = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>Buscar en J&M Fashion Store</span>
-              <button onClick={() => setSearchOpen(false)} style={{ padding: '0.25rem' }}>
+              <button type="button" aria-label="Cerrar" onClick={() => setSearchOpen(false)} style={{ padding: '0.25rem' }}>
                 <X size={20} />
               </button>
             </div>
@@ -438,15 +437,14 @@ export const Header = () => {
                 )}
               </div>
             )}
-          </div>
+          </DialogPanel>
         </div>
       )}
 
       {/* 5. CART DRAWER */}
       {isCartOpen && (
         <div className="modal-overlay" style={{ justifyContent: 'flex-end', padding: 0 }} onClick={() => setCartOpen(false)}>
-          <div
-            onClick={(e) => e.stopPropagation()}
+          <DialogPanel onClose={() => setCartOpen(false)} aria-label="Carrito"
             style={{
               width: '100%',
               maxWidth: '440px',
@@ -471,7 +469,7 @@ export const Header = () => {
                 <span style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '0.05em' }}>TU CARRITO</span>
                 <span style={{ fontSize: '0.8rem', color: '#71717A' }}>({cartCount})</span>
               </div>
-              <button onClick={() => setCartOpen(false)} style={{ padding: '0.35rem' }}>
+              <button type="button" aria-label="Cerrar" onClick={() => setCartOpen(false)} style={{ padding: '0.35rem' }}>
                 <X size={20} />
               </button>
             </div>
@@ -618,7 +616,7 @@ export const Header = () => {
                 </button>
               </div>
             )}
-          </div>
+          </DialogPanel>
         </div>
       )}
 
