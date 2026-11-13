@@ -84,6 +84,9 @@ describe('/admin/login', () => {
     expect(email.type).toBe('email');
     expect(password.type).toBe('password');
     expectClean(email); expectClean(password);
+    // Ejecución 113: sin noValidate, Chromium detenía el envío con su globo nativo (`required`) y el aviso enlazado
+    // nunca aparecía (lo detectó el recorrido E2E 45; jsdom no aplica la validación nativa).
+    expect(host.querySelector('form').noValidate).toBe(true);
 
     await setValue(email, 'admin@x.co');
     await setValue(password, 'incorrecta-123');
@@ -171,6 +174,8 @@ describe('/admin/inventario: ajuste de stock', () => {
     expectLinked(qty('POL-B'), /cantidad entera/);
     expectClean(qty('POL-A')); expectClean(reason('POL-B'));
     expect(document.activeElement).toBe(qty('POL-B'));
+    // Ejecución 113: el aviso está en la misma fila que el campo (en móvil el de arriba quedaba fuera de la pantalla).
+    expect(qty('POL-B').closest('tr').contains(document.getElementById(qty('POL-B').getAttribute('aria-describedby')))).toBe(true);
 
     await setValue(qty('POL-B'), '3');
     await click(adjustBtn('POL-B'));

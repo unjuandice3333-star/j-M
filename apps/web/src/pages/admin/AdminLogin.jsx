@@ -288,7 +288,7 @@ export const AdminLogin = () => {
         </div>
 
         {/* EMAIL & PASSWORD FALLBACK FORM */}
-        <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+        <form onSubmit={handleAdminLogin} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
           <div>
             <label htmlFor="admin-login-email" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#D4D4D8', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>
               Correo Administrativo

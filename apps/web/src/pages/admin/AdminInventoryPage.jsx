@@ -78,12 +78,16 @@ export const AdminInventoryPage = () => {
 
   // Ejecución 110 (D81): un error de validación del ajuste se enlaza al campo de ESA fila (aria-invalid +
   // aria-describedby → aviso) y el foco vuelve a él; antes el aviso salía arriba de la tabla sin indicar fila ni campo.
+  // Ejecución 113: el aviso de validación se muestra en la MISMA celda que el campo (en móvil la tabla se desplaza en
+  // horizontal y el aviso de arriba quedaba fuera de la pantalla, medido en Chromium); el de arriba queda para
+  // resultados y errores del servidor.
+  const rowErrorId = (item) => `inv-error-${item.id}`;
   const failOn = (item, key, text) => {
     setNotice({ ok: false, text, rowId: item.id, key });
     document.getElementById(`inv-${key}-${item.id}`)?.focus();
   };
   const adjustA11y = (item, key) => (notice && !notice.ok && notice.rowId === item.id && notice.key === key
-    ? { 'aria-invalid': true, 'aria-describedby': NOTICE_ID }
+    ? { 'aria-invalid': true, 'aria-describedby': rowErrorId(item) }
     : { 'aria-invalid': false });
 
   /** Ajuste con trazabilidad (admin_adjust_inventory): entrada (restock) o ajuste (+/-) con motivo obligatorio. */
@@ -172,7 +176,7 @@ export const AdminInventoryPage = () => {
       {/* INVENTORY TABLE */}
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
         {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600, padding: '1rem' }}>{loadError}</div>}
-        {notice && <div id={NOTICE_ID} role={notice.ok ? 'status' : 'alert'} style={{ color: notice.ok ? '#065F46' : '#B91C1C', fontWeight: 600, padding: '0.75rem 1rem' }}>{notice.text}</div>}
+        {notice && !notice.rowId && <div id={NOTICE_ID} role={notice.ok ? 'status' : 'alert'} style={{ color: notice.ok ? '#065F46' : '#B91C1C', fontWeight: 600, padding: '0.75rem 1rem' }}>{notice.text}</div>}
         {isLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#71717A' }}>
             Cargando inventario real desde Supabase PostgreSQL...
@@ -254,6 +258,9 @@ export const AdminInventoryPage = () => {
                         {adjustingId === item.id ? 'Ajustando...' : 'Ajustar'}
                       </button>
                     </div>
+                    {notice && !notice.ok && notice.rowId === item.id && (
+                      <div id={rowErrorId(item)} role="alert" style={{ color: '#B91C1C', fontWeight: 600, fontSize: '0.8rem', marginTop: '0.35rem', textAlign: 'right' }}>{notice.text}</div>
+                    )}
                   </td>
                 </tr>
               ))}
