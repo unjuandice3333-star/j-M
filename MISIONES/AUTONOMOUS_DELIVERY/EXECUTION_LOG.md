@@ -911,3 +911,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(be) de Pendiente (campana del admin: aviso real o retirarla; luego revisión de contraste/nombres accesibles).
+
+## Ejecución 105 — 2026-11-13 05:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-wvbmik` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `e3a0679`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(be) de Pendiente. La campana del admin pasa de decorativa a aviso real (D76).
+- Archivos: nuevo `apps/web/src/components/Common/AdminNotifications.jsx`, nuevo `apps/web/src/__tests__/adminNotifications.test.jsx`; `apps/web/src/layouts/AdminLayout.jsx`; `apps/web/e2e/synthetic/backend.cjs` (`/__synthetic-review` acepta `status: 'pending'`); `apps/web/e2e/e2e_synthetic.cjs` (recorrido 41).
+- Pruebas (ejecutadas aquí): recorrido 41 falló primero por un defecto real (panel 118 px fuera de la pantalla en móvil) → corregido; falla sin el cambio de `AdminLayout` (`git stash`) y pasa con él; `adminNotifications.test.jsx` 7/7 (la de integración falla sin el cambio); `pnpm test:unit` 522/522 (49 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 41/41 en la primera pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bf) de Pendiente (contraste y nombres accesibles en las rutas principales; `axe-core` NO está en el lockfile → sin dependencia nueva, comprobación propia en el E2E).

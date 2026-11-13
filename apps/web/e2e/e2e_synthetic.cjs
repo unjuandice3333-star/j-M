@@ -987,6 +987,53 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('41. Campana del admin: avisos reales de pedidos por preparar y reseñas por moderar, con enlaces a las listas filtradas', async (p) => {
+      const failures = [];
+      // fixtures sintéticos: un pedido pagado y una reseña pendiente (los recorridos corren en paralelo: no se asumen totales fijos)
+      await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ customer_name: 'Aviso Campana', customer_email: 'campana@correo.co', status: 'paid' }) });
+      await fetch(`${API_URL}/__synthetic-review`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug: 'polo-clasico', author_name: 'Campana R.', title: 'Pendiente de moderar', comment: 'Reseña de la campana del admin.', status: 'pending' }) });
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      const bell = p.locator('header').getByRole('button', { name: /^Avisos:/ });
+      try { await bell.waitFor({ timeout: 8000 }); } catch { throw new Error('la cabecera no tiene un botón «Avisos»'); }
+      let name = '';
+      try { await p.waitForFunction(() => /pedidos? pagados? por preparar.*rese/.test(document.querySelector('[data-testid="admin-notifications"]')?.textContent || ''), null, { timeout: 8000 }); }
+      catch { failures.push(`la campana no avisa de pedidos y reseñas: «${await bell.textContent()}»`); }
+      name = (await bell.textContent()) || '';
+      const nums = [...name.matchAll(/(\d+) (?:pedidos?|reseñas?)/g)].map((m) => Number(m[1]));
+      const badge = await p.locator('[data-testid="admin-notifications-badge"]').textContent().catch(() => null);
+      const sum = nums.reduce((a, b) => a + b, 0);
+      if (badge !== (sum > 99 ? '99+' : String(sum))) failures.push(`insignia «${badge}» no es la suma de «${name}»`);
+      if (await bell.getAttribute('aria-expanded') !== 'false') failures.push('la campana empieza abierta');
+      await assertTappable(bell, 'campana').catch((e) => failures.push(e.message));
+      // teclado: Enter abre, Escape cierra y devuelve el foco
+      await bell.focus(); await p.keyboard.press('Enter');
+      const panel = p.getByRole('region', { name: 'Avisos' });
+      try { await panel.waitFor({ timeout: 3000 }); } catch { failures.push('Enter no abre los avisos'); }
+      await panel.getByRole('link').first().focus(); await p.keyboard.press('Escape');
+      if (await panel.count()) failures.push('Escape no cierra los avisos');
+      if (!(await bell.evaluate((el) => el === document.activeElement))) failures.push('Escape no devuelve el foco a la campana');
+      // reseñas → /admin/reviews?estado=pending con la reseña pendiente del fixture
+      await bell.click();
+      await panel.getByRole('link', { name: /por moderar/ }).click();
+      try { await p.waitForURL(/\/admin\/reviews\?estado=pending$/, { timeout: 5000 }); } catch { failures.push(`enlace de reseñas → ${p.url()}`); }
+      try { await p.getByText('Pendiente de moderar').first().waitFor({ timeout: 8000 }); } catch { failures.push('la lista de reseñas pendientes no muestra la del fixture'); }
+      if (await panel.count()) failures.push('el panel sigue abierto tras elegir un aviso');
+      // pedidos → /admin/pedidos?estado=paid con el pedido del fixture
+      await bell.click();
+      await panel.getByRole('link', { name: /por preparar/ }).click();
+      try { await p.waitForURL(/\/admin\/pedidos\?estado=paid$/, { timeout: 5000 }); } catch { failures.push(`enlace de pedidos → ${p.url()}`); }
+      try { await p.getByText('Aviso Campana').first().waitFor({ timeout: 8000 }); } catch { failures.push('la lista de pedidos pagados no muestra el del fixture'); }
+      // móvil: la campana sigue visible y su panel no desborda la pantalla
+      await p.setViewportSize({ width: 375, height: 812 });
+      await bell.click(); await panel.waitFor().catch(() => {});
+      await assertNoHorizontalOverflow(p, 'avisos en móvil').catch((e) => failures.push(e.message));
+      const box = await panel.boundingBox();
+      if (!box || box.x < 0 || box.x + box.width > 375) failures.push(`panel de avisos fuera de la pantalla en móvil: ${JSON.stringify(box)}`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);

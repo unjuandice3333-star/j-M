@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore.js';
 import { DialogPanel } from '../components/Common/DialogPanel';
 import { SkipToContent, useRouteFocus, MAIN_ID } from '../components/Common/RouteFocus';
 import { AdminGlobalSearch } from '../components/Common/AdminGlobalSearch';
+import { AdminNotifications } from '../components/Common/AdminNotifications';
 import { countPendingReviews, REVIEWS_CHANGED_EVENT } from '../services/reviewsAdminService.js';
 import { countOrdersToPrepare, ORDERS_CHANGED_EVENT, ORDERS_POLL_MS } from '../services/adminService.js';
 import {
@@ -20,7 +21,6 @@ import {
   Settings,
   Image,
   ArrowLeft,
-  Bell,
   LogOut,
   X
 } from 'lucide-react';
@@ -123,6 +123,8 @@ export const AdminLayout = () => {
           .jm-admin-content { margin-left: 0 !important; min-width: 0; }
           .jm-admin-main { padding: 1rem !important; }
           .jm-admin-header { padding: 0 1rem !important; }
+          /* Ejecución 105: el panel de avisos ocupa el ancho de la pantalla (anclado a la campana se salía por la izquierda) */
+          .jm-admin-notifications-panel { position: fixed !important; top: 70px !important; left: 1rem !important; right: 1rem !important; width: auto !important; max-width: none !important; }
         }
       `}</style>
       {menuOpen && <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 95 }} />}
@@ -261,9 +263,8 @@ export const AdminLayout = () => {
 
           {/* Admin User Profile Action */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <div style={{ position: 'relative' }}>
-              <Bell size={20} color="#71717A" aria-hidden="true" />
-            </div>
+            {/* Ejecución 105: la campana era decorativa; ahora avisa de pedidos por preparar y reseñas por moderar */}
+            <AdminNotifications ordersToPrepare={ordersToPrepare} pendingReviews={pendingReviews} />
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderLeft: '1px solid #E4E4E7', paddingLeft: '1.5rem' }}>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#09090B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem' }}>

@@ -349,7 +349,7 @@ function start(port = 54321) {
         if (p === '/__synthetic-review') {
           const pr = S.products.find((x) => x.slug === body.slug); if (!pr) return send(res, 404, {});
           const row = { id: crypto.randomUUID(), product_id: pr.id, order_item_id: null, user_id: null, author_name: body.author_name || 'Cliente J&M', city: body.city || null,
-            rating: body.rating || 5, title: body.title || 'Muy buena', comment: body.comment || 'Buena tela y buen ajuste.', is_verified_buyer: true, status: 'approved',
+            rating: body.rating || 5, title: body.title || 'Muy buena', comment: body.comment || 'Buena tela y buen ajuste.', is_verified_buyer: true, status: body.status === 'pending' ? 'pending' : 'approved', // Ejecución 105: también pendiente
             admin_reply: body.admin_reply || null, created_at: new Date().toISOString() };
           S.tables.product_reviews.push(row); return send(res, 200, { id: row.id });
         }
