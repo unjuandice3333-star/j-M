@@ -18,7 +18,7 @@ import {
   Instagram,
   CheckCircle2,
   Sparkles
-} from 'lucide-react';
+} from '../components/Common/icons';
 import { SIZE_CHART, SIZE_CHART_TABS } from '../data/sizeGuide';
 import { useShippingPolicy } from '../hooks/useShippingPolicy';
 
@@ -103,7 +103,7 @@ export const InfoPage = () => {
         {viewType === 'tallas' && (
           <div>
             <div style={{ borderBottom: '1px solid #E4E4E7', paddingBottom: '1.5rem', marginBottom: '2.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#D4AF37', marginBottom: '0.3rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--accent-gold-text)', marginBottom: '0.3rem' }}>
                 <Ruler size={22} />
                 <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase' }}>TABLA DE MEDIDAS CORPORALES</span>
               </div>
@@ -403,7 +403,7 @@ export const InfoPage = () => {
         {viewType === 'contacto' && (
           <div>
             <div style={{ borderBottom: '1px solid #E4E4E7', paddingBottom: '1.5rem', marginBottom: '2.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#D4AF37', marginBottom: '0.3rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--accent-gold-text)', marginBottom: '0.3rem' }}>
                 <Mail size={22} />
                 <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase' }}>CANALES DIRECTOS</span>
               </div>

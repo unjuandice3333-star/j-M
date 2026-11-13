@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useLocation, Link } from 'react-router-dom';
-import { Filter, SlidersHorizontal, X, ChevronDown, Check } from 'lucide-react';
+import { Filter, SlidersHorizontal, X, ChevronDown, Check } from '../components/Common/icons';
 import ProductCard from '../components/Product/ProductCard';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { normalizeStyleLine } from '../utils/productUtils';
@@ -387,8 +387,9 @@ export const CatalogPage = () => {
 
               {/* Sort Selector */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#71717A' }}>ORDENAR POR:</span>
+                <label htmlFor="catalog-sort" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#52525B' }}>ORDENAR POR:</label>
                 <select
+                  id="catalog-sort"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   style={{

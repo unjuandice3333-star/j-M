@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search } from './icons';
 
 // Ejecución 104: el campo «Buscar SKU, pedido, cliente...» de la cabecera del admin era decorativo (no hacía nada al
 // escribir ni al pulsar Enter). Ahora busca de verdad reutilizando las búsquedas `?q=` que ya tienen las listas:

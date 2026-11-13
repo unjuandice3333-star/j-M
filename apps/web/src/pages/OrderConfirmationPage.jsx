@@ -7,7 +7,7 @@
 // =============================================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle2, Clock, XCircle, Truck, Package, CreditCard, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Truck, Package, CreditCard, AlertTriangle } from '../components/Common/icons';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { formatCOP } from '../utils/currency';
 import { analyticsService } from '../services/analytics';
@@ -192,7 +192,7 @@ export const OrderConfirmationPage = () => {
               const done = reached.has(s.key) || ORDER_FLOW.indexOf(st) >= ORDER_FLOW.indexOf(s.key);
               const Icon = s.icon;
               return (
-                <li key={s.key} style={{ flex: 1, textAlign: 'center', color: done ? '#09090B' : '#A1A1AA', fontSize: '0.75rem', fontWeight: 700 }}>
+                <li key={s.key} style={{ flex: 1, textAlign: 'center', color: done ? '#09090B' : '#71717A', fontSize: '0.75rem', fontWeight: 700 }}>
                   <Icon size={22} style={{ margin: '0 auto 0.3rem auto' }} color={done ? '#10B981' : '#D4D4D8'} />
                   {s.title}
                 </li>

@@ -36,7 +36,7 @@
 .tagline {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--muted-foreground);
+  color: #A1A1AA; /* sobre la tarjeta oscura: 7,8:1 (el gris general daba 3,7:1) */
   letter-spacing: 0.25em;
   margin-top: 0.25rem;
 }

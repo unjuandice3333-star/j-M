@@ -5,7 +5,7 @@
 // storage). Los cambios sobreviven a recargas, cierres de sesión y se ven desde cualquier navegador.
 // =============================================================================
 import React, { useEffect, useState } from 'react';
-import { Upload, Check, RotateCcw, FolderOpen, AlertTriangle, X } from 'lucide-react';
+import { Upload, Check, RotateCcw, FolderOpen, AlertTriangle, X } from '../../components/Common/icons';
 import { useECommerceStore, DEFAULT_EDITORIAL_IMAGES } from '../../store/eCommerceStore';
 import { useAuthStore } from '../../store/authStore';
 import siteContentService, { validateImageFile, publicUrl } from '../../services/siteContentService';

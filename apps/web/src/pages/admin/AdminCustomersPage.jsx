@@ -5,7 +5,7 @@
 // =============================================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { Search, X } from '../../components/Common/icons';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { STATUS_LABEL } from './AdminOrdersPage';

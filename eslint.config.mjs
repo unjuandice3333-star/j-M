@@ -39,6 +39,8 @@ export default [
       'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_', caughtErrors: 'none' }],
       'react-hooks/exhaustive-deps': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],
+      // D77: los iconos pasan por apps/web/src/components/Common/icons.js (decorativos por defecto, aria-hidden).
+      'no-restricted-imports': ['error', { paths: [{ name: 'lucide-react', message: 'Importa los iconos desde components/Common/icons.js (aria-hidden por defecto).' }] }],
     },
   },
 ];

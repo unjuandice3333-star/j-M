@@ -13,7 +13,7 @@ import {
   Wifi,
   WifiOff,
   ClipboardList
-} from 'lucide-react';
+} from '../components/Common/icons';
 import styles from './DashboardLayout.module.css';
 
 export const DashboardLayout = () => {

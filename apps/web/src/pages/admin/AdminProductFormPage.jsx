@@ -7,7 +7,7 @@
 // =============================================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Upload, Trash2, Star } from 'lucide-react';
+import { ArrowLeft, Save, Upload, Trash2, Star } from '../../components/Common/icons';
 import { productService, imageUrl } from '../../services/productService';
 import { adminService, slugify, toReference } from '../../services/adminService';
 import { useECommerceStore } from '../../store/eCommerceStore';

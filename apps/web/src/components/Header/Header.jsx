@@ -16,7 +16,7 @@ import {
   Trash2,
   Sparkles,
   ArrowRight
-} from 'lucide-react';
+} from '../Common/icons';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { formatCOP } from '../../utils/currency';
 import { useShippingPolicy } from '../../hooks/useShippingPolicy';
@@ -111,7 +111,7 @@ export const Header = () => {
             ? <span data-testid="shipping-banner">ENVÍOS GRATIS EN COLOMBIA POR COMPRAS DESDE {shippingPolicy.thresholdLabel}</span>
             : <span data-testid="shipping-banner">ENVÍOS A TODA COLOMBIA</span>}
         </span>
-        <span style={{ color: '#3F3F46' }}>|</span>
+        <span aria-hidden="true" style={{ color: '#3F3F46' }}>|</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#D4AF37' }}>
           <Sparkles size={13} />
           CAMBIOS FÁCILES &amp; DEVOLUCIONES GRATIS
@@ -211,7 +211,7 @@ export const Header = () => {
                 {l.label}
               </Link>
             ))}
-            <span style={{ color: '#E4E4E7', fontWeight: 300, margin: '0 0.15rem' }}>|</span>
+            <span aria-hidden="true" style={{ color: '#E4E4E7', fontWeight: 300, margin: '0 0.15rem' }}>|</span>
             <Link
               to="/ropa"
               aria-current={current('/ropa')}

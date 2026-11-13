@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ShoppingBag, Sparkles, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Sparkles, ArrowRight } from '../Common/icons';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { useECommerceStore } from '../../store/eCommerceStore';
@@ -187,7 +187,7 @@ export const CompleteTheLook = ({ lookSlug = null }) => {
                   {/* Jerarquía de Texto: 01 CATEGORÍA > Nombre > Fit/Color */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                      <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#D4AF37', letterSpacing: '0.1em' }}>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 900, color: 'var(--accent-gold-text)', letterSpacing: '0.1em' }}>
                         0{index + 1}
                       </span>
                       <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#71717A', letterSpacing: '0.1em', textTransform: 'uppercase' }}>

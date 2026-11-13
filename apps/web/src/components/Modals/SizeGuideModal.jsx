@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Ruler } from 'lucide-react';
+import { X, Ruler } from '../Common/icons';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { SIZE_CHART, SIZE_CHART_TABS, sizeChartTabFor } from '../../data/sizeGuide';
 import { DialogPanel } from '../Common/DialogPanel';

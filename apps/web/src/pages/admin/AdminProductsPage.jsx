@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Filter, Edit, Trash2, Eye, RefreshCw, Sparkles, AlertTriangle, Boxes } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, Eye, RefreshCw, Sparkles, AlertTriangle, Boxes } from '../../components/Common/icons';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { productService } from '../../services/productService';
 import { adminService } from '../../services/adminService';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@jm/ui';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert } from '../components/Common/icons';
 import styles from './Unauthorized.module.css';
 
 export const Unauthorized = () => {

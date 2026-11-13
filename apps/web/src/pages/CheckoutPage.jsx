@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, Truck, CreditCard, ShieldCheck, CheckCircle2, ChevronRight, Check } from 'lucide-react';
+import { Lock, Truck, CreditCard, ShieldCheck, CheckCircle2, ChevronRight, Check } from '../components/Common/icons';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { formatCOP } from '../utils/currency';
 import { analyticsService } from '../services/analytics';
@@ -191,17 +191,17 @@ export const CheckoutPage = () => {
                 CHECKOUT J&M FASHION STORE
               </h1>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 700, color: '#10B981' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 700, color: '#047857' }}>
               <Lock size={16} /> Encriptación SSL de 256 bits
             </div>
           </div>
 
           {/* CHECKOUT STEP PROGRESS BAR */}
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', backgroundColor: '#FFFFFF', padding: '0.75rem 1.25rem', borderRadius: '8px', border: '1px solid #E4E4E7', fontSize: '0.82rem', fontWeight: 700 }}>
-            <span style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Check size={14} /> 1. Carrito</span>
-            <span style={{ color: '#A1A1AA' }}>→</span>
+            <span style={{ color: '#047857', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Check size={14} /> 1. Carrito</span>
+            <span aria-hidden="true" style={{ color: '#A1A1AA' }}>→</span>
             <span style={{ color: '#09090B', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><strong>2. Datos & Envío</strong></span>
-            <span style={{ color: '#A1A1AA' }}>→</span>
+            <span aria-hidden="true" style={{ color: '#A1A1AA' }}>→</span>
             <span style={{ color: '#71717A' }}>3. Pago Seguro Wompi</span>
           </div>
         </div>
@@ -239,25 +239,25 @@ export const CheckoutPage = () => {
               </h2>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
-                  <label style={labelStyle}>Nombre *</label>
-                  <input type="text" name="firstName" required value={formData.firstName} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.firstName)} style={inputStyle} />
+                  <label style={labelStyle} htmlFor="checkout-firstName">Nombre *</label>
+                  <input id="checkout-firstName" type="text" name="firstName" required value={formData.firstName} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.firstName)} style={inputStyle} />
                   <FieldError msg={fieldErrors.firstName} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Apellido *</label>
-                  <input type="text" name="lastName" required value={formData.lastName} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.lastName)} style={inputStyle} />
+                  <label style={labelStyle} htmlFor="checkout-lastName">Apellido *</label>
+                  <input id="checkout-lastName" type="text" name="lastName" required value={formData.lastName} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.lastName)} style={inputStyle} />
                   <FieldError msg={fieldErrors.lastName} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={labelStyle}>Correo Electrónico *</label>
-                  <input type="email" name="email" required value={formData.email} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.email)} style={inputStyle} />
+                  <label style={labelStyle} htmlFor="checkout-email">Correo Electrónico *</label>
+                  <input id="checkout-email" type="email" name="email" required value={formData.email} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.email)} style={inputStyle} />
                   <FieldError msg={fieldErrors.email} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Teléfono Celular (WhatsApp) *</label>
-                  <input type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.phone)} style={inputStyle} />
+                  <label style={labelStyle} htmlFor="checkout-phone">Teléfono Celular (WhatsApp) *</label>
+                  <input id="checkout-phone" type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.phone)} style={inputStyle} />
                   <FieldError msg={fieldErrors.phone} />
                 </div>
               </div>
@@ -281,8 +281,8 @@ export const CheckoutPage = () => {
               )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
-                  <label style={labelStyle}>Departamento *</label>
-                  <select name="department" required value={formData.department} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.department)} style={inputStyle}>
+                  <label style={labelStyle} htmlFor="checkout-department">Departamento *</label>
+                  <select id="checkout-department" name="department" required value={formData.department} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.department)} style={inputStyle}>
                     <option value="">Selecciona…</option>
                     {DEPARTMENTS.map((dept) => (
                       <option key={dept} value={dept}>{dept}</option>
@@ -291,24 +291,24 @@ export const CheckoutPage = () => {
                   <FieldError msg={fieldErrors.department} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Ciudad / Municipio *</label>
-                  <input type="text" name="city" required value={formData.city} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.city)} style={inputStyle} />
+                  <label style={labelStyle} htmlFor="checkout-city">Ciudad / Municipio *</label>
+                  <input id="checkout-city" type="text" name="city" required value={formData.city} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.city)} style={inputStyle} />
                   <FieldError msg={fieldErrors.city} />
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={labelStyle}>Dirección Exacta (Calle, Carrera, Número, Apto/Torre) *</label>
-                <input type="text" name="address" required placeholder="Ej: Calle 93B # 11A - 28, Apt 402" value={formData.address} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.address)} style={inputStyle} />
+                <label style={labelStyle} htmlFor="checkout-address">Dirección Exacta (Calle, Carrera, Número, Apto/Torre) *</label>
+                <input id="checkout-address" type="text" name="address" required placeholder="Ej: Calle 93B # 11A - 28, Apt 402" value={formData.address} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.address)} style={inputStyle} />
                   <FieldError msg={fieldErrors.address} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={labelStyle}>Barrio</label>
-                  <input type="text" name="neighborhood" value={formData.neighborhood} onChange={handleInputChange} style={inputStyle} />
+                  <label style={labelStyle} htmlFor="checkout-neighborhood">Barrio</label>
+                  <input id="checkout-neighborhood" type="text" name="neighborhood" value={formData.neighborhood} onChange={handleInputChange} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Notas adicionales de entrega (Opcional)</label>
-                  <input type="text" name="notes" placeholder="Ej: Dejar en portería" value={formData.notes} onChange={handleInputChange} style={inputStyle} />
+                  <label style={labelStyle} htmlFor="checkout-notes">Notas adicionales de entrega (Opcional)</label>
+                  <input id="checkout-notes" type="text" name="notes" placeholder="Ej: Dejar en portería" value={formData.notes} onChange={handleInputChange} style={inputStyle} />
                 </div>
               </div>
               {user && !savedAddressId && (

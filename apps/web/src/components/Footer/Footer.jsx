@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, Facebook, MapPin, Phone, Mail, ShieldCheck, Truck, RefreshCw, CreditCard } from 'lucide-react';
+import { Instagram, Facebook, MapPin, Phone, Mail, ShieldCheck, Truck, RefreshCw, CreditCard } from '../Common/icons';
 import { useShippingPolicy } from '../../hooks/useShippingPolicy';
 
 export const Footer = () => {
@@ -72,7 +72,7 @@ export const Footer = () => {
               <li><Link to="/ropa" style={linkStyle}>Ropa</Link></li>
               <li><Link to="/calzado" style={linkStyle}>Calzado</Link></li>
               <li><Link to="/accesorios" style={linkStyle}>Accesorios</Link></li>
-              <li><Link to="/ofertas" style={{ ...linkStyle, color: '#E11D48', fontWeight: 700 }}>Ofertas</Link></li>
+              <li><Link to="/ofertas" style={{ ...linkStyle, color: '#FB7185', fontWeight: 700 }}>Ofertas</Link></li>
               <li><Link to="/nuevo" style={linkStyle}>Novedades</Link></li>
             </ul>
           </div>
@@ -121,18 +121,18 @@ export const Footer = () => {
           flexWrap: 'wrap',
           gap: '1rem',
           fontSize: '0.80rem',
-          color: '#71717A'
+          color: '#A1A1AA'
         }}>
           <div>
             © 2026 J&M Fashion Store. Todos los derechos reservados.
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: '1.25rem' }}>
-            <Link to="/terminos" style={{ color: '#71717A', transition: 'color 0.15s', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>Términos y condiciones</Link>
-            <span>|</span>
-            <Link to="/privacidad" style={{ color: '#71717A', transition: 'color 0.15s', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>Privacidad</Link>
-            <span>|</span>
-            <Link to="/politica-de-cambios" style={{ color: '#71717A', transition: 'color 0.15s', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>Cambios y devoluciones</Link>
+            <Link to="/terminos" style={{ color: '#A1A1AA', transition: 'color 0.15s', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>Términos y condiciones</Link>
+            <span aria-hidden="true">|</span>
+            <Link to="/privacidad" style={{ color: '#A1A1AA', transition: 'color 0.15s', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>Privacidad</Link>
+            <span aria-hidden="true">|</span>
+            <Link to="/politica-de-cambios" style={{ color: '#A1A1AA', transition: 'color 0.15s', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>Cambios y devoluciones</Link>
           </div>
         </div>
       </div>

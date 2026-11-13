@@ -90,12 +90,12 @@ export const Login = () => {
           </Button>
         </form>
 
-        <div style={{ marginTop: '1.25rem', textAlign: 'center', fontSize: '0.85rem', color: '#71717A' }}>
+        <div style={{ marginTop: '1.25rem', textAlign: 'center', fontSize: '0.85rem', color: '#A1A1AA' }}>
           {isRegistering ? '¿Ya tienes una cuenta? ' : '¿Necesitas registrarte? '}
           <button
             type="button"
             onClick={() => setIsRegistering(!isRegistering)}
-            style={{ border: 'none', background: 'none', fontWeight: 700, color: '#2563EB', cursor: 'pointer', minHeight: 44, padding: '0 0.5rem', fontSize: 'inherit' }}
+            style={{ border: 'none', background: 'none', fontWeight: 700, color: '#60A5FA', cursor: 'pointer', minHeight: 44, padding: '0 0.5rem', fontSize: 'inherit' }}
           >
             {isRegistering ? 'Inicia sesión' : 'Crear cuenta'}
           </button>

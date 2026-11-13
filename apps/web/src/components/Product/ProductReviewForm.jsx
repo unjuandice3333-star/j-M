@@ -2,7 +2,7 @@
 // La BD verifica la compra y deja la reseña pendiente hasta que el admin la apruebe en /admin/reviews.
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star } from 'lucide-react';
+import { Star } from '../Common/icons';
 import { useAuthStore } from '../../store/authStore.js';
 import { fetchMyReviewables, submitReview, validateReview, REVIEW_LIMITS } from '../../services/reviewsService.js';
 

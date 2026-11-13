@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, ShieldCheck, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
+import { Lock, ShieldCheck, CheckCircle, AlertCircle, ArrowRight } from '../../components/Common/icons';
 import supabase from '../../config/supabase';
 import { useAuthStore } from '../../store/authStore.js';
 

@@ -5,7 +5,7 @@
 // =============================================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, Search } from 'lucide-react';
+import { Download, Search } from '../../components/Common/icons';
 import { fetchNewsletterSubscribers, setNewsletterSubscriberActive } from '../../services/newsletterService';
 import { downloadCsv, filterSubscribers, isActiveSubscriber, subscriberStatusFromParam, subscribersToCsv, summarizeSubscribers } from '../../utils/newsletterAdmin';
 

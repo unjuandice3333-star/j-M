@@ -135,6 +135,86 @@ async function checkDialogKeyboard(page, opener, dialogName, where, failures) {
   if (!back) fail('el foco no volvió al control que abrió el diálogo');
   return true;
 }
+// Accesibilidad (D77): nombres accesibles calculados por el propio Chromium (árbol de accesibilidad por CDP, sin
+// dependencia nueva: axe-core no está en el lockfile) y contraste de texto WCAG 1.4.3 medido en la página.
+const NAMED_ROLES = new Set(['button', 'link', 'textbox', 'searchbox', 'combobox', 'checkbox', 'radio', 'switch', 'slider', 'spinbutton', 'listbox', 'menuitem', 'tab', 'image', 'img', 'dialog']);
+async function auditA11y(page, where, failures) {
+  await page.waitForLoadState('networkidle').catch(() => {});
+  await page.waitForTimeout(300);
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send('DOM.enable'); await cdp.send('Accessibility.enable');
+    const { nodes } = await cdp.send('Accessibility.getFullAXTree');
+    for (const n of nodes) {
+      const role = n.role?.value;
+      if (n.ignored || !NAMED_ROLES.has(role) || (n.name?.value || '').trim()) continue;
+      let html = '?';
+      try {
+        const { object } = await cdp.send('DOM.resolveNode', { backendNodeId: n.backendDOMNodeId });
+        const r = await cdp.send('Runtime.callFunctionOn', { objectId: object.objectId, returnByValue: true,
+          functionDeclaration: 'function(){ const v = this.checkVisibility ? this.checkVisibility({ visibilityProperty: true }) : true; return { v, html: this.outerHTML.replace(/\\s+/g, " ").slice(0, 110) }; }' });
+        if (!r.result.value.v) continue; // oculto: no lo anuncia nadie
+        html = r.result.value.html;
+      } catch { /* nodo efímero */ }
+      failures.push(`${where}: ${role} sin nombre accesible ${html}`);
+    }
+  } finally { await cdp.detach().catch(() => {}); }
+  const low = await page.evaluate(async () => {
+    const parse = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c); if (!m) return null; const [r, g, b, a = 1] = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [r, g, b, a]; };
+    const over = (top, bot) => { const a = top[3] + bot[3] * (1 - top[3]); if (!a) return [0, 0, 0, 0]; return [0, 1, 2].map((i) => (top[i] * top[3] + bot[i] * bot[3] * (1 - top[3])) / a).concat(a); };
+    const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const out = []; const seen = new Set();
+    const vh = window.innerHeight; const H = document.documentElement.scrollHeight;
+    for (let y = 0; y < H; y += Math.max(200, vh - 100)) {
+      window.scrollTo(0, y); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+        const el = t.parentElement; const txt = t.textContent.trim();
+        if (!el || !txt || seen.has(t) || el.closest('script,style,noscript,[disabled],[aria-disabled="true"],option,[aria-hidden="true"]')) continue;
+        const range = document.createRange(); range.selectNodeContents(t);
+        const rect = [...range.getClientRects()].find((r) => r.width > 2 && r.height > 2);
+        if (!rect) continue;
+        const cx = rect.left + Math.min(rect.width / 2, 8); const cy = rect.top + rect.height / 2;
+        if (cy < 0 || cy > vh || cx < 0 || cx > window.innerWidth) continue;
+        seen.add(t);
+        const cs = getComputedStyle(el);
+        if (!el.checkVisibility({ visibilityProperty: true, opacityProperty: true })) continue;
+        let fg = parse(cs.color); if (!fg) continue;
+        let op = 1; for (let a = el; a; a = a.parentElement) op *= Number(getComputedStyle(a).opacity);
+        if (op < 0.1) continue;
+        // pila de capas en el punto: el texto debe estar arriba (si otra capa lo tapa, no se ve y no se mide)
+        const stack = document.elementsFromPoint(cx, cy);
+        // (un elemento con pointer-events:none no sale en la pila: se toman él y sus antecesores hasta el primero que sí)
+        let start = stack.indexOf(el); let layers;
+        if (start < 0) {
+          start = stack.findIndex((s) => s.contains(el)); if (start < 0 || stack.slice(0, start).some((s) => !el.contains(s))) continue;
+          layers = []; for (let a = el; a && a !== stack[start]; a = a.parentElement) layers.push(a);
+          layers = layers.concat(stack.slice(start));
+        } else if (stack.slice(0, start).some((s) => !el.contains(s))) continue;
+        else layers = stack.slice(start);
+        // capas debajo del texto: si alguna es imagen/vídeo/degradado el fondo no se conoce → no se mide
+        let bg = [0, 0, 0, 0]; let unknown = false;
+        for (const s of layers) {
+          const sc = getComputedStyle(s);
+          if (s !== el && /^(IMG|VIDEO|CANVAS|PICTURE|IFRAME)$/i.test(s.tagName)) { unknown = true; break; }
+          if (sc.backgroundImage !== 'none') { unknown = true; break; }
+          const c = parse(sc.backgroundColor); if (c && c[3]) { bg = over(bg, c); if (bg[3] > 0.99) break; }
+        }
+        if (unknown) continue;
+        if (bg[3] < 0.99) bg = over(bg, [255, 255, 255, 1]);
+        fg = [fg[0], fg[1], fg[2], fg[3] * op]; const fgc = over(fg, bg);
+        const size = parseFloat(cs.fontSize); const bold = Number(cs.fontWeight) >= 700;
+        const need = size >= 24 || (size >= 18.66 && bold) ? 3 : 4.5;
+        const r = ratio(fgc, bg);
+        if (r + 0.005 < need) out.push(`${el.tagName.toLowerCase()}«${txt.slice(0, 28)}» ${r.toFixed(2)}:1 < ${need} (${cs.color} sobre rgb(${bg.slice(0, 3).map(Math.round).join(',')}), ${size}px)`);
+      }
+    }
+    window.scrollTo(0, 0);
+    return [...new Set(out)];
+  });
+  for (const l of low) failures.push(`${where}: contraste ${l}`);
+}
 const MOBILE = { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 };
 
 async function main() {
@@ -1031,6 +1111,33 @@ async function main() {
       await assertNoHorizontalOverflow(p, 'avisos en móvil').catch((e) => failures.push(e.message));
       const box = await panel.boundingBox();
       if (!box || box.x < 0 || box.x + box.width > 375) failures.push(`panel de avisos fuera de la pantalla en móvil: ${JSON.stringify(box)}`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
+    await journey('42. Accesibilidad: nombres accesibles (árbol de Chromium) y contraste WCAG 1.4.3 en las rutas principales de la tienda y del admin', async (p) => {
+      const failures = [];
+      const visit = async (url, ready) => { await p.goto(`${BASE}${url}`); if (ready) await ready().catch(() => failures.push(`${url}: no cargó`)); await auditA11y(p, url, failures); };
+      const h1 = () => p.locator('h1').first().waitFor({ timeout: 8000 });
+      for (const url of ['/', '/ropa', '/producto/camiseta-basica', '/guia-de-tallas', '/contacto', '/login', '/cuenta/favoritos']) await visit(url, h1);
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await visit('/carrito', h1);
+      await visit('/checkout', h1);
+      await fillCheckout(p);
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/); await h1(); await auditA11y(p, '/checkout/confirmacion', failures);
+      // cliente con sesión
+      await p.goto(`${BASE}/login`); await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Ana Contraste');
+      await p.locator('input[type=email]').fill('ana.contraste@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      for (const url of ['/cuenta', '/cuenta/pedidos', '/cuenta/datos', '/cuenta/direcciones']) await visit(url, h1);
+      // admin
+      await visit('/admin/login');
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      for (const url of ['/admin/dashboard', '/admin/productos', '/admin/productos/nuevo', '/admin/inventario', '/admin/pedidos', '/admin/clientes', '/admin/boletin', '/admin/colecciones',
+        '/admin/imagenes', '/admin/descuentos', '/admin/reviews', '/admin/analytics', '/admin/configuracion']) await visit(url, h1);
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 

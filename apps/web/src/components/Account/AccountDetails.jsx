@@ -1,7 +1,7 @@
 // «Mi cuenta»: datos personales y libreta de direcciones del cliente (ejecución 56).
 // Datos reales en profiles/customer_addresses (RLS por usuario); errores siempre visibles, nunca éxito fingido.
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin, User, Star, Pencil, Trash2, Plus, KeyRound } from 'lucide-react';
+import { MapPin, User, Star, Pencil, Trash2, Plus, KeyRound } from '../Common/icons';
 import supabase from '../../config/supabase';
 import { useAuthStore } from '../../store/authStore';
 import {

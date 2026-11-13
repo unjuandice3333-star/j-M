@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Sparkles, CheckCircle, ArrowRight } from 'lucide-react';
+import { X, Sparkles, CheckCircle, ArrowRight } from '../Common/icons';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { recommendSize, explainRecommendation } from '../../utils/sizeAdvice';
 import { DialogPanel } from '../Common/DialogPanel';

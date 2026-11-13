@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Boxes, AlertTriangle, CheckCircle, Search, RefreshCw, MapPin } from 'lucide-react';
+import { Boxes, AlertTriangle, CheckCircle, Search, RefreshCw, MapPin } from '../../components/Common/icons';
 import supabase from '../../config/supabase';
 import { adminService } from '../../services/adminService';
 import { fetchAllRows, productLinkForSku } from '../../utils/adminLists';

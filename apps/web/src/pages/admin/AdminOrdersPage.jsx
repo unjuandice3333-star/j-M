@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ClipboardList, Search, Eye, Truck, Check, Printer, ChevronDown, X } from 'lucide-react';
+import { ClipboardList, Search, Eye, Truck, Check, Printer, ChevronDown, X } from '../../components/Common/icons';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { adminService } from '../../services/adminService';

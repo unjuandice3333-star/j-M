@@ -3,7 +3,7 @@
 // es una ayuda, no debe tapar el historial de pedidos.
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star } from 'lucide-react';
+import { Star } from '../Common/icons';
 import { fetchReviewInvitations } from '../../services/reviewsService';
 
 export function ReviewInvitations({ refreshKey }) {

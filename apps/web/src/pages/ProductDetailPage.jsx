@@ -16,7 +16,7 @@ import {
   Minus,
   ZoomIn,
   X
-} from 'lucide-react';
+} from '../components/Common/icons';
 import { formatCOP } from '../utils/currency';
 import supabase from '../config/supabase';
 import { useECommerceStore } from '../store/eCommerceStore';
@@ -423,7 +423,7 @@ export const ProductDetailPage = () => {
                     <button
                       onClick={() => openSizeRecommender(product)}
                       className="jm-tap"
-                      style={{ fontSize: '0.78rem', fontWeight: 700, color: '#D4AF37', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
+                      style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-gold-text)', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
                     >
                       <Sparkles size={14} /> Encuentra tu talla
                     </button>
@@ -549,6 +549,8 @@ export const ProductDetailPage = () => {
                 {/* Wishlist Button */}
                 <button
                   onClick={() => toggleWishlist(product.id)}
+                  aria-label={inWishlist ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+                  aria-pressed={inWishlist}
                   style={{
                     width: '48px',
                     height: '48px',

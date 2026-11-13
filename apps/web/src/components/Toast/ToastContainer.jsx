@@ -1,7 +1,7 @@
 import React from 'react';
 import { useUiStore } from '../../store/uiStore.js';
 import styles from './ToastContainer.module.css';
-import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, X } from '../Common/icons';
 
 export const ToastContainer = () => {
   const { toasts, removeToast } = useUiStore();

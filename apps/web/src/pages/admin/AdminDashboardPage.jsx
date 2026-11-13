@@ -8,7 +8,7 @@ import {
   ChevronRight,
   AlertTriangle,
   PackageCheck
-} from 'lucide-react';
+} from '../../components/Common/icons';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
 import { adminService, countOrdersToPrepare } from '../../services/adminService';

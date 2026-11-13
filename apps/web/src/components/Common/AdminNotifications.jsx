@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { Bell } from './icons';
 
 // Ejecución 105 (pendiente 0(be)): la campana de la cabecera del admin era un icono decorativo (oculto a lectores y sin
 // acción). Ahora es un aviso real con los mismos contadores que ya alimentan las insignias del menú (pedidos pagados por

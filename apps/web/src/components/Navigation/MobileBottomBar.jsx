@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Grid, Search, Heart, ShoppingBag } from 'lucide-react';
+import { Home, Grid, Search, Heart, ShoppingBag } from '../Common/icons';
 import { useECommerceStore } from '../../store/eCommerceStore';
 
 export const MobileBottomBar = () => {

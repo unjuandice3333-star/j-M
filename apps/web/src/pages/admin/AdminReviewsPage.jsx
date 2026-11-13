@@ -7,7 +7,7 @@
 // Ejecución 92: el producto de cada reseña enlaza a /admin/productos?q=<slug> y a su ficha pública.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Star } from 'lucide-react';
+import { Star } from '../../components/Common/icons';
 import { useAuthStore } from '../../store/authStore';
 import { fetchAdminReviews, moderateReview, saveReviewReply } from '../../services/reviewsAdminService';
 import { productLinkForReview, storefrontLinkForProduct } from '../../utils/adminLists';

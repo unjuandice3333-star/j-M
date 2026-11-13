@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Check } from 'lucide-react';
+import { X, Check } from '../Common/icons';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { FITS_INFO } from '../../data/sizeGuide';
 import { DialogPanel } from '../Common/DialogPanel';

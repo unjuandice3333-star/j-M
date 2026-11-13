@@ -23,7 +23,7 @@ import {
   ArrowLeft,
   LogOut,
   X
-} from 'lucide-react';
+} from '../components/Common/icons';
 
 const badgeText = (n) => (n > 0 ? (n > 99 ? '99+' : String(n)) : null);
 
@@ -111,7 +111,7 @@ export const AdminLayout = () => {
   const avatarInitials = displayName.substring(0, 2).toUpperCase();
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F4F4F5', fontFamily: 'var(--font-sans)' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#FAFAFA', fontFamily: 'var(--font-sans)' }}>
       <SkipToContent />
       {/* M27: en pantallas pequeñas el menú lateral se oculta y se abre con el botón ☰ (antes ocupaba 2/3 del móvil) */}
       <style>{`

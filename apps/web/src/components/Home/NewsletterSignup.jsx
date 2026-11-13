@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Check } from 'lucide-react';
+import { Mail, Check } from '../Common/icons';
 import { subscribeNewsletter, validateNewsletterEmail } from '../../services/newsletterService';
 
 /**

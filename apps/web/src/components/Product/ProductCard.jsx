@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Star, ShoppingBag, Eye } from 'lucide-react';
+import { Heart, Star, ShoppingBag, Eye } from '../Common/icons';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { formatCOP } from '../../utils/currency';
 

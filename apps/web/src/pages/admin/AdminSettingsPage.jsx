@@ -4,7 +4,7 @@
 // redirigía al dashboard.
 // =============================================================================
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, X } from 'lucide-react';
+import { Plus, Edit, X } from '../../components/Common/icons';
 import { formatCOP } from '../../utils/currency';
 import shippingAdminService, { CHECKOUT_METHOD, emptyShippingMethod, toShippingForm, validateShippingMethod } from '../../services/shippingAdminService';
 import { DialogPanel } from '../../components/Common/DialogPanel';

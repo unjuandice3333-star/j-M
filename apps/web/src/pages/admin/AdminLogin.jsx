@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore.js';
-import { Lock, ShieldCheck, Mail, ArrowRight, AlertCircle, LogOut } from 'lucide-react';
+import { Lock, ShieldCheck, Mail, ArrowRight, AlertCircle, LogOut } from '../../components/Common/icons';
 
 const GoogleIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+  <svg width="20" height="20" viewBox="0 0 24 24" style={{ flexShrink: 0 }} aria-hidden="true" focusable="false">
     <path
       fill="#4285F4"
       d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
@@ -256,7 +256,7 @@ export const AdminLogin = () => {
           alignItems: 'center',
           gap: '0.8rem',
           margin: '1.5rem 0',
-          color: '#52525B',
+          color: '#A1A1AA',
           fontSize: '0.7rem',
           fontWeight: 800,
           letterSpacing: '0.08em',
@@ -347,7 +347,7 @@ export const AdminLogin = () => {
           </button>
         </form>
 
-        <div style={{ marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid #27272A', textAlign: 'center', fontSize: '0.75rem', color: '#71717A', lineHeight: 1.5 }}>
+        <div style={{ marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid #27272A', textAlign: 'center', fontSize: '0.75rem', color: '#A1A1AA', lineHeight: 1.5 }}>
           Autenticación federada mediante Google OAuth & Supabase Auth.
           <br />
           Autorización perimetral basada en roles PostgreSQL (<code style={{ color: '#D4AF37' }}>public.profiles</code>).

@@ -3,7 +3,7 @@
 // Los looks activos alimentan «Completa el look» en la ficha de producto. Antes: ocasiones simuladas sin acciones.
 // =============================================================================
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Edit, Trash2, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Edit, Trash2, X, ArrowUp, ArrowDown } from '../../components/Common/icons';
 import { slugify } from '../../services/adminService';
 import collectionsAdminService, { COLLECTION_KINDS, emptyCollection, toCollectionForm, validateCollection } from '../../services/collectionsAdminService';
 import { DialogPanel } from '../../components/Common/DialogPanel';

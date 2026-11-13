@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles, ShieldCheck, Truck, RefreshCw, Headphones, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ArrowRight, Sparkles, ShieldCheck, Truck, RefreshCw, Headphones, MapPin, ChevronRight, ChevronLeft } from '../components/Common/icons';
 import { useStorefrontTaxonomy } from '../hooks/useStorefrontTaxonomy';
 import { buildHomeTaxonomy } from '../utils/homeTaxonomy';
 import ProductCard from '../components/Product/ProductCard';
@@ -463,7 +463,7 @@ export const HomePage = () => {
                   fontSize: '0.70rem',
                   fontWeight: 800,
                   letterSpacing: '0.20em',
-                  color: '#D4AF37',
+                  color: 'var(--accent-gold-text)',
                   textTransform: 'uppercase',
                   display: 'inline-block',
                   marginBottom: '0.25rem'
@@ -624,7 +624,7 @@ export const HomePage = () => {
                 fontSize: '0.70rem',
                 fontWeight: 800,
                 letterSpacing: '0.20em',
-                color: '#D4AF37',
+                color: 'var(--accent-gold-text)',
                 textTransform: 'uppercase',
                 display: 'inline-block',
                 marginBottom: '0.35rem'
@@ -768,7 +768,7 @@ export const HomePage = () => {
                 fontSize: '0.70rem',
                 fontWeight: 800,
                 letterSpacing: '0.20em',
-                color: '#D4AF37',
+                color: 'var(--accent-gold-text)',
                 textTransform: 'uppercase',
                 display: 'inline-block',
                 marginBottom: '15px'
