@@ -5,6 +5,7 @@
 //   admin_adjust_inventory(variant, Δ, tipo, motivo)   restock | adjustment | damage | return (con trazabilidad)
 //   admin_transition_order(id, estado, nota, tracking)  máquina de estados de la BD
 //   admin_dashboard_metrics(desde, hasta)
+//   admin_expire_pending_orders()                 vence pedidos con la ventana de pago cumplida (libera reservas)
 // Lecturas administrativas: tablas con RLS (solo admin): online_orders, inventories, coupons, profiles…
 // =============================================================================
 import supabase from '../config/supabase';
@@ -78,7 +79,34 @@ export async function countOrdersToPrepare() {
   return count ?? 0;
 }
 
+/**
+ * Ejecución 122 (D95): vence los pedidos `payment_pending` cuya ventana de pago ya pasó (admin_expire_pending_orders,
+ * misma lógica que la tarea programada `expire_pending_orders`) y libera su reserva de stock. pg_cron puede no estar
+ * habilitado en el proyecto: sin esto, esos pedidos seguían bloqueando stock y el panel los mostraba «Pago pendiente».
+ * Nunca lanza: si la función no existe (migración sin aplicar) o falla, devuelve null y el panel carga igual.
+ * Llamadas simultáneas (pedidos + resumen) comparten la misma solicitud.
+ */
+let expiryInFlight = null;
+export function expirePendingOrders() {
+  if (expiryInFlight) return expiryInFlight;
+  expiryInFlight = (async () => {
+    try {
+      const { data, error } = await supabase.rpc('admin_expire_pending_orders');
+      if (error) return null;
+      const n = Number(data) || 0;
+      if (n > 0) notifyOrdersChanged();
+      return n;
+    } catch {
+      return null;
+    } finally {
+      expiryInFlight = null;
+    }
+  })();
+  return expiryInFlight;
+}
+
 export const adminService = {
+  expirePendingOrders,
   upsertProduct: (payload) => call('admin_upsert_product', { p: payload }, 'No se pudo guardar el producto.'),
   setProductStatus: (productId, status) => call('admin_set_product_status', { p_product_id: productId, p_status: status }, 'No se pudo cambiar el estado del producto.'),
   adjustInventory: (variantId, quantityChange, movementType, reason) =>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   DollarSign,
@@ -29,9 +29,13 @@ export const AdminDashboardPage = () => {
   // pagado hace 40 días sigue pendiente). Si el conteo falla, el resto del panel funciona igual.
   const [toPrepare, setToPrepare] = useState(undefined);
 
+  // Ejecución 122 (D95): vence primero los pedidos con la ventana de pago cumplida (una vez por visita; nunca falla).
+  const expiry = useRef(null);
+  const expireOnce = () => { if (!expiry.current) expiry.current = adminService.expirePendingOrders(); return expiry.current; };
+
   useEffect(() => {
     let alive = true;
-    countOrdersToPrepare().then((n) => { if (alive) setToPrepare(n); }, () => { if (alive) setToPrepare(null); });
+    expireOnce().then(() => countOrdersToPrepare()).then((n) => { if (alive) setToPrepare(n); }, () => { if (alive) setToPrepare(null); });
     return () => { alive = false; };
   }, []);
 
@@ -41,6 +45,7 @@ export const AdminDashboardPage = () => {
       setIsLoading(true); setLoadError(null);
       const from = new Date(); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - RANGES[timeRange]);
       try {
+        await expireOnce();
         const [m, o] = await Promise.all([
           adminService.dashboardMetrics(from.toISOString(), new Date().toISOString()),
           supabase.from('online_orders').select('id, order_number, customer_name, shipping_city, total, status, created_at')

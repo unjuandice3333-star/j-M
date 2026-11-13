@@ -237,6 +237,15 @@ function start(port = 54321) {
       if (inv.stock + a.p_quantity_change < inv.reserved) return err('P0001', 'x', 'JM_BELOW_RESERVED');
       inv.stock += a.p_quantity_change; return { stock: inv.stock };
     },
+    // Ejecución 122 (D95): mismo contrato que la migración 20261113120000 (solo admin; vence y libera reservas).
+    admin_expire_pending_orders: (a, ctx) => {
+      if (ctx.role !== 'admin') return err('42501', 'Acceso restringido a administradores', 'JM_FORBIDDEN');
+      let n = 0;
+      for (const o of S.tables.online_orders) {
+        if (o.status === 'payment_pending' && o.payment_expires_at && new Date(o.payment_expires_at) <= new Date()) { transition(o, 'expired', 'system', 'Ventana de pago vencida'); n += 1; }
+      }
+      return n;
+    },
     admin_dashboard_metrics: (a, ctx) => {
       if (ctx.role !== 'admin') return err('42501', 'permission denied', 'JM_FORBIDDEN');
       const os = S.tables.online_orders; const paid = os.filter((o) => ['paid', 'processing', 'shipped', 'delivered'].includes(o.status));
@@ -246,7 +255,7 @@ function start(port = 54321) {
     },
   };
   function transition(o, to, actor, note) {
-    const from = o.status; o.status = to; if (to === 'cancelled') for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); if (inv) inv.reserved = Math.max(0, inv.reserved - it.quantity); }
+    const from = o.status; o.status = to; if (to === 'cancelled' || (to === 'expired' && from === 'payment_pending')) for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); if (inv) inv.reserved = Math.max(0, inv.reserved - it.quantity); }
     if (to === 'paid') o.paid_at = new Date().toISOString();
     if (to === 'delivered') o.delivered_at = new Date().toISOString();
     o.order_events.unshift({ event_type: 'status', from_status: from, to_status: to, actor, note: note || null, created_at: new Date().toISOString() });

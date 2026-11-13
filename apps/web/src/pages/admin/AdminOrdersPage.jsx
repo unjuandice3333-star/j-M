@@ -135,7 +135,13 @@ export const AdminOrdersPage = () => {
       .range(from, from + ADMIN_ORDERS_PAGE_SIZE - 1);
   };
 
+  // Ejecución 122 (D95): antes de la primera lectura se vencen los pedidos con la ventana de pago cumplida (liberan
+  // su reserva); sin pg_cron seguían como «Pago pendiente». Una sola vez por visita; si falla, la lista carga igual.
+  const expiry = useRef(null);
+  const expireOnce = () => { if (!expiry.current) expiry.current = adminService.expirePendingOrders(); return expiry.current; };
+
   const fetchSummary = async () => {
+    await expireOnce();
     const { data, error } = await fetchAllRows(() => supabase.from('online_orders').select('id, status, shipping_method_code, needs_attention')
       .order('created_at', { ascending: false }).order('id', { ascending: false }));
     setSummaryRows(error ? [] : data);
@@ -148,6 +154,7 @@ export const AdminOrdersPage = () => {
     if (append) setIsLoadingMore(true); else { setIsLoading(true); }
     setLoadError(null);
     const from = append ? dbOrders.length : 0;
+    await expireOnce();
     const { data, error, count } = await buildOrdersQuery(filters, from);
     if (seq !== requestSeq.current) return; // llegó tarde: hay una solicitud más reciente
     if (error) { setLoadError('No se pudieron cargar los pedidos.'); setIsLoading(false); setIsLoadingMore(false); return; }
@@ -187,7 +194,7 @@ export const AdminOrdersPage = () => {
     orderService.getStatusCatalog().then((c) => setTransitions((c.transitions ?? []).filter((t) => t.actor === 'admin'))).catch(() => setTransitions([]));
     // Incluye métodos inactivos (el admin los lee todos): los pedidos antiguos conservan su nombre.
     shippingAdminService.list().then(setShippingMethods).catch(() => setShippingMethods([]));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- solo al montar (fetchSummary usa refs y setters)
 
   const statusCounts = countByStatus(summaryRows);
   const attentionCount = summaryRows.filter((r) => r.needs_attention).length;

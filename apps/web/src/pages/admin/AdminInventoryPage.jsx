@@ -51,6 +51,8 @@ export const AdminInventoryPage = () => {
   // M27: stock, reservado y disponible reales (inventories + variante + color por product_colors). Sin valores inventados.
   const fetchRealInventory = async () => {
     setIsLoading(true); setLoadError(null);
+    // Ejecución 122 (D95): las reservas de pedidos con la ventana de pago cumplida se liberan antes de leer «reservado».
+    await adminService.expirePendingOrders();
     // Todas las filas por páginas: con más de 1000 variantes PostgREST cortaba la lista sin avisar (ejecución 54).
     const { data, error } = await fetchAllRows(() => supabase.from('inventories').select(`
         id, stock, reserved, min_stock, location_shelf, variant_id, branch_id,

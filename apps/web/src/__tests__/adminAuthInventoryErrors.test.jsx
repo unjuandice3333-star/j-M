@@ -140,6 +140,6 @@ describe('/admin/inventario: ajuste de stock', () => {
     expectClean(qty('POL-B'));
     expectLinked(reason('POL-B'), /motivo/);
     expect(document.activeElement).toBe(reason('POL-B'));
-    expect(supa.rpc).not.toHaveBeenCalled();
+    expect(supa.rpc).not.toHaveBeenCalledWith('admin_adjust_inventory', expect.anything());
   });
 });

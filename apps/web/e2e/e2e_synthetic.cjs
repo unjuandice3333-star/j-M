@@ -1989,6 +1989,52 @@ async function main() {
       if (!o || o.online_order_items.length !== 1 || o.online_order_items[0].quantity !== 1) throw new Error(`pedido tras ajustar: ${JSON.stringify(o?.online_order_items?.map((i) => i.quantity))}`);
     }, browser);
 
+    await journey('56. Admin: un pedido con la ventana de pago cumplida (sin tarea programada) se vence al abrir el panel, libera su reserva y no cuenta «por preparar»', async (p, ctx) => {
+      // la última talla L negra queda reservada por un pedido sin pagar
+      await addToCart(p, 'camiseta-basica', 'L', 'Negro');
+      await p.goto(`${BASE}/checkout`);
+      await fillCheckout(p, { email: 'vencido@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      let st = await state();
+      const pending = st.orders.find((o) => o.customer_email === 'vencido@correo.co');
+      const cam = () => st.inventories.find((i) => i.sku === 'CAM-L-NEG');
+      if (!pending || pending.status !== 'payment_pending' || cam().reserved !== 1) throw new Error(`reserva inicial: ${pending?.status} ${JSON.stringify(cam())}`);
+      // un pedido pagado para preparar; la ventana del pendiente vence sin que corra ninguna tarea programada
+      await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ customer_name: 'Por Preparar', customer_email: 'preparar@correo.co', status: 'paid' }) });
+      await fetch(`${API_URL}/__synthetic-expire-window/${pending.order_number}`);
+      st = await state();
+      if (st.orders.find((o) => o.id === pending.id).status !== 'payment_pending' || cam().reserved !== 1) throw new Error('el vencimiento no debía ocurrir antes de abrir el panel');
+      // otra persona: con la reserva vigente la talla figura agotada
+      const other = await ctx.newPage();
+      await other.goto(`${BASE}/producto/camiseta-basica`);
+      await other.getByRole('button', { name: 'Color Negro' }).click();
+      const lAgotada = other.getByRole('button', { name: /^Talla L agotada/ });
+      await lAgotada.waitFor({ timeout: 8000 });
+      if (!(await lAgotada.isDisabled())) throw new Error('con la reserva vigente la talla L negra debía estar agotada');
+      // el admin abre el panel: se vence y libera la reserva antes de mostrar nada
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await p.locator('[aria-label="1 pedido por preparar"]').first().waitFor({ timeout: 8000 });
+      await p.goto(`${BASE}/admin/pedidos`);
+      const row = p.locator('tbody tr').filter({ hasText: pending.order_number });
+      await row.getByText('Vencido', { exact: true }).first().waitFor({ timeout: 8000 });
+      st = await state();
+      if (st.orders.find((o) => o.id === pending.id).status !== 'expired') throw new Error('el pedido no quedó vencido en la BD');
+      if (cam().reserved !== 0 || cam().stock !== 1) throw new Error(`reserva no liberada: ${JSON.stringify(cam())}`);
+      const ev = st.orders.find((o) => o.id === pending.id).order_events[0];
+      if (ev.to_status !== 'expired' || ev.actor !== 'system') throw new Error(`evento: ${JSON.stringify(ev)}`);
+      await p.goto(`${BASE}/admin/inventario`);
+      await p.locator('tbody tr').filter({ hasText: 'CAM-L-NEG' }).getByText('stock 1 · reservado 0').waitFor({ timeout: 8000 });
+      // el menú sigue contando solo el pagado
+      await p.locator('[aria-label="1 pedido por preparar"]').first().waitFor({ timeout: 8000 });
+      // la talla vuelve a estar a la venta para los demás
+      await other.reload();
+      await other.getByRole('button', { name: 'Color Negro' }).click();
+      await other.getByRole('button', { name: 'Talla L', exact: true }).click({ timeout: 8000 });
+      if (await other.getByRole('button', { name: 'AGREGAR AL CARRITO' }).first().isDisabled()) throw new Error('la talla liberada no se puede agregar');
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
