@@ -1106,3 +1106,15 @@
 - Commits: `d16d124` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bu) de Pendiente.
+
+## Ejecución 122 — 2026-11-13 23:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-ymbtzc` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `0038fff`, árbol limpio. `pnpm install --frozen-lockfile` OK; paquetes apt de pgTAP/pg_cron instalados (D6).
+- Tarea: punto 0(bu)(1) de Pendiente. Al escribir el E2E se halló que el vencimiento dependía solo de pg_cron → RPC `admin_expire_pending_orders` + llamada desde el panel (D95).
+- Archivos: nueva migración `supabase/migrations/20261113120000_admin_expire_pending_orders.sql`, nuevo `supabase/tests/database/98_admin_expire_pending.test.sql`, `supabase/tests/database/01_structure.test.sql`, `apps/web/src/services/adminService.js`, `apps/web/src/pages/admin/AdminOrdersPage.jsx`, `AdminInventoryPage.jsx`, `AdminDashboardPage.jsx`, nuevo `apps/web/src/__tests__/adminExpirePending.test.jsx` (7), `apps/web/src/__tests__/adminAuthInventoryErrors.test.jsx` (aserción acotada al RPC de ajuste), `apps/web/e2e/synthetic/backend.cjs` (RPC sintética + liberación al vencer), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 56).
+- Pruebas (ejecutadas aquí): `supabase/tests/run_local.sh` pgTAP 393/393 (16 archivos), concurrencia 12/12, determinismo OK; `pnpm test:unit` 614/614 (62 archivos); `adminExpirePending` 6 de 7 fallan sin los cambios de `src` (`git stash`); recorrido 56 falla sin los cambios y pasa con ellos; `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 56/56 en una pasada completa.
+- Defecto real corregido: sin pg_cron habilitado, los pedidos sin pagar nunca vencían; su reserva dejaba la variante agotada para todos y el admin los veía «Pago pendiente» indefinidamente.
+- Errores pendientes: ninguno nuevo. La migración `20261113120000` se suma a las pendientes de aplicar en Supabase QA. No probado en WebKit ni contra Supabase real remoto.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261113120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: código + documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bv) de Pendiente.
