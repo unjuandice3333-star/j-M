@@ -64,6 +64,26 @@ describe('CheckoutPage (UI)', () => {
     expect(host.querySelector('[aria-invalid="true"]')).not.toBeNull();
   });
 
+  it('errores: cada campo inválido apunta a su mensaje (aria-describedby) y el foco va al primero', async () => {
+    useECommerceStore.getState().addItem(makeProduct(), 'M', 'Negro', 1);
+    mount();
+    setField('firstName', 'Ana');
+    setField('lastName', 'Pérez');
+    setField('email', 'sin-arroba');
+    await submit();
+    const email = host.querySelector('[name="email"]');
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    const msg = host.querySelector(`#${email.getAttribute('aria-describedby')}`);
+    expect(msg?.textContent).toBe('Escribe un correo válido.');
+    expect(document.activeElement).toBe(email);
+    expect(host.querySelector('[name="firstName"]').hasAttribute('aria-describedby')).toBe(false);
+    const invalid = [...host.querySelectorAll('[aria-invalid="true"]')];
+    expect(invalid.every((i) => host.querySelector(`#${i.getAttribute('aria-describedby')}`)?.getAttribute('role') === 'alert')).toBe(true);
+    // al corregir el campo desaparece el error y la referencia
+    setField('email', 'ana@correo.co');
+    expect(email.hasAttribute('aria-describedby')).toBe(false);
+  });
+
   it('formulario válido: crea el pedido con envío y cliente y abre el pago', async () => {
     useECommerceStore.getState().addItem(makeProduct(), 'M', 'Negro', 1);
     mount();

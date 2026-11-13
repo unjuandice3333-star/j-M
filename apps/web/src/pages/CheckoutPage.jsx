@@ -130,7 +130,13 @@ export const CheckoutPage = () => {
     if (isProcessing || !idempotencyKey) return;
     const errs = validateCheckout(formData);
     setFieldErrors(errs);
-    if (Object.keys(errs).length) { setErrorMessage('Revisa los campos marcados.'); return; }
+    if (Object.keys(errs).length) {
+      setErrorMessage('Revisa los campos marcados.');
+      // el foco va al primer campo con error, en el orden del formulario (su mensaje queda en aria-describedby)
+      const first = CHECKOUT_FIELDS.find((f) => errs[f]);
+      if (first) e.currentTarget?.querySelector(`[name="${first}"]`)?.focus();
+      return;
+    }
     if (totals.canCheckout === false) { setErrorMessage('Hay productos sin stock suficiente. Ajusta tu carrito.'); return; }
 
     setIsProcessing(true);
@@ -240,25 +246,25 @@ export const CheckoutPage = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={labelStyle} htmlFor="checkout-firstName">Nombre *</label>
-                  <input id="checkout-firstName" type="text" name="firstName" required value={formData.firstName} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.firstName)} style={inputStyle} />
-                  <FieldError msg={fieldErrors.firstName} />
+                  <input id="checkout-firstName" type="text" name="firstName" required value={formData.firstName} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.firstName)} aria-describedby={fieldErrors.firstName ? 'checkout-firstName-error' : undefined} style={inputStyle} />
+                  <FieldError id="checkout-firstName-error" msg={fieldErrors.firstName} />
                 </div>
                 <div>
                   <label style={labelStyle} htmlFor="checkout-lastName">Apellido *</label>
-                  <input id="checkout-lastName" type="text" name="lastName" required value={formData.lastName} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.lastName)} style={inputStyle} />
-                  <FieldError msg={fieldErrors.lastName} />
+                  <input id="checkout-lastName" type="text" name="lastName" required value={formData.lastName} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.lastName)} aria-describedby={fieldErrors.lastName ? 'checkout-lastName-error' : undefined} style={inputStyle} />
+                  <FieldError id="checkout-lastName-error" msg={fieldErrors.lastName} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={labelStyle} htmlFor="checkout-email">Correo Electrónico *</label>
-                  <input id="checkout-email" type="email" name="email" required value={formData.email} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.email)} style={inputStyle} />
-                  <FieldError msg={fieldErrors.email} />
+                  <input id="checkout-email" type="email" name="email" required value={formData.email} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'checkout-email-error' : undefined} style={inputStyle} />
+                  <FieldError id="checkout-email-error" msg={fieldErrors.email} />
                 </div>
                 <div>
                   <label style={labelStyle} htmlFor="checkout-phone">Teléfono Celular (WhatsApp) *</label>
-                  <input id="checkout-phone" type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.phone)} style={inputStyle} />
-                  <FieldError msg={fieldErrors.phone} />
+                  <input id="checkout-phone" type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? 'checkout-phone-error' : undefined} style={inputStyle} />
+                  <FieldError id="checkout-phone-error" msg={fieldErrors.phone} />
                 </div>
               </div>
             </div>
@@ -282,24 +288,24 @@ export const CheckoutPage = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={labelStyle} htmlFor="checkout-department">Departamento *</label>
-                  <select id="checkout-department" name="department" required value={formData.department} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.department)} style={inputStyle}>
+                  <select id="checkout-department" name="department" required value={formData.department} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.department)} aria-describedby={fieldErrors.department ? 'checkout-department-error' : undefined} style={inputStyle}>
                     <option value="">Selecciona…</option>
                     {DEPARTMENTS.map((dept) => (
                       <option key={dept} value={dept}>{dept}</option>
                     ))}
                   </select>
-                  <FieldError msg={fieldErrors.department} />
+                  <FieldError id="checkout-department-error" msg={fieldErrors.department} />
                 </div>
                 <div>
                   <label style={labelStyle} htmlFor="checkout-city">Ciudad / Municipio *</label>
-                  <input id="checkout-city" type="text" name="city" required value={formData.city} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.city)} style={inputStyle} />
-                  <FieldError msg={fieldErrors.city} />
+                  <input id="checkout-city" type="text" name="city" required value={formData.city} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.city)} aria-describedby={fieldErrors.city ? 'checkout-city-error' : undefined} style={inputStyle} />
+                  <FieldError id="checkout-city-error" msg={fieldErrors.city} />
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={labelStyle} htmlFor="checkout-address">Dirección Exacta (Calle, Carrera, Número, Apto/Torre) *</label>
-                <input id="checkout-address" type="text" name="address" required placeholder="Ej: Calle 93B # 11A - 28, Apt 402" value={formData.address} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.address)} style={inputStyle} />
-                  <FieldError msg={fieldErrors.address} />
+                <input id="checkout-address" type="text" name="address" required placeholder="Ej: Calle 93B # 11A - 28, Apt 402" value={formData.address} onChange={handleInputChange} aria-invalid={Boolean(fieldErrors.address)} aria-describedby={fieldErrors.address ? 'checkout-address-error' : undefined} style={inputStyle} />
+                  <FieldError id="checkout-address-error" msg={fieldErrors.address} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
@@ -451,7 +457,8 @@ export const CheckoutPage = () => {
   );
 };
 
-const FieldError = ({ msg }) => (msg ? <div role="alert" style={{ color: '#E11D48', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.25rem' }}>{msg}</div> : null);
+const CHECKOUT_FIELDS = ['firstName', 'lastName', 'email', 'phone', 'department', 'city', 'address'];
+const FieldError = ({ id, msg }) => (msg ? <div id={id} role="alert" style={{ color: '#E11D48', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.25rem' }}>{msg}</div> : null);
 
 const labelStyle = {
   display: 'block',

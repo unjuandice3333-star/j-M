@@ -48,6 +48,7 @@ export const Header = () => {
   } = store;
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [drawerQtyError, setDrawerQtyError] = useState(null); // stock máximo alcanzado al pulsar + en el carrito lateral
   const [isScrolled, setIsScrolled] = useState(false);
   const totals = typeof getTotals === 'function' ? getTotals() : { subtotal: 0, total: 0, shippingCost: 0, hasFreeShipping: false, amountForFreeShipping: 0 };
   const cartCount = (items || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
@@ -545,8 +546,10 @@ export const Header = () => {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#09090B', lineHeight: 1.3 }}>{item.name}</span>
                             <button
-                              onClick={() => removeItem(item.id)}
-                              style={{ color: '#A1A1AA' }}
+                              onClick={() => { removeItem(item.id); setDrawerQtyError(null); }}
+                              aria-label={`Eliminar ${item.name} del carrito`}
+                              className="jm-tap"
+                              style={{ color: '#71717A', minWidth: '32px', minHeight: '32px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             >
                               <Trash2 size={16} />
                             </button>
@@ -557,17 +560,19 @@ export const Header = () => {
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E4E4E7', borderRadius: '4px' }}>
+                          <div className="jm-tap-area" style={{ display: 'flex', alignItems: 'center', border: '1px solid #E4E4E7', borderRadius: '4px' }}>
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              style={{ padding: '0.25rem 0.5rem', color: '#09090B' }}
+                              onClick={() => { updateQuantity(item.id, item.quantity - 1); setDrawerQtyError(null); }}
+                              aria-label={`Disminuir cantidad de ${item.name}`}
+                              style={{ padding: '0.25rem 0.5rem', color: '#09090B', minWidth: '32px' }}
                             >
                               <Minus size={13} />
                             </button>
                             <span style={{ fontSize: '0.85rem', fontWeight: 600, padding: '0 0.5rem' }}>{item.quantity}</span>
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              style={{ padding: '0.25rem 0.5rem', color: '#09090B' }}
+                              onClick={() => { const r = updateQuantity(item.id, item.quantity + 1); setDrawerQtyError(r && r.ok === false ? { id: item.id, text: r.message } : null); }}
+                              aria-label={`Aumentar cantidad de ${item.name}`}
+                              style={{ padding: '0.25rem 0.5rem', color: '#09090B', minWidth: '32px' }}
                             >
                               <Plus size={13} />
                             </button>
@@ -576,6 +581,9 @@ export const Header = () => {
                             {formatCOP(item.price * item.quantity)}
                           </div>
                         </div>
+                        {drawerQtyError?.id === item.id && drawerQtyError.text && (
+                          <span role="alert" style={{ fontSize: '0.75rem', color: '#B91C1C', fontWeight: 600, marginTop: '0.35rem' }}>{drawerQtyError.text}</span>
+                        )}
                       </div>
                     </div>
                   ))}

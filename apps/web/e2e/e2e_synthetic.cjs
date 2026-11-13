@@ -138,7 +138,8 @@ async function checkDialogKeyboard(page, opener, dialogName, where, failures) {
 // Accesibilidad (D77): nombres accesibles calculados por el propio Chromium (árbol de accesibilidad por CDP, sin
 // dependencia nueva: axe-core no está en el lockfile) y contraste de texto WCAG 1.4.3 medido en la página.
 const NAMED_ROLES = new Set(['button', 'link', 'textbox', 'searchbox', 'combobox', 'checkbox', 'radio', 'switch', 'slider', 'spinbutton', 'listbox', 'menuitem', 'tab', 'image', 'img', 'dialog']);
-async function auditA11y(page, where, failures) {
+// `scope` (opcional): selector de un modal abierto; solo se mide su texto y se desplaza su propio contenedor con scroll.
+async function auditA11y(page, where, failures, scope = null) {
   await page.waitForLoadState('networkidle').catch(() => {});
   await page.waitForTimeout(300);
   const cdp = await page.context().newCDPSession(page);
@@ -159,16 +160,24 @@ async function auditA11y(page, where, failures) {
       failures.push(`${where}: ${role} sin nombre accesible ${html}`);
     }
   } finally { await cdp.detach().catch(() => {}); }
-  const low = await page.evaluate(async () => {
+  const low = await page.evaluate(async (scope) => {
     const parse = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c); if (!m) return null; const [r, g, b, a = 1] = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [r, g, b, a]; };
     const over = (top, bot) => { const a = top[3] + bot[3] * (1 - top[3]); if (!a) return [0, 0, 0, 0]; return [0, 1, 2].map((i) => (top[i] * top[3] + bot[i] * bot[3] * (1 - top[3])) / a).concat(a); };
     const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
     const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
     const out = []; const seen = new Set();
-    const vh = window.innerHeight; const H = document.documentElement.scrollHeight;
-    for (let y = 0; y < H; y += Math.max(200, vh - 100)) {
-      window.scrollTo(0, y); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const vh = window.innerHeight;
+    const root = scope ? document.querySelector(scope) : document.body;
+    if (!root) return [`no se encontró ${scope}`];
+    // contenedor que se desplaza: la ventana o, dentro de un modal, el elemento con scroll más alto
+    let scroller = null;
+    if (scope) for (const e of [root, ...root.querySelectorAll('*')]) { const o = getComputedStyle(e).overflowY; if (/(auto|scroll)/.test(o) && e.scrollHeight > e.clientHeight + 2 && (!scroller || e.scrollHeight > scroller.scrollHeight)) scroller = e; }
+    const H = scope ? (scroller ? scroller.scrollHeight : 1) : document.documentElement.scrollHeight;
+    const step = scroller ? Math.max(100, scroller.clientHeight - 60) : Math.max(200, vh - 100);
+    for (let y = 0; y < H; y += step) {
+      if (scroller) scroller.scrollTop = y; else if (!scope) window.scrollTo(0, y);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
       for (let t = walker.nextNode(); t; t = walker.nextNode()) {
         const el = t.parentElement; const txt = t.textContent.trim();
         if (!el || !txt || seen.has(t) || el.closest('script,style,noscript,[disabled],[aria-disabled="true"],option,[aria-hidden="true"]')) continue;
@@ -210,9 +219,9 @@ async function auditA11y(page, where, failures) {
         if (r + 0.005 < need) out.push(`${el.tagName.toLowerCase()}«${txt.slice(0, 28)}» ${r.toFixed(2)}:1 < ${need} (${cs.color} sobre rgb(${bg.slice(0, 3).map(Math.round).join(',')}), ${size}px)`);
       }
     }
-    window.scrollTo(0, 0);
+    if (scroller) scroller.scrollTop = 0; else if (!scope) window.scrollTo(0, 0);
     return [...new Set(out)];
-  });
+  }, scope);
   for (const l of low) failures.push(`${where}: contraste ${l}`);
 }
 const MOBILE = { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 };
@@ -1114,7 +1123,7 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
-    await journey('42. Accesibilidad: nombres accesibles (árbol de Chromium) y contraste WCAG 1.4.3 en las rutas principales de la tienda y del admin', async (p) => {
+    const a11yRoutes = async (p) => {
       const failures = [];
       const visit = async (url, ready) => { await p.goto(`${BASE}${url}`); if (ready) await ready().catch(() => failures.push(`${url}: no cargó`)); await auditA11y(p, url, failures); };
       const h1 = () => p.locator('h1').first().waitFor({ timeout: 8000 });
@@ -1139,7 +1148,76 @@ async function main() {
       for (const url of ['/admin/dashboard', '/admin/productos', '/admin/productos/nuevo', '/admin/inventario', '/admin/pedidos', '/admin/clientes', '/admin/boletin', '/admin/colecciones',
         '/admin/imagenes', '/admin/descuentos', '/admin/reviews', '/admin/analytics', '/admin/configuracion']) await visit(url, h1);
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    };
+    await journey('42. Accesibilidad: nombres accesibles (árbol de Chromium) y contraste WCAG 1.4.3 en las rutas principales de la tienda y del admin', async (p) => {
+      await a11yRoutes(p);
     }, browser);
+    await journey('44. Accesibilidad en móvil 375×812: las mismas 30 rutas del recorrido 42 (contraste y nombres accesibles)', async (p) => {
+      await a11yRoutes(p);
+    }, browser, null, MOBILE);
+
+    await journey('43. Accesibilidad de los modales abiertos (tienda escritorio y móvil, admin): contraste y nombres accesibles', async (p) => {
+      const failures = []; const checked = [];
+      const audit = async (opener, name, where) => {
+        try { await opener.waitFor({ timeout: 8000 }); await opener.click(); } catch { failures.push(`${where}: no se pudo abrir`); return; }
+        const dlg = p.getByRole('dialog', { name });
+        try { await dlg.waitFor({ timeout: 8000 }); } catch { failures.push(`${where}: no apareció el diálogo`); return; }
+        await p.waitForTimeout(400); // animación de entrada: el contraste se mide con la opacidad final
+        await auditA11y(p, where, failures, '[role="dialog"]');
+        checked.push(where);
+        await p.keyboard.press('Escape');
+        await dlg.waitFor({ state: 'detached', timeout: 5000 }).catch(() => failures.push(`${where}: Escape no lo cerró`));
+      };
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await p.goto(`${BASE}/producto/camiseta-basica`); await expectText(p, 'Camiseta Básica'); await p.waitForLoadState('networkidle');
+      await audit(p.getByRole('button', { name: 'Buscar en la tienda' }), 'Buscar', 'búsqueda');
+      await audit(p.getByRole('button', { name: /^Abrir carrito/ }), 'Carrito', 'carrito');
+      await audit(p.getByRole('button', { name: 'Ampliar imagen de Camiseta Básica' }), 'Imagen ampliada', 'foto ampliada');
+      await audit(p.getByRole('button', { name: '¿Qué significa el Fit?' }), '¿Qué significa el fit?', 'guía de fit');
+      await audit(p.getByRole('button', { name: /Guía de medidas/ }).first(), 'Guía de tallas', 'guía de medidas');
+      await audit(p.getByRole('button', { name: /Encuentra tu talla/ }).first(), 'Encuentra tu talla ideal', 'encuentra tu talla');
+      // móvil 375×812: carrito, guía de medidas, menú y filtros
+      await p.setViewportSize({ width: 375, height: 812 });
+      await p.goto(`${BASE}/producto/camiseta-basica`); await expectText(p, 'Camiseta Básica'); await p.waitForLoadState('networkidle');
+      await audit(p.getByRole('button', { name: /^Abrir carrito/ }), 'Carrito', 'carrito (móvil)');
+      await audit(p.getByRole('button', { name: /Guía de medidas/ }).first(), 'Guía de tallas', 'guía de medidas (móvil)');
+      await audit(p.getByRole('button', { name: /Encuentra tu talla/ }).first(), 'Encuentra tu talla ideal', 'encuentra tu talla (móvil)');
+      await p.goto(`${BASE}/ropa`); await expectText(p, 'MOSTRANDO 2 PRENDAS');
+      await audit(p.getByRole('button', { name: 'Abrir menú de navegación' }), 'Menú', 'menú de navegación (móvil)');
+      await audit(p.getByRole('button', { name: /FILTRAR/ }), 'Filtros', 'panel de filtros (móvil)');
+      await p.setViewportSize({ width: 1280, height: 900 });
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p);
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click(); await p.waitForURL(/\/checkout\/confirmacion/);
+      const num = (await state()).orders[0].order_number;
+      await fetch(`${API_URL}/__synthetic-mark-paid/${num}`);
+      await p.evaluate(() => localStorage.clear());
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      const admin = [
+        ['/admin/pedidos', num, () => p.locator('tr', { hasText: num }).getByRole('button', { name: 'GESTIONAR' }), /^Orden #/, 'detalle de pedido'],
+        ['/admin/descuentos', 'JM10', () => p.locator('tbody tr', { hasText: 'JM10' }).getByRole('button', { name: 'Editar' }), 'Editar cupón', 'editar cupón'],
+        ['/admin/descuentos', 'JM10', () => p.getByRole('button', { name: /CREAR CUPÓN/ }), 'Crear cupón', 'crear cupón'],
+        ['/admin/colecciones', 'COLECCIONES', () => p.getByRole('button', { name: /NUEVA COLECCIÓN/ }), 'Nueva colección', 'nueva colección'],
+        ['/admin/configuracion', 'ENVÍO', () => p.getByRole('button', { name: /^Editar / }).first(), 'Editar método de envío', 'método de envío'],
+        ['/admin/imagenes', 'IMÁGENES', () => p.getByRole('button', { name: /^Cambiar imagen / }).first(), /^Editar /, 'imagen editorial'],
+        ['/admin/clientes?rol=todos', 'Ver detalle', () => p.getByRole('button', { name: 'Ver detalle' }).first(), /^Cliente /, 'ficha de cliente'],
+      ];
+      for (const [url, text, opener, name, where] of admin) {
+        await p.goto(`${BASE}${url}`); await expectText(p, text); await p.waitForLoadState('networkidle');
+        await audit(opener(), name, where);
+      }
+      // los mismos modales del admin en móvil
+      await p.setViewportSize({ width: 375, height: 812 });
+      for (const [url, text, opener, name, where] of admin) {
+        await p.goto(`${BASE}${url}`); await expectText(p, text); await p.waitForLoadState('networkidle');
+        await audit(opener(), name, `${where} (móvil)`);
+      }
+      await p.goto(`${BASE}/admin/dashboard`); await p.waitForLoadState('networkidle');
+      await audit(p.getByRole('button', { name: 'Abrir menú' }), 'Menú de administración', 'cajón del menú (móvil)');
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+      if (checked.length !== 26) throw new Error(`solo se midieron ${checked.length}/26 modales: ${checked.join(', ')}`);
+    }, browser);
+
 
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');

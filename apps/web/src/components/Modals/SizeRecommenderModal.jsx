@@ -71,7 +71,7 @@ export const SizeRecommenderModal = () => {
             {/* Height Slider */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.88rem' }}>
-                <span style={{ fontWeight: 600 }}>Estatura (cm)</span>
+                <span id="size-rec-height" style={{ fontWeight: 600 }}>Estatura (cm)</span>
                 <span style={{ fontWeight: 800, color: '#09090B' }}>{height} cm</span>
               </div>
               <input
@@ -79,6 +79,8 @@ export const SizeRecommenderModal = () => {
                 min="160"
                 max="200"
                 value={height}
+                aria-labelledby="size-rec-height"
+                aria-valuetext={`${height} cm`}
                 onChange={(e) => setHeight(Number(e.target.value))}
                 style={{ width: '100%', accentColor: '#09090B' }}
               />
@@ -87,7 +89,7 @@ export const SizeRecommenderModal = () => {
             {/* Weight Slider */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.88rem' }}>
-                <span style={{ fontWeight: 600 }}>Peso (kg)</span>
+                <span id="size-rec-weight" style={{ fontWeight: 600 }}>Peso (kg)</span>
                 <span style={{ fontWeight: 800, color: '#09090B' }}>{weight} kg</span>
               </div>
               <input
@@ -95,6 +97,8 @@ export const SizeRecommenderModal = () => {
                 min="50"
                 max="120"
                 value={weight}
+                aria-labelledby="size-rec-weight"
+                aria-valuetext={`${weight} kg`}
                 onChange={(e) => setWeight(Number(e.target.value))}
                 style={{ width: '100%', accentColor: '#09090B' }}
               />
