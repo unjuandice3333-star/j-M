@@ -1009,3 +1009,15 @@
 - Commits: el de código + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bn) de Pendiente.
+
+## Ejecución 114 — 2026-11-13 15:46 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-yfrgdl` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `2d636c3`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bn) de Pendiente. Recorrido E2E 46 (32 envíos inválidos en `/login`, `/cuenta` sin sesión, checkout y «Mi cuenta», escritorio y móvil) y corrección de los formularios de acceso de la tienda (D85).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (helper `makeFocusChecker` compartido + recorrido 46), `apps/web/src/pages/Login.jsx`, `Login.module.css`, `apps/web/src/pages/AccountPage.jsx`, `apps/web/src/pages/admin/AdminPasswordSetup.jsx` (`noValidate`); nuevos `apps/web/src/utils/authForm.js` y `apps/web/src/__tests__/authFormErrors.test.jsx`.
+- Pruebas (ejecutadas aquí): recorrido 46 sin los cambios de `src/pages` (`git stash`) FALLA y con ellos PASA; `authFormErrors.test.jsx` 8/8; `pnpm test:unit` 564/564 (56 archivos); `npx eslint apps packages scripts` 0 errores/avisos; `pnpm build` OK; `pnpm test:e2e-synthetic` 46/46 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Defectos reales corregidos: globo nativo en `/login` y `/cuenta` (aviso de la página nunca visible en Chromium); etiquetas de `/cuenta` sin asociar y sin indicador de foco; registro aceptaba contraseñas < 8; credenciales erróneas sin enlazar a campo.
+- Errores pendientes: «Encuentra tu talla» sin comprobar en Chromium; `AdminPasswordSetup` sin ruta (código sin uso). No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `3a70b5f` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bo) de Pendiente.
