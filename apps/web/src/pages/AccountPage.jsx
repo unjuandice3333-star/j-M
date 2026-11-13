@@ -80,6 +80,9 @@ export const AccountPage = () => {
   const [ordersError, setOrdersError] = useState(null);
   const rememberOrder = useECommerceStore((st) => st.rememberOrder);
   const shippingMethods = useECommerceStore((st) => st.shippingMethods);
+  const browserOrders = useECommerceStore((st) => st.orders);
+  // Pedidos de invitado hechos en este navegador (sin dueño) que no están en la cuenta.
+  const guestOrders = browserOrders.filter((o) => !o.owner && !userOrders.some((u) => u.id === o.id));
   const [resetInfo, setResetInfo] = useState(null);
   const trackUrl = (o) => `/checkout/confirmacion?order=${encodeURIComponent(o.order_number)}&token=${encodeURIComponent(o.public_token)}`;
   const openOrder = (o) => { rememberOrder(o); navigate(trackUrl(o)); };
@@ -630,6 +633,33 @@ export const AccountPage = () => {
                   );
                 })}
               </div>
+            )}
+
+            {/* Ejecución 116 (D88): los pedidos hechos sin sesión NO se agregan a la cuenta aunque el correo coincida
+                (RLS online_orders_read: user_id = auth.uid()). Se listan los de este navegador con su enlace. */}
+            {!isLoadingOrders && !ordersError && (
+              <section data-testid="guest-orders" aria-labelledby="guest-orders-title" style={{ marginTop: '1.5rem', padding: '1.25rem 1.5rem', border: '1px dashed #D4D4D8', borderRadius: '12px', backgroundColor: '#FAFAFA' }}>
+                <h3 id="guest-orders-title" style={{ fontSize: '0.95rem', fontWeight: 800, color: '#09090B', margin: '0 0 0.4rem 0' }}>
+                  ¿Compraste sin iniciar sesión?
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: '#52525B', margin: 0 }}>
+                  Esos pedidos no se agregan a tu cuenta, aunque hayas usado el mismo correo. Consúltalos con el enlace de su página de confirmación.
+                </p>
+                {guestOrders.length > 0 && (
+                  <>
+                    <p style={{ fontSize: '0.85rem', color: '#52525B', margin: '0.75rem 0 0.25rem 0', fontWeight: 700 }}>Hechos sin cuenta en este navegador:</p>
+                    <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+                      {guestOrders.map((o) => (
+                        <li key={o.id} style={{ fontSize: '0.85rem' }}>
+                          <Link to={trackUrl(o)} style={{ textDecoration: 'underline', fontWeight: 700, color: '#09090B', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>
+                            {o.order_number}
+                          </Link>{' '}· {formatCOP(o.total)}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </section>
             )}
           </div>
 

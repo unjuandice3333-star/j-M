@@ -288,6 +288,27 @@ export const useECommerceStore = create(
        * - Al iniciar sesión: la lista anónima de este navegador se fusiona en la BD (sin duplicados) y se carga la del usuario.
        * - Al cerrar sesión: se borra la copia local para no exponer la lista del usuario en un equipo compartido.
        */
+      // Ejecución 116 (D88): sesión actual (no persistida). Los pedidos recordados guardan su dueño (`owner`):
+      // al cerrar sesión se olvidan los de la cuenta (siguen en «Mis pedidos»), así otra persona que use este navegador
+      // no ve su enlace (número + token → dirección y nombre). Los pedidos de invitado (owner null) se conservan: el
+      // navegador es su único acceso además del enlace. `undefined` = aún no se conoce la sesión: si la primera lectura
+      // es «sin sesión» (p. ej. la sesión venció con el navegador cerrado) también se olvidan los de la cuenta.
+      sessionUserId: undefined,
+      syncSession: (userId) => {
+        const prev = get().sessionUserId;
+        const next = userId ?? null;
+        if (prev === next) return;
+        // sessionUserId se usa al crear/recordar pedidos (owner); el resto del estado no depende de él.
+        if (next === null) {
+          const { orders, activeCheckoutOrderId } = get();
+          const kept = orders.filter((o) => !o.owner);
+          const activeKept = kept.some((o) => o.id === activeCheckoutOrderId) ? activeCheckoutOrderId : null;
+          set({ sessionUserId: null, orders: kept, activeCheckoutOrderId: activeKept });
+          return;
+        }
+        set({ sessionUserId: next });
+      },
+
       syncWishlist: async (userId) => {
         const { wishlist, wishlistOwner } = get();
         if (!userId) {
@@ -370,14 +391,14 @@ export const useECommerceStore = create(
         const r = await orderService.createOrder({ customer, shipping, items, couponCode: appliedCoupon?.code, shippingMethod, idempotencyKey });
         const order = { id: r.order_id, order_number: r.order_number, public_token: r.public_token, status: r.status,
           total: Number(r.total), amount_in_cents: Number(r.amount_in_cents), payment_expires_at: r.payment_expires_at,
-          created_at: new Date().toISOString(), isDuplicate: r.is_duplicate };
+          created_at: new Date().toISOString(), isDuplicate: r.is_duplicate, owner: get().sessionUserId ?? null };
         set({ orders: [order, ...orders.filter((o) => o.id !== order.id)].slice(0, 20), activeCheckoutOrderId: order.id });
         return order;
       },
 
       /** Recuerda un pedido del cliente (id + token) para poder pagarlo o cancelarlo desde la confirmación. */
       rememberOrder: (o) => set({ orders: [{ id: o.id, order_number: o.order_number, public_token: o.public_token, total: Number(o.total),
-        status: o.status, created_at: o.created_at }, ...get().orders.filter((x) => x.id !== o.id)].slice(0, 20) }),
+        status: o.status, created_at: o.created_at, owner: get().sessionUserId ?? null }, ...get().orders.filter((x) => x.id !== o.id)].slice(0, 20) }),
 
       updateProfile: (updatedData) => set({ userProfile: { ...get().userProfile, ...updatedData } }),
       addAddress: (addressData) => set({ savedAddresses: [...get().savedAddresses, { id: `addr-${Date.now()}`, ...addressData }] }),

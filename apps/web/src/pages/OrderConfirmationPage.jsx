@@ -14,6 +14,7 @@ import { analyticsService } from '../services/analytics';
 import { orderService } from '../services/orderService';
 import { wompiService } from '../services/wompi';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
+import { useAuthStore } from '../store/authStore';
 
 const POLL_MS = 5000;
 const POLL_MAX = 36; // ~3 minutos
@@ -29,12 +30,56 @@ const ORDER_FLOW = STEPS.map((s) => s.key);
 // Respuestas de /api/wompi/signature que indican que el estado mostrado quedó viejo.
 const STALE_PAYMENT_CODES = new Set(['JM_ORDER_NOT_PAYABLE', 'JM_PAYMENT_WINDOW_EXPIRED', 'JM_ORDER_NOT_FOUND']);
 
+/** Enlace de seguimiento sin datos extra (sin `pago=error`): número + token público. */
+export const orderTrackingUrl = (origin, orderNumber, token) =>
+  `${origin}/checkout/confirmacion?order=${encodeURIComponent(orderNumber)}&token=${encodeURIComponent(token)}`;
+
+/**
+ * Ejecución 116 (D88): un pedido hecho sin sesión no aparece en «Mi cuenta» aunque luego se cree una cuenta con el
+ * mismo correo (RLS: user_id = auth.uid()). No hay correo transaccional: este enlace es su acceso desde otro dispositivo.
+ */
+const GuestOrderLink = ({ orderNumber, token }) => {
+  const url = orderTrackingUrl(window.location.origin, orderNumber, token);
+  const [copyState, setCopyState] = useState(null); // null | 'ok' | 'fail'
+  const copy = async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('sin portapapeles');
+      await navigator.clipboard.writeText(url);
+      setCopyState('ok');
+    } catch {
+      setCopyState('fail');
+    }
+  };
+  return (
+    <section data-testid="guest-order-link" aria-labelledby="guest-order-link-title" style={{ border: '1px solid #E4E4E7', borderRadius: '10px', padding: '1.25rem 1.5rem', marginBottom: '2rem', fontSize: '0.9rem', backgroundColor: '#FAFAFA' }}>
+      <h2 id="guest-order-link-title" style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.5rem', textTransform: 'uppercase' }}>Guarda el enlace de tu pedido</h2>
+      <p style={{ color: '#52525B', margin: '0 0 0.75rem 0' }}>
+        Compraste sin iniciar sesión: este pedido no aparecerá en «Mi cuenta», aunque luego crees una cuenta con este correo. Con este enlace puedes consultarlo, pagarlo o cancelarlo desde cualquier dispositivo. No lo compartas: muestra tu nombre y dirección.
+      </p>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <label htmlFor="guest-order-url" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Enlace del pedido</label>
+        <input id="guest-order-url" readOnly value={url} onFocus={(e) => e.target.select()}
+          style={{ flex: '1 1 220px', minWidth: 0, minHeight: '36px', padding: '0.4rem 0.6rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.8rem', color: '#3F3F46', backgroundColor: '#FFFFFF' }} />
+        <button type="button" onClick={copy} style={{ minHeight: '36px', backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.4rem 1rem', borderRadius: '6px', fontWeight: 800 }}>
+          Copiar enlace
+        </button>
+      </div>
+      <p role="status" style={{ minHeight: '1.2em', margin: '0.5rem 0 0 0', fontSize: '0.82rem', color: copyState === 'fail' ? '#B91C1C' : '#047857', fontWeight: 600 }}>
+        {copyState === 'ok' && 'Enlace copiado.'}
+        {copyState === 'fail' && 'No se pudo copiar: selecciona el enlace y cópialo manualmente.'}
+      </p>
+    </section>
+  );
+};
+
 export const OrderConfirmationPage = () => {
   const [searchParams] = useSearchParams();
   const orderNumber = searchParams.get('order');
   const token = searchParams.get('token');
   const payError = searchParams.get('pago') === 'error';
   const { orders, finalizePaidOrder, shippingMethods, rememberOrder } = useECommerceStore();
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const authLoading = useAuthStore((s) => s.isLoading);
 
   const [order, setOrder] = useState(null);
   const [state, setState] = useState('loading'); // loading | ready | notfound | error
@@ -237,6 +282,8 @@ export const OrderConfirmationPage = () => {
             <AlertTriangle size={16} /> Este pedido se creó en otro navegador: para pagarlo o cancelarlo, ábrelo desde ese navegador o desde tu cuenta.
           </p>
         )}
+        {!userId && !authLoading && <GuestOrderLink orderNumber={order.order_number} token={token} />}
+
         <div style={{ textAlign: 'center' }}>
           <Link to="/ropa" style={{ textDecoration: 'underline', fontWeight: 700, display: 'inline-flex', alignItems: 'center', minHeight: '36px' }}>Seguir comprando</Link>
         </div>

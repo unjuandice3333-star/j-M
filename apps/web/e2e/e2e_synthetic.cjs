@@ -1691,6 +1691,104 @@ async function main() {
       await card().getByText('Compra completada').first().waitFor({ timeout: 8000 });
     }, browser);
 
+    await journey('49. Invitado que luego crea cuenta con el mismo correo: su pedido NO pasa a la cuenta; lo ve por el enlace (D88)', async (p) => {
+      const register = async (page, name, email) => {
+        await page.goto(`${BASE}/login`);
+        await page.getByRole('button', { name: 'Crear cuenta' }).click();
+        await page.getByPlaceholder(/Juan/i).first().fill(name);
+        await page.locator('input[type=email]').fill(email); await page.locator('input[type=password]').fill('Clave-Segura-1');
+        await page.locator('button[type=submit]').click();
+        await page.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      };
+      const remembered = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"orders":[]}}').state.orders.map((o) => o.order_number));
+      // 1) compra como invitado
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { firstName: 'Eva', lastName: 'Gil', email: 'eva.gil@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      const guest = (await state()).orders.find((o) => o.customer_email === 'eva.gil@correo.co');
+      if (!guest || guest.user_id) throw new Error('el pedido de invitado no se creó sin cuenta');
+      // la confirmación sin sesión ofrece el enlace limpio del pedido
+      const link = p.getByTestId('guest-order-link');
+      await link.waitFor({ timeout: 8000 });
+      const url = await link.getByLabel('Enlace del pedido').inputValue();
+      if (url !== `${BASE}/checkout/confirmacion?order=${guest.order_number}&token=${guest.public_token}`) throw new Error(`enlace inesperado: ${url}`);
+      // 2) crea la cuenta con el MISMO correo en este navegador
+      await register(p, 'Eva Gil', 'eva.gil@correo.co');
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      const box = p.getByTestId('guest-orders');
+      await box.waitFor({ timeout: 8000 });
+      await expectText(p, 'AÚN NO TIENES PEDIDOS'); // el pedido de invitado no se mezcla con los de la cuenta
+      await box.getByText('no se agregan a tu cuenta').waitFor();
+      await box.getByRole('link', { name: guest.order_number }).click();
+      await p.waitForURL(/\/checkout\/confirmacion\?order=/);
+      await expectText(p, `Pedido registrado · ${guest.order_number}`);
+      if (await p.getByTestId('guest-order-link').count()) throw new Error('con sesión no debe ofrecerse el enlace de invitado');
+      // 3) compra con la cuenta y cierra sesión: el navegador olvida el pedido de la cuenta, conserva el de invitado
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { firstName: 'Eva', lastName: 'Gil', email: 'eva.gil@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      const mine = (await state()).orders.find((o) => o.customer_email === 'eva.gil@correo.co' && o.user_id);
+      if (!mine) throw new Error('pedido con cuenta no creado');
+      if (!(await remembered(p)).includes(mine.order_number)) throw new Error('el pedido con cuenta no quedó recordado antes de cerrar sesión');
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      await p.getByText(/cerrar sesi[oó]n/i).first().click();
+      await p.waitForFunction(() => !Object.keys(localStorage).some((k) => k.includes('auth-token')));
+      await p.waitForFunction((n) => !JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14')).state.orders.some((o) => o.order_number === n), mine.order_number, { timeout: 8000 });
+      const left = await remembered(p);
+      if (!left.includes(guest.order_number)) throw new Error(`se perdió el pedido de invitado: ${left}`);
+      // la confirmación sin parámetros ya no lista el pedido de la cuenta (otra persona en este equipo)
+      await p.goto(`${BASE}/checkout/confirmacion`);
+      await expectText(p, 'Pedidos hechos en este navegador');
+      if (await p.getByRole('link', { name: mine.order_number }).count()) throw new Error('el pedido de la cuenta sigue visible tras cerrar sesión');
+      await p.getByRole('link', { name: guest.order_number }).waitFor();
+    }, browser);
+
+    await journey('50. Misma cuenta en dos navegadores: el carrito es de cada navegador; los pedidos son de la cuenta (D89)', async (p, ctx) => {
+      const ctxB = await ctx.browser().newContext({ viewport: { width: 1280, height: 900 } });
+      try {
+        const b = await ctxB.newPage();
+        const cartCount = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"items":[]}}').state.items.length);
+        const signIn = async (page) => {
+          await login(page, '/cuenta', 'tomas@correo.co', 'Clave-Segura-1', 'Iniciar sesión');
+          await page.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+        };
+        // A: crea la cuenta, agrega dos prendas y hace un pedido con una
+        await p.goto(`${BASE}/login`);
+        await p.getByRole('button', { name: 'Crear cuenta' }).click();
+        await p.getByPlaceholder(/Juan/i).first().fill('Tomás León');
+        await p.locator('input[type=email]').fill('tomas@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+        await p.locator('button[type=submit]').click();
+        await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+        await addToCart(p, 'polo-clasico', 'M');
+        await p.goto(`${BASE}/checkout`); await fillCheckout(p, { firstName: 'Tomás', lastName: 'León', email: 'tomas@correo.co' });
+        await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+        await p.waitForURL(/\/checkout\/confirmacion/);
+        const order = (await state()).orders.find((o) => o.customer_email === 'tomas@correo.co');
+        if (!order?.user_id) throw new Error('pedido sin cuenta');
+        await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+        const inA = await cartCount(p);
+        if (inA < 1) throw new Error('el carrito de A quedó vacío');
+        // B: la misma cuenta en otro navegador
+        await signIn(b);
+        await b.goto(`${BASE}/cuenta/pedidos`);
+        await b.locator('div').filter({ hasText: order.order_number }).filter({ has: b.getByText(/Pago pendiente/) }).last().waitFor({ timeout: 8000 });
+        if ((await cartCount(b)) !== 0) throw new Error('el carrito de A apareció en B (se decidió carrito por navegador)');
+        // el pedido de la cuenta no aparece como «sin cuenta» en B
+        if (await b.getByTestId('guest-orders').getByRole('link').count()) throw new Error('B lista pedidos de invitado que no existen');
+        await addToCart(b, 'camiseta-basica', 'M', 'Negro');
+        await p.reload();
+        if ((await cartCount(p)) !== inA) throw new Error('el carrito de B cambió el de A');
+        // pago del pedido: ambos navegadores ven el estado de la BD
+        await fetch(`${API_URL}/__synthetic-mark-paid/${order.order_number}`);
+        for (const page of [p, b]) {
+          await page.goto(`${BASE}/cuenta/pedidos`);
+          await page.locator('div').filter({ hasText: order.order_number }).filter({ has: page.getByText(/Compra completada/) }).last().waitFor({ timeout: 8000 });
+        }
+      } finally { await ctxB.close(); }
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
