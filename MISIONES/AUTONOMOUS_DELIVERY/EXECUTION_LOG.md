@@ -1058,3 +1058,15 @@
 - Commits: `b21d65e` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(br) de Pendiente.
+
+## Ejecución 118 — 2026-11-13 19:09 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-w22ohm` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `dbd087a`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(br)(1) de Pendiente. Aviso en el checkout cuando el pedido del checkout anterior sigue pendiente de pago: pagarlo o cancelarlo (D91).
+- Archivos: nuevo `apps/web/src/components/Checkout/PendingOrderNotice.jsx`, `apps/web/src/pages/CheckoutPage.jsx`, `apps/web/src/store/eCommerceStore.js` (`releaseActiveCheckout`), nuevo `apps/web/src/__tests__/pendingOrderNotice.test.jsx` (10), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 52).
+- Pruebas (ejecutadas aquí): `pendingOrderNotice.test.jsx` 10/10; recorrido 52 pasa y falla sin el cambio de `CheckoutPage.jsx` (`git stash`); `pnpm test:unit` 591/591 (58 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 52/52 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Defecto real corregido: volver al checkout tras cerrar Wompi creaba un segundo pedido y el primero seguía reservando stock hasta vencer, sin aviso ni forma de liberarlo desde ahí.
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni contra Supabase/Wompi reales.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `72e09ef` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(br)(2)–(3) de Pendiente (pedido vencido libera reserva y sale de «por preparar» en E2E del admin; variante agotada en el carrito avisada en `/carrito`).
