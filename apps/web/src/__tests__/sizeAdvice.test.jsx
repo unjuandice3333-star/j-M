@@ -95,6 +95,19 @@ describe('UI', () => {
     expect(btn(/CALCULAR/)).toBeTruthy();
   });
 
+  it('preferencia de ajuste: grupo con nombre y una sola opción marcada con aria-pressed (ejecución 115)', () => {
+    act(() => root.render(<SizeRecommenderModal />));
+    act(() => useECommerceStore.getState().openSizeRecommender(product()));
+    const group = host.querySelector('[role="group"]');
+    expect(group).toBeTruthy();
+    expect(document.getElementById(group.getAttribute('aria-labelledby')).textContent).toMatch(/Cómo te gusta sentir la ropa/);
+    const pressed = () => [...group.querySelectorAll('button[aria-pressed="true"]')].map((b) => b.textContent);
+    expect(pressed()).toEqual(['Normal / Estándar']);
+    act(() => btn(/^Holgada$/).click());
+    expect(pressed()).toEqual(['Holgada']);
+    expect(group.querySelectorAll('button[aria-pressed="false"]').length).toBe(2);
+  });
+
   it('«Usar talla» selecciona la talla en la ficha y cambia al color que la tiene', () => {
     const p = product();
     act(() => useECommerceStore.setState({ products: [p], productsLoaded: true }));

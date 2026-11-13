@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Ejecución 110 (D81): errores accesibles en /admin/login, AdminPasswordSetup y el ajuste de inventario.
+// Ejecución 110 (D81): errores accesibles en /admin/login y el ajuste de inventario (AdminPasswordSetup se eliminó en la ejecución 115, D86).
 // El aviso de error queda enlazado al campo que lo causa (aria-invalid + aria-describedby → id del aviso), el foco va a
 // ese campo y las etiquetas están asociadas a su campo (nombre accesible = etiqueta, no el placeholder).
 // Las páginas y el store de autenticación son los reales; solo se sustituye Supabase.
@@ -109,48 +109,6 @@ describe('/admin/login', () => {
     expectClean(email);
     expectLinked(password, /ingresa tu correo y contraseña/);
     expect(document.activeElement).toBe(password);
-  });
-});
-
-describe('AdminPasswordSetup', () => {
-  const asAdmin = async () => {
-    const { useAuthStore } = await import('../store/authStore.js');
-    act(() => useAuthStore.setState({ user: { id: 'u1', email: 'admin@x.co' }, profile: { role: 'admin' }, isLoggedIn: true }));
-  };
-
-  it('contraseña corta → enlazada a la nueva contraseña y foco en ella; no llama a Supabase', async () => {
-    await asAdmin();
-    const { AdminPasswordSetup } = await import('../pages/admin/AdminPasswordSetup');
-    await render(<AdminPasswordSetup />);
-    const pwd = byLabel('Nueva contraseña');
-    const confirm = byLabel('Confirmar contraseña');
-    await setValue(pwd, 'corta');
-    await setValue(confirm, 'corta');
-    await submit(host.querySelector('form'));
-    expectLinked(pwd, /mínimo 8 caracteres/);
-    expectClean(confirm);
-    expect(document.activeElement).toBe(pwd);
-    expect(supa.state.updateUser).not.toHaveBeenCalled();
-  });
-
-  it('no coinciden → enlazada a la confirmación; al corregir se limpia y se guarda', async () => {
-    await asAdmin();
-    const { AdminPasswordSetup } = await import('../pages/admin/AdminPasswordSetup');
-    await render(<AdminPasswordSetup />);
-    const pwd = byLabel('Nueva contraseña');
-    const confirm = byLabel('Confirmar contraseña');
-    await setValue(pwd, 'segura-123');
-    await setValue(confirm, 'segura-124');
-    await submit(host.querySelector('form'));
-    expectClean(pwd);
-    expectLinked(confirm, /no coinciden/);
-    expect(document.activeElement).toBe(confirm);
-
-    await setValue(confirm, 'segura-123');
-    await submit(host.querySelector('form'));
-    expect(supa.state.updateUser).toHaveBeenCalledWith({ password: 'segura-123' });
-    expectClean(pwd); expectClean(confirm);
-    expect(host.querySelector('[role="alert"]')).toBeNull();
   });
 });
 

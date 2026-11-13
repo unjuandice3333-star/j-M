@@ -106,10 +106,11 @@ export const SizeRecommenderModal = () => {
 
             {/* Fit Preference */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, marginBottom: '0.6rem' }}>
+              {/* Ejecución 115: era un <label> sin control asociado y los botones no exponían cuál estaba elegido. */}
+              <span id="size-rec-fit" style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, marginBottom: '0.6rem' }}>
                 ¿Cómo te gusta sentir la ropa?
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+              </span>
+              <div role="group" aria-labelledby="size-rec-fit" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                 {[
                   { id: 'fitted', label: 'Entallada' },
                   { id: 'normal', label: 'Normal / Estándar' },
@@ -118,6 +119,7 @@ export const SizeRecommenderModal = () => {
                   <button
                     key={option.id}
                     type="button"
+                    aria-pressed={fitPreference === option.id}
                     onClick={() => setFitPreference(option.id)}
                     style={{
                       padding: '0.75rem 0.5rem',

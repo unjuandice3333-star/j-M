@@ -22,6 +22,7 @@ import { AccountDetails } from '../components/Account/AccountDetails';
 import { AccountSectionNav, useAccountSectionFocus } from '../components/Account/AccountSectionNav';
 import { ReviewInvitations } from '../components/Account/ReviewInvitations';
 import { wompiService } from '../services/wompi';
+import { analyticsService } from '../services/analytics';
 import { validateAuthForm, validateEmailField, serverErrorField } from '../utils/authForm.js';
 
 // Ejecución 114 (D85): formulario de acceso de /cuenta sin sesión con etiquetas asociadas y aviso enlazado al campo.
@@ -38,6 +39,8 @@ export const paymentWindow = (ord, now = Date.now()) => {
   if (Number.isNaN(t)) return 'open';
   return t <= now ? 'closed' : 'open';
 };
+
+const PAID_STATUSES = new Set(['paid', 'processing', 'shipped', 'delivered']);
 
 export const AccountPage = () => {
   const navigate = useNavigate();
@@ -97,6 +100,15 @@ export const AccountPage = () => {
     try {
       const data = await orderService.getMyOrders();
       setUserOrders(data || []);
+      // Ejecución 115 (D87): si el pedido del checkout en curso ya está pagado (p. ej. el cliente volvió a «Mis pedidos»
+      // en lugar de a la confirmación), el carrito se vacía igual que en la confirmación; si no, conservaba lo ya comprado.
+      const { finalizePaidOrder } = useECommerceStore.getState();
+      for (const o of data || []) {
+        if (PAID_STATUSES.has(o.status) && finalizePaidOrder(o.id)) {
+          analyticsService.purchase({ ...o, id: o.order_number });
+          break;
+        }
+      }
     } catch (e) {
       console.error('[AccountPage Error]: Error al cargar pedidos del usuario:', e);
       if (!keepOnError) setOrdersError(e.message || 'No pudimos cargar tus pedidos en este momento.');

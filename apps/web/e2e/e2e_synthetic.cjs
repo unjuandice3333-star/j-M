@@ -406,6 +406,13 @@ async function main() {
       await p.goto(`${BASE}/producto/camiseta-basica`);
       await p.getByRole('button', { name: 'Color Blanco' }).click(); // Blanco/M agotado
       await p.getByRole('button', { name: /Encuentra tu talla/ }).click();
+      // Ejecución 115: la preferencia de ajuste es un grupo con nombre y expone cuál está elegida (aria-pressed)
+      const fitGroup = p.getByRole('group', { name: '¿Cómo te gusta sentir la ropa?' });
+      await fitGroup.getByRole('button', { name: 'Normal / Estándar', pressed: true }).waitFor({ timeout: 5000 });
+      await fitGroup.getByRole('button', { name: 'Holgada' }).click();
+      await fitGroup.getByRole('button', { name: 'Holgada', pressed: true }).waitFor({ timeout: 5000 });
+      if ((await fitGroup.getByRole('button', { pressed: true }).count()) !== 1) throw new Error('más de una preferencia de ajuste marcada');
+      await fitGroup.getByRole('button', { name: 'Normal / Estándar' }).click();
       await p.getByRole('button', { name: /CALCULAR MI TALLA/ }).click(); // 175 cm / 74 kg / normal → M
       await expectText(p, 'TALLA M');
       const body = await p.textContent('body');
@@ -1641,6 +1648,55 @@ async function main() {
       // esperar a que el login termine (sesión guardada) antes de navegar: si no, la navegación interrumpe la petición
       await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
       await p.goto(`${BASE}/cuenta/pedidos`); await expectText(p, num);
+    }, browser);
+
+    await journey('47. Cliente registrado de punta a punta: registro → compra → pago (webhook SINTÉTICO) → «Mis pedidos» pagado, stock y carrito', async (p) => {
+      const before = (await state()).inventories.find((i) => i.sku === 'POL-M-NEG');
+      if (!before) throw new Error('sin variante de polo M en el inventario sintético');
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Sara Ríos');
+      await p.locator('input[type=email]').fill('sara.rios@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/checkout`);
+      // con sesión, el correo de la cuenta llega solo al checkout
+      await p.waitForFunction(() => document.querySelector('input[name=email]')?.value === 'sara.rios@correo.co', null, { timeout: 8000 });
+      await fillCheckout(p, { firstName: 'Sara', lastName: 'Ríos', email: 'sara.rios@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      const st = await state();
+      const order = st.orders.find((o) => o.customer_email === 'sara.rios@correo.co');
+      if (!order) throw new Error('pedido no creado con el correo de la cuenta');
+      if (!order.user_id) throw new Error('el pedido no quedó asociado a la cuenta (user_id vacío)');
+      if (order.status !== 'payment_pending') throw new Error(`estado inicial «${order.status}»`);
+      // pendiente en «Mis pedidos» antes del pago
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      const card = () => p.locator('div').filter({ hasText: order.order_number }).filter({ has: p.getByText(/Pago pendiente|Compra completada/) }).last();
+      await card().getByText('Pago pendiente').first().waitFor({ timeout: 8000 });
+      await fetch(`${API_URL}/__synthetic-mark-paid/${order.order_number}`);
+      await p.reload();
+      await card().getByText('Compra completada').first().waitFor({ timeout: 8000 });
+      const after = (await state()).inventories.find((i) => i.sku === before.sku);
+      if (after.stock !== before.stock - 1) throw new Error(`stock ${before.stock} → ${after.stock} (se esperaba −1)`);
+      const items = await p.evaluate(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{"state":{"items":[]}}').state.items.length);
+      if (items !== 0) throw new Error(`carrito con ${items} artículo(s) tras el pago`);
+      // cerrar sesión y volver a entrar: el pedido pagado sigue en la cuenta (BD, no estado local)
+      await p.getByText(/cerrar sesi[oó]n/i).first().click();
+      await p.waitForFunction(() => !Object.keys(localStorage).some((k) => k.includes('auth-token')));
+      await login(p, '/cuenta', 'sara.rios@correo.co', 'Clave-Segura-1', 'Iniciar sesión');
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      await card().getByText('Compra completada').first().waitFor({ timeout: 8000 });
+    }, browser);
+
+    await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await p.getByTestId('admin-change-password').click();
+      await p.waitForURL(/\/cuenta\/datos$/, { timeout: 8000 });
+      await p.getByRole('button', { name: 'Cambiar contraseña' }).waitFor({ timeout: 8000 });
     }, browser);
 
     await journey('14. Mis pedidos: pagar (rechazo de la BD → estado real), cancelar y ventana vencida desde la lista', async (p) => {

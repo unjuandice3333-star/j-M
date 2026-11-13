@@ -177,3 +177,39 @@ describe('«Mis pedidos»: acciones desde la lista', () => {
     expect(container.textContent).not.toContain('No pudimos cargar tus pedidos');
   });
 });
+
+// Ejecución 115 (D87): el pedido del checkout en curso aparece pagado en «Mis pedidos» → el carrito se vacía;
+// un pedido pagado que NO es el del checkout en curso no toca el carrito.
+describe('«Mis pedidos» vacía el carrito del pedido ya pagado', () => {
+  const seedCart = async (activeId) => {
+    const { useECommerceStore } = await import('../store/eCommerceStore');
+    useECommerceStore.setState({
+      items: [{ id: 'x', productId: 'p', variantId: 'v', name: 'Blusa', size: 'M', color: 'Negro', price: 80000, quantity: 1 }],
+      activeCheckoutOrderId: activeId,
+      orders: [{ id: ORDER_ID, order_number: 'JM-9', public_token: TOKEN, total: 92000, status: 'payment_pending' }],
+    });
+    return useECommerceStore;
+  };
+
+  it('pagado y es el del checkout en curso → carrito vacío', async () => {
+    const store = await seedCart(ORDER_ID);
+    supa.state.orders = [order({ status: 'paid' })];
+    await mount();
+    expect(store.getState().items).toEqual([]);
+    expect(store.getState().activeCheckoutOrderId).toBeNull();
+  });
+
+  it('pendiente → el carrito se conserva para reintentar', async () => {
+    const store = await seedCart(ORDER_ID);
+    supa.state.orders = [order()];
+    await mount();
+    expect(store.getState().items).toHaveLength(1);
+  });
+
+  it('pagado pero de otro checkout → el carrito se conserva', async () => {
+    const store = await seedCart('00000000-0000-4000-8000-000000000000');
+    supa.state.orders = [order({ status: 'paid' })];
+    await mount();
+    expect(store.getState().items).toHaveLength(1);
+  });
+});

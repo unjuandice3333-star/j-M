@@ -22,6 +22,7 @@ import {
   Image,
   ArrowLeft,
   LogOut,
+  KeyRound,
   X
 } from '../components/Common/icons';
 
@@ -217,6 +218,26 @@ export const AdminLayout = () => {
             }}
           >
             <ArrowLeft size={16} /> Volver a Tienda Pública
+          </Link>
+          {/* Ejecución 115 (D86): el cambio de contraseña del admin es el mismo de «Mi cuenta» (reautenticación con código y
+              política compartida); antes existía AdminPasswordSetup, sin ruta y sin esas protecciones. */}
+          <Link
+            to="/cuenta/datos"
+            data-testid="admin-change-password"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              color: '#A1A1AA',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              textDecoration: 'none',
+              padding: '0.6rem 0.8rem',
+              borderRadius: '6px',
+              backgroundColor: '#18181B'
+            }}
+          >
+            <KeyRound size={16} /> Cambiar mi contraseña
           </Link>
           <button
             onClick={handleLogout}
