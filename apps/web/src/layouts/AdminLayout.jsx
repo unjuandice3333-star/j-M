@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore.js';
+import { DialogPanel } from '../components/Common/DialogPanel';
 import { countPendingReviews, REVIEWS_CHANGED_EVENT } from '../services/reviewsAdminService.js';
 import { countOrdersToPrepare, ORDERS_CHANGED_EVENT, ORDERS_POLL_MS } from '../services/adminService.js';
 import {
@@ -19,16 +20,47 @@ import {
   ArrowLeft,
   Bell,
   Search,
-  LogOut
+  LogOut,
+  X
 } from 'lucide-react';
 
 const badgeText = (n) => (n > 0 ? (n > 99 ? '99+' : String(n)) : null);
+
+// Ejecución 101 (pendiente 0(ba)): mismo corte que el CSS de abajo. En pantallas estrechas la barra lateral es un cajón:
+// cerrado queda fuera de la pantalla y debe ser `inert` (antes Tab recorría sus 14 enlaces invisibles); abierto es un
+// diálogo modal (DialogPanel: foco dentro, Tab atrapado, Escape cierra, foco de vuelta al botón ☰).
+export const ADMIN_NARROW_QUERY = '(max-width: 900px)';
+const matchNarrow = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(ADMIN_NARROW_QUERY).matches;
+const useNarrow = () => {
+  const [narrow, setNarrow] = useState(matchNarrow);
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const mq = window.matchMedia(ADMIN_NARROW_QUERY);
+    const onChange = () => setNarrow(mq.matches);
+    onChange();
+    if (mq.addEventListener) mq.addEventListener('change', onChange); else mq.addListener(onChange);
+    return () => { if (mq.removeEventListener) mq.removeEventListener('change', onChange); else mq.removeListener(onChange); };
+  }, []);
+  return narrow;
+};
 
 export const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  const narrow = useNarrow();
+  useEffect(() => { if (!narrow) setMenuOpen(false); }, [narrow]);
+  const drawerOpen = narrow && menuOpen;
+  const drawerHidden = narrow && !menuOpen;
+  // React 18 no conoce `inert`: se pone y quita a mano. useLayoutEffect para quitarlo ANTES de que el efecto de
+  // DialogPanel (useEffect del hijo) busque el primer control: con el atributo aún puesto no encontraría ninguno.
+  const asideRef = useRef(null);
+  useLayoutEffect(() => {
+    const el = asideRef.current;
+    if (!el) return;
+    if (drawerHidden) el.setAttribute('inert', ''); else el.removeAttribute('inert');
+  }, [drawerHidden]);
   // Ejecución 73: reseñas pendientes de moderar en el menú (al navegar y cuando /admin/reviews modera).
   const [pendingReviews, setPendingReviews] = useState(0);
   useEffect(() => {
@@ -91,7 +123,7 @@ export const AdminLayout = () => {
       `}</style>
       {menuOpen && <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 95 }} />}
       {/* SIDEBAR */}
-      <aside className={`jm-admin-sidebar${menuOpen ? ' open' : ''}`} style={{
+      <aside ref={asideRef} aria-hidden={drawerHidden ? 'true' : undefined} className={`jm-admin-sidebar${menuOpen ? ' open' : ''}`} style={{
         width: '260px',
         backgroundColor: '#09090B',
         color: '#FFFFFF',
@@ -104,14 +136,23 @@ export const AdminLayout = () => {
         zIndex: 100,
         borderRight: '1px solid #1F1F23'
       }}>
+        <DrawerBody open={drawerOpen} onClose={() => setMenuOpen(false)}>
         {/* BRAND HEADER */}
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid #1F1F23', display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', fontWeight: 900, letterSpacing: '0.12em' }}>
-            J&M ADMIN
-          </span>
-          <span style={{ fontSize: '0.62rem', color: '#D4AF37', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-            SOFTWARE ERP / POS RETAIL
-          </span>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid #1F1F23', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', fontWeight: 900, letterSpacing: '0.12em' }}>
+              J&M ADMIN
+            </span>
+            <span style={{ fontSize: '0.62rem', color: '#D4AF37', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+              SOFTWARE ERP / POS RETAIL
+            </span>
+          </div>
+          {drawerOpen && (
+            <button type="button" aria-label="Cerrar menú" onClick={() => setMenuOpen(false)}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 36, minHeight: 36, background: 'transparent', border: '1px solid #27272A', borderRadius: 6, color: '#FFFFFF', cursor: 'pointer' }}>
+              <X size={18} />
+            </button>
+          )}
         </div>
 
         {/* NAVIGATION LINKS */}
@@ -124,6 +165,8 @@ export const AdminLayout = () => {
               <Link
                 key={item.path}
                 to={item.path}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => setMenuOpen(false)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -189,6 +232,7 @@ export const AdminLayout = () => {
             <LogOut size={16} /> Cerrar Sesión
           </button>
         </div>
+        </DrawerBody>
       </aside>
 
       {/* MAIN CONTENT AREA */}
@@ -244,5 +288,11 @@ export const AdminLayout = () => {
     </div>
   );
 };
+
+// Contenido de la barra lateral: un DialogPanel solo mientras es un cajón abierto (pantalla estrecha); si no, un div.
+const DRAWER_BODY_STYLE = { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, outline: 'none' };
+const DrawerBody = ({ open, onClose, children }) => (open
+  ? <DialogPanel onClose={onClose} aria-label="Menú de administración" style={DRAWER_BODY_STYLE}>{children}</DialogPanel>
+  : <div style={DRAWER_BODY_STYLE}>{children}</div>);
 
 export default AdminLayout;

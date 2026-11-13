@@ -326,7 +326,7 @@ function start(port = 54321) {
       try {
         if (p === '/__health') return send(res, 200, { ok: true });
         if (p === '/__reset') { S = seed(); return send(res, 200, { ok: true }); }
-        if (p === '/__state') return send(res, 200, { orders: S.tables.online_orders, newsletter: S.tables.newsletter_subscribers, reviews: S.tables.product_reviews, wishlist: S.tables.wishlist_items, inventories: S.inventories.map((i) => ({ sku: i.variants.sku, stock: i.stock, reserved: i.reserved })) });
+        if (p === '/__state') return send(res, 200, { orders: S.tables.online_orders, newsletter: S.tables.newsletter_subscribers, reviews: S.tables.product_reviews, wishlist: S.tables.wishlist_items, siteContent: S.tables.site_content, inventories: S.inventories.map((i) => ({ sku: i.variants.sku, stock: i.stock, reserved: i.reserved })) });
         // Simula la confirmación del webhook de pago. NO es Wompi: solo mueve el pedido a "paid" para probar lo que sigue.
         // Ejecución 59: ventana de pago vencida sin que el job de expiración haya pasado (estado sigue payment_pending).
         if (p.startsWith('/__synthetic-expire-window/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); o.payment_expires_at = new Date(Date.now() - 60e3).toISOString(); return send(res, 200, { payment_expires_at: o.payment_expires_at }); }
@@ -352,6 +352,13 @@ function start(port = 54321) {
             rating: body.rating || 5, title: body.title || 'Muy buena', comment: body.comment || 'Buena tela y buen ajuste.', is_verified_buyer: true, status: 'approved',
             admin_reply: body.admin_reply || null, created_at: new Date().toISOString() };
           S.tables.product_reviews.push(row); return send(res, 200, { id: row.id });
+        }
+        // Ejecución 101: FIXTURE sintético — imagen PROPIA de la portada (fila de site_content con URL externa) para poder abrir «Restaurar» en /admin/imagenes.
+        if (p === '/__synthetic-site-content') {
+          const key = String(body.key || ''); if (!key) return send(res, 400, {});
+          S.tables.site_content = (S.tables.site_content || []).filter((r) => r.key !== key);
+          const row = { key, image_url: body.image_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%2210%22/%3E', storage_path: null, alt_text: body.alt_text || null, title: null, body: null, updated_at: new Date().toISOString() };
+          S.tables.site_content.push(row); return send(res, 200, row);
         }
         if (p.startsWith('/__synthetic-mark-delivered/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o || o.status !== 'paid') return send(res, 404, {}); for (const st of ['processing', 'shipped', 'delivered']) transition(o, st, 'sintético'); return send(res, 200, { status: o.status }); }
         if (p.startsWith('/__synthetic-mark-paid/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); inv.reserved -= it.quantity; inv.stock -= it.quantity; } transition(o, 'paid', 'sintético'); return send(res, 200, { status: 'paid' }); }
@@ -452,6 +459,11 @@ function start(port = 54321) {
             if (Object.keys(body).some((k) => k !== 'unsubscribed_at')) return send(res, 403, { code: '42501', message: 'permission denied for table newsletter_subscribers' });
             const hit = rows(table, q, ctx); // vacío si no es admin, como la RLS
             for (const r of hit) Object.assign(r, body); return reply(hit);
+          }
+          // Ejecución 101: «Restaurar» de /admin/imagenes borra la fila (RLS site_content_admin: sin admin no borra nada).
+          if (table === 'site_content' && req.method === 'DELETE') {
+            const hit = ctx.role === 'admin' ? rows(table, q, ctx) : [];
+            S.tables.site_content = S.tables.site_content.filter((r) => !hit.includes(r)); return reply(hit);
           }
           if (table === 'product_reviews' && req.method === 'PATCH') { // moderación de /admin/reviews (RLS product_reviews_admin)
             if (Object.keys(body).some((k) => !['status', 'admin_reply', 'moderated_by', 'moderated_at'].includes(k))) return send(res, 400, { code: 'PGRST204', message: 'columna no emulada' });

@@ -871,3 +871,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ba) de Pendiente (cajón del menú del admin en móvil y modal «Confirmar restauración» con fixture).
+
+## Ejecución 101 — 2026-11-13 01:20 UTC (rutina programada)
+- Estado inicial: rama `mission/m26-dev-qa-environments` en `a770161`, árbol limpio (la sesión arrancó en `claude/gracious-pasteur-s65px5`; se trabajó en la rama autorizada por la misión).
+- Tarea: punto 0(ba) de Pendiente. Cajón del menú del admin en móvil y modal «Confirmar restauración» con fixture (D72).
+- Archivos: `apps/web/src/layouts/AdminLayout.jsx`; nuevo `apps/web/src/__tests__/adminDrawer.test.jsx`; `apps/web/e2e/synthetic/backend.cjs` (fixture `/__synthetic-site-content`, DELETE de `site_content` solo admin, `siteContent` en `/__state`); `apps/web/e2e/e2e_synthetic.cjs` (recorrido 37).
+- Pruebas (ejecutadas aquí): `adminDrawer.test.jsx` 4/4 (4/4 fallan sin el cambio de `src`); recorrido 37 falla sin el cambio y pasa con él (3/3 aislado); `pnpm test:unit` 497/497 (45 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 37/37 (una primera pasada completa dio 36/37 por el recorrido 30, no tocado: `waitForURL` 30 s tras el registro móvil; 3/3 aislado y 37/37 en la pasada completa siguiente → intermitente, queda como pendiente 0(bb)). Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: intermitencia del recorrido 30. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bb) de Pendiente (intermitencia del recorrido 30; luego `aria-current`/foco en la navegación de la tienda).

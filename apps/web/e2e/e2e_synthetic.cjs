@@ -767,6 +767,47 @@ async function main() {
       if (checked.length !== 15) throw new Error(`solo se comprobaron ${checked.length}/15 modales: ${checked.join(', ')}`);
     }, browser);
 
+    await journey('37. Teclado: cajón del menú del admin en móvil y «Confirmar restauración» de la portada', async (p) => {
+      const failures = []; const checked = [];
+      const kb = async (opener, name, where) => { if (await checkDialogKeyboard(p, opener, name, where, failures)) checked.push(where); };
+      // FIXTURE sintético: imagen propia del Hero (fila de site_content) → aparece «Restaurar»
+      await fetch(`${API_URL}/__synthetic-site-content`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: 'hero_main', alt_text: 'Hero propio' }) });
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await p.goto(`${BASE}/admin/imagenes`); await expectText(p, 'IMÁGENES'); await p.waitForLoadState('networkidle');
+      const restore = p.getByRole('button', { name: 'Restaurar imagen Banner principal (Hero)' });
+      await kb(restore, 'Confirmar restauración', 'confirmar restauración');
+      // y restaurar de verdad: la fila desaparece de la BD sintética y el botón también
+      await restore.click();
+      await p.getByRole('dialog', { name: 'Confirmar restauración' }).getByRole('button', { name: 'Restaurar', exact: true }).click();
+      await expectText(p, 'volvió a la imagen original');
+      if ((await state()).siteContent.some((r) => r.key === 'hero_main')) failures.push('la fila hero_main sigue en site_content');
+      if (await restore.count()) failures.push('«Restaurar» sigue visible tras restaurar');
+      // móvil: el cajón cerrado no recibe el foco; abierto es un diálogo modal con teclado completo
+      await p.setViewportSize({ width: 375, height: 812 });
+      await p.goto(`${BASE}/admin/dashboard`); await p.waitForLoadState('networkidle');
+      const menu = p.getByRole('button', { name: 'Abrir menú' });
+      await menu.focus();
+      for (let i = 0; i < 25; i++) {
+        await p.keyboard.press('Tab');
+        if (await p.evaluate(() => !!document.activeElement?.closest('aside'))) { failures.push(`Tab llegó al menú lateral cerrado (paso ${i + 1})`); break; }
+      }
+      await kb(menu, 'Menú de administración', 'cajón del menú (Enter, Tab, Escape)');
+      // un enlace del cajón navega y lo cierra; el foco no se queda en un menú oculto
+      await menu.click();
+      await p.getByRole('dialog', { name: 'Menú de administración' }).getByRole('link', { name: 'Pedidos' }).click();
+      await p.waitForURL(/\/admin\/pedidos/);
+      try { await p.getByRole('dialog', { name: 'Menú de administración' }).waitFor({ state: 'detached', timeout: 5000 }); } catch { failures.push('el cajón siguió abierto tras navegar'); }
+      // el foco vuelve a ☰ en el efecto de cierre de DialogPanel (un fotograma después de desmontar el diálogo)
+      try { await p.waitForFunction(() => !document.activeElement?.closest('aside'), null, { timeout: 2000 }); }
+      catch { failures.push(`el foco quedó en el menú cerrado tras navegar: ${await p.evaluate(() => document.activeElement.outerHTML.slice(0, 120))}`); }
+      // escritorio: la barra lateral vuelve a ser navegable con Tab
+      await p.setViewportSize({ width: 1280, height: 900 });
+      if (await p.locator('aside[inert]').count()) failures.push('la barra lateral sigue inert en escritorio');
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+      if (checked.length !== 2) throw new Error(`solo se comprobaron ${checked.length}/2 diálogos: ${checked.join(', ')}`);
+    }, browser);
+
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);
