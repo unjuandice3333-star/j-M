@@ -987,3 +987,14 @@
 - Commits: `cb75f6e` (código) + el de documentación; publicados en la rama autorizada y en la rama de sesión.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bl) de Pendiente.
+
+## Ejecución 112 — 2026-11-13 12:10 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-9x4i1i` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `a65180e`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bl) de Pendiente. Restablecer contraseña, cupón de `/carrito`, boletín y reseña de producto: aviso enlazado al campo que lo causa y foco en él (D83).
+- Archivos: `apps/web/src/pages/ResetPasswordPage.jsx`, `apps/web/src/pages/CartPage.jsx`, `apps/web/src/components/Home/NewsletterSignup.jsx`, `apps/web/src/components/Product/ProductReviewForm.jsx`; nuevo `apps/web/src/__tests__/storeFormErrors.test.jsx`.
+- Pruebas (ejecutadas aquí): `storeFormErrors.test.jsx` 8/8; sin los cambios de `pages/` y `components/` (`git stash`) fallan las 8; `pnpm test:unit` 556/556 (55 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 44/44. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: falta comprobar el foco/enlace en un navegador real (solo jsdom). No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: el de código + el de documentación; publicados en la rama autorizada y en la rama de sesión.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bm) de Pendiente.
