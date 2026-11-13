@@ -44,7 +44,9 @@ export const Header = () => {
     setMobileMenuOpen,
     removeItem,
     updateQuantity,
-    getTotals
+    getTotals,
+    refreshQuote,
+    fitCartToStock
   } = store;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,6 +54,36 @@ export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const totals = typeof getTotals === 'function' ? getTotals() : { subtotal: 0, total: 0, shippingCost: 0, hasFreeShipping: false, amountForFreeShipping: 0 };
   const cartCount = (items || []).reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+  // Ejecución 120 (D93): el carrito lateral avisa por línea, como /carrito (D92), cuando la BD informa que una variante
+  // se agotó o tiene menos stock. Cotiza al abrirse, al cambiar el carrito y al volver a la pestaña. En /checkout y
+  // /carrito no cotiza: esas páginas ya lo hacen con su método de envío y correo (no se pisa su cotización).
+  const [drawerStockMsg, setDrawerStockMsg] = useState(null);
+  const ownQuotePage = /^\/(checkout|carrito)(\/|$)/.test(location.pathname);
+  const drawerItemsKey = (items || []).map((i) => `${i.variantId}x${i.quantity}`).join(',');
+  useEffect(() => {
+    if (!isCartOpen || ownQuotePage || typeof refreshQuote !== 'function') return undefined;
+    const requote = () => {
+      if (!useECommerceStore.getState().items.length) return;
+      refreshQuote().catch(() => {}); // sin conexión: el checkout vuelve a validar el stock antes de crear el pedido
+    };
+    requote();
+    const onVisible = () => { if (document.visibilityState === 'visible') requote(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => { document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('focus', onVisible); };
+  }, [isCartOpen, ownQuotePage, drawerItemsKey, refreshQuote]);
+  useEffect(() => { if (!isCartOpen) setDrawerStockMsg(null); }, [isCartOpen]);
+  // Solo cuenta la cotización del carrito ACTUAL (una vieja podría señalar líneas que ya se ajustaron).
+  const inCart = new Set((items || []).map((i) => i.variantId));
+  const drawerShort = new Map((totals.isEstimate ? [] : (totals.lines || []).filter((l) => !l.in_stock && inCart.has(l.variant_id)))
+    .map((l) => [l.variant_id, Math.max(0, Number(l.available) || 0)]));
+  const onDrawerFitStock = (variantId = null) => {
+    if (typeof fitCartToStock !== 'function') return;
+    const r = fitCartToStock(variantId);
+    setDrawerQtyError(null);
+    if (r.changes.length) setDrawerStockMsg(r.changes.join(' '));
+  };
 
   // Scroll listener for subtle header elevation
   useEffect(() => {
@@ -526,14 +558,30 @@ export const Header = () => {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {drawerShort.size > 0 && (
+                    <div role="alert" className="drawer-stock-summary" style={{ backgroundColor: '#FEF2F2', color: '#B91C1C', padding: '0.7rem 0.9rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
+                      <div>{drawerShort.size === 1 ? 'Una prenda de tu carrito ya no tiene stock suficiente.' : `${drawerShort.size} prendas de tu carrito ya no tienen stock suficiente.`}</div>
+                      <button type="button" className="jm-tap" onClick={() => onDrawerFitStock()}
+                        style={{ marginTop: '0.35rem', textDecoration: 'underline', color: '#B91C1C', fontWeight: 800, minHeight: '32px' }}>
+                        Ajustar el carrito al stock disponible
+                      </button>
+                    </div>
+                  )}
+                  {drawerStockMsg && drawerShort.size === 0 && (
+                    <div role="status" style={{ backgroundColor: '#ECFDF5', color: '#065F46', padding: '0.7rem 0.9rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600 }}>
+                      {drawerStockMsg}
+                    </div>
+                  )}
                   {items.map((item) => (
                     <div
                       key={item.id}
+                      className="drawer-line"
+                      data-stock-short={drawerShort.has(item.variantId) ? 'true' : undefined}
                       style={{
                         display: 'flex',
                         gap: '1rem',
                         paddingBottom: '1.25rem',
-                        borderBottom: '1px solid #F4F4F5'
+                        borderBottom: drawerShort.has(item.variantId) ? '1px solid #FCA5A5' : '1px solid #F4F4F5'
                       }}
                     >
                       <img
@@ -581,6 +629,18 @@ export const Header = () => {
                             {formatCOP(item.price * item.quantity)}
                           </div>
                         </div>
+                        {drawerShort.has(item.variantId) && (() => {
+                          const avail = drawerShort.get(item.variantId);
+                          return (
+                            <div role="alert" className="drawer-line-stock" style={{ color: '#B91C1C', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.35rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                              <span>{avail <= 0 ? 'Agotado: ya no quedan unidades de esta talla y color.' : `Solo quedan ${avail}; tienes ${item.quantity} en el carrito.`}</span>
+                              <button type="button" className="jm-tap" onClick={() => onDrawerFitStock(item.variantId)}
+                                style={{ textDecoration: 'underline', color: '#B91C1C', fontWeight: 800, minHeight: '32px' }}>
+                                {avail <= 0 ? 'Quitar del carrito' : `Ajustar a ${avail}`}
+                              </button>
+                            </div>
+                          );
+                        })()}
                         {drawerQtyError?.id === item.id && drawerQtyError.text && (
                           <span role="alert" style={{ fontSize: '0.75rem', color: '#B91C1C', fontWeight: 600, marginTop: '0.35rem' }}>{drawerQtyError.text}</span>
                         )}

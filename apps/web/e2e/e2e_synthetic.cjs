@@ -1912,6 +1912,49 @@ async function main() {
       if (!o || o.online_order_items.length !== 1 || o.online_order_items[0].quantity !== 1) throw new Error(`pedido tras ajustar: ${JSON.stringify(o?.online_order_items?.map((i) => i.quantity))}`);
     }, browser);
 
+    await journey('54. Carrito lateral: variante agotada o con menos stock → aviso por línea, quitar/ajustar y checkout con lo ajustado', async (p) => {
+      const setStock = (sku, n) => fetch(`${API_URL}/__synthetic-set-stock/${sku}/${n}`).then(j);
+      await addToCart(p, 'polo-clasico', 'M');
+      await addToCart(p, 'polo-clasico', 'M');
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      // página nueva con el catálogo YA cargado (la reconciliación al cargarlo ajusta sola; aquí se prueba la cotización)
+      await p.goto(`${BASE}/ropa`);
+      await p.getByText('Polo Clásico').first().waitFor({ timeout: 8000 });
+      await p.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, { timeout: 8000 });
+      const openBtn = p.getByRole('button', { name: /^Abrir carrito, 3 productos$/ });
+      await openBtn.click();
+      const dlg = p.getByRole('dialog', { name: 'Carrito' });
+      await dlg.waitFor();
+      await p.waitForTimeout(400);
+      if (await dlg.locator('[data-stock-short]').count()) throw new Error('con stock no debía haber avisos en el carrito lateral');
+      await dlg.getByRole('button', { name: 'Cerrar' }).click();
+      // otra persona compra: camiseta agotada y solo 1 polo; el cliente vuelve a abrir el carrito
+      await setStock('CAM-M-NEG', 0); await setStock('POL-M-NEG', 1);
+      await openBtn.click();
+      await p.waitForFunction(() => document.querySelectorAll('[role="dialog"] [data-stock-short="true"]').length === 2, null, { timeout: 8000 });
+      const short = dlg.locator('[data-stock-short="true"]');
+      await short.filter({ hasText: 'Camiseta Básica' }).getByText('Agotado: ya no quedan unidades').waitFor();
+      await short.filter({ hasText: 'Polo Clásico' }).getByText('Solo quedan 1; tienes 2 en el carrito.').waitFor();
+      await dlg.getByText('2 prendas de tu carrito ya no tienen stock suficiente.').waitFor();
+      // «+» ya respeta la BD
+      await dlg.getByRole('button', { name: 'Aumentar cantidad de Polo Clásico' }).click();
+      await dlg.getByText('Solo hay 1 unidad(es) disponibles.').waitFor();
+      // por línea: ajustar el polo; luego quitar la camiseta
+      await short.filter({ hasText: 'Polo Clásico' }).getByRole('button', { name: 'Ajustar a 1' }).click();
+      await p.waitForFunction(() => document.querySelectorAll('[role="dialog"] [data-stock-short="true"]').length === 1, null, { timeout: 8000 });
+      await dlg.locator('[data-stock-short="true"]').getByRole('button', { name: 'Quitar del carrito' }).click();
+      await p.waitForFunction(() => !document.querySelector('[role="dialog"] [data-stock-short]'), null, { timeout: 8000 });
+      await dlg.getByText('Quitamos Camiseta Básica (M, Negro): está agotado.').waitFor();
+      await dlg.getByText('(1)').waitFor();
+      await dlg.getByRole('button', { name: /FINALIZAR COMPRA/ }).click();
+      await p.waitForURL(/\/checkout$/);
+      await fillCheckout(p, { email: 'stock.drawer@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      const o = (await state()).orders.find((x) => x.customer_email === 'stock.drawer@correo.co');
+      if (!o || o.online_order_items.length !== 1 || o.online_order_items[0].quantity !== 1) throw new Error(`pedido tras ajustar: ${JSON.stringify(o?.online_order_items?.map((i) => i.quantity))}`);
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
