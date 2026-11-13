@@ -7,6 +7,11 @@ import { Plus, Edit, Trash2, X, ArrowUp, ArrowDown } from '../../components/Comm
 import { slugify } from '../../services/adminService';
 import collectionsAdminService, { COLLECTION_KINDS, emptyCollection, toCollectionForm, validateCollection } from '../../services/collectionsAdminService';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import FieldError from '../../components/Common/FieldError';
+import { fieldA11y, focusFirstError } from '../../utils/formErrors';
+
+// Orden visual del formulario: el foco va al primer campo con error (D80).
+const COLLECTION_FIELDS = ['name', 'slug', 'image_url', 'kind', 'sort_order', 'products'];
 
 const btnDark = { backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.7rem 1.2rem', borderRadius: 6, fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' };
 const btnLight = { backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', padding: '0.4rem 0.8rem', minHeight: 36, borderRadius: 4, fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' };
@@ -43,16 +48,20 @@ export const AdminCollectionsPage = () => {
 
   const save = async (e) => {
     e.preventDefault();
+    const formEl = e.currentTarget;
     const { errors: v } = validateCollection(form);
     setErrors(v);
-    if (Object.keys(v).length) return;
+    if (Object.keys(v).length) { focusFirstError(formEl, COLLECTION_FIELDS, v); return; }
     setSaving(true);
     try {
       await collectionsAdminService.save(form);
       setNotice({ ok: true, text: `Colección «${form.name.trim()}» guardada.` });
       setForm(null);
       await load();
-    } catch (ex) { setErrors(ex.errors ?? { form: ex.message }); } finally { setSaving(false); }
+    } catch (ex) {
+      setErrors(ex.errors ?? { form: ex.message });
+      if (ex.errors) focusFirstError(formEl, COLLECTION_FIELDS, ex.errors);
+    } finally { setSaving(false); }
   };
 
   const remove = async (c) => {
@@ -105,24 +114,24 @@ export const AdminCollectionsPage = () => {
               <h2 style={{ fontWeight: 900, textTransform: 'uppercase' }}>{form.id ? 'Editar colección' : 'Nueva colección'}</h2>
               <button type="button" aria-label="Cerrar" style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setForm(null)}><X size={18} /></button>
             </div>
-            <label style={label}>Nombre<input style={input} value={form.name} onChange={(e) => set({ name: e.target.value })} />{errors.name && <span style={err}>{errors.name}</span>}</label>
-            <label style={label}>Slug<input style={input} value={form.slug} onChange={(e) => set({ slug: e.target.value, slugTouched: true })} />{errors.slug && <span style={err}>{errors.slug}</span>}</label>
+            <div style={{ minWidth: 0 }}><label style={label}>Nombre<input style={input} value={form.name} onChange={(e) => set({ name: e.target.value })} {...fieldA11y(errors, 'col', 'name')} /></label><FieldError prefix="col" k="name" errors={errors} /></div>
+            <div style={{ minWidth: 0 }}><label style={label}>Slug<input style={input} value={form.slug} onChange={(e) => set({ slug: e.target.value, slugTouched: true })} {...fieldA11y(errors, 'col', 'slug')} /></label><FieldError prefix="col" k="slug" errors={errors} /></div>
             <label style={label}>Subtítulo<input style={input} value={form.subtitle} onChange={(e) => set({ subtitle: e.target.value })} /></label>
-            <label style={label}>Imagen de portada (URL https)<input style={input} value={form.image_url} onChange={(e) => set({ image_url: e.target.value })} />{errors.image_url && <span style={err}>{errors.image_url}</span>}</label>
+            <div style={{ minWidth: 0 }}><label style={label}>Imagen de portada (URL https)<input style={input} value={form.image_url} onChange={(e) => set({ image_url: e.target.value })} {...fieldA11y(errors, 'col', 'image_url')} /></label><FieldError prefix="col" k="image_url" errors={errors} /></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              <label style={label}>Tipo
-                <select style={input} value={form.kind} onChange={(e) => set({ kind: e.target.value })}>
+              <div style={{ minWidth: 0 }}><label style={label}>Tipo
+                <select style={input} value={form.kind} onChange={(e) => set({ kind: e.target.value })} {...fieldA11y(errors, 'col', 'kind')}>
                   {Object.entries(COLLECTION_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
-              </label>
-              <label style={label}>Orden<input style={input} inputMode="numeric" value={form.sort_order} onChange={(e) => set({ sort_order: e.target.value })} />{errors.sort_order && <span style={err}>{errors.sort_order}</span>}</label>
+              </label><FieldError prefix="col" k="kind" errors={errors} /></div>
+              <div style={{ minWidth: 0 }}><label style={label}>Orden<input style={input} inputMode="numeric" value={form.sort_order} onChange={(e) => set({ sort_order: e.target.value })} {...fieldA11y(errors, 'col', 'sort_order')} /></label><FieldError prefix="col" k="sort_order" errors={errors} /></div>
             </div>
             <label style={{ ...label, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="checkbox" checked={form.is_active} onChange={(e) => set({ is_active: e.target.checked })} /> Activa (visible en la tienda)</label>
 
             <fieldset style={{ border: '1px solid #E4E4E7', borderRadius: 8, padding: '0.75rem', display: 'grid', gap: '0.5rem' }}>
               <legend style={{ fontSize: '0.8rem', fontWeight: 800, padding: '0 0.3rem' }}>Productos ({form.productIds.length})</legend>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <select aria-label="Producto para agregar" style={input} value={pick} onChange={(e) => setPick(e.target.value)}>
+                <select aria-label="Producto para agregar" style={input} value={pick} onChange={(e) => setPick(e.target.value)} {...fieldA11y(errors, 'col', 'products')}>
                   <option value="">Selecciona un producto…</option>
                   {available.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.reference}){p.status !== 'active' ? ` · ${p.status}` : ''}</option>)}
                 </select>
@@ -136,7 +145,7 @@ export const AdminCollectionsPage = () => {
                   <button type="button" aria-label={`Quitar ${productById.get(id)?.name ?? id}`} onClick={() => set({ productIds: form.productIds.filter((x) => x !== id) })} style={btnLight}><X size={12} /></button>
                 </div>
               ))}
-              {errors.products && <span style={err}>{errors.products}</span>}
+              <FieldError prefix="col" k="products" errors={errors} />
             </fieldset>
 
             {errors.form && <div role="alert" style={err}>{errors.form}</div>}

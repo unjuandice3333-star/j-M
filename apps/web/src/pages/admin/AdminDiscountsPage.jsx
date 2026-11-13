@@ -13,9 +13,14 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, X } from '../../components/Common/icons';
 import { formatCOP } from '../../utils/currency';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import FieldError from '../../components/Common/FieldError';
+import { fieldA11y, focusFirstError } from '../../utils/formErrors';
 import couponsAdminService, {
   COUPON_STATUS_FILTERS, couponState, couponStatusFromParam, couponUseCount, emptyCouponForm, filterCoupons, toCouponForm, PERCENT_MAX,
 } from '../../services/couponsAdminService';
+
+// Orden visual del formulario: el foco va al primer campo con error (D80).
+const COUPON_FIELDS = ['code', 'description', 'discount_type', 'discount_value', 'min_subtotal', 'max_uses', 'max_uses_per_email', 'starts_at', 'expires_at'];
 
 const TYPE_LABEL = { percent: 'Porcentaje', fixed: 'Valor fijo', free_shipping: 'Envío gratis' };
 
@@ -27,6 +32,7 @@ export const AdminDiscountsPage = () => {
   const [notice, setNotice] = useState(null);
   const [form, setForm] = useState(null);
   const [formError, setFormError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') ?? '';
@@ -48,18 +54,27 @@ export const AdminDiscountsPage = () => {
   useEffect(() => { load(); }, []);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
-  const edit = (c) => { setFormError(null); setForm(toCouponForm(c)); };
+  const edit = (c) => { setFormError(null); setFieldErrors({}); setForm(toCouponForm(c)); };
 
   const save = async (e) => {
     e.preventDefault();
+    const formEl = e.currentTarget;
     setFormError(null);
+    setFieldErrors({});
     setSaving(true);
     try {
       const row = await couponsAdminService.save(form);
       setNotice(`Cupón ${row.code} ${form.id ? 'actualizado' : 'creado'}.`);
       setForm(null);
       load();
-    } catch (err) { setFormError(err.message || 'No se pudo guardar el cupón.'); }
+    } catch (err) {
+      // Validación local: cada mensaje junto a su campo y foco al primero (D80); el resto, aviso general.
+      if (err.errors && Object.keys(err.errors).length) {
+        setFieldErrors(err.errors);
+        setFormError('Revisa los campos marcados.');
+        focusFirstError(formEl, COUPON_FIELDS, err.errors);
+      } else setFormError(err.message || 'No se pudo guardar el cupón.');
+    }
     finally { setSaving(false); }
   };
 
@@ -85,7 +100,7 @@ export const AdminDiscountsPage = () => {
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>CUPONES ({coupons.length})</h1>
           <p style={{ fontSize: '0.88rem', color: '#71717A' }}>Los descuentos se validan y se cuentan en el servidor al crear cada pedido.</p>
         </div>
-        <button onClick={() => { setFormError(null); setForm(emptyCouponForm()); }} style={{ backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.8rem 1.4rem', borderRadius: '6px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button onClick={() => { setFormError(null); setFieldErrors({}); setForm(emptyCouponForm()); }} style={{ backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.8rem 1.4rem', borderRadius: '6px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Plus size={18} /> CREAR CUPÓN
         </button>
       </div>
@@ -155,28 +170,28 @@ export const AdminDiscountsPage = () => {
               <button onClick={() => setForm(null)} aria-label="Cerrar" style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
             </div>
             <form onSubmit={save} noValidate style={{ display: 'grid', gap: '0.8rem' }}>
-              <label style={labelStyle}>Código<input style={inputStyle} value={form.code} onChange={(e) => set({ code: e.target.value.toUpperCase() })} /></label>
-              <label style={labelStyle}>Descripción<input style={inputStyle} value={form.description} onChange={(e) => set({ description: e.target.value })} /></label>
+              <div style={cell}><label style={labelStyle}>Código<input style={inputStyle} value={form.code} onChange={(e) => set({ code: e.target.value.toUpperCase() })} {...fieldA11y(fieldErrors, 'coupon', 'code')} /></label><FieldError prefix="coupon" k="code" errors={fieldErrors} /></div>
+              <div style={cell}><label style={labelStyle}>Descripción<input style={inputStyle} value={form.description} onChange={(e) => set({ description: e.target.value })} {...fieldA11y(fieldErrors, 'coupon', 'description')} /></label><FieldError prefix="coupon" k="description" errors={fieldErrors} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: '0.6rem' }}>
-                <label style={labelStyle}>Tipo
-                  <select style={inputStyle} value={form.discount_type} onChange={(e) => set({ discount_type: e.target.value })}>
+                <div style={cell}><label style={labelStyle}>Tipo
+                  <select style={inputStyle} value={form.discount_type} onChange={(e) => set({ discount_type: e.target.value })} {...fieldA11y(fieldErrors, 'coupon', 'discount_type')}>
                     {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
-                </label>
+                </label><FieldError prefix="coupon" k="discount_type" errors={fieldErrors} /></div>
                 {form.discount_type !== 'free_shipping' && (
-                  <label style={labelStyle}>{form.discount_type === 'percent' ? `Porcentaje (1–${PERCENT_MAX})` : 'Valor (COP)'}
-                    <input style={inputStyle} inputMode="numeric" value={form.discount_value} onChange={(e) => set({ discount_value: e.target.value.replace(/[^0-9]/g, '') })} />
-                  </label>
+                  <div style={cell}><label style={labelStyle}>{form.discount_type === 'percent' ? `Porcentaje (1–${PERCENT_MAX})` : 'Valor (COP)'}
+                    <input style={inputStyle} inputMode="numeric" value={form.discount_value} onChange={(e) => set({ discount_value: e.target.value.replace(/[^0-9]/g, '') })} {...fieldA11y(fieldErrors, 'coupon', 'discount_value')} />
+                  </label><FieldError prefix="coupon" k="discount_value" errors={fieldErrors} /></div>
                 )}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 110px), 1fr))', gap: '0.6rem' }}>
-                <label style={labelStyle}>Compra mínima<input style={inputStyle} inputMode="numeric" value={form.min_subtotal} onChange={(e) => set({ min_subtotal: e.target.value.replace(/[^0-9]/g, '') })} /></label>
-                <label style={labelStyle}>Usos totales<input style={inputStyle} inputMode="numeric" placeholder="sin límite" value={form.max_uses} onChange={(e) => set({ max_uses: e.target.value.replace(/[^0-9]/g, '') })} /></label>
-                <label style={labelStyle}>Por correo<input style={inputStyle} inputMode="numeric" placeholder="sin límite" value={form.max_uses_per_email} onChange={(e) => set({ max_uses_per_email: e.target.value.replace(/[^0-9]/g, '') })} /></label>
+                <div style={cell}><label style={labelStyle}>Compra mínima<input style={inputStyle} inputMode="numeric" value={form.min_subtotal} onChange={(e) => set({ min_subtotal: e.target.value.replace(/[^0-9]/g, '') })} {...fieldA11y(fieldErrors, 'coupon', 'min_subtotal')} /></label><FieldError prefix="coupon" k="min_subtotal" errors={fieldErrors} /></div>
+                <div style={cell}><label style={labelStyle}>Usos totales<input style={inputStyle} inputMode="numeric" placeholder="sin límite" value={form.max_uses} onChange={(e) => set({ max_uses: e.target.value.replace(/[^0-9]/g, '') })} {...fieldA11y(fieldErrors, 'coupon', 'max_uses')} /></label><FieldError prefix="coupon" k="max_uses" errors={fieldErrors} /></div>
+                <div style={cell}><label style={labelStyle}>Por correo<input style={inputStyle} inputMode="numeric" placeholder="sin límite" value={form.max_uses_per_email} onChange={(e) => set({ max_uses_per_email: e.target.value.replace(/[^0-9]/g, '') })} {...fieldA11y(fieldErrors, 'coupon', 'max_uses_per_email')} /></label><FieldError prefix="coupon" k="max_uses_per_email" errors={fieldErrors} /></div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: '0.6rem' }}>
-                <label style={labelStyle}>Inicio<input type="datetime-local" style={inputStyle} value={form.starts_at} onChange={(e) => set({ starts_at: e.target.value })} /></label>
-                <label style={labelStyle}>Fin<input type="datetime-local" style={inputStyle} value={form.expires_at} onChange={(e) => set({ expires_at: e.target.value })} /></label>
+                <div style={cell}><label style={labelStyle}>Inicio<input type="datetime-local" style={inputStyle} value={form.starts_at} onChange={(e) => set({ starts_at: e.target.value })} {...fieldA11y(fieldErrors, 'coupon', 'starts_at')} /></label><FieldError prefix="coupon" k="starts_at" errors={fieldErrors} /></div>
+                <div style={cell}><label style={labelStyle}>Fin<input type="datetime-local" style={inputStyle} value={form.expires_at} onChange={(e) => set({ expires_at: e.target.value })} {...fieldA11y(fieldErrors, 'coupon', 'expires_at')} /></label><FieldError prefix="coupon" k="expires_at" errors={fieldErrors} /></div>
               </div>
               <label style={{ fontSize: '0.85rem' }}><input type="checkbox" checked={form.is_active} onChange={(e) => set({ is_active: e.target.checked })} /> Activo</label>
               {formError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600, fontSize: '0.85rem' }}>{formError}</div>}
@@ -195,6 +210,8 @@ const thDisc = { padding: '0.85rem 1rem', fontSize: '0.75rem', fontWeight: 800, 
 const tdDisc = { padding: '0.85rem 1rem', color: '#09090B' };
 // minHeight: área táctil ≥ 32 px en móvil (ejecución 96)
 const linkBtn = { textDecoration: 'underline', fontSize: '0.8rem', fontWeight: 700, marginRight: '0.6rem', minHeight: 32, display: 'inline-flex', alignItems: 'center' };
+// minWidth 0: el contenedor de cada campo no ensancha la columna en móvil (ejecución 109)
+const cell = { minWidth: 0 };
 const labelStyle = { display: 'grid', gap: '0.3rem', fontSize: '0.78rem', fontWeight: 700, color: '#09090B' };
 // minWidth/boxSizing: un datetime-local no ensancha la columna en móvil (ejecución 96)
 const inputStyle = { width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '0.6rem 0.75rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 500 };

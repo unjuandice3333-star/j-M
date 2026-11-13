@@ -5,12 +5,17 @@
 // precargados y llamadas a funciones inexistentes. El stock de variantes existentes se ajusta en Inventario
 // (admin_adjust_inventory, con trazabilidad); aquí solo se fija el stock INICIAL de variantes nuevas.
 // =============================================================================
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Upload, Trash2, Star } from '../../components/Common/icons';
 import { productService, imageUrl } from '../../services/productService';
 import { adminService, slugify, toReference } from '../../services/adminService';
 import { useECommerceStore } from '../../store/eCommerceStore';
+import { errorId, fieldA11y, focusFirstError, groupA11y } from '../../utils/formErrors';
+
+// Orden visual del formulario: al guardar con errores el foco va al primero (D80).
+const PRODUCT_FIELDS = ['name', 'reference', 'slug', 'category', 'price', 'compareAt', 'cost', 'colors', 'images', 'sizes', 'stock'];
+const badStock = (v) => v !== '' && !(Number.isInteger(Number(v)) && Number(v) >= 0);
 
 const FITS = ['SLIM', 'REGULAR', 'RELAXED', 'OVERSIZE'];
 const REF_RE = /^[A-Z0-9]+(-[A-Z0-9]+)*$/;
@@ -35,6 +40,7 @@ export const AdminProductFormPage = () => {
   const [ref, setRef] = useState(null);       // datos de referencia de la BD
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
+  const formRef = useRef(null);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(null);
@@ -130,14 +136,15 @@ export const AdminProductFormPage = () => {
     if (form.colors.length === 0) e.colors = 'Elige al menos un color.';
     if (form.sizes.length === 0) e.sizes = 'Elige al menos una talla.';
     if (publish && !form.colors.some((c) => c.images.length)) e.images = 'Para publicar, agrega al menos una imagen.';
-    for (const [k, v] of Object.entries(form.stock)) if (v !== '' && !(Number.isInteger(Number(v)) && Number(v) >= 0)) e.stock = `Stock inicial inválido en ${k.replace('|', ' / ')}.`;
+    const bad = Object.entries(form.stock).find(([, v]) => badStock(v));
+    if (bad) e.stock = `Stock inicial inválido en ${bad[0].replace('|', ' / ')}.`;
     return e;
   };
 
   const save = async (publish) => {
     const e = validate(publish);
     setErrors(e);
-    if (Object.keys(e).length) { setMessage({ ok: false, text: 'Revisa los campos marcados.' }); return; }
+    if (Object.keys(e).length) { setMessage({ ok: false, text: 'Revisa los campos marcados.' }); focusFirstError(formRef.current, PRODUCT_FIELDS, e); return; }
     setBusy(true); setMessage(null);
     const payload = {
       id: form.id, reference: form.reference, slug: form.slug, name: form.name.trim(), description: form.description.trim() || null,
@@ -172,10 +179,12 @@ export const AdminProductFormPage = () => {
       <div role="status">{message?.text ?? 'Cargando…'}</div>
     </div>
   );
-  const Err = ({ k }) => (errors[k] ? <div role="alert" style={{ color: '#E11D48', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.25rem' }}>{errors[k]}</div> : null);
+  // Sin role="alert" por campo: el aviso general ya es alerta y el foco va al primer campo, que lee su mensaje (D80).
+  const firstBadStock = Object.entries(form.stock).find(([, v]) => badStock(v))?.[0];
+  const Err = ({ k }) => (errors[k] ? <div id={errorId('pf', k)} style={{ color: '#E11D48', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.25rem' }}>{errors[k]}</div> : null);
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save(false); }} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '960px' }}>
+    <form ref={formRef} onSubmit={(e) => { e.preventDefault(); save(false); }} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '960px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button type="button" aria-label="Volver" onClick={() => navigate('/admin/productos')} style={{ border: '1px solid #E4E4E7', padding: '0.5rem', borderRadius: '6px', backgroundColor: '#FFFFFF' }}>
@@ -207,24 +216,24 @@ export const AdminProductFormPage = () => {
       <section style={card}>
         <h3 style={sectionTitle}>1. DATOS DEL PRODUCTO</h3>
         <label style={labelStyle} htmlFor="pf-name">Nombre *</label>
-        <input id="pf-name" style={inputStyle} value={form.name} onChange={(e) => onName(e.target.value)} aria-invalid={Boolean(errors.name)} />
+        <input id="pf-name" style={inputStyle} value={form.name} onChange={(e) => onName(e.target.value)} {...fieldA11y(errors, 'pf', 'name')} />
         <Err k="name" />
         <div style={grid2}>
           <div>
             <label style={labelStyle} htmlFor="pf-ref">Referencia *</label>
-            <input id="pf-ref" style={inputStyle} value={form.reference} onChange={(e) => set({ reference: e.target.value.toUpperCase(), refTouched: true })} />
+            <input id="pf-ref" style={inputStyle} value={form.reference} onChange={(e) => set({ reference: e.target.value.toUpperCase(), refTouched: true })} {...fieldA11y(errors, 'pf', 'reference')} />
             <Err k="reference" />
           </div>
           <div>
             <label style={labelStyle} htmlFor="pf-slug">Slug (dirección web) *</label>
-            <input id="pf-slug" style={inputStyle} value={form.slug} onChange={(e) => set({ slug: e.target.value.toLowerCase(), slugTouched: true })} />
+            <input id="pf-slug" style={inputStyle} value={form.slug} onChange={(e) => set({ slug: e.target.value.toLowerCase(), slugTouched: true })} {...fieldA11y(errors, 'pf', 'slug')} />
             <Err k="slug" />
           </div>
         </div>
         <div style={grid3}>
           <div>
             <label style={labelStyle} htmlFor="pf-cat">Categoría *</label>
-            <select id="pf-cat" style={inputStyle} value={form.category} onChange={(e) => set({ category: e.target.value, sizes: [] })}>
+            <select id="pf-cat" style={inputStyle} value={form.category} onChange={(e) => set({ category: e.target.value, sizes: [] })} {...fieldA11y(errors, 'pf', 'category')}>
               {ref.categories.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
             </select>
             <Err k="category" />
@@ -276,17 +285,17 @@ export const AdminProductFormPage = () => {
         <div style={grid3}>
           <div>
             <label style={labelStyle} htmlFor="pf-price">Precio de venta *</label>
-            <input id="pf-price" inputMode="numeric" style={inputStyle} value={form.price} onChange={(e) => set({ price: e.target.value.replace(/[^0-9]/g, '') })} />
+            <input id="pf-price" inputMode="numeric" style={inputStyle} value={form.price} onChange={(e) => set({ price: e.target.value.replace(/[^0-9]/g, '') })} {...fieldA11y(errors, 'pf', 'price')} />
             <Err k="price" />
           </div>
           <div>
             <label style={labelStyle} htmlFor="pf-compare">Precio antes (tachado)</label>
-            <input id="pf-compare" inputMode="numeric" style={inputStyle} value={form.compareAt} onChange={(e) => set({ compareAt: e.target.value.replace(/[^0-9]/g, '') })} />
+            <input id="pf-compare" inputMode="numeric" style={inputStyle} value={form.compareAt} onChange={(e) => set({ compareAt: e.target.value.replace(/[^0-9]/g, '') })} {...fieldA11y(errors, 'pf', 'compareAt')} />
             <Err k="compareAt" />
           </div>
           <div>
             <label style={labelStyle} htmlFor="pf-cost">Costo (interno)</label>
-            <input id="pf-cost" inputMode="numeric" style={inputStyle} value={form.cost} onChange={(e) => set({ cost: e.target.value.replace(/[^0-9]/g, '') })} />
+            <input id="pf-cost" inputMode="numeric" style={inputStyle} value={form.cost} onChange={(e) => set({ cost: e.target.value.replace(/[^0-9]/g, '') })} {...fieldA11y(errors, 'pf', 'cost')} />
             <Err k="cost" />
           </div>
         </div>
@@ -295,12 +304,12 @@ export const AdminProductFormPage = () => {
       <section style={card}>
         <h3 style={sectionTitle}>3. COLORES E IMÁGENES</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '1rem' }}>
-          {ref.colors.map((c) => {
+          {ref.colors.map((c, ci) => {
             const on = form.colors.some((x) => x.slug === c.slug);
             const inUse = Object.keys(form.existing).some((k) => k.startsWith(`${c.slug}|`));
             return (
               <button type="button" key={c.slug} onClick={() => (!inUse || !on ? toggleColor(c.slug) : setMessage({ ok: false, text: `${c.name} tiene variantes: no se puede quitar (puedes quitarle las tallas).` }))}
-                aria-pressed={on} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', padding: '0.4rem 0.7rem', borderRadius: '999px',
+                aria-pressed={on} {...(ci === 0 ? groupA11y(errors, 'pf', 'colors') : {})} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', padding: '0.4rem 0.7rem', borderRadius: '999px',
                   border: on ? '2px solid #09090B' : '1px solid #D4D4D8', fontSize: '0.8rem', fontWeight: 700 }}>
                 <span style={{ width: 14, height: 14, borderRadius: '50%', backgroundColor: c.hex_code, border: '1px solid #A1A1AA' }} /> {c.name}
               </button>
@@ -308,7 +317,7 @@ export const AdminProductFormPage = () => {
           })}
         </div>
         <Err k="colors" /><Err k="images" />
-        {form.colors.map((c) => (
+        {form.colors.map((c, ci) => (
           <div key={c.slug} style={{ border: '1px solid #E4E4E7', borderRadius: '8px', padding: '1rem', marginBottom: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
               <strong>{colorBySlug.get(c.slug)?.name}</strong>
@@ -332,7 +341,7 @@ export const AdminProductFormPage = () => {
                   aria-label={`Subir imágenes para ${colorBySlug.get(c.slug)?.name}`}
                   onChange={(e) => { uploadFiles(c.slug, [...e.target.files]); e.target.value = ''; }} />
               </label>
-              <input placeholder="o pega una URL https://" aria-label={`URL de imagen para ${colorBySlug.get(c.slug)?.name}`} value={urlInput[c.slug] || ''}
+              <input placeholder="o pega una URL https://" aria-label={`URL de imagen para ${colorBySlug.get(c.slug)?.name}`} {...(ci === 0 ? fieldA11y(errors, 'pf', 'images') : {})} value={urlInput[c.slug] || ''}
                 onChange={(e) => setUrlInput((u) => ({ ...u, [c.slug]: e.target.value }))} style={{ ...inputStyle, width: 'auto', flex: 1, minWidth: 200 }} />
               <button type="button" onClick={() => addUrl(c.slug)} style={miniBtnWide}>Agregar URL</button>
             </div>
@@ -343,8 +352,8 @@ export const AdminProductFormPage = () => {
       <section style={card}>
         <h3 style={sectionTitle}>4. TALLAS Y STOCK INICIAL</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-          {sizeOptions.map((s) => (
-            <button type="button" key={s.code} aria-pressed={form.sizes.includes(s.code)} onClick={() => toggleSize(s.code)}
+          {sizeOptions.map((s, si) => (
+            <button type="button" key={s.code} aria-pressed={form.sizes.includes(s.code)} {...(si === 0 ? groupA11y(errors, 'pf', 'sizes') : {})} onClick={() => toggleSize(s.code)}
               style={{ minWidth: 48, height: 40, borderRadius: 6, fontWeight: 800, border: '1px solid #D4D4D8',
                 backgroundColor: form.sizes.includes(s.code) ? '#09090B' : '#FFF', color: form.sizes.includes(s.code) ? '#FFF' : '#09090B' }}>
               {s.code}
@@ -365,7 +374,7 @@ export const AdminProductFormPage = () => {
                       return (
                         <td key={s} style={{ padding: '0.3rem' }}>
                           {ex ? <span title="Ajusta el stock en Inventario">{ex.stock - ex.reserved} disp.</span> : (
-                            <input aria-label={`Stock inicial ${colorBySlug.get(c.slug)?.name} ${s}`} inputMode="numeric" style={{ ...inputStyle, width: 64, padding: '0.35rem' }}
+                            <input aria-label={`Stock inicial ${colorBySlug.get(c.slug)?.name} ${s}`} {...(errors.stock && key === firstBadStock ? fieldA11y(errors, 'pf', 'stock') : {})} inputMode="numeric" style={{ ...inputStyle, width: 64, padding: '0.35rem' }}
                               value={form.stock[key] ?? ''} placeholder="0" onChange={(e) => set({ stock: { ...form.stock, [key]: e.target.value.replace(/[^0-9]/g, '') } })} />
                           )}
                         </td>

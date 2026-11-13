@@ -169,7 +169,11 @@ describe('AdminDiscountsPage (UI)', () => {
     await typeIn(fieldIn(dialog, 'Porcentaje'), '95');
     supa.calls.length = 0;
     await submit(dialog);
-    expect(dialog.querySelector('[role="alert"]').textContent).toMatch(/entre 1 y 90/);
+    // Ejecución 109 (D80): aviso general + mensaje junto al campo, enlazado con aria-describedby y con el foco en él
+    expect(dialog.querySelector('[role="alert"]').textContent).toMatch(/Revisa los campos marcados/);
+    const pct = fieldIn(dialog, 'Porcentaje');
+    expect(document.getElementById(pct.getAttribute('aria-describedby')).textContent).toMatch(/entre 1 y 90/);
+    expect(document.activeElement).toBe(pct);
     expect(supa.calls).toHaveLength(0);
   });
 

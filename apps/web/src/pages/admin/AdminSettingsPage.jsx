@@ -8,6 +8,11 @@ import { Plus, Edit, X } from '../../components/Common/icons';
 import { formatCOP } from '../../utils/currency';
 import shippingAdminService, { CHECKOUT_METHOD, emptyShippingMethod, toShippingForm, validateShippingMethod } from '../../services/shippingAdminService';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import FieldError from '../../components/Common/FieldError';
+import { fieldA11y, focusFirstError } from '../../utils/formErrors';
+
+// Orden visual del formulario: el foco va al primer campo con error (D80).
+const SHIPPING_FIELDS = ['code', 'name', 'cost', 'free_over_subtotal', 'eta_text', 'sort_order', 'is_active'];
 
 const btnDark = { backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.7rem 1.2rem', borderRadius: 6, fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' };
 const btnLight = { backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', padding: '0.4rem 0.8rem', minHeight: 36, borderRadius: 4, fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' };
@@ -35,16 +40,20 @@ export const AdminSettingsPage = () => {
 
   const save = async (e) => {
     e.preventDefault();
+    const formEl = e.currentTarget;
     const { errors: v } = validateShippingMethod(form);
     setErrors(v);
-    if (Object.keys(v).length) return;
+    if (Object.keys(v).length) { focusFirstError(formEl, SHIPPING_FIELDS, v); return; }
     setSaving(true);
     try {
       const row = await shippingAdminService.save(form);
       setNotice({ ok: true, text: `Método «${row.name}» guardado. Los nuevos pedidos ya usan esta tarifa.` });
       setForm(null);
       await load();
-    } catch (ex) { setErrors(ex.errors ?? { form: ex.message }); } finally { setSaving(false); }
+    } catch (ex) {
+      setErrors(ex.errors ?? { form: ex.message });
+      if (ex.errors) focusFirstError(formEl, SHIPPING_FIELDS, ex.errors);
+    } finally { setSaving(false); }
   };
 
   return (
@@ -90,19 +99,20 @@ export const AdminSettingsPage = () => {
               <h2 style={{ fontWeight: 900, textTransform: 'uppercase' }}>{form.isNew ? 'Nuevo método de envío' : 'Editar método de envío'}</h2>
               <button type="button" aria-label="Cerrar" style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setForm(null)}><X size={18} /></button>
             </div>
-            <label style={label}>Código
-              <input style={input} value={form.code} disabled={!form.isNew} onChange={(e) => set({ code: e.target.value })} />
-              {errors.code && <span style={err}>{errors.code}</span>}
-            </label>
-            <label style={label}>Nombre<input style={input} value={form.name} onChange={(e) => set({ name: e.target.value })} />{errors.name && <span style={err}>{errors.name}</span>}</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              <label style={label}>Tarifa (COP)<input style={input} inputMode="numeric" value={form.cost} onChange={(e) => set({ cost: e.target.value })} />{errors.cost && <span style={err}>{errors.cost}</span>}</label>
-              <label style={label}>Envío gratis desde (COP, opcional)<input style={input} inputMode="numeric" value={form.free_over_subtotal} onChange={(e) => set({ free_over_subtotal: e.target.value })} />{errors.free_over_subtotal && <span style={err}>{errors.free_over_subtotal}</span>}</label>
+            <div>
+              <label style={label}>Código
+                <input style={input} value={form.code} disabled={!form.isNew} onChange={(e) => set({ code: e.target.value })} {...fieldA11y(errors, 'ship', 'code')} />
+              </label>
+              <FieldError prefix="ship" k="code" errors={errors} />
             </div>
-            <label style={label}>Tiempo de entrega<input style={input} value={form.eta_text} onChange={(e) => set({ eta_text: e.target.value })} />{errors.eta_text && <span style={err}>{errors.eta_text}</span>}</label>
-            <label style={label}>Orden<input style={input} inputMode="numeric" value={form.sort_order} onChange={(e) => set({ sort_order: e.target.value })} />{errors.sort_order && <span style={err}>{errors.sort_order}</span>}</label>
-            <label style={{ ...label, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="checkbox" checked={form.is_active} onChange={(e) => set({ is_active: e.target.checked })} /> Activo</label>
-            {errors.is_active && <span style={err}>{errors.is_active}</span>}
+            <div style={{ minWidth: 0 }}><label style={label}>Nombre<input style={input} value={form.name} onChange={(e) => set({ name: e.target.value })} {...fieldA11y(errors, 'ship', 'name')} /></label><FieldError prefix="ship" k="name" errors={errors} /></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div style={{ minWidth: 0 }}><label style={label}>Tarifa (COP)<input style={input} inputMode="numeric" value={form.cost} onChange={(e) => set({ cost: e.target.value })} {...fieldA11y(errors, 'ship', 'cost')} /></label><FieldError prefix="ship" k="cost" errors={errors} /></div>
+              <div style={{ minWidth: 0 }}><label style={label}>Envío gratis desde (COP, opcional)<input style={input} inputMode="numeric" value={form.free_over_subtotal} onChange={(e) => set({ free_over_subtotal: e.target.value })} {...fieldA11y(errors, 'ship', 'free_over_subtotal')} /></label><FieldError prefix="ship" k="free_over_subtotal" errors={errors} /></div>
+            </div>
+            <div style={{ minWidth: 0 }}><label style={label}>Tiempo de entrega<input style={input} value={form.eta_text} onChange={(e) => set({ eta_text: e.target.value })} {...fieldA11y(errors, 'ship', 'eta_text')} /></label><FieldError prefix="ship" k="eta_text" errors={errors} /></div>
+            <div style={{ minWidth: 0 }}><label style={label}>Orden<input style={input} inputMode="numeric" value={form.sort_order} onChange={(e) => set({ sort_order: e.target.value })} {...fieldA11y(errors, 'ship', 'sort_order')} /></label><FieldError prefix="ship" k="sort_order" errors={errors} /></div>
+            <div><label style={{ ...label, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="checkbox" checked={form.is_active} onChange={(e) => set({ is_active: e.target.checked })} {...fieldA11y(errors, 'ship', 'is_active')} /> Activo</label><FieldError prefix="ship" k="is_active" errors={errors} /></div>
             {errors.form && <div role="alert" style={err}>{errors.form}</div>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button type="button" onClick={() => setForm(null)} style={btnLight}>Cancelar</button>
