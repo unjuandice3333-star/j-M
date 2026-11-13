@@ -1021,3 +1021,16 @@
 - Commits: `3a70b5f` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bo) de Pendiente.
+
+## Ejecución 115 — 2026-11-13 16:25 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-03mh0c` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `5867e13`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bo) de Pendiente. «Encuentra tu talla» (solo deslizadores: sin entradas inválidas; se corrigió el estado accesible de la preferencia de ajuste), `AdminPasswordSetup` eliminado (D86) y vuelta a funcionalidad: flujo completo de cliente registrado (recorrido 47).
+- Archivos: `apps/web/src/pages/AccountPage.jsx`, `apps/web/src/layouts/AdminLayout.jsx`, `apps/web/src/components/Modals/SizeRecommenderModal.jsx`, `apps/web/src/pages/admin/AdminPasswordSetup.jsx` (eliminado), `apps/web/e2e/e2e_synthetic.cjs` (recorridos 47–48, 18 ampliado), pruebas `accountOrdersActions.test.jsx` (+3), `sizeAdvice.test.jsx` (+1), `adminAuthInventoryErrors.test.jsx` (−2).
+- Pruebas (ejecutadas aquí): recorrido 47 FALLÓ en la primera pasada completa (47/48: «carrito con 1 artículo(s) tras el pago») → defecto real corregido (D87) → recorrido 47 PASA; prueba vitest de vaciado falla sin el cambio (`git stash`) y pasa con él; prueba del modal de talla igual; `pnpm test:unit` 566/566 (56 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 48/48 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Defecto real corregido: tras pagar, si el cliente iba a «Mis pedidos» en lugar de a la confirmación, el carrito conservaba lo ya comprado.
+- Errores pendientes: ninguno nuevo. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `ca8421f` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bp) de Pendiente.
+
