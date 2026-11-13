@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Mail, Check } from '../Common/icons';
 import { subscribeNewsletter, validateNewsletterEmail } from '../../services/newsletterService';
 
@@ -10,20 +10,23 @@ export const NewsletterSignup = ({ source = 'home' }) => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle'); // idle | sending | done
   const [error, setError] = useState('');
+  const inputRef = useRef(null);
+  // Ejecución 112 (D83): el aviso se enlaza al campo (aria-describedby) y el foco vuelve a él.
+  const fail = (message) => { setError(message); requestAnimationFrame(() => inputRef.current?.focus()); };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (status === 'sending') return;
     const invalid = validateNewsletterEmail(email);
-    if (invalid) { setError(invalid); return; }
+    if (invalid) { fail(invalid); return; }
     setError('');
     setStatus('sending');
     try {
       await subscribeNewsletter(email, source);
       setStatus('done');
     } catch (err) {
-      setError(err.message);
       setStatus('idle');
+      fail(err.message);
     }
   };
 
@@ -60,7 +63,9 @@ export const NewsletterSignup = ({ source = 'home' }) => {
                 autoComplete="email"
                 maxLength={254}
                 value={email}
+                ref={inputRef}
                 aria-invalid={error ? 'true' : 'false'}
+                aria-describedby={error ? `newsletter-${source}-error` : undefined}
                 onChange={(e) => { setEmail(e.target.value); if (error) setError(''); }}
                 style={{ flex: 1, minWidth: '0', width: '100%', padding: '0.85rem 1.1rem', border: `1px solid ${error ? '#DC2626' : '#D4D4D8'}`, borderRadius: '6px', fontSize: '0.88rem', outline: 'none', backgroundColor: '#FFFFFF', boxSizing: 'border-box', flexBasis: '240px' }}
               />
@@ -73,7 +78,7 @@ export const NewsletterSignup = ({ source = 'home' }) => {
               </button>
             </div>
             {error && (
-              <span role="alert" style={{ fontSize: '0.8rem', color: '#B91C1C', fontWeight: 600 }}>{error}</span>
+              <span id={`newsletter-${source}-error`} role="alert" style={{ fontSize: '0.8rem', color: '#B91C1C', fontWeight: 600 }}>{error}</span>
             )}
             <span style={{ fontSize: '0.72rem', color: '#71717A', fontWeight: 500, marginTop: '0.2rem' }}>
               Sin spam. Puedes pedir la baja cuando quieras.

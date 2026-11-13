@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Trash2, Bookmark, ArrowRight, Truck, Sparkles, Plus, Minus, Tag, Check, X } from '../components/Common/icons';
 import { useECommerceStore } from '../store/eCommerceStore';
@@ -43,20 +43,29 @@ export const CartPage = () => {
 
   const [couponInput, setCouponInput] = useState('');
   const [couponFeedback, setCouponFeedback] = useState(null);
+  const couponInputRef = useRef(null);
 
   const totals = getTotals();
 
   const [applying, setApplying] = useState(false);
   const handleApplyCoupon = async (e) => {
     e.preventDefault();
-    if (couponInput.trim()) {
-      setApplying(true);
-      const res = await applyCoupon(couponInput);
-      setApplying(false);
-      setCouponFeedback(res);
-      if (res.success) setCouponInput('');
+    if (applying) return;
+    // Ejecución 112 (D83): sin código, o con un código rechazado, el aviso se enlaza al campo y el foco vuelve a él.
+    const focusInput = () => requestAnimationFrame(() => couponInputRef.current?.focus());
+    if (!couponInput.trim()) {
+      setCouponFeedback({ success: false, message: 'Escribe el código del cupón.' });
+      focusInput();
+      return;
     }
+    setApplying(true);
+    const res = await applyCoupon(couponInput);
+    setApplying(false);
+    setCouponFeedback(res);
+    if (res.success) setCouponInput('');
+    else focusInput();
   };
+  const couponError = couponFeedback && !couponFeedback.success && !appliedCoupon;
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '80vh' }}>
@@ -280,8 +289,11 @@ export const CartPage = () => {
                       <button onClick={removeCoupon} style={{ color: '#0369A1' }} aria-label="Quitar cupón"><X size={16} /></button>
                     </div>
                   ) : (
-                    <form onSubmit={handleApplyCoupon} style={{ display: 'flex', gap: '0.5rem' }}>
+                    <form onSubmit={handleApplyCoupon} noValidate style={{ display: 'flex', gap: '0.5rem' }}>
                       <input
+                        ref={couponInputRef}
+                        aria-invalid={couponError ? 'true' : 'false'}
+                        aria-describedby={couponError ? 'cart-coupon-feedback' : undefined}
                         type="text"
                         placeholder="Código del cupón"
                         aria-label="Código del cupón"
@@ -315,7 +327,7 @@ export const CartPage = () => {
                   )}
 
                   {couponFeedback && !appliedCoupon && (
-                    <div style={{ fontSize: '0.78rem', color: couponFeedback.success ? '#10B981' : '#E11D48', marginTop: '0.4rem', fontWeight: 600 }}>
+                    <div id="cart-coupon-feedback" role={couponFeedback.success ? 'status' : 'alert'} style={{ fontSize: '0.78rem', color: couponFeedback.success ? '#047857' : '#B91C1C', marginTop: '0.4rem', fontWeight: 600 }}>
                       {couponFeedback.message}
                     </div>
                   )}

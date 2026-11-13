@@ -1,9 +1,11 @@
 // Ejecución 71: el cliente opina sobre un producto que compró (migración 20261111180000).
 // La BD verifica la compra y deja la reseña pendiente hasta que el admin la apruebe en /admin/reviews.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Star } from '../Common/icons';
 import { useAuthStore } from '../../store/authStore.js';
+import FieldError from '../Common/FieldError';
+import { fieldA11y, groupA11y, focusFirstError } from '../../utils/formErrors';
 import { fetchMyReviewables, submitReview, validateReview, REVIEW_LIMITS } from '../../services/reviewsService.js';
 
 const STATUS_TEXT = {
@@ -15,6 +17,9 @@ const STATUS_TEXT = {
 const box = { border: '1px solid #E4E4E7', borderRadius: 8, padding: '1.25rem', backgroundColor: '#FFF', marginBottom: '1.5rem' };
 const label = { display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.3rem', color: '#27272A' };
 const input = { width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #D4D4D8', borderRadius: 6, fontSize: '0.9rem', boxSizing: 'border-box' };
+// Ejecución 112 (D83): errores enlazados al campo (utils/formErrors.js) y foco al primero en el orden visual.
+const ERROR_ORDER = ['item', 'rating', 'title', 'comment', 'city'];
+const P = 'review';
 const errText = { color: '#B91C1C', fontSize: '0.78rem', marginTop: '0.25rem' };
 
 const purchaseLabel = (it) => [it.orderNumber, [it.color, it.size].filter(Boolean).join(' · ')].filter(Boolean).join(' — ');
@@ -33,6 +38,7 @@ export const ProductReviewForm = ({ productId }) => {
   const [errors, setErrors] = useState({});
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState(null);
+  const formRef = useRef(null);
 
   const load = async () => {
     try {
@@ -77,7 +83,7 @@ export const ProductReviewForm = ({ productId }) => {
     const v = validateReview({ rating, title, comment, city });
     if (!itemId) v.item = 'Elige la compra sobre la que quieres opinar.';
     setErrors(v);
-    if (Object.keys(v).length) return;
+    if (Object.keys(v).length) { focusFirstError(formRef.current, ERROR_ORDER, v); return; }
     setSending(true);
     try {
       await submitReview({ orderItemId: itemId, rating, title, comment, city });
@@ -113,47 +119,47 @@ export const ProductReviewForm = ({ productId }) => {
       )}
 
       {open.length > 0 && (
-        <form onSubmit={onSubmit} noValidate style={{ display: 'grid', gap: '0.85rem' }}>
+        <form ref={formRef} onSubmit={onSubmit} noValidate style={{ display: 'grid', gap: '0.85rem' }}>
           {open.length > 1 ? (
             <div>
               <label style={label} htmlFor="review-item">Compra</label>
-              <select id="review-item" style={input} value={itemId} onChange={(e) => setItemId(e.target.value)}>
+              <select id="review-item" {...fieldA11y(errors, P, 'item')} style={input} value={itemId} onChange={(e) => setItemId(e.target.value)}>
                 {open.map((it) => <option key={it.orderItemId} value={it.orderItemId}>{purchaseLabel(it)}</option>)}
               </select>
-              {errors.item && <div style={errText}>{errors.item}</div>}
+              <FieldError prefix={P} k="item" errors={errors} />
             </div>
           ) : (
             <p style={{ fontSize: '0.8rem', color: '#71717A', margin: 0 }}>Compra: {purchaseLabel(open[0])}</p>
           )}
 
-          <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+          <fieldset style={{ border: 0, padding: 0, margin: 0 }} aria-describedby={errors.rating ? `${P}-rating-error` : undefined}>
             <legend style={label}>Calificación</legend>
             <div style={{ display: 'flex', gap: 0 }}>
               {[1, 2, 3, 4, 5].map((n) => (
-                <button key={n} type="button" aria-pressed={rating === n} aria-label={`${n} de 5 estrellas`} onClick={() => setRating(n)}
+                <button key={n} type="button" {...(n === 1 ? groupA11y(errors, P, 'rating') : {})} aria-pressed={rating === n} aria-label={`${n} de 5 estrellas`} onClick={() => setRating(n)}
                   style={{ background: 'none', border: 0, padding: 7, cursor: 'pointer', minWidth: 36, minHeight: 36 }}>
                   <Star size={22} fill={n <= rating ? '#D4AF37' : 'none'} color="#D4AF37" />
                 </button>
               ))}
             </div>
-            {errors.rating && <div style={errText}>{errors.rating}</div>}
+            <FieldError prefix={P} k="rating" errors={errors} />
           </fieldset>
 
           <div>
             <label style={label} htmlFor="review-title">Título</label>
-            <input id="review-title" style={input} value={title} maxLength={REVIEW_LIMITS.titleMax} onChange={(e) => setTitle(e.target.value)} />
-            {errors.title && <div style={errText}>{errors.title}</div>}
+            <input id="review-title" {...fieldA11y(errors, P, 'title')} style={input} value={title} maxLength={REVIEW_LIMITS.titleMax} onChange={(e) => setTitle(e.target.value)} />
+            <FieldError prefix={P} k="title" errors={errors} />
           </div>
           <div>
             <label style={label} htmlFor="review-comment">Comentario</label>
-            <textarea id="review-comment" style={{ ...input, minHeight: 96, resize: 'vertical' }} value={comment}
+            <textarea id="review-comment" {...fieldA11y(errors, P, 'comment')} style={{ ...input, minHeight: 96, resize: 'vertical' }} value={comment}
               maxLength={REVIEW_LIMITS.commentMax} onChange={(e) => setComment(e.target.value)} />
-            {errors.comment && <div style={errText}>{errors.comment}</div>}
+            <FieldError prefix={P} k="comment" errors={errors} />
           </div>
           <div>
             <label style={label} htmlFor="review-city">Ciudad (opcional)</label>
-            <input id="review-city" style={input} value={city} maxLength={REVIEW_LIMITS.cityMax} onChange={(e) => setCity(e.target.value)} />
-            {errors.city && <div style={errText}>{errors.city}</div>}
+            <input id="review-city" {...fieldA11y(errors, P, 'city')} style={input} value={city} maxLength={REVIEW_LIMITS.cityMax} onChange={(e) => setCity(e.target.value)} />
+            <FieldError prefix={P} k="city" errors={errors} />
           </div>
           <p style={{ fontSize: '0.75rem', color: '#71717A', margin: 0 }}>
             Se publicará con tu nombre y la inicial de tu apellido después de que la revisemos.
