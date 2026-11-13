@@ -932,3 +932,14 @@
 - Commits: `e5c2e79` (código) + el de documentación; publicados solo en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bg) de Pendiente (recorrido 42 sobre modales y en móvil; `aria-describedby` de errores del checkout).
+
+## Ejecución 107 — 2026-11-13 07:09 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-iiho90` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `ce97690`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bg) de Pendiente. Contraste y nombres accesibles dentro de los modales abiertos y a 375×812; `aria-describedby` y foco en los errores del checkout (D78).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (`auditA11y` con ámbito, `a11yRoutes`, recorridos 43 y 44), `components/Header/Header.jsx`, `components/Modals/SizeRecommenderModal.jsx`, `pages/CheckoutPage.jsx`, nuevo `__tests__/cartDrawerA11y.test.jsx`, `__tests__/checkoutPage.test.jsx`.
+- Pruebas (ejecutadas aquí): recorrido 43 sin los cambios de `src`: 10 fallos reales (carrito lateral: eliminar/−/+ sin nombre; 2 deslizadores sin nombre); con ellos 26/26 modales medidos y PASS; recorrido 44 (30 rutas a 375×812) PASS; `pnpm test:unit` 530/530 (51 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 44/44 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: objetivo táctil dentro de modales sin medir; formularios del admin y de «Mi cuenta» sin `aria-describedby`. Texto sobre fotos no medible. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `93d6db9` (código) + el de documentación; publicados solo en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bh) de Pendiente (objetivo táctil dentro de modales a 375×812; `aria-describedby`/foco al primer error en formularios del admin y de «Mi cuenta»).
