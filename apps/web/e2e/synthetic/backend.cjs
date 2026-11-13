@@ -361,6 +361,8 @@ function start(port = 54321) {
           S.tables.site_content.push(row); return send(res, 200, row);
         }
         if (p.startsWith('/__synthetic-mark-delivered/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o || o.status !== 'paid') return send(res, 404, {}); for (const st of ['processing', 'shipped', 'delivered']) transition(o, st, 'sintético'); return send(res, 200, { status: o.status }); }
+        // Ejecución 119: otra compra (fuera de este navegador) se lleva unidades: fija el stock FÍSICO de un SKU.
+        if (p.startsWith('/__synthetic-set-stock/')) { const [, sku, n] = p.split('/').slice(1); const inv = S.inventories.find((i) => i.variants.sku === decodeURIComponent(sku)); if (!inv) return send(res, 404, {}); inv.stock = Number(n); return send(res, 200, { sku: inv.variants.sku, stock: inv.stock }); }
         if (p.startsWith('/__synthetic-mark-paid/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); inv.reserved -= it.quantity; inv.stock -= it.quantity; } transition(o, 'paid', 'sintético'); return send(res, 200, { status: 'paid' }); }
         if (p === '/auth/v1/signup') {
           if (S.users.some((u) => u.email === body.email)) return send(res, 422, { code: 'user_already_exists', msg: 'User already registered', message: 'User already registered' });

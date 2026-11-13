@@ -16,13 +16,19 @@ export const CartPage = () => {
     removeCoupon,
     getTotals,
     refreshQuote,
-    quote,
     cartNotice,
     dismissCartNotice,
     loadProducts,
     products,
-    changeVariant
+    changeVariant,
+    fitCartToStock
   } = useECommerceStore();
+  const [stockMsg, setStockMsg] = useState(null);
+  const onFitStock = (variantId = null) => {
+    const r = fitCartToStock(variantId);
+    setQtyError(null);
+    if (r.changes.length) setStockMsg(r.changes.join(' '));
+  };
   const [variantMsg, setVariantMsg] = useState(null); // { itemId, ok, text }
   const onChangeVariant = (item, size, color) => {
     const r = changeVariant(item.id, size, color);
@@ -39,13 +45,25 @@ export const CartPage = () => {
     setQuoteError(null);
     refreshQuote().catch((e) => setQuoteError(e.message));
   }, [itemsKey, appliedCoupon?.code]); // eslint-disable-line react-hooks/exhaustive-deps
-  const outOfStock = (quote?.lines ?? []).filter((l) => !l.in_stock);
+  // Ejecución 119 (D92): al volver a la pestaña se vuelve a consultar el stock (otra persona pudo comprar la última unidad).
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || !useECommerceStore.getState().items.length) return;
+      refreshQuote().then(() => setQuoteError(null)).catch((e) => setQuoteError(e.message));
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => { document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('focus', onVisible); };
+  }, [refreshQuote]);
 
   const [couponInput, setCouponInput] = useState('');
   const [couponFeedback, setCouponFeedback] = useState(null);
   const couponInputRef = useRef(null);
 
   const totals = getTotals();
+  // Solo cuenta la cotización del carrito ACTUAL (una vieja podría señalar líneas que ya se ajustaron).
+  const outOfStock = totals.isEstimate ? [] : totals.lines.filter((l) => !l.in_stock);
+  const shortByVariant = new Map(outOfStock.map((l) => [l.variant_id, Math.max(0, Number(l.available) || 0)]));
 
   const [applying, setApplying] = useState(false);
   const handleApplyCoupon = async (e) => {
@@ -152,13 +170,14 @@ export const CartPage = () => {
                   <div
                     key={item.id}
                     className="cart-line"
+                    data-stock-short={shortByVariant.has(item.variantId) ? 'true' : undefined}
                     style={{
                       display: 'grid',
                       gridTemplateColumns: '100px 1fr auto',
                       gap: '1.5rem',
                       padding: '1.5rem',
                       borderRadius: '8px',
-                      border: '1px solid #E4E4E7',
+                      border: shortByVariant.has(item.variantId) ? '1px solid #FCA5A5' : '1px solid #E4E4E7',
                       backgroundColor: '#FFFFFF',
                       alignItems: 'center'
                     }}
@@ -204,6 +223,19 @@ export const CartPage = () => {
                               </select>
                             </label>
                             {variantMsg?.itemId === item.id && variantMsg.text && <span role={variantMsg.ok ? 'status' : 'alert'} style={{ color: variantMsg.ok ? '#065F46' : '#B91C1C', fontWeight: 700 }}>{variantMsg.text}</span>}
+                          </div>
+                        );
+                      })()}
+
+                      {shortByVariant.has(item.variantId) && (() => {
+                        const avail = shortByVariant.get(item.variantId);
+                        return (
+                          <div role="alert" className="cart-line-stock" style={{ color: '#B91C1C', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.8rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span>{avail <= 0 ? 'Agotado: ya no quedan unidades de esta talla y color.' : `Solo quedan ${avail}; tienes ${item.quantity} en el carrito.`}</span>
+                            <button type="button" className="jm-tap" onClick={() => onFitStock(item.variantId)}
+                              style={{ textDecoration: 'underline', color: '#B91C1C', fontWeight: 800 }}>
+                              {avail <= 0 ? 'Quitar del carrito' : `Ajustar a ${avail}`}
+                            </button>
                           </div>
                         );
                       })()}
@@ -368,7 +400,18 @@ export const CartPage = () => {
                   <div role="alert" style={{ backgroundColor: '#FEF2F2', color: '#B91C1C', padding: '0.7rem 0.9rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, marginBottom: '1rem' }}>
                     {qtyError && <div>{qtyError}</div>}
                     {quoteError && <div>{quoteError}</div>}
-                    {outOfStock.map((l) => <div key={l.variant_id}>{l.product_name} ({l.size_code}, {l.color_name}): solo hay {l.available} disponible(s).</div>)}
+                    {outOfStock.map((l) => <div key={l.variant_id}>{l.product_name} ({l.size_code}, {l.color_name}): {Number(l.available) > 0 ? `solo quedan ${l.available} unidad(es)` : 'agotado'}.</div>)}
+                    {outOfStock.length > 0 && (
+                      <button type="button" className="jm-tap" onClick={() => onFitStock()}
+                        style={{ marginTop: '0.5rem', textDecoration: 'underline', color: '#B91C1C', fontWeight: 800 }}>
+                        Ajustar el carrito al stock disponible
+                      </button>
+                    )}
+                  </div>
+                )}
+                {stockMsg && outOfStock.length === 0 && (
+                  <div role="status" style={{ backgroundColor: '#ECFDF5', color: '#065F46', padding: '0.7rem 0.9rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, marginBottom: '1rem' }}>
+                    {stockMsg}
                   </div>
                 )}
                 <button

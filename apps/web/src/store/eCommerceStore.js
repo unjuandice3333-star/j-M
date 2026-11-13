@@ -275,8 +275,36 @@ export const useECommerceStore = create(
         if (requestId !== quoteRequestSeq) return null; // llegó una cotización más reciente (p. ej. otro método de envío)
         if (cartSignature(get().items) !== signature) return null; // el carrito cambió mientras tanto
         if (appliedCoupon && q.coupon && !q.coupon.valid) set({ appliedCoupon: null });
-        set({ quote: { ...q, signature, shippingMethod } });
+        // Ejecución 119 (D92): la disponibilidad de la BD sustituye a la del catálogo cargado (puede ser vieja), para que
+        // «+» no permita superar lo que realmente queda. La cantidad no se toca aquí (eso lo decide el cliente).
+        const fresh = new Map((q.lines ?? []).filter((l) => l.available != null).map((l) => [l.variant_id, Math.max(0, Number(l.available) || 0)]));
+        const items2 = get().items.map((i) => (fresh.has(i.variantId) && fresh.get(i.variantId) !== i.available ? { ...i, available: fresh.get(i.variantId) } : i));
+        set({ quote: { ...q, signature, shippingMethod }, ...(items2.some((i, k) => i !== get().items[k]) ? { items: items2 } : {}) });
         return q;
+      },
+
+      /**
+       * Ejecución 119 (D92): ajusta el carrito al stock que informó la BD en la última cotización vigente: quita las
+       * variantes agotadas y baja la cantidad al disponible. Solo actúa por petición del cliente (no en silencio).
+       * Devuelve el texto de lo que cambió para anunciarlo.
+       */
+      fitCartToStock: (variantId = null) => {
+        const { items, quote } = get();
+        if (!quote || quote.signature !== cartSignature(items)) return { ok: false, changes: [] };
+        const short = new Map((quote.lines ?? []).filter((l) => !l.in_stock && (!variantId || l.variant_id === variantId))
+          .map((l) => [l.variant_id, Math.max(0, Number(l.available) || 0)]));
+        if (!short.size) return { ok: true, changes: [] };
+        const changes = [];
+        const next = [];
+        for (const i of items) {
+          if (!short.has(i.variantId)) { next.push(i); continue; }
+          const avail = short.get(i.variantId);
+          if (avail <= 0) { changes.push(`Quitamos ${i.name} (${i.size}, ${i.color}): está agotado.`); continue; }
+          changes.push(`${i.name} (${i.size}, ${i.color}): cantidad ajustada a ${avail}.`);
+          next.push({ ...i, quantity: avail, available: avail });
+        }
+        set({ items: next, quote: null });
+        return { ok: true, changes };
       },
 
       /** Totales para mostrar: los de la BD si la cotización corresponde al carrito; si no, una estimación local. */

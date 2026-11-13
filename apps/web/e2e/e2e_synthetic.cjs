@@ -1875,6 +1875,43 @@ async function main() {
       if (await polo() !== reservedBefore + 1) throw new Error('el pedido nuevo no reservó el polo');
     }, browser);
 
+    await journey('53. Carrito: variante agotada o con menos stock mientras está en el carrito → aviso por línea y ajuste antes del checkout', async (p) => {
+      const setStock = (sku, n) => fetch(`${API_URL}/__synthetic-set-stock/${sku}/${n}`).then(j);
+      await addToCart(p, 'polo-clasico', 'M');
+      await addToCart(p, 'polo-clasico', 'M');
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await p.goto(`${BASE}/carrito`);
+      await expectText(p, 'CARRITO DE COMPRAS (3)');
+      const checkoutBtn = p.getByRole('button', { name: /PROCEDER AL CHECKOUT/ });
+      await p.waitForFunction(() => !document.querySelector('[data-stock-short]'), null, { timeout: 8000 });
+      if (await checkoutBtn.isDisabled()) throw new Error('con stock el checkout no debía estar bloqueado');
+      // catálogo ya cargado (los selectores de talla se habilitan con él): lo que sigue lo detecta solo la cotización
+      await p.waitForFunction(() => [...document.querySelectorAll('select[aria-label^="Talla de"]')].every((s) => !s.disabled), null, { timeout: 8000 });
+      // otra persona compra mientras el carrito está abierto: camiseta agotada y solo 1 polo
+      await setStock('CAM-M-NEG', 0); await setStock('POL-M-NEG', 1);
+      await p.evaluate(() => window.dispatchEvent(new Event('focus'))); // el cliente vuelve a la pestaña
+      const short = p.locator('[data-stock-short="true"]');
+      await p.waitForFunction(() => document.querySelectorAll('[data-stock-short="true"]').length === 2, null, { timeout: 8000 });
+      await short.filter({ hasText: 'Camiseta Básica' }).getByText('Agotado: ya no quedan unidades').waitFor();
+      await short.filter({ hasText: 'Polo Clásico' }).getByText('Solo quedan 1; tienes 2 en el carrito.').waitFor();
+      if (!(await checkoutBtn.isDisabled())) throw new Error('con líneas sin stock el checkout debía estar bloqueado');
+      // «+» ya respeta lo que dice la BD (no el catálogo cargado antes)
+      await p.getByRole('button', { name: 'Aumentar cantidad de Polo Clásico' }).click();
+      await expectText(p, 'Solo hay 1 unidad(es) disponibles.');
+      await p.getByRole('button', { name: 'Ajustar el carrito al stock disponible' }).click();
+      await p.waitForFunction(() => !document.querySelector('[data-stock-short]'), null, { timeout: 8000 });
+      await expectText(p, 'Quitamos Camiseta Básica (M, Negro): está agotado.');
+      await expectText(p, 'CARRITO DE COMPRAS (1)');
+      await p.waitForFunction(() => !document.querySelector('button[disabled]')?.textContent.includes('PROCEDER'), null, { timeout: 8000 });
+      await checkoutBtn.click();
+      await p.waitForURL(/\/checkout$/);
+      await fillCheckout(p, { email: 'stock.cart@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      const o = (await state()).orders.find((x) => x.customer_email === 'stock.cart@correo.co');
+      if (!o || o.online_order_items.length !== 1 || o.online_order_items[0].quantity !== 1) throw new Error(`pedido tras ajustar: ${JSON.stringify(o?.online_order_items?.map((i) => i.quantity))}`);
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
