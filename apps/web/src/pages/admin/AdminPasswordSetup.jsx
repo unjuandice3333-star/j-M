@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, ShieldCheck, CheckCircle, AlertCircle, ArrowRight } from '../../components/Common/icons';
 import supabase from '../../config/supabase';
 import { useAuthStore } from '../../store/authStore.js';
+
+// Ejecución 110 (D81): el aviso se enlaza al campo que lo causa (aria-invalid + aria-describedby) y el foco va a él;
+// etiquetas asociadas a su campo (antes el nombre solo venía del placeholder).
+const ERROR_ID = 'admin-password-error';
 
 export const AdminPasswordSetup = () => {
   const navigate = useNavigate();
@@ -13,29 +17,42 @@ export const AdminPasswordSetup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorField, setErrorField] = useState(null); // 'password' | 'confirm' | null (errores de sesión/servidor)
+  const passwordRef = useRef(null);
+  const confirmRef = useRef(null);
+
+  const fail = (message, field = null) => {
+    setErrorMessage(message);
+    setErrorField(field);
+    if (field) (field === 'password' ? passwordRef : confirmRef).current?.focus();
+  };
+  const fieldA11y = (key) => (errorMessage && errorField === key
+    ? { 'aria-invalid': true, 'aria-describedby': ERROR_ID }
+    : { 'aria-invalid': false });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
+    setErrorField(null);
     setSuccess(false);
 
     if (!user) {
-      setErrorMessage('No existe una sesión administrativa activa.');
+      fail('No existe una sesión administrativa activa.');
       return;
     }
 
     if (!profile || !['admin', 'super_admin'].includes(profile.role)) {
-      setErrorMessage('No tienes permisos administrativos para realizar esta acción.');
+      fail('No tienes permisos administrativos para realizar esta acción.');
       return;
     }
 
     if (password.length < 8) {
-      setErrorMessage('La contraseña debe tener mínimo 8 caracteres.');
+      fail('La contraseña debe tener mínimo 8 caracteres.', 'password');
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMessage('Las contraseñas no coinciden.');
+      fail('Las contraseñas no coinciden.', 'confirm');
       return;
     }
 
@@ -166,6 +183,7 @@ export const AdminPasswordSetup = () => {
 
         {errorMessage && (
           <div
+            role="alert"
             style={{
               backgroundColor: 'rgba(225, 29, 72, 0.1)',
               border: '1px solid #E11D48',
@@ -181,12 +199,13 @@ export const AdminPasswordSetup = () => {
             }}
           >
             <AlertCircle size={18} />
-            <span>{errorMessage}</span>
+            <span id={ERROR_ID}>{errorMessage}</span>
           </div>
         )}
 
         {success && (
           <div
+            role="status"
             style={{
               backgroundColor: 'rgba(16, 185, 129, 0.1)',
               border: '1px solid #10B981',
@@ -219,6 +238,7 @@ export const AdminPasswordSetup = () => {
         >
           <div>
             <label
+              htmlFor="admin-password-new"
               style={{
                 display: 'block',
                 fontSize: '0.78rem',
@@ -245,7 +265,11 @@ export const AdminPasswordSetup = () => {
               <Lock size={18} color="#71717A" />
 
               <input
+                id="admin-password-new"
+                ref={passwordRef}
                 type="password"
+                autoComplete="new-password"
+                {...fieldA11y('password')}
                 required
                 minLength={8}
                 value={password}
@@ -266,6 +290,7 @@ export const AdminPasswordSetup = () => {
 
           <div>
             <label
+              htmlFor="admin-password-confirm"
               style={{
                 display: 'block',
                 fontSize: '0.78rem',
@@ -292,7 +317,11 @@ export const AdminPasswordSetup = () => {
               <Lock size={18} color="#71717A" />
 
               <input
+                id="admin-password-confirm"
+                ref={confirmRef}
                 type="password"
+                autoComplete="new-password"
+                {...fieldA11y('confirm')}
                 required
                 minLength={8}
                 value={confirmPassword}

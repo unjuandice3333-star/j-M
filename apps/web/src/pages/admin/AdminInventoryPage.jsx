@@ -11,6 +11,8 @@ import { normalizeText } from '../../utils/catalogFilters';
  * «alerta» usa la MISMA regla que `admin_dashboard_metrics.low_stock_variants`: variante activa y disponible
  * (stock − reservado) ≤ mínimo; incluye las agotadas. Valor desconocido → todas.
  */
+
+const NOTICE_ID = 'inventory-adjust-notice';
 export const STOCK_FILTERS = { todos: 'Todas las variantes', alerta: 'Stock bajo o agotado', agotado: 'Agotadas' };
 export const stockFilterFromParam = (value) => (Object.hasOwn(STOCK_FILTERS, value) ? value : 'todos');
 export const isStockAlert = (item) => item.variantActive && item.available <= item.min;
@@ -74,13 +76,23 @@ export const AdminInventoryPage = () => {
     fetchRealInventory();
   }, []);
 
+  // Ejecución 110 (D81): un error de validación del ajuste se enlaza al campo de ESA fila (aria-invalid +
+  // aria-describedby → aviso) y el foco vuelve a él; antes el aviso salía arriba de la tabla sin indicar fila ni campo.
+  const failOn = (item, key, text) => {
+    setNotice({ ok: false, text, rowId: item.id, key });
+    document.getElementById(`inv-${key}-${item.id}`)?.focus();
+  };
+  const adjustA11y = (item, key) => (notice && !notice.ok && notice.rowId === item.id && notice.key === key
+    ? { 'aria-invalid': true, 'aria-describedby': NOTICE_ID }
+    : { 'aria-invalid': false });
+
   /** Ajuste con trazabilidad (admin_adjust_inventory): entrada (restock) o ajuste (+/-) con motivo obligatorio. */
   const handleStockAdjustment = async (item) => {
     const changeVal = Number(adjustmentValue[item.id]);
     const reason = (reasons[item.id] || '').trim();
     setNotice(null);
-    if (!Number.isInteger(changeVal) || changeVal === 0) { setNotice({ ok: false, text: 'Escribe una cantidad entera distinta de 0 (ej. 5 o -2).' }); return; }
-    if (!reason) { setNotice({ ok: false, text: 'Escribe el motivo del ajuste.' }); return; }
+    if (!Number.isInteger(changeVal) || changeVal === 0) { failOn(item, 'qty', 'Escribe una cantidad entera distinta de 0 (ej. 5 o -2).'); return; }
+    if (!reason) { failOn(item, 'reason', 'Escribe el motivo del ajuste.'); return; }
     setAdjustingId(item.id);
     try {
       const r = await adminService.adjustInventory(item.variantId, changeVal, changeVal > 0 ? 'restock' : 'adjustment', reason);
@@ -160,7 +172,7 @@ export const AdminInventoryPage = () => {
       {/* INVENTORY TABLE */}
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
         {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600, padding: '1rem' }}>{loadError}</div>}
-        {notice && <div role={notice.ok ? 'status' : 'alert'} style={{ color: notice.ok ? '#065F46' : '#B91C1C', fontWeight: 600, padding: '0.75rem 1rem' }}>{notice.text}</div>}
+        {notice && <div id={NOTICE_ID} role={notice.ok ? 'status' : 'alert'} style={{ color: notice.ok ? '#065F46' : '#B91C1C', fontWeight: 600, padding: '0.75rem 1rem' }}>{notice.text}</div>}
         {isLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#71717A' }}>
             Cargando inventario real desde Supabase PostgreSQL...
@@ -215,6 +227,8 @@ export const AdminInventoryPage = () => {
                   <td style={{ ...tdInv, textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', alignItems: 'center' }}>
                       <input
+                        id={`inv-qty-${item.id}`}
+                        {...adjustA11y(item, 'qty')}
                         type="number"
                         placeholder="+/- Cant"
                         value={adjustmentValue[item.id] || ''}
@@ -223,6 +237,8 @@ export const AdminInventoryPage = () => {
                         style={{ width: '80px', minHeight: '36px', padding: '0.3rem', border: '1px solid #D4D4D8', borderRadius: '4px', textAlign: 'center', fontWeight: 700 }}
                       />
                       <input
+                        id={`inv-reason-${item.id}`}
+                        {...adjustA11y(item, 'reason')}
                         type="text"
                         placeholder="Motivo"
                         aria-label={`Motivo del ajuste ${item.sku}`}

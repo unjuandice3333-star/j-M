@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore.js';
 import { Lock, ShieldCheck, Mail, ArrowRight, AlertCircle, LogOut } from '../../components/Common/icons';
+
+// Ejecución 110 (D81): el aviso de error se enlaza a los campos que lo causan (aria-invalid + aria-describedby) y el
+// foco va al primero; las etiquetas quedan asociadas a su campo (antes el nombre solo venía del placeholder).
+const ERROR_ID = 'admin-login-error';
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" style={{ flexShrink: 0 }} aria-hidden="true" focusable="false">
@@ -28,6 +32,10 @@ export const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState(null);
+  // Campos señalados por el error actual del formulario ('email' | 'password'); vacío para errores de sesión/OAuth.
+  const [errorFields, setErrorFields] = useState([]);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const { login, loginWithGoogle, logout, isLoading, isLoggedIn, user, profile } = useAuthStore();
@@ -59,6 +67,7 @@ export const AdminLogin = () => {
   // 3. Inicio de sesión mediante Google OAuth
   const handleGoogleLogin = async () => {
     setErrorMessage(null);
+    setErrorFields([]);
     setIsGoogleLoading(true);
 
     try {
@@ -75,9 +84,13 @@ export const AdminLogin = () => {
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setErrorMessage(null);
+    setErrorFields([]);
 
     if (!email || !password) {
+      const missing = [!email && 'email', !password && 'password'].filter(Boolean);
       setErrorMessage('Por favor ingresa tu correo y contraseña administrativa.');
+      setErrorFields(missing);
+      (missing[0] === 'email' ? emailRef : passwordRef).current?.focus();
       return;
     }
 
@@ -98,6 +111,8 @@ export const AdminLogin = () => {
     } catch (err) {
       console.error('[AdminLogin Password Exception]:', err);
       setErrorMessage('Credenciales inválidas o acceso denegado. Verifica tu correo y contraseña.');
+      setErrorFields(['email', 'password']);
+      emailRef.current?.focus();
     }
   };
 
@@ -105,7 +120,12 @@ export const AdminLogin = () => {
   const handleClearSession = async () => {
     await logout();
     setErrorMessage(null);
+    setErrorFields([]);
   };
+
+  const fieldA11y = (key) => (errorMessage && errorFields.includes(key)
+    ? { 'aria-invalid': true, 'aria-describedby': ERROR_ID }
+    : { 'aria-invalid': false });
 
   return (
     <main style={{
@@ -156,7 +176,7 @@ export const AdminLogin = () => {
 
         {/* ERROR / UNAUTHORIZED BANNER */}
         {errorMessage && (
-          <div style={{
+          <div role="alert" style={{
             backgroundColor: 'rgba(225, 29, 72, 0.1)',
             border: '1px solid #E11D48',
             color: '#FB7185',
@@ -170,8 +190,8 @@ export const AdminLogin = () => {
             gap: '0.6rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <AlertCircle size={18} style={{ flexShrink: 0 }} />
-              <span>{errorMessage}</span>
+              <AlertCircle size={18} style={{ flexShrink: 0 }} aria-hidden="true" />
+              <span id={ERROR_ID}>{errorMessage}</span>
             </div>
 
             {isLoggedIn && user && (
@@ -270,13 +290,17 @@ export const AdminLogin = () => {
         {/* EMAIL & PASSWORD FALLBACK FORM */}
         <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#D4D4D8', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>
+            <label htmlFor="admin-login-email" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#D4D4D8', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>
               Correo Administrativo
             </label>
             <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#18181B', border: '1px solid #3F3F46', borderRadius: '8px', padding: '0 0.8rem' }}>
               <Mail size={18} color="#71717A" />
               <input
+                id="admin-login-email"
+                ref={emailRef}
                 type="email"
+                autoComplete="username"
+                {...fieldA11y('email')}
                 required
                 placeholder="admin@jmfashion.com"
                 value={email}
@@ -295,13 +319,17 @@ export const AdminLogin = () => {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#D4D4D8', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>
+            <label htmlFor="admin-login-password" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#D4D4D8', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>
               Contraseña
             </label>
             <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#18181B', border: '1px solid #3F3F46', borderRadius: '8px', padding: '0 0.8rem' }}>
               <Lock size={18} color="#71717A" />
               <input
+                id="admin-login-password"
+                ref={passwordRef}
                 type="password"
+                autoComplete="current-password"
+                {...fieldA11y('password')}
                 required
                 placeholder="••••••••••••"
                 value={password}
