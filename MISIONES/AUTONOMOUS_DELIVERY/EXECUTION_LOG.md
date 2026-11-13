@@ -1070,3 +1070,15 @@
 - Commits: `72e09ef` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(br)(2)–(3) de Pendiente (pedido vencido libera reserva y sale de «por preparar» en E2E del admin; variante agotada en el carrito avisada en `/carrito`).
+
+## Ejecución 119 — 2026-11-13 20:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-mknrds` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `21d6cf5`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(br)(3) de Pendiente. Variante agotada o con menos stock mientras está en el carrito → aviso por línea en `/carrito` con «Quitar del carrito» / «Ajustar a N» / ajuste global, nueva cotización al volver a la pestaña y «+» limitado por la BD (D92).
+- Archivos: `apps/web/src/store/eCommerceStore.js` (`refreshQuote` sincroniza `available`, nuevo `fitCartToStock`), `apps/web/src/pages/CartPage.jsx`, nuevo `apps/web/src/__tests__/cartStockShortage.test.jsx` (5), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 53), `apps/web/e2e/synthetic/backend.cjs` (fixture `/__synthetic-set-stock/<sku>/<n>`).
+- Pruebas (ejecutadas aquí): `cartStockShortage.test.jsx` 5/5 (los 5 fallan sin los cambios de `src`, `git stash`); recorrido 53 pasa y falla sin los cambios; `pnpm test:unit` 596/596 (59 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 53/53 en una pasada completa. Primera pasada completa: 52/53 por una carrera del propio recorrido (el catálogo terminaba de cargar después de cambiar el stock y la reconciliación existente ajustaba sola); corregido esperando el catálogo antes del cambio. Sin migración: pgTAP no re-ejecutado.
+- Defecto real corregido: con `/carrito` abierto, si otra compra agotaba una variante el cliente no lo veía hasta intentar pagar; el aviso decía «solo hay 0 disponible(s)» sin indicar la línea ni cómo resolverlo, y «+» permitía pasar del stock real.
+- Errores pendientes: el cajón del carrito (`CartDrawer`) aún no muestra el aviso por línea (punto 0(bs)(2)). No probado en WebKit ni contra Supabase real.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `2e1c4c8` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bs) de Pendiente.
