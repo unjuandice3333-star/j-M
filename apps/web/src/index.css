@@ -151,3 +151,31 @@ button {
     scroll-behavior: auto !important;
   }
 }
+
+/* Ejecución 103: enlace «Ir al contenido» (oculto hasta recibir el foco con Tab) y títulos que reciben el foco al
+   cambiar de página sin anillo al hacer clic (sí con teclado: :focus-visible). */
+.jm-skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -100px;
+  z-index: 10000;
+  padding: 0.75rem 1.25rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  background: #09090B;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 0.9rem;
+  border-radius: 0 0 12px 12px;
+  text-decoration: none;
+}
+.jm-skip-link:focus { top: 0; outline: 3px solid #F59E0B; outline-offset: 2px; }
+h1[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+.jm-sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}

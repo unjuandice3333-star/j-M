@@ -42,7 +42,10 @@ export const Login = () => {
     <div className={styles.container}>
       <div className={styles.loginCard}>
         <div className={styles.header}>
-          <span className={styles.logo}>J&M</span>
+          {/* Ejecución 103: la página no tenía <h1>; el título visible es el logo y el nombre accesible dice qué se hace aquí. */}
+          <h1 className={styles.logo} style={{ margin: 0, lineHeight: 1.2 }}>
+            J&M<span className="jm-sr-only"> — {isRegistering ? 'Crear cuenta' : 'Iniciar sesión'}</span>
+          </h1>
           <span className={styles.tagline}>FASHION STORE • ACCESO SISTEMA</span>
         </div>
 

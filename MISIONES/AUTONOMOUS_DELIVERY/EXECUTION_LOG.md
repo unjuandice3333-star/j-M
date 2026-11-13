@@ -891,3 +891,13 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bc) de Pendiente (enlace «Ir al contenido» y foco/anuncio al cambiar de ruta en la tienda; un `<h1>` por página).
+
+## Ejecución 103 — 2026-11-13 03:10 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-24pe8v` (= main, `2661f2a`); se trabajó en la rama autorizada = remoto `7b0066b`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bc) de Pendiente. «Ir al contenido», foco al cambiar de página y un `<h1>` por página en la tienda (D74).
+- Archivos: nuevo `apps/web/src/components/Common/RouteFocus.jsx`, nuevo `apps/web/src/__tests__/routeFocus.test.jsx`; `apps/web/src/layouts/PublicLayout.jsx`, `apps/web/src/index.css` (`.jm-skip-link`, `.jm-sr-only`), `apps/web/src/pages/AccountPage.jsx`, `CheckoutPage.jsx`, `Login.jsx`; `apps/web/e2e/e2e_synthetic.cjs` (recorrido 39: primer Tab, foco tras navegar desde la cabecera y desde una tarjeta, `<h1>` único en 25 rutas).
+- Pruebas (ejecutadas aquí): recorrido 39 falla sin los cambios de `src` (`git stash`: 6 fallos reales) y pasa con ellos; `routeFocus.test.jsx` 7/7; `pnpm test:unit` 509/509 (47 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 39/39 en la primera pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bd) de Pendiente (lo mismo en el admin).

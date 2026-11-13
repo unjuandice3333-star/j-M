@@ -171,7 +171,7 @@ export const CheckoutPage = () => {
   if (items.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '5rem 1rem' }}>
-        <h2>No tienes productos en el carrito para comprar</h2>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 900 }}>No tienes productos en el carrito para comprar</h1>
         <Link to="/ropa" style={{ color: '#09090B', fontWeight: 700, textDecoration: 'underline' }}>Volver a la tienda</Link>
       </div>
     );

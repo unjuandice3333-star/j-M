@@ -875,6 +875,47 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('39. Accesibilidad: «Ir al contenido», foco al cambiar de página y un único <h1> por página', async (p) => {
+      const failures = [];
+      const active = () => p.evaluate(() => { const a = document.activeElement; return { tag: a?.tagName, text: (a?.textContent || '').trim().slice(0, 60), inMain: !!a?.closest('main') }; });
+      // 1) el primer Tab muestra «Ir al contenido» y al activarlo el foco pasa al título de la página
+      await p.goto(`${BASE}/ropa`); await p.locator('main h1').waitFor();
+      await p.keyboard.press('Tab');
+      let a = await active();
+      if (a.tag !== 'A' || a.text !== 'Ir al contenido') failures.push(`primer Tab en /ropa: ${a.tag} «${a.text}» (se esperaba «Ir al contenido»)`);
+      else {
+        const box = await p.getByRole('link', { name: 'Ir al contenido' }).boundingBox();
+        if (!box || box.y < 0) failures.push('«Ir al contenido» no se ve al recibir el foco');
+        await p.keyboard.press('Enter');
+        a = await active();
+        if (a.tag !== 'H1' || !a.inMain) failures.push(`«Ir al contenido» dejó el foco en ${a.tag} «${a.text}»`);
+        if (!/\/ropa$/.test(p.url())) failures.push(`«Ir al contenido» cambió la URL: ${p.url()}`);
+      }
+      // 2) al cambiar de página el foco llega al <h1> de la página nueva (no queda en el enlace pulsado)
+      const landsOnH1 = async (where, re) => {
+        try { await p.waitForFunction((src) => { const a = document.activeElement; return a?.tagName === 'H1' && !!a.closest('main') && new RegExp(src, 'i').test(a.textContent); }, re.source, { timeout: 8000 }); }
+        catch { const x = await active(); failures.push(`${where}: el foco quedó en ${x.tag} «${x.text}»`); }
+      };
+      await p.getByRole('navigation', { name: 'Navegación principal' }).getByRole('link', { name: 'URBANA' }).click();
+      await p.waitForURL(/\/linea\/urbana$/); await landsOnH1('cabecera → /linea/urbana', /urbana/);
+      await p.locator('main a[href="/producto/camiseta-basica"]').first().click();
+      await p.waitForURL(/\/producto\/camiseta-basica$/); await landsOnH1('tarjeta → ficha', /camiseta/);
+      const scrollY = await p.evaluate(() => window.scrollY);
+      if (scrollY > 400) failures.push(`la ficha quedó desplazada (scrollY=${scrollY})`);
+      // 3) exactamente un <h1> en cada página de la tienda (estados vacíos, no encontrado y sin sesión incluidos)
+      const routes = ['/', '/ropa', '/ropa/camisetas', '/nuevo', '/linea/urbana', '/buscar?q=zzzz', '/producto/camiseta-basica', '/producto/no-existe',
+        '/guia-de-tallas', '/envios', '/cambios-y-devoluciones', '/preguntas-frecuentes', '/contacto', '/nosotros', '/tiendas', '/terminos', '/privacidad',
+        '/carrito', '/checkout', '/checkout/confirmacion', '/cuenta', '/cuenta/favoritos', '/cuenta/restablecer', '/login', '/unauthorized'];
+      for (const r of routes) {
+        await p.goto(`${BASE}${r}`);
+        try { await p.locator('h1').first().waitFor({ timeout: 8000 }); } catch { failures.push(`${r}: sin <h1>`); continue; }
+        await p.waitForTimeout(400);
+        const n = await p.locator('h1').count();
+        if (n !== 1) failures.push(`${r}: ${n} <h1>`);
+      }
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await journey('6. Pedido pagado (webhook SINTÉTICO, no Wompi): confirmación y carrito vacío', async (p) => {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);

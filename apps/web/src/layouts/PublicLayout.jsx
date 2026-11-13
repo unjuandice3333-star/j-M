@@ -9,6 +9,7 @@ import WhatsAppButton from '../components/Common/WhatsAppButton';
 import MobileBottomBar from '../components/Navigation/MobileBottomBar';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { useAuthStore } from '../store/authStore';
+import { SkipToContent, useRouteFocus, MAIN_ID } from '../components/Common/RouteFocus';
 
 export const PublicLayout = () => {
   const { loadProducts, productsError, isLoadingProducts, loadSiteContent } = useECommerceStore();
@@ -31,10 +32,12 @@ export const PublicLayout = () => {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [userId, authLoading, syncWishlist]);
+  useRouteFocus();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#FFFFFF', paddingBottom: '40px' }}>
+      <SkipToContent />
       <Header />
-      <main style={{ flex: 1 }}>
+      <main id={MAIN_ID} tabIndex={-1} style={{ flex: 1, outline: 'none' }}>
         {productsError && (
           <div role="alert" style={{ backgroundColor: '#FEF2F2', color: '#991B1B', padding: '0.85rem 1rem', textAlign: 'center', fontWeight: 600, fontSize: '0.9rem' }}>
             {productsError}{' '}

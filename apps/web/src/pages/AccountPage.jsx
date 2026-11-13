@@ -625,9 +625,9 @@ export const AccountPage = () => {
           boxShadow: '0 12px 36px rgba(0,0,0,0.06)'
         }}>
           <div style={{ textAlign: 'left', marginBottom: '1.75rem' }}>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#09090B', letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#09090B', letterSpacing: '-0.02em' }}>
               {isRegisterMode ? 'Crear cuenta' : 'Iniciar sesión'}
-            </h2>
+            </h1>
             <p style={{ fontSize: '0.88rem', color: '#71717A', marginTop: '0.25rem' }}>
               Continuar con <strong>J&M Fashion Store</strong>
             </p>
