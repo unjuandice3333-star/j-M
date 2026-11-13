@@ -943,3 +943,14 @@
 - Commits: `93d6db9` (código) + el de documentación; publicados solo en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bh) de Pendiente (objetivo táctil dentro de modales a 375×812; `aria-describedby`/foco al primer error en formularios del admin y de «Mi cuenta»).
+
+## Ejecución 108 — 2026-11-13 08:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-s19mww` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `e38ea8c`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bh) de Pendiente. Objetivo táctil dentro de los modales a 375×812 y errores de «Mi cuenta» enlazados a su campo con foco al primero (D79).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (recorrido 43 con `checkAllControls` en móvil), `apps/web/src/pages/admin/AdminOrdersPage.jsx` (`detailLink`), `apps/web/src/components/Account/AccountDetails.jsx`, `apps/web/src/__tests__/accountDetails.test.jsx` (2 pruebas nuevas).
+- Pruebas (ejecutadas aquí): recorrido 43 sin el cambio de `AdminOrdersPage`: 2 fallos reales («Buscar cliente por correo» 18 px, SKU 15 px), con él PASS; las 2 pruebas vitest nuevas fallan sin el cambio de `AccountDetails` (`git stash`) y pasan con él; `pnpm test:unit` 532/532 (51 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 44/44 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: formularios del admin (producto, cupón, colección, envío) sin `aria-describedby`/foco al primer error. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `28106e3` (código) + el de documentación; publicados solo en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bi) de Pendiente (`aria-describedby`/foco al primer error en los formularios del admin).
