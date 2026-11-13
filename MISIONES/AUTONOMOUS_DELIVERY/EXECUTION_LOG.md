@@ -1034,3 +1034,15 @@
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bp) de Pendiente.
 
+
+## Ejecución 116 — 2026-11-13 17:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-dn8oke` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `03814b0`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bp) de Pendiente. (1) Invitado que luego crea cuenta con el mismo correo → regla decidida (D88: no se vincula; acceso por enlace) e implementada en la UI; (2) carrito con la misma cuenta en dos navegadores → decidido (D89: carrito por navegador) y probado.
+- Archivos: `apps/web/src/store/eCommerceStore.js` (`syncSession`, `owner` en pedidos recordados), `apps/web/src/layouts/PublicLayout.jsx`, `apps/web/src/pages/AccountPage.jsx` (sección «¿Compraste sin iniciar sesión?»), `apps/web/src/pages/OrderConfirmationPage.jsx` (`GuestOrderLink`, `orderTrackingUrl`), `apps/web/e2e/e2e_synthetic.cjs` (recorridos 49–50), nuevo `apps/web/src/__tests__/guestOrders.test.jsx`.
+- Pruebas (ejecutadas aquí): `guestOrders.test.jsx` 8/8 (7 fallan sin los cambios de `src`, `git stash`); recorrido 49 falla sin los cambios y pasa con ellos; recorrido 50 pasa (primera versión falló por un detalle del fixture: el polo no tiene talla L → camiseta M); `pnpm test:unit` 574/574 (57 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 50/50 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Defecto real corregido: tras cerrar sesión, los pedidos hechos con la cuenta seguían en el navegador y `/checkout/confirmacion` listaba su enlace (nombre y dirección) a la siguiente persona del equipo.
+- Errores pendientes: la confirmación sin parámetros muestra «Pedido no encontrado» encima de «Pedidos hechos en este navegador» (cosmético, punto 0(bq)). No probado en WebKit ni con portapapeles restringido.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`. Decisión opcional del propietario (D88): vincular pedidos de invitado exigiría confirmación de correo activada.
+- Commits: `34df037` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bq) de Pendiente.
