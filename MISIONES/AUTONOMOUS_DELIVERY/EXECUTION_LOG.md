@@ -1046,3 +1046,15 @@
 - Commits: `34df037` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bq) de Pendiente.
+
+## Ejecución 117 — 2026-11-13 18:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-9gljyf` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `a2ef06c`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bq) de Pendiente. (1) Direcciones guardadas en el checkout: ya implementado (ejecución 57) y cubierto (vitest `accountDetails`, E2E); no se repitió. (2) Confirmación sin número/token: nuevo estado `nolink` con título propio. (3) Pago tras rechazo con carrito modificado: defecto real corregido (D90).
+- Archivos: `apps/web/src/store/eCommerceStore.js` (`activeCheckoutItems`, `finalizePaidOrder`), `apps/web/src/pages/OrderConfirmationPage.jsx`, `apps/web/src/__tests__/checkout.test.js` (+4), `apps/web/src/__tests__/guestOrders.test.jsx` (+3), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 51 nuevo, 49 más estricto).
+- Pruebas (ejecutadas aquí): sin los cambios de `src` (`git stash`) fallan 3 de `checkout.test.js`, 2 de `guestOrders.test.jsx` y los recorridos 49 y 51 (51: «carrito tras el pago: vacío»); con ellos pasan. `pnpm test:unit` 581/581 (57 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 51/51 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Defecto real corregido: tras un pago rechazado, si el cliente agregaba prendas y luego pagaba el pedido original desde «Mis pedidos», el carrito se vaciaba entero y perdía lo agregado.
+- Errores pendientes: ninguno nuevo. No probado en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `b21d65e` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(br) de Pendiente.
