@@ -965,3 +965,14 @@
 - Commits: `dead6be` (código) + el de documentación; publicados solo en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bj) de Pendiente.
+
+## Ejecución 110 — 2026-11-13 10:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-pk62dg` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `ee7b90a`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bj) de Pendiente (parte). `/admin/login`, `AdminPasswordSetup` y ajuste de inventario: etiquetas asociadas, aviso enlazado al campo que lo causa y foco en él (D81).
+- Archivos: `apps/web/src/pages/admin/AdminLogin.jsx`, `AdminPasswordSetup.jsx`, `AdminInventoryPage.jsx`; nuevo `apps/web/src/__tests__/adminAuthInventoryErrors.test.jsx`.
+- Pruebas (ejecutadas aquí): `adminAuthInventoryErrors.test.jsx` 5/5; sin los cambios de `pages/` (`git stash`) fallan las 5; `pnpm test:unit` 543/543 (53 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 44/44 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: imagen editorial y guía/estado del detalle de pedido sin el mismo patrón. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: el de código + el de documentación; publicados solo en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bk) de Pendiente.
