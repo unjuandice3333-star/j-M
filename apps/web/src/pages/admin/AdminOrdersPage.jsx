@@ -11,6 +11,8 @@ import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForO
 import { DialogPanel } from '../../components/Common/DialogPanel';
 
 const SEARCH_DEBOUNCE_MS = 300;
+const ORDER_ERROR_ID = 'order-modal-error';
+const ORDER_FIELD_ID = { status: 'order-next-status', carrier: 'order-carrier', tracking: 'order-tracking', url: 'order-tracking-url', note: 'order-note' };
 const ORDER_SELECT = `
         id, order_number, user_id, customer_name, customer_email, customer_phone, customer_document,
         shipping_department, shipping_city, shipping_address, shipping_neighborhood, shipping_notes, shipping_method_code,
@@ -109,6 +111,7 @@ export const AdminOrdersPage = () => {
   const [modalTrackingUrl, setModalTrackingUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [modalError, setModalError] = useState(null);
+  const [modalErrorFields, setModalErrorFields] = useState([]);
   const [notice, setNotice] = useState(null);
 
   const [totalCount, setTotalCount] = useState(null);
@@ -196,15 +199,34 @@ export const AdminOrdersPage = () => {
     setSelectedOrder(ord);
     setModalStatus('');
     setModalNote(''); setModalCarrier(ord.carrier || ''); setModalTracking(ord.tracking_number || ''); setModalTrackingUrl(ord.tracking_url || '');
-    setModalError(null);
+    setModalError(null); setModalErrorFields([]);
   };
 
+  // Ejecución 111 (D82): un error de validación del cambio de estado se enlaza al campo que lo causa (aria-invalid +
+  // aria-describedby → aviso del modal) y el foco va a él; antes el aviso salía arriba del modal sin indicar el campo.
+  // La URL de rastreo se valida aquí con la misma regla que el CHECK de la BD (^https://): antes llegaba a la BD y
+  // el admin veía un error genérico.
+  const failOn = (fields, text) => {
+    setModalError(text); setModalErrorFields(fields);
+    setTimeout(() => document.getElementById(ORDER_FIELD_ID[fields[0]])?.focus(), 0);
+  };
+  const fieldA11y = (key) => (modalError && modalErrorFields.includes(key)
+    ? { id: ORDER_FIELD_ID[key], 'aria-invalid': true, 'aria-describedby': ORDER_ERROR_ID }
+    : { id: ORDER_FIELD_ID[key], 'aria-invalid': false });
+
   const handleSaveChanges = async () => {
-    if (!selectedOrder || !modalStatus) { setModalError('Elige el nuevo estado.'); return; }
+    if (!selectedOrder || !modalStatus) { failOn(['status'], 'Elige el nuevo estado.'); return; }
     const t = allowedNext(selectedOrder.status).find((x) => x.to === modalStatus);
-    if (t?.requires_note && !modalNote.trim()) { setModalError('Esta transición requiere una nota (motivo).'); return; }
-    if (modalStatus === 'shipped' && (!modalCarrier.trim() || !modalTracking.trim())) { setModalError('Para marcar como enviado indica transportadora y número de guía.'); return; }
-    setIsSaving(true); setModalError(null);
+    if (t?.requires_note && !modalNote.trim()) { failOn(['note'], 'Esta transición requiere una nota (motivo).'); return; }
+    if (modalStatus === 'shipped' && (!modalCarrier.trim() || !modalTracking.trim())) {
+      failOn([!modalCarrier.trim() && 'carrier', !modalTracking.trim() && 'tracking'].filter(Boolean), 'Para marcar como enviado indica transportadora y número de guía.');
+      return;
+    }
+    if (modalStatus === 'shipped' && modalTrackingUrl.trim() && !/^https:\/\/\S+$/i.test(modalTrackingUrl.trim())) {
+      failOn(['url'], 'La URL de rastreo debe empezar por https://');
+      return;
+    }
+    setIsSaving(true); setModalError(null); setModalErrorFields([]);
     try {
       const tracking = modalStatus === 'shipped' ? { carrier: modalCarrier.trim(), tracking_number: modalTracking.trim(), tracking_url: modalTrackingUrl.trim() || null } : null;
       await adminService.transitionOrder(selectedOrder.rawId, modalStatus, modalNote.trim() || null, tracking);
@@ -212,7 +234,7 @@ export const AdminOrdersPage = () => {
       setSelectedOrder(null);
       await refreshAll();
     } catch (err) {
-      setModalError(err.message || 'No se pudo cambiar el estado.');
+      setModalError(err.message || 'No se pudo cambiar el estado.'); setModalErrorFields([]);
     } finally {
       setIsSaving(false);
     }
@@ -420,7 +442,7 @@ export const AdminOrdersPage = () => {
             </div>
 
             {modalError && (
-              <div role="alert" style={{ backgroundColor: '#FEF2F2', color: '#991B1B', padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', border: '1px solid #FCA5A5' }}>
+              <div role="alert" id={ORDER_ERROR_ID} style={{ backgroundColor: '#FEF2F2', color: '#991B1B', padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', border: '1px solid #FCA5A5' }}>
                 {modalError}
               </div>
             )}
@@ -454,7 +476,7 @@ export const AdminOrdersPage = () => {
               ) : null}
               {allowedNext(selectedOrder.status).length > 0 && (
                 <div style={{ display: 'grid', gap: '0.6rem' }}>
-                  <select id="order-next-status" value={modalStatus} onChange={(e) => setModalStatus(e.target.value)}
+                  <select {...fieldA11y('status')} value={modalStatus} onChange={(e) => setModalStatus(e.target.value)}
                     style={{ padding: '0.7rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontWeight: 700, fontSize: '0.85rem' }}>
                     <option value="">Selecciona…</option>
                     {allowedNext(selectedOrder.status).map((t) => (
@@ -463,12 +485,12 @@ export const AdminOrdersPage = () => {
                   </select>
                   {modalStatus === 'shipped' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                      <input aria-label="Transportadora" placeholder="Transportadora (ej. Coordinadora)" value={modalCarrier} onChange={(e) => setModalCarrier(e.target.value)} style={orderInput} />
-                      <input aria-label="Número de guía" placeholder="Número de guía" value={modalTracking} onChange={(e) => setModalTracking(e.target.value)} style={orderInput} />
-                      <input aria-label="URL de rastreo" placeholder="URL de rastreo (opcional, https://)" value={modalTrackingUrl} onChange={(e) => setModalTrackingUrl(e.target.value)} style={{ ...orderInput, gridColumn: '1 / -1' }} />
+                      <input {...fieldA11y('carrier')} aria-label="Transportadora" placeholder="Transportadora (ej. Coordinadora)" value={modalCarrier} onChange={(e) => setModalCarrier(e.target.value)} style={orderInput} />
+                      <input {...fieldA11y('tracking')} aria-label="Número de guía" placeholder="Número de guía" value={modalTracking} onChange={(e) => setModalTracking(e.target.value)} style={orderInput} />
+                      <input {...fieldA11y('url')} aria-label="URL de rastreo" type="url" inputMode="url" placeholder="URL de rastreo (opcional, https://)" value={modalTrackingUrl} onChange={(e) => setModalTrackingUrl(e.target.value)} style={{ ...orderInput, gridColumn: '1 / -1' }} />
                     </div>
                   )}
-                  <input aria-label="Nota del cambio" placeholder="Nota o motivo (visible en el historial)" value={modalNote} onChange={(e) => setModalNote(e.target.value)} style={orderInput} />
+                  <input {...fieldA11y('note')} aria-label="Nota del cambio" placeholder="Nota o motivo (visible en el historial)" value={modalNote} onChange={(e) => setModalNote(e.target.value)} style={orderInput} />
                 </div>
               )}
             </div>

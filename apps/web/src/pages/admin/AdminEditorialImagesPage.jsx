@@ -13,6 +13,9 @@ import productService from '../../services/productService';
 import { buildEditorialItems } from '../../utils/homeTaxonomy';
 import { DialogPanel } from '../../components/Common/DialogPanel';
 
+const EDIT_ERROR_ID = 'editorial-edit-error';
+const EDIT_URL_ID = 'editorial-edit-url';
+
 const SECTION = { hero: 'Hero', styles: 'Línea de estilo', categories: 'Categoría', occasions: 'Ocasión', outfits: 'Outfit' };
 const TAB_LIST = [['hero', 'Hero'], ['styles', 'Líneas de estilo'], ['categories', 'Categorías'],
   ['occasions', 'Ocasiones'], ['outfits', 'Outfits'], ['library', 'Biblioteca']];
@@ -71,7 +74,20 @@ export const AdminEditorialImagesPage = () => {
       preview: cur?.url ?? DEFAULT_EDITORIAL_IMAGES[item.key], alt: cur?.alt ?? item.title, error: null });
   };
 
+  // Ejecución 111 (D82): la URL inválida se detecta antes de guardar (misma regla que siteContentService) y el aviso
+  // queda enlazado a ese campo (aria-invalid + aria-describedby) con el foco en él; antes el aviso salía al final del
+  // modal sin indicar qué campo lo causaba.
+  const urlA11y = editing?.error && editing.errorField === 'url'
+    ? { 'aria-invalid': true, 'aria-describedby': EDIT_ERROR_ID }
+    : { 'aria-invalid': false };
+
   const save = async () => {
+    const url = editing.storagePath ? '' : editing.externalUrl.trim();
+    if (url && !/^https:\/\/\S+$/i.test(url)) {
+      setEditing((x) => ({ ...x, error: 'La URL debe empezar por https://', errorField: 'url' }));
+      setTimeout(() => document.getElementById(EDIT_URL_ID)?.focus(), 0);
+      return;
+    }
     setSaving(true);
     try {
       await siteContentService.setImage(editing.item.key, {
@@ -80,7 +96,7 @@ export const AdminEditorialImagesPage = () => {
       await loadSiteContent();
       flash(true, `Imagen guardada para «${editing.item.title}». Ya es visible en la tienda.`);
       setEditing(null);
-    } catch (e) { setEditing((x) => ({ ...x, error: e.message })); }
+    } catch (e) { setEditing((x) => ({ ...x, error: e.message, errorField: null })); }
     finally { setSaving(false); }
   };
 
@@ -184,7 +200,7 @@ export const AdminEditorialImagesPage = () => {
               </label>
             </div>
             <label style={{ display: 'grid', gap: '0.3rem', fontSize: '0.8rem', fontWeight: 700 }}>O una URL https
-              <input value={editing.externalUrl} placeholder="https://…" onChange={(e) => setEditing((x) => ({ ...x, externalUrl: e.target.value, storagePath: null, preview: e.target.value || x.preview }))}
+              <input id={EDIT_URL_ID} {...urlA11y} type="url" inputMode="url" value={editing.externalUrl} placeholder="https://…" onChange={(e) => setEditing((x) => ({ ...x, externalUrl: e.target.value, storagePath: null, preview: e.target.value || x.preview, ...(x.errorField === 'url' ? { error: null, errorField: null } : {}) }))}
                 style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: 6, fontWeight: 400 }} />
             </label>
             <label style={{ display: 'grid', gap: '0.3rem', fontSize: '0.8rem', fontWeight: 700 }}>Texto alternativo (accesibilidad)
@@ -203,7 +219,7 @@ export const AdminEditorialImagesPage = () => {
                 </div>
               </div>
             )}
-            {editing.error && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{editing.error}</div>}
+            {editing.error && <div role="alert" id={EDIT_ERROR_ID} style={{ color: '#B91C1C', fontWeight: 600 }}>{editing.error}</div>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button style={btnLight} onClick={() => setEditing(null)} disabled={saving}>Cancelar</button>
               <button style={btnDark} onClick={save} disabled={saving || uploading || (!editing.storagePath && !editing.externalUrl.trim())}>{saving ? 'Guardando…' : 'Guardar y publicar'}</button>
