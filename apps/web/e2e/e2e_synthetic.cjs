@@ -1156,14 +1156,16 @@ async function main() {
       await a11yRoutes(p);
     }, browser, null, MOBILE);
 
-    await journey('43. Accesibilidad de los modales abiertos (tienda escritorio y móvil, admin): contraste y nombres accesibles', async (p) => {
-      const failures = []; const checked = [];
+    await journey('43. Accesibilidad de los modales abiertos (tienda escritorio y móvil, admin): contraste, nombres accesibles y, en móvil, objetivo táctil', async (p) => {
+      const failures = []; const checked = []; let tapChecked = 0;
       const audit = async (opener, name, where) => {
         try { await opener.waitFor({ timeout: 8000 }); await opener.click(); } catch { failures.push(`${where}: no se pudo abrir`); return; }
         const dlg = p.getByRole('dialog', { name });
         try { await dlg.waitFor({ timeout: 8000 }); } catch { failures.push(`${where}: no apareció el diálogo`); return; }
         await p.waitForTimeout(400); // animación de entrada: el contraste se mide con la opacidad final
         await auditA11y(p, where, failures, '[role="dialog"]');
+        // en móvil, además, objetivo táctil (≥ 32 px y dentro de la pantalla) de TODOS los controles del modal
+        if ((p.viewportSize() || {}).width <= 375) tapChecked += await checkAllControls(p, '[role="dialog"]', where, failures);
         checked.push(where);
         await p.keyboard.press('Escape');
         await dlg.waitFor({ state: 'detached', timeout: 5000 }).catch(() => failures.push(`${where}: Escape no lo cerró`));
@@ -1216,6 +1218,7 @@ async function main() {
       await audit(p.getByRole('button', { name: 'Abrir menú' }), 'Menú de administración', 'cajón del menú (móvil)');
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
       if (checked.length !== 26) throw new Error(`solo se midieron ${checked.length}/26 modales: ${checked.join(', ')}`);
+      if (tapChecked < 100) throw new Error(`solo se comprobó el objetivo táctil de ${tapChecked} controles en los modales móviles`);
     }, browser);
 
 

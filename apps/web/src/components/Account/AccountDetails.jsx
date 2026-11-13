@@ -19,14 +19,24 @@ const ghostBtn = { backgroundColor: '#FFFFFF', color: '#09090B', border: '1px so
 const heading = { fontSize: '1.1rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' };
 const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' };
 
-const FieldError = ({ msg }) => (msg ? <div role="alert" style={{ color: '#B91C1C', fontSize: '0.75rem', marginTop: '0.25rem' }}>{msg}</div> : null);
-const Banner = ({ kind, children }) => (
-  <div role={kind === 'error' ? 'alert' : 'status'} style={{
+const FieldError = ({ id, msg }) => (msg ? <div id={id} role="alert" style={{ color: '#B91C1C', fontSize: '0.75rem', marginTop: '0.25rem' }}>{msg}</div> : null);
+const Banner = ({ id, kind, children }) => (
+  <div id={id} role={kind === 'error' ? 'alert' : 'status'} style={{
     padding: '0.7rem 0.9rem', borderRadius: '8px', fontSize: '0.85rem', margin: '0.75rem 0',
     backgroundColor: kind === 'error' ? '#FEF2F2' : '#ECFDF5', color: kind === 'error' ? '#991B1B' : '#065F46',
     border: `1px solid ${kind === 'error' ? '#FECACA' : '#A7F3D0'}`,
   }}>{children}</div>
 );
+
+// Ejecución 108: cada campo con error queda enlazado a su mensaje (aria-describedby) y el foco va al primero, en el
+// orden del formulario, igual que el checkout (D78). Se busca dentro del propio <form>, no por id global.
+const describedBy = (errors, name, id) => (errors[name] ? id : undefined);
+const focusFirstError = (form, order, errs) => {
+  const first = order.find((f) => errs?.[f]);
+  if (first) form?.querySelector(`[name="${first}"]`)?.focus();
+};
+const PROFILE_FIELDS = ['full_name', 'phone'];
+const ADDRESS_FIELDS = ['recipient_name', 'phone', 'department', 'city', 'address_line', 'neighborhood', 'reference'];
 
 const sameForm = (a, b) => a.full_name === b.full_name && a.phone === b.phone && a.marketing_opt_in === b.marketing_opt_in;
 
@@ -69,9 +79,10 @@ function ProfileSection({ user, profile }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    const formEl = e.currentTarget;
     const { errors: errs } = validateProfile(form);
     setErrors(errs);
-    if (Object.keys(errs).length) { setMsg({ kind: 'error', text: 'Revisa los campos marcados.' }); return; }
+    if (Object.keys(errs).length) { setMsg({ kind: 'error', text: 'Revisa los campos marcados.' }); focusFirstError(formEl, PROFILE_FIELDS, errs); return; }
     setSaving(true); setMsg(null);
     try {
       const saved = await accountService.updateProfile(user.id, form);
@@ -94,7 +105,7 @@ function ProfileSection({ user, profile }) {
       else if (nlNext !== nl) setMsg({ kind: 'ok', text: want ? 'Datos guardados. Quedaste suscrito al boletín del club J&M.' : 'Datos guardados. Te diste de baja del boletín.' });
       else setMsg({ kind: 'ok', text: 'Datos guardados.' });
     } catch (err) {
-      if (err.errors) setErrors(err.errors);
+      if (err.errors) { setErrors(err.errors); focusFirstError(formEl, PROFILE_FIELDS, err.errors); }
       setMsg({ kind: 'error', text: err.message });
     } finally { setSaving(false); }
   };
@@ -106,13 +117,13 @@ function ProfileSection({ user, profile }) {
         <div style={grid}>
           <div>
             <label style={label} htmlFor="profile-full-name">Nombre completo</label>
-            <input id="profile-full-name" name="full_name" value={form.full_name} onChange={change} maxLength={150} autoComplete="name" aria-invalid={Boolean(errors.full_name)} style={input} />
-            <FieldError msg={errors.full_name} />
+            <input id="profile-full-name" name="full_name" value={form.full_name} onChange={change} maxLength={150} autoComplete="name" aria-invalid={Boolean(errors.full_name)} aria-describedby={errors.full_name ? 'profile-full-name-error' : undefined} style={input} />
+            <FieldError id="profile-full-name-error" msg={errors.full_name} />
           </div>
           <div>
             <label style={label} htmlFor="profile-phone">Teléfono (opcional)</label>
-            <input id="profile-phone" name="phone" type="tel" value={form.phone} onChange={change} maxLength={30} autoComplete="tel" aria-invalid={Boolean(errors.phone)} style={input} />
-            <FieldError msg={errors.phone} />
+            <input id="profile-phone" name="phone" type="tel" value={form.phone} onChange={change} maxLength={30} autoComplete="tel" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? 'profile-phone-error' : undefined} style={input} />
+            <FieldError id="profile-phone-error" msg={errors.phone} />
           </div>
           <div>
             <span style={label}>Correo</span>
@@ -148,15 +159,16 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
   };
   const submit = async (e) => {
     e.preventDefault();
+    const formEl = e.currentTarget;
     const { errors: errs } = validateAddress(form);
     setErrors(errs);
-    if (Object.keys(errs).length) { setError('Revisa los campos marcados.'); return; }
+    if (Object.keys(errs).length) { setError('Revisa los campos marcados.'); focusFirstError(formEl, ADDRESS_FIELDS, errs); return; }
     setSaving(true); setError(null);
     try {
       await accountService.saveAddress(userId, form);
       await onSaved(form.id ? 'Dirección actualizada.' : 'Dirección guardada.');
     } catch (err) {
-      if (err.errors) setErrors(err.errors);
+      if (err.errors) { setErrors(err.errors); focusFirstError(formEl, ADDRESS_FIELDS, err.errors); }
       setError(err.message);
       setSaving(false);
     }
@@ -164,8 +176,8 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
   const field = (name, text, props = {}) => (
     <div>
       <label style={label} htmlFor={`addr-${name}`}>{text}</label>
-      <input id={`addr-${name}`} name={name} value={form[name]} onChange={change} aria-invalid={Boolean(errors[name])} style={input} {...props} />
-      <FieldError msg={errors[name]} />
+      <input id={`addr-${name}`} name={name} value={form[name]} onChange={change} aria-invalid={Boolean(errors[name])} aria-describedby={describedBy(errors, name, `addr-${name}-error`)} style={input} {...props} />
+      <FieldError id={`addr-${name}-error`} msg={errors[name]} />
     </div>
   );
   return (
@@ -175,11 +187,11 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
         {field('phone', 'Teléfono', { type: 'tel', maxLength: 30, autoComplete: 'tel' })}
         <div>
           <label style={label} htmlFor="addr-department">Departamento</label>
-          <select id="addr-department" name="department" value={form.department} onChange={change} aria-invalid={Boolean(errors.department)} style={input}>
+          <select id="addr-department" name="department" value={form.department} onChange={change} aria-invalid={Boolean(errors.department)} aria-describedby={describedBy(errors, 'department', 'addr-department-error')} style={input}>
             <option value="">Selecciona…</option>
             {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
-          <FieldError msg={errors.department} />
+          <FieldError id="addr-department-error" msg={errors.department} />
         </div>
         {field('city', 'Ciudad o municipio', { maxLength: 100 })}
         {field('address_line', 'Dirección', { maxLength: 255, placeholder: 'Ej: Calle 93B # 11A - 28, Apt 402', autoComplete: 'street-address' })}
@@ -187,8 +199,8 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
       </div>
       <div style={{ marginTop: '1rem' }}>
         <label style={label} htmlFor="addr-reference">Indicaciones para la entrega (opcional)</label>
-        <textarea id="addr-reference" name="reference" value={form.reference} onChange={change} maxLength={500} rows={2} style={{ ...input, resize: 'vertical' }} />
-        <FieldError msg={errors.reference} />
+        <textarea id="addr-reference" name="reference" value={form.reference} onChange={change} maxLength={500} rows={2} aria-invalid={Boolean(errors.reference)} aria-describedby={describedBy(errors, 'reference', 'addr-reference-error')} style={{ ...input, resize: 'vertical' }} />
+        <FieldError id="addr-reference-error" msg={errors.reference} />
       </div>
       <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#3F3F46', margin: '0.85rem 0' }}>
         <input type="checkbox" name="is_default" checked={form.is_default} onChange={change} /> Usar como dirección principal
@@ -284,8 +296,16 @@ function PasswordSection() {
   const [needsCode, setNeedsCode] = useState(false);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  // campo al que pertenece el error de validación (su mensaje es el aviso del formulario)
+  const [badField, setBadField] = useState(null);
 
-  const change = (e) => { const { name, value } = e.target; setPw((f) => ({ ...f, [name]: value })); setMsg(null); };
+  const change = (e) => { const { name, value } = e.target; setPw((f) => ({ ...f, [name]: value })); setMsg(null); setBadField(null); };
+  const invalidField = (formEl, name, text) => {
+    setMsg({ kind: 'error', text }); setBadField(name);
+    formEl?.querySelector(`[name="${name}"]`)?.focus();
+  };
+  const fieldA11y = (name) => (badField === name && msg?.kind === 'error'
+    ? { 'aria-invalid': true, 'aria-describedby': 'acc-password-msg' } : { 'aria-invalid': false });
 
   const sendCode = async () => {
     const { error } = await supabase.auth.reauthenticate();
@@ -296,10 +316,12 @@ function PasswordSection() {
   const submit = async (e) => {
     e.preventDefault();
     if (busy) return;
+    const formEl = e.currentTarget;
     const invalid = validateNewPassword(pw.password, pw.confirm);
-    if (invalid) { setMsg({ kind: 'error', text: invalid }); return; }
-    if (needsCode && !pw.nonce.trim()) { setMsg({ kind: 'error', text: 'Escribe el código que te enviamos por correo.' }); return; }
-    setBusy(true); setMsg(null);
+    // si la contraseña nueva es válida por sí sola, el error es de la confirmación («no coinciden»)
+    if (invalid) { invalidField(formEl, validateNewPassword(pw.password, pw.password) ? 'password' : 'confirm', invalid); return; }
+    if (needsCode && !pw.nonce.trim()) { invalidField(formEl, 'nonce', 'Escribe el código que te enviamos por correo.'); return; }
+    setBusy(true); setMsg(null); setBadField(null);
     try {
       const attrs = needsCode ? { password: pw.password, nonce: pw.nonce.trim() } : { password: pw.password };
       const { error } = await supabase.auth.updateUser(attrs);
@@ -327,20 +349,20 @@ function PasswordSection() {
         <div style={grid}>
           <div>
             <label style={label} htmlFor="acc-new-password">Nueva contraseña</label>
-            <input id="acc-new-password" name="password" type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={pw.password} onChange={change} style={input} />
+            <input id="acc-new-password" name="password" type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={pw.password} onChange={change} {...fieldA11y('password')} style={input} />
           </div>
           <div>
             <label style={label} htmlFor="acc-confirm-password">Repite la contraseña</label>
-            <input id="acc-confirm-password" name="confirm" type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={pw.confirm} onChange={change} style={input} />
+            <input id="acc-confirm-password" name="confirm" type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={pw.confirm} onChange={change} {...fieldA11y('confirm')} style={input} />
           </div>
           {needsCode && (
             <div>
               <label style={label} htmlFor="acc-password-nonce">Código enviado a tu correo</label>
-              <input id="acc-password-nonce" name="nonce" inputMode="numeric" autoComplete="one-time-code" maxLength={12} value={pw.nonce} onChange={change} style={input} />
+              <input id="acc-password-nonce" name="nonce" inputMode="numeric" autoComplete="one-time-code" maxLength={12} value={pw.nonce} onChange={change} {...fieldA11y('nonce')} style={input} />
             </div>
           )}
         </div>
-        {msg && <Banner kind={msg.kind}>{msg.text}</Banner>}
+        {msg && <Banner id="acc-password-msg" kind={msg.kind}>{msg.text}</Banner>}
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
           <button type="submit" disabled={busy} style={primaryBtn}>{busy ? 'Guardando…' : 'Cambiar contraseña'}</button>
           {needsCode && <button type="button" disabled={busy} onClick={async () => { setMsg(null); if (await sendCode()) setMsg({ kind: 'ok', text: 'Te enviamos un código nuevo.' }); }} style={ghostBtn}>Reenviar código</button>}

@@ -432,7 +432,7 @@ export const AdminOrdersPage = () => {
                 {(() => {
                   const link = customerLinkForOrder(selectedOrder);
                   return link && (
-                    <> · <Link data-testid="order-customer-link" to={link.to} style={{ textDecoration: 'underline', color: '#3730A3', fontWeight: 700 }}>{link.label}</Link></>
+                    <> · <Link data-testid="order-customer-link" to={link.to} style={detailLink}>{link.label}</Link></>
                   );
                 })()}
               </div>
@@ -480,7 +480,7 @@ export const AdminOrdersPage = () => {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{item.product_name}</div>
                     <div style={{ fontSize: '0.75rem', color: '#71717A' }}>SKU {productLinkForSku(item.sku)
-                      ? <Link data-testid={`order-item-sku-${idx}`} to={productLinkForSku(item.sku)} title="Ver producto en el admin" style={{ textDecoration: 'underline', color: '#3730A3', fontWeight: 700 }}>{item.sku}</Link>
+                      ? <Link data-testid={`order-item-sku-${idx}`} to={productLinkForSku(item.sku)} title="Ver producto en el admin" style={detailLink}>{item.sku}</Link>
                       : item.sku} • Talla: {item.size_code} • Color: {item.color_name} • Cant: {item.quantity}</div>
                   </div>
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{formatCOP(Number(item.line_total))}</div>
@@ -492,7 +492,7 @@ export const AdminOrdersPage = () => {
                 {Number(selectedOrder.discount_total) > 0 && <>
                   {` · Descuento -${formatCOP(Number(selectedOrder.discount_total))}`}
                   {selectedOrder.coupon_code && <> ({couponLink(selectedOrder.coupon_code)
-                    ? <Link data-testid="order-coupon-link" to={couponLink(selectedOrder.coupon_code)} title="Ver cupón" style={{ textDecoration: 'underline', color: '#3730A3', fontWeight: 700 }}>{selectedOrder.coupon_code}</Link>
+                    ? <Link data-testid="order-coupon-link" to={couponLink(selectedOrder.coupon_code)} title="Ver cupón" style={detailLink}>{selectedOrder.coupon_code}</Link>
                     : selectedOrder.coupon_code})</>}
                 </>}
                 {` · Envío${selectedOrder.shipping_method_code ? ` (${shippingMethodLabel(selectedOrder.shipping_method_code, shippingMethods)})` : ''} ${formatCOP(Number(selectedOrder.shipping_cost))} · `}<strong>Total {formatCOP(selectedOrder.total)}</strong>
@@ -531,6 +531,9 @@ export const AdminOrdersPage = () => {
   );
 };
 
+// Enlaces del detalle (cliente, SKU, cupón): son controles sueltos, no enlaces dentro de una frase, así que en
+// móvil necesitan ≥ 32 px de alto táctil (ejecución 108); inline-flex conserva el flujo del texto.
+const detailLink = { textDecoration: 'underline', color: '#3730A3', fontWeight: 700, display: 'inline-flex', alignItems: 'center', minHeight: '32px', verticalAlign: 'middle' };
 const orderInput = { padding: '0.65rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem' };
 
 const thOrder = {

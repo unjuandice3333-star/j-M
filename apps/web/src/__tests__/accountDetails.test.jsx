@@ -276,6 +276,36 @@ describe('«Mi cuenta»: datos y direcciones', () => {
     expect(book.textContent).toMatch(/Dirección guardada/);
   });
 
+  it('errores enlazados a su campo (aria-describedby) y foco al primero, en datos y direcciones (ejecución 108)', async () => {
+    await mountAccount();
+    const section = host.querySelector('[data-testid="profile-section"]');
+    setValue(section.querySelector('[name="full_name"]'), 'Ana');
+    setValue(section.querySelector('[name="phone"]'), '12');
+    await submitForm(section.querySelector('form'));
+    const phone = section.querySelector('[name="phone"]');
+    expect(phone.getAttribute('aria-invalid')).toBe('true');
+    expect(section.querySelector(`#${phone.getAttribute('aria-describedby')}`).textContent).toMatch(/7 a 15 dígitos/);
+    expect(document.activeElement).toBe(phone);
+    expect(section.querySelector('[name="full_name"]').hasAttribute('aria-describedby')).toBe(false);
+    // dirección vacía: varios errores; el foco va al primero en el orden del formulario
+    const book = host.querySelector('[data-testid="address-book"]');
+    await click(button('Agregar dirección', book));
+    const form = book.querySelector('[data-testid="address-form"]');
+    setValue(form.querySelector('[name="recipient_name"]'), '');
+    await submitForm(form);
+    const name = form.querySelector('[name="recipient_name"]');
+    expect(document.activeElement).toBe(name);
+    for (const f of ['recipient_name', 'phone', 'department', 'city', 'address_line']) {
+      const el = form.querySelector(`[name="${f}"]`);
+      expect(el.getAttribute('aria-invalid'), f).toBe('true');
+      const msg = form.querySelector(`#${el.getAttribute('aria-describedby')}`);
+      expect(msg && msg.textContent.length > 0, f).toBe(true);
+    }
+    // corregir un campo quita su enlace al mensaje
+    setValue(name, 'Ana Pérez');
+    expect(name.hasAttribute('aria-describedby')).toBe(false);
+  });
+
   it('un fallo al cargar direcciones se muestra como error (no como «sin direcciones»)', async () => {
     supa.fail['customer_addresses.select'] = { code: 'XX000', message: 'boom' };
     await mountAccount();
@@ -497,6 +527,26 @@ describe('Contraseña', () => {
     expect(supa.auth.updateUser).toHaveBeenLastCalledWith({ password: 'Nueva12345' });
     expect(sec.textContent).toMatch(/Contraseña actualizada/);
     expect(sec.querySelector('[name="password"]').value).toBe('');
+  });
+
+  it('Mi cuenta: el error de la contraseña se enlaza al campo que lo causa y recibe el foco (ejecución 108)', async () => {
+    supa.auth.updateUser = vi.fn();
+    const { AccountDetails } = await import('../components/Account/AccountDetails.jsx');
+    await act(async () => root.render(<AccountDetails user={{ id: ME, email: 'ana@correo.com' }} profile={{ id: ME, full_name: 'Ana' }} />));
+    await flush();
+    const sec = host.querySelector('[data-testid="account-password"]');
+    const pwd = sec.querySelector('[name="password"]'); const conf = sec.querySelector('[name="confirm"]');
+    await pwForm(sec, 'corta', 'corta');
+    expect(document.activeElement).toBe(pwd);
+    expect(pwd.getAttribute('aria-invalid')).toBe('true');
+    expect(sec.querySelector(`#${pwd.getAttribute('aria-describedby')}`).textContent).toMatch(/al menos 8/);
+    expect(conf.getAttribute('aria-invalid')).toBe('false');
+    await pwForm(sec, 'Segura123', 'Otra12345');
+    expect(document.activeElement).toBe(conf);
+    expect(conf.getAttribute('aria-invalid')).toBe('true');
+    expect(sec.querySelector(`#${conf.getAttribute('aria-describedby')}`).textContent).toMatch(/no coinciden/);
+    expect(pwd.getAttribute('aria-invalid')).toBe('false');
+    expect(supa.auth.updateUser).not.toHaveBeenCalled();
   });
 
   it('Mi cuenta: si Supabase exige reautenticación, pide el código del correo y lo envía como nonce', async () => {
