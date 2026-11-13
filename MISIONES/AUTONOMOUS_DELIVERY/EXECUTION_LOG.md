@@ -921,3 +921,14 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bf) de Pendiente (contraste y nombres accesibles en las rutas principales; `axe-core` NO está en el lockfile → sin dependencia nueva, comprobación propia en el E2E).
+
+## Ejecución 106 — 2026-11-13 06:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-yk0skr` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `9f65b24`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bf) de Pendiente. Contraste WCAG 1.4.3 y nombres accesibles medidos en 30 rutas de tienda y admin (D77).
+- Archivos: nuevo `apps/web/src/components/Common/icons.js` (los 43 imports de `lucide-react` pasan por él), nuevo `apps/web/src/__tests__/icons.test.jsx`; `eslint.config.mjs` (`no-restricted-imports`); `index.css` (`--accent-gold-text`), `Footer.jsx`, `Header.jsx`, `CompleteTheLook.jsx`, `AdminLayout.jsx`, `CheckoutPage.jsx`, `CatalogPage.jsx`, `ProductDetailPage.jsx`, `HomePage.jsx`, `InfoPage.jsx`, `Login.jsx`, `Login.module.css`, `OrderConfirmationPage.jsx`, `AccountPage.jsx`, `admin/AdminLogin.jsx`; `apps/web/e2e/e2e_synthetic.cjs` (helper `auditA11y`, recorrido 42).
+- Pruebas (ejecutadas aquí): recorrido 42: 641 fallos en la primera pasada; sin los cambios de `src` (`git stash`) 630 fallos, con ellos pasa; `icons.test.jsx` 4/4; `pnpm test:unit` 526/526 (50 archivos); `pnpm exec eslint apps packages scripts --max-warnings 0` OK (la regla nueva marca un import directo de prueba); `pnpm build` OK; `pnpm test:e2e-synthetic` 42/42 en la primera pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: modales y 375×812 aún sin el control de contraste/nombres; texto sobre fotos no medible. No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `e5c2e79` (código) + el de documentación; publicados solo en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bg) de Pendiente (recorrido 42 sobre modales y en móvil; `aria-describedby` de errores del checkout).
