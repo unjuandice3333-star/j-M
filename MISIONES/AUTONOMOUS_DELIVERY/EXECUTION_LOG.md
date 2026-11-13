@@ -976,3 +976,14 @@
 - Commits: el de código + el de documentación; publicados solo en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bk) de Pendiente.
+
+## Ejecución 111 — 2026-11-13 11:09 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-m84e4m` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `6664a61`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bk) de Pendiente. Detalle del pedido del admin (estado, nota, transportadora, guía, URL de rastreo) e imagen editorial (URL): aviso enlazado al campo que lo causa, foco y validación `^https://` antes del servidor (D82).
+- Archivos: `apps/web/src/pages/admin/AdminOrdersPage.jsx`, `AdminEditorialImagesPage.jsx`; nuevo `apps/web/src/__tests__/adminOrderEditorialErrors.test.jsx`.
+- Pruebas (ejecutadas aquí): `adminOrderEditorialErrors.test.jsx` 5/5; sin los cambios de `pages/` (`git stash`) fallan las 5; `pnpm test:unit` 548/548 (54 archivos); `npx eslint apps packages scripts` 0 errores/avisos; `pnpm build` OK; `pnpm test:e2e-synthetic` 44/44. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: formularios de la tienda con aviso único sin enlazar (restablecer contraseña, cupón del carrito, boletín, reseña). No probado con lectores de pantalla reales ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261111220000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `cb75f6e` (código) + el de documentación; publicados en la rama autorizada y en la rama de sesión.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bl) de Pendiente.
