@@ -1340,3 +1340,14 @@
 - GitHub: run `ci` nº 172 (`9351e0a`) → Chromium en 25 s; governance, quality, db-local, db-supabase, e2e-synthetic (70) ✔; `security` ✘ (gitleaks, conocido); `e2e-supabase` nº 150 ✔.
 - Notificación: no enviada (CI recuperado; bloqueos ya notificados).
 - Siguiente: punto 0(cm) de Pendiente (recorridos 30 y 69 intermitentes: leer su diagnóstico si vuelven a fallar en CI).
+
+## Ejecución 142 — 2026-11-14 ~22:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-z5nya8` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `667ca8f`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior: run `ci` nº 173 (`667ca8f`): governance, quality, db-local, db-supabase ✔; `security` ✘ (gitleaks, conocido); **`e2e-synthetic` ✘ 69/70** (recorrido 69: «/cuenta/favoritos … MIS FAVORITOS (0)»); `e2e-supabase` nº 151 ✔.
+- Tarea: punto 0(cm)(1) — causa real del recorrido 69 = favorito perdido si se marca mientras `syncWishlist` lee la BD tras iniciar sesión (D118). Corregido en el store.
+- Archivos: `apps/web/src/store/eCommerceStore.js`, `apps/web/src/__tests__/wishlistSyncRace.test.js` (nuevo, 3 pruebas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 71), documentación.
+- Pruebas (ejecutadas aquí): vitest nuevas 2/3 fallan sin el arreglo (`git stash`) y 3/3 pasan con él; recorrido 71 falla sin el arreglo y pasa con él; `pnpm test:unit` 683/683; ESLint 0; build OK; `pnpm test:e2e-synthetic` **71/71**. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: recorrido 30 intermitente (sin datos nuevos).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: ver `git log` (fix + docs) en la rama autorizada.
+- Siguiente: comprobar el run `ci` del push (recorridos 69 y 71 en GitHub); luego punto 0(cm)(2) (flujos de la tienda sin E2E: reseñas a 320 px, cuenta con varias direcciones).
