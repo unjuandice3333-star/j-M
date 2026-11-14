@@ -1344,10 +1344,10 @@
 ## Ejecución 142 — 2026-11-14 ~22:00 UTC (rutina programada)
 - Estado inicial: sesión en `claude/gracious-pasteur-z5nya8` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `667ca8f`, árbol limpio. `pnpm install --frozen-lockfile` OK.
 - CI del push anterior: run `ci` nº 173 (`667ca8f`): governance, quality, db-local, db-supabase ✔; `security` ✘ (gitleaks, conocido); **`e2e-synthetic` ✘ 69/70** (recorrido 69: «/cuenta/favoritos … MIS FAVORITOS (0)»); `e2e-supabase` nº 151 ✔.
-- Tarea: punto 0(cm)(1) — causa real del recorrido 69 = favorito perdido si se marca mientras `syncWishlist` lee la BD tras iniciar sesión (D118). Corregido en el store.
-- Archivos: `apps/web/src/store/eCommerceStore.js`, `apps/web/src/__tests__/wishlistSyncRace.test.js` (nuevo, 3 pruebas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 71), documentación.
-- Pruebas (ejecutadas aquí): vitest nuevas 2/3 fallan sin el arreglo (`git stash`) y 3/3 pasan con él; recorrido 71 falla sin el arreglo y pasa con él; `pnpm test:unit` 683/683; ESLint 0; build OK; `pnpm test:e2e-synthetic` **71/71**. Sin migración: pgTAP no re-ejecutado.
+- Tarea: punto 0(cm)(1) — causa real del recorrido 69. Primer arreglo (D118, `46a4caf` + docs `1abb53d`): carrera entre `syncWishlist` y un clic → run `ci` nº 174: el 69 volvió a fallar igual (el 71 nuevo pasó). Segundo análisis: la recarga corta la petición y el `catch` revertía el favorito en localStorage → D119 (bandeja persistida + no revertir mientras la página se va).
+- Archivos: `apps/web/src/store/eCommerceStore.js`, `apps/web/src/__tests__/wishlistSyncRace.test.js` (nuevo, 8 pruebas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 71, 3 casos), documentación.
+- Pruebas (ejecutadas aquí): vitest nuevas fallan sin el arreglo; recorrido 71 falla con el store original (caso 1) y con el de `46a4caf` (caso 3), pasa con el final; 69+71 pasan 5/5; `pnpm test:unit` 688/688; ESLint 0; build OK; `pnpm test:e2e-synthetic` **71/71**. Sin migración: pgTAP no re-ejecutado.
 - Errores pendientes: recorrido 30 intermitente (sin datos nuevos).
 - Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
-- Commits: ver `git log` (fix + docs) en la rama autorizada.
-- Siguiente: comprobar el run `ci` del push (recorridos 69 y 71 en GitHub); luego punto 0(cm)(2) (flujos de la tienda sin E2E: reseñas a 320 px, cuenta con varias direcciones).
+- Commits: `46a4caf`, `1abb53d` y los de D119 (ver `git log`), en la rama autorizada.
+- Siguiente: comprobar el run `ci` del push (69 y 71 en GitHub); luego punto 0(cm)(2) (flujos de la tienda sin E2E: reseñas a 320 px, cuenta con varias direcciones).
