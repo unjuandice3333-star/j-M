@@ -1130,3 +1130,15 @@
 - Commits: `f592314` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bv)(2) de Pendiente (pedido vencido pagado tarde → «Requiere revisión» en el admin, en E2E).
+
+## Ejecución 124 — 2026-11-14 01:15 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-p2xhrh` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `85284fa`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bv)(2) de Pendiente. Pedido vencido pagado tarde (`expired → paid`) sin stock: el admin ve el motivo de «Requiere revisión» y la prenda faltante (D97).
+- Archivos: nuevo `apps/web/src/utils/orderAttention.js`, `apps/web/src/pages/admin/AdminOrdersPage.jsx` (aviso, historial legible, select con `metadata` y `variant_id`), nuevo `apps/web/src/__tests__/orderAttention.test.js` (6), `apps/web/e2e/synthetic/backend.cjs` (emula `commit_stock_for_order`, métrica `needs_attention` real), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 58).
+- Pruebas (ejecutadas aquí): recorrido 58 pasa y falla sin los cambios de `src` (`git stash`); `pnpm test:unit` 628/628 (64 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 58/58 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Defecto real corregido: el admin no podía saber por qué un pedido requería revisión ni qué prenda faltaba (riesgo de despachar sin stock o de no reembolsar); el backend sintético dejaba `reserved` negativo al pagar un pedido vencido.
+- Errores pendientes: `needs_attention` no se puede resolver desde el panel (requiere RPC nueva) → punto 0(bw)(1). No probado en WebKit ni contra Supabase real remoto.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261113120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `f9f660d` (código) + el de documentación; publicados en la rama autorizada y en la rama de sesión.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bw)(1) de Pendiente.
