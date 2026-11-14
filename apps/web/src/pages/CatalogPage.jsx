@@ -353,11 +353,13 @@ export const CatalogPage = () => {
           </aside>
 
           {/* MAIN CATALOG CONTENT */}
-          <div>
+          <div style={{ minWidth: 0 }}>
             {/* TOOLBAR: SORT & MOBILE FILTER TRIGGER */}
             <div style={{
               display: 'flex',
-              justify: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.6rem 1rem',
+              justifyContent: 'space-between',
               alignItems: 'center',
               marginBottom: '1.5rem',
               backgroundColor: '#FAFAFA',
@@ -372,6 +374,7 @@ export const CatalogPage = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
+                  minHeight: '36px',
                   fontWeight: 700,
                   fontSize: '0.85rem',
                   color: '#09090B'
@@ -386,8 +389,8 @@ export const CatalogPage = () => {
               </span>
 
               {/* Sort Selector */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <label htmlFor="catalog-sort" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#52525B' }}>ORDENAR POR:</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, maxWidth: '100%' }}>
+                <label htmlFor="catalog-sort" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#52525B', whiteSpace: 'nowrap' }}>ORDENAR POR:</label>
                 <select
                   id="catalog-sort"
                   value={sortBy}
@@ -399,7 +402,10 @@ export const CatalogPage = () => {
                     backgroundColor: '#FFFFFF',
                     fontWeight: 600,
                     fontSize: '0.82rem',
-                    outline: 'none'
+                    outline: 'none',
+                    minWidth: 0,
+                    maxWidth: '100%',
+                    flex: '0 1 auto'
                   }}
                 >
                   <option value="relevancia">Relevancia</option>

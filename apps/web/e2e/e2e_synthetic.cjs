@@ -2918,6 +2918,34 @@ async function main() {
       if (!ev.includes('processing') || !ev.includes('shipped')) throw new Error(`historial incompleto: ${ev}`);
     }, browser);
 
+    // Ejecución 134: en GitHub Actions (otras fuentes) la barra «ORDENAR POR» de /ropa se salía 1 px a 375 px
+    // (recorridos 29/33/35). Aquí se fuerzan métricas de texto más anchas para no depender de las fuentes del equipo.
+    await journey('64. Móvil 320/375: la barra «FILTRAR / ORDENAR POR» del catálogo no se sale de la pantalla aunque las fuentes sean más anchas', async (p) => {
+      for (const width of [375, 320]) {
+        await p.setViewportSize({ width, height: 812 });
+        for (const url of ['/ropa', '/ropa?q=zzzzqqq']) {
+          await p.goto(`${BASE}${url}`);
+          await p.locator('#catalog-sort').waitFor();
+          await p.addStyleTag({ content: 'body *{letter-spacing:0.06em !important}' });
+          await p.waitForTimeout(200);
+          const r = await p.evaluate(() => {
+            const vw = document.documentElement.clientWidth; const box = (el) => el && el.getBoundingClientRect();
+            const sel = box(document.querySelector('#catalog-sort')); const lab = box(document.querySelector('label[for=catalog-sort]'));
+            const btn = box(document.querySelector('.mobile-filter-btn'));
+            return { vw, sw: document.documentElement.scrollWidth, sel: [sel.left, sel.right], lab: [lab.left, lab.right], btn: btn && [btn.left, btn.right] };
+          });
+          const where = `${width}px ${url}`;
+          for (const [k, v] of Object.entries({ sel: r.sel, lab: r.lab, btn: r.btn })) {
+            if (v && (v[0] < 0 || v[1] > r.vw + 0.5)) throw new Error(`${where}: ${k} fuera de la pantalla [${v.map((x) => x.toFixed(1))}] vw=${r.vw}`);
+          }
+          if (r.sw > r.vw) throw new Error(`${where}: desborde horizontal ${r.sw}px > ${r.vw}px`);
+        }
+      }
+      // el selector sigue funcionando
+      await p.locator('#catalog-sort').selectOption('precio-asc');
+      if ((await p.locator('#catalog-sort').inputValue()) !== 'precio-asc') throw new Error('el orden no cambió');
+    }, browser, null, MOBILE);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);
