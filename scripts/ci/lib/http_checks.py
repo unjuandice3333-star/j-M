@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """M24C — Validación de servicios reales de Supabase local (GoTrue, PostgREST, Storage) vía HTTP.
 Solo localhost. Las llaves se leen de `supabase status -o json` y nunca se imprimen."""
-import json, secrets, sys, time, uuid, urllib.request, urllib.error
+import json, os, secrets, sys, time, uuid, urllib.request, urllib.error
 
 st = json.load(open(sys.argv[1]))
 API = st["API_URL"]            # http://127.0.0.1:54321
@@ -14,7 +14,7 @@ def check(name, cond, detail=""):
     results.append((name, bool(cond), detail))
     print(("PASS " if cond else "FAIL ") + name + (f"  [{detail}]" if detail else ""))
 
-def call(method, path, body=None, token=None, apikey=ANON, headers=None, raw=None, ctype="application/json"):
+def call(method, path, body=None, token=None, apikey=ANON, headers=None, raw=None, ctype="application/json", want_headers=False):
     h = {"apikey": apikey, "Authorization": f"Bearer {token or apikey}"}
     if headers: h.update(headers)
     data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
@@ -23,11 +23,13 @@ def call(method, path, body=None, token=None, apikey=ANON, headers=None, raw=Non
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             txt = r.read().decode() or "null"
-            return r.status, (json.loads(txt) if txt.strip()[:1] in "[{n\"0123456789-tf" else txt)
+            out = (r.status, (json.loads(txt) if txt.strip()[:1] in "[{n\"0123456789-tf" else txt))
+            return out + (dict(r.headers),) if want_headers else out
     except urllib.error.HTTPError as e:
         txt = e.read().decode()
-        try: return e.code, json.loads(txt)
-        except Exception: return e.code, txt
+        try: out = (e.code, json.loads(txt))
+        except Exception: out = (e.code, txt)
+        return out + (dict(e.headers),) if want_headers else out
 
 # M26-R1 (MAJ-4): los usuarios seed no tienen contraseña conocida. Cada ejecución genera una
 # contraseña aleatoria (nunca se imprime ni se guarda) y la fija con la API de administración de
@@ -158,6 +160,11 @@ s, b = call("POST", "/rest/v1/rpc/admin_transition_order", {"p_order_id": o["ord
 check("transiciones: processing → delivered rechazada con JM_INVALID_TRANSITION", s == 400 and b.get("hint") == "JM_INVALID_TRANSITION", f"HTTP {s}")
 s, b = call("POST", "/rest/v1/rpc/admin_transition_order", {"p_order_id": o["order_id"], "p_to": "cancelled", "p_note": "Validación M24C"}, token=tokens["admin"])
 check("cancelación: processing → cancelled con nota (reingreso de stock)", s == 200 and b.get("lines_restocked") == 1, f"HTTP {s} {b}")
+
+# ---------------- DEVOLUCIONES PENDIENTES EN WOMPI (ejecución 133) ----------------
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # python -I no añade la carpeta del script
+import refund_filter_checks
+refund_filter_checks.run(call, check, tokens)
 
 json.dump({"passed": sum(1 for r in results if r[1]), "total": len(results),
            "results": [{"check": n, "ok": ok, "detail": d} for n, ok, d in results]},
