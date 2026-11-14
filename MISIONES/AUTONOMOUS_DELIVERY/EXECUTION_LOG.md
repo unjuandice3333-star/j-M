@@ -1280,3 +1280,14 @@
 - Commits: `b73303e` (arreglo + recorrido 66), `9f3d4fb` (documentación) + el del resultado del CI; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(ci) de Pendiente (modales y formularios del admin en móvil).
+
+## Ejecución 137 — 2026-11-14 ~17:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-u1bdcb` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `5999f3d`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior (API de Actions): run `ci` nº 167 (`5999f3d`, solo docs): governance, quality, db-local, db-supabase ✔; **`e2e-synthetic` ✘ 65/66 (recorrido 60)**; `security` ✘ (gitleaks, conocido); `e2e-supabase` nº 145 ✔.
+- Tareas: (1) causa del recorrido 60 intermitente (D112); (2) punto 0(ci) de Pendiente: modales y formularios del admin en móvil (D113).
+- Archivos: `apps/web/src/pages/AccountPage.jsx` (efecto por `user?.id`), `apps/web/src/__tests__/accountOrderReview.test.jsx` (1 prueba nueva), `apps/web/src/pages/admin/AdminOrdersPage.jsx` y `AdminEditorialImagesPage.jsx` (rejillas `minmax(0, 1fr)`, `minWidth: 0`, padding `clamp`), `apps/web/e2e/e2e_synthetic.cjs` (conteo del recorrido 60 con espera; recorrido 67).
+- Pruebas (ejecutadas aquí): prueba unitaria nueva falla sin el arreglo (2 lecturas) y pasa con él; recorrido 67 falla sin los cambios de `src` (guía y URL de rastreo a 603 px en 375) y pasa con ellos, con y sin `NO_WIDEN`; `pnpm test:unit` 680/680; ESLint 0; build OK; `pnpm test:e2e-synthetic` **67/67** (antes del recorrido 67, 66/66 con el arreglo de D112); `check_commits.sh` OK.
+- Errores pendientes: ninguno nuevo. Nota: el cambio del conteo del recorrido 60 quedó en el commit `5d9b50c` (mismo archivo que el recorrido 67), no en `8870e53`.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `8870e53` (D112), `5d9b50c` (D113 + recorrido 67) + el de documentación; publicados en la rama autorizada.
+- Siguiente: comprobar el run `ci` del push; luego punto 0(cj) de Pendiente (misma medida sobre modales/formularios de la tienda a 320 px).
