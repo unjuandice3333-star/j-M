@@ -1240,3 +1240,14 @@
 - Commits: `baeabd6` (pruebas) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ce) de Pendiente.
+
+## Ejecución 134 — 2026-11-14 ~13:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-jcwubx` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `eb3f887`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(ce): revisar GitHub Actions. Hallazgo: `ci` en rojo en `e2e-synthetic` y `db-supabase` (además de `security`) desde el run nº 147 (ejecución 122) hasta el nº 160; `e2e-supabase` verde.
+- Archivos: `apps/web/src/pages/CatalogPage.jsx` (barra de ordenar/filtrar), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 64), nuevo `scripts/ci/db_supabase_failure_detail.sh`, `.github/workflows/ci.yml` (paso de detalle del fallo en `db-supabase`).
+- Pruebas (ejecutadas aquí): recorrido 64 falla sin el cambio de `src` (`git stash`) y pasa con él; 29/33/35/64 pasan (la primera versión del arreglo dejaba FILTRAR con 18 px de alto → corregido a 36 px); `pnpm test:e2e-synthetic` pasada completa **64/64**; `pnpm test:unit` 676/676; ESLint 0; build OK; `migrations_policy.sh` OK; `check_commits.sh` OK; redactor del nuevo script probado con JWT/llave falsos.
+- Errores pendientes: causa de `db-supabase` en GitHub desconocida (artefacto inaccesible: CDN 403). `e2e-synthetic` corregido en local, sin confirmar en GitHub.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `36dc967` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: enviada (CI rojo desde hace 12 ejecuciones sin que constara en el estado).
+- Siguiente: punto 0(cf) de Pendiente (leer el detalle de `db-supabase` en el run del push y corregirlo).
