@@ -1303,3 +1303,15 @@
 - Commits: `dca1732` (arreglo + recorrido 68) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(ck) de Pendiente (catálogo, inicio, favoritos, confirmación, páginas informativas y pie a 320 px).
+
+## Ejecución 139 — 2026-11-14 ~19:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-fimzu0` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `c1e786b`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior (API de Actions): run `ci` nº 169 (`c1e786b`) todo ✔ salvo `security` (gitleaks del historial, conocido); `e2e-supabase` nº 147 ✔.
+- Tarea: punto 0(ck) de Pendiente (páginas de contenido de la tienda y pie a 320 px; efectos por objeto `user`/`profile`), D115.
+- Archivos: `apps/web/src/pages/HomePage.jsx` (cabecera de «Nueva colección» envuelve; «VER TODO» con `jm-tap-inline`), `apps/web/src/pages/WishlistPage.jsx` (cabecera envuelve), `apps/web/src/pages/OrderConfirmationPage.jsx` (pasos del estado encogibles), `apps/web/e2e/e2e_synthetic.cjs` (helper `measureMobileScreens`, recorrido 68 lo usa, recorrido 69 nuevo, diagnóstico del recorrido 30 con valores).
+- Pruebas (ejecutadas aquí): recorrido 69 falla sin los cambios de `src` (4 fallos) y pasa con ellos; recorrido 68 pasa con el helper; `pnpm test:unit` 680/680; ESLint 0; build OK; `pnpm test:e2e-synthetic` 67/69 en la primera pasada (30 intermitente; 33 detectó «VER TODO» a 17 px → corregido) y **69/69** en la final; recorrido 30 aislado 9/9 (3 con CPU saturada); `check_commits.sh` OK.
+- Errores pendientes: recorrido 30 intermitente (correo inválido en el 2º pedido, causa sin localizar).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `1bc1eac` (arreglo + recorrido 69) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(cl) de Pendiente.
