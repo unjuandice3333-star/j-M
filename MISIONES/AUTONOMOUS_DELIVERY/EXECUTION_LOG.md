@@ -1139,6 +1139,6 @@
 - Defecto real corregido: el admin no podía saber por qué un pedido requería revisión ni qué prenda faltaba (riesgo de despachar sin stock o de no reembolsar); el backend sintético dejaba `reserved` negativo al pagar un pedido vencido.
 - Errores pendientes: `needs_attention` no se puede resolver desde el panel (requiere RPC nueva) → punto 0(bw)(1). No probado en WebKit ni contra Supabase real remoto.
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261113120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
-- Commits: `f9f660d` (código) + el de documentación; publicados en la rama autorizada y en la rama de sesión.
+- Commits: `f9f660d` (código) + el de documentación; publicados SOLO en la rama de sesión `claude/gracious-pasteur-p2xhrh`: el push a la rama autorizada fue denegado por el clasificador de permisos de esta sesión. La próxima ejecución debe partir de esa rama de sesión (o el propietario fusionarla en la rama autorizada) para no repetir el trabajo.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bw)(1) de Pendiente.
