@@ -39,7 +39,7 @@ jobs:
       - name: Dependencias (lockfile congelado)
         run: pnpm install --frozen-lockfile
       - name: Chromium de Playwright
-        run: npx --no-install playwright install --with-deps chromium
+        run: bash scripts/ci/install_chromium.sh   # límite por intento y reintentos (D117)
       - name: Cliente psql
         run: sudo apt-get update -q && sudo apt-get install -y -q postgresql-client
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
