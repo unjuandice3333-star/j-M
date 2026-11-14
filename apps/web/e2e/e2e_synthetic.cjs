@@ -2191,6 +2191,13 @@ async function main() {
       if (done.status !== 'refunded' || done.needs_attention || !closed?.metadata?.refunded || closed.note !== 'Sin talla L para reponer: reembolsado en Wompi') throw new Error(`reembolso: ${JSON.stringify(done)}`);
       if (st.inventories.find((i) => i.sku === 'CAM-M-NEG').stock !== mBefore) throw new Error('las M vendidas debían volver al inventario');
       if (st.inventories.find((i) => i.sku === 'CAM-L-NEG').stock !== 0) throw new Error('la L que faltó NO debía reingresar');
+      // ejecución 127: el cliente (seguimiento del pedido) lee que se le devuelve el dinero, sin promesa de despacho
+      await p.reload();
+      await p.getByRole('heading', { name: `Pedido reembolsado · ${late.order_number}` }).waitFor({ timeout: 8000 });
+      const refundText = await p.getByTestId('order-refund-notice').textContent();
+      if (!refundText.includes('Registramos la devolución de') || !refundText.includes('Este pedido no se enviará.')) throw new Error(`aviso de reembolso: «${refundText}»`);
+      const body = await p.locator('body').textContent();
+      if (/cuando despachemos|Pedido cerrado|Pedido en revisión/.test(body)) throw new Error('el cliente ve un estado ambiguo tras el reembolso');
       // el historial lo dice en palabras; el dashboard ya no cuenta la revisión
       await adm.goto(`${BASE}/admin/pedidos?q=${late.order_number}`);
       await adm.locator('tbody tr').filter({ hasText: late.order_number }).getByRole('button', { name: 'GESTIONAR' }).click();

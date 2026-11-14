@@ -28,3 +28,22 @@ export function orderReviewMessage(order, email) {
   }
   return null;
 }
+
+// Ejecución 127: pedido `refunded`. El admin registra el reembolso después de devolver el dinero en Wompi (D99); el
+// cliente debe leer que el dinero vuelve, sin la promesa de despacho ni un estado ambiguo («Pedido cerrado»).
+// Un reembolso puede llegar también después de enviado/entregado (devolución): entonces no se dice «no se enviará».
+
+/** ¿El pedido llegó a despacharse? Usa la guía o las fechas/historial que tenga la fuente (confirmación o «Mis pedidos»). */
+export function orderWasShipped(order) {
+  if (!order) return false;
+  if (order.shipped_at || order.delivered_at || order.tracking_number || order.tracking?.tracking_number) return true;
+  return (order.timeline ?? []).some((t) => t.to_status === 'shipped' || t.to_status === 'delivered');
+}
+
+/** Texto para el cliente de un pedido reembolsado (o null si el pedido no está `refunded`). */
+export function orderRefundMessage(order, formatAmount) {
+  if (!order || order.status !== 'refunded') return null;
+  const amount = Number(order.total) > 0 && formatAmount ? ` de ${formatAmount(order.total)}` : '';
+  const base = `Registramos la devolución${amount}. El dinero vuelve al mismo medio con el que pagaste; según tu banco, puede tardar algunos días hábiles en verse reflejado.`;
+  return orderWasShipped(order) ? base : `${base} Este pedido no se enviará.`;
+}

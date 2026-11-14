@@ -7,7 +7,7 @@
 // =============================================================================
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle2, Clock, XCircle, Truck, Package, CreditCard, AlertTriangle } from '../components/Common/icons';
+import { CheckCircle2, Clock, XCircle, Truck, Package, CreditCard, AlertTriangle, RotateCcw } from '../components/Common/icons';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { formatCOP } from '../utils/currency';
 import { analyticsService } from '../services/analytics';
@@ -15,7 +15,7 @@ import { orderService } from '../services/orderService';
 import { wompiService } from '../services/wompi';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
 import { useAuthStore } from '../store/authStore';
-import { orderReviewMessage } from '../utils/orderReview';
+import { orderReviewMessage, orderRefundMessage } from '../utils/orderReview';
 
 const POLL_MS = 5000;
 const POLL_MAX = 36; // ~3 minutos
@@ -186,6 +186,8 @@ export const OrderConfirmationPage = () => {
   const isPaidFlow = ['paid', 'processing', 'shipped', 'delivered'].includes(st);
   const isPending = st === 'payment_pending';
   const isClosed = ['cancelled', 'expired', 'refunded'].includes(st);
+  const isRefunded = st === 'refunded';
+  const refundMessage = orderRefundMessage(order, formatCOP);
   const expiresAt = order.payment_expires_at ? new Date(order.payment_expires_at) : null;
   // La ventana de pago terminó aunque el job de expiración aún no haya cambiado el estado: no ofrecer «Pagar ahora».
   const windowClosed = isPending && expiresAt !== null && expiresAt.getTime() <= Date.now();
@@ -199,13 +201,14 @@ export const OrderConfirmationPage = () => {
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }} role="status" aria-live="polite">
           {isPaidFlow && <CheckCircle2 size={60} color="#10B981" style={{ margin: '0 auto 1rem auto' }} />}
           {isPending && <Clock size={60} color="#D97706" style={{ margin: '0 auto 1rem auto' }} />}
-          {isClosed && <XCircle size={60} color="#E11D48" style={{ margin: '0 auto 1rem auto' }} />}
+          {isRefunded && <RotateCcw size={60} color="#52525B" style={{ margin: '0 auto 1rem auto' }} />}
+          {isClosed && !isRefunded && <XCircle size={60} color="#E11D48" style={{ margin: '0 auto 1rem auto' }} />}
           <span style={{ fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase',
-            color: isPaidFlow ? '#10B981' : isPending ? '#D97706' : '#E11D48' }}>
-            {order.status_label}
+            color: isPaidFlow ? '#10B981' : isPending ? '#D97706' : isRefunded ? '#52525B' : '#E11D48' }}>
+            {order.status_label || (isRefunded ? 'Reembolsado' : '')}
           </span>
           <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0' }}>
-            {isPaidFlow ? '¡Gracias por tu compra!' : isPending ? 'Pedido registrado' : 'Pedido cerrado'} · {order.order_number}
+            {isPaidFlow ? '¡Gracias por tu compra!' : isPending ? 'Pedido registrado' : isRefunded ? 'Pedido reembolsado' : 'Pedido cerrado'} · {order.order_number}
           </h1>
           <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
             {isPaidFlow && !reviewMessage && `Confirmamos el pago. Te avisaremos a ${order.customer_email} cuando despachemos tu pedido.`}
@@ -217,7 +220,7 @@ export const OrderConfirmationPage = () => {
                 : 'Esperando la confirmación del pago de Wompi… esta página se actualiza sola.')}
             {st === 'expired' && 'El tiempo para pagar este pedido terminó y la reserva se liberó.'}
             {st === 'cancelled' && 'Este pedido fue cancelado.'}
-            {st === 'refunded' && 'Este pedido fue reembolsado.'}
+            {isRefunded && <span data-testid="order-refund-notice">{refundMessage}</span>}
           </p>
           {reviewMessage && (
             <p data-testid="order-review-notice" style={{ fontSize: '0.92rem', color: '#92400E', backgroundColor: '#FFFBEB', border: '1px solid #FDE68A',

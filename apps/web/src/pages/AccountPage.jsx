@@ -18,7 +18,7 @@ import supabase from '../config/supabase';
 import { orderService } from '../services/orderService';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
-import { orderReviewKind, orderReviewMessage } from '../utils/orderReview';
+import { orderReviewKind, orderReviewMessage, orderRefundMessage } from '../utils/orderReview';
 import { AccountDetails } from '../components/Account/AccountDetails';
 import { AccountSectionNav, useAccountSectionFocus } from '../components/Account/AccountSectionNav';
 import { ReviewInvitations } from '../components/Account/ReviewInvitations';
@@ -427,6 +427,7 @@ export const AccountPage = () => {
                   const windowState = paymentWindow(ord);
                   // Ventana vencida aunque el job de expiración aún no haya cambiado el estado: mostrarlo como vencido.
                   const reviewMessage = orderReviewMessage(ord, user?.email);
+                  const refundMessage = orderRefundMessage(ord, formatCOP);
                   const badge = orderReviewKind(ord) === 'fulfillment'
                     ? getStatusBadge('under_review')
                     : getStatusBadge(windowState === 'closed' ? 'expired' : ord.status);
@@ -490,6 +491,13 @@ export const AccountPage = () => {
                         <p data-testid="order-review-notice" style={{ fontSize: '0.85rem', color: '#92400E', backgroundColor: '#FFFBEB', border: '1px solid #FDE68A',
                           borderRadius: '8px', padding: '0.7rem 0.9rem', margin: '0 0 1rem 0' }}>
                           <strong>Pedido en revisión.</strong> {reviewMessage}
+                        </p>
+                      )}
+
+                      {refundMessage && (
+                        <p data-testid="order-refund-notice" style={{ fontSize: '0.85rem', color: '#3F3F46', backgroundColor: '#F4F4F5', border: '1px solid #E4E4E7',
+                          borderRadius: '8px', padding: '0.7rem 0.9rem', margin: '0 0 1rem 0' }}>
+                          <strong>Reembolso registrado.</strong> {refundMessage}
                         </p>
                       )}
 
