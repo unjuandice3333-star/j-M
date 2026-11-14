@@ -1215,3 +1215,15 @@
 - Commits: el de código + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(cc) de Pendiente (aviso de devoluciones pendientes en la campana y el menú del admin; comprobar el filtro `!inner` contra Supabase local en CI).
+
+## Ejecución 132 — 2026-11-14 ~11:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-p0wl0e` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `39d7335`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(cc) de Pendiente: aviso de devoluciones pendientes de hacer en Wompi en la campana y el menú «Pedidos» del admin (D105).
+- Archivos: `apps/web/src/components/Common/AdminNotifications.jsx` (prop `pendingRefunds`, aviso «N devoluciones pendientes en Wompi» → `?devolucion=pendiente`, suma a la insignia), `apps/web/src/layouts/AdminLayout.jsx` (recuento con `pendingRefundsSummary` al navegar, con `ORDERS_CHANGED_EVENT` y con el sondeo; insignia ámbar `admin-nav-refund-badge` en «Pedidos»), nuevo `apps/web/src/__tests__/adminRefundAlerts.test.jsx` (5), `apps/web/src/__tests__/adminNotifications.test.jsx` (texto sin pendientes), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 63 ampliado: menú + campana + baja al marcarla hecha; recorrido 62: espera el foco hasta 3 s).
+- Pruebas (ejecutadas aquí): `adminRefundAlerts.test.jsx` 5/5 (los 5 fallan sin el cambio de `src`, `git stash`); `pnpm test:unit` 676/676 (71 archivos); recorrido 63 falla sin el cambio y pasa con él; `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` pasada completa **63/63**. Sin migración: pgTAP no re-ejecutado.
+- Defecto de prueba encontrado: el recorrido 62 fallaba ~1 de cada 5 pasadas («el foco no va al campo del id») también SIN cambios (comprobado 1/5 con `git stash`): leía `document.activeElement` en el mismo instante en que aparecía el error, pero el foco se mueve en un `setTimeout`. Ahora espera hasta 3 s: 6/6 pasadas seguidas OK.
+- Errores pendientes: ninguno nuevo. Sin verificar contra PostgREST real ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `10582d7` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(cd) de Pendiente (filtro `!inner` de devoluciones pendientes contra Supabase local real en el job `e2e-supabase`).
