@@ -1353,3 +1353,15 @@
 - GitHub: run `ci` nº 175 (`11aec3f`) → governance, quality, db-local, db-supabase, e2e-synthetic (71) ✔; solo `security` ✘ (gitleaks, conocido); `e2e-supabase` nº 153 ✔.
 - Notificación: no enviada (defecto corregido y verificado; bloqueos ya notificados).
 - Siguiente: punto 0(cm)(2) (flujos de la tienda sin E2E: reseñas a 320 px, cuenta con varias direcciones).
+
+## Ejecución 143 — 2026-11-14 ~23:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-10vvyj` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `934827d`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior: run `ci` nº 175 (`11aec3f`) todo ✔ salvo `security` (gitleaks, conocido); `e2e-supabase` nº 153 ✔.
+- Tarea: punto 0(cm)(2) — libreta con varias direcciones y reseñas a 320 px (D120).
+- Archivos: `apps/web/src/components/Account/AccountDetails.jsx` (formulario de dirección a la vista + foco + nombre accesible), `apps/web/src/pages/ProductDetailPage.jsx` (tarjetas de reseña encogibles y con ajuste de palabras), `apps/web/src/components/Product/ProductReviewForm.jsx` («Tu opinión» con ajuste), `apps/web/src/__tests__/accountDetails.test.jsx` (1 prueba nueva), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 72).
+- Pruebas (ejecutadas aquí): recorrido 72 falla sin los cambios de `src` (10 fallos) y pasa con ellos; vitest nueva falla sin el cambio; `pnpm test:unit` 689/689; ESLint 0; build OK; `pnpm test:e2e-synthetic` **72/72**; `check_commits.sh` OK.
+- Errores pendientes: recorrido 30 intermitente (sin datos nuevos).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `339bb83` (arreglo + recorrido 72) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(cn) de Pendiente («Mis pedidos» con muchos pedidos a 320 px; teclado del formulario de dirección).
