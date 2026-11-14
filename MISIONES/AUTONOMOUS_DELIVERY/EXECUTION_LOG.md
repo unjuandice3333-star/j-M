@@ -1204,3 +1204,14 @@
 - Commits: el de código + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(cb) de Pendiente (devoluciones pendientes de hacer en Wompi: alerta en el dashboard + filtro en pedidos).
+
+## Ejecución 131 — 2026-11-14 ~10:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-dlfsur` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `8375252`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(cb) de Pendiente: devoluciones pendientes de hacer en Wompi visibles en el dashboard y filtro en pedidos (D104).
+- Archivos: `apps/web/src/utils/orderRefunds.js` (`summarizePendingRefunds`, `pendingRefundFromParam`, `PENDING_REFUND_PARAM`), `apps/web/src/services/adminService.js` (`pendingRefundsSummary`), `apps/web/src/pages/admin/AdminDashboardPage.jsx` (tarjeta «DEVOLUCIONES PENDIENTES»), `apps/web/src/pages/admin/AdminOrdersPage.jsx` (`?devolucion=pendiente`, casilla con contador, marca en la fila), nuevo `apps/web/src/__tests__/adminPendingRefunds.test.jsx` (8), `apps/web/e2e/synthetic/backend.cjs` (`order_refunds` como tabla con la RLS de lectura y filtro del embebido `pending_refunds.status`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 63).
+- Pruebas (ejecutadas aquí): `adminPendingRefunds.test.jsx` 8/8 (los 8 fallan sin los cambios de `src`, `git stash`); recorrido 63 falla sin el cambio y pasa con él; `pnpm test:unit` 671/671 (70 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` pasada completa **63/63**. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo. No verificado el filtro `!inner` contra PostgREST real ni en WebKit.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: el de código + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(cc) de Pendiente (aviso de devoluciones pendientes en la campana y el menú del admin; comprobar el filtro `!inner` contra Supabase local en CI).
