@@ -1253,3 +1253,16 @@
 - Commits: `36dc967`, `a2521a0` (docs), `419c450`, `97e2072` + el de documentación; publicados en la rama autorizada.
 - Notificación: enviada (CI rojo desde la ejecución 122, ya corregido).
 - Siguiente: comprobar el run `ci` del último push; luego punto 0(cg) de Pendiente (pedido con una devolución hecha y otra pendiente a la vez).
+
+## Ejecución 135 — 2026-11-14 ~15:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-p4p4e3` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `cbdf1db`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior (API de Actions): run `ci` nº 163 (`cbdf1db`) todo ✔ salvo `security` (gitleaks del historial, conocido); `e2e-supabase` nº 141 ✔.
+- Tarea: punto 0(cg) de Pendiente (pedido con una devolución hecha y otra pendiente, D109) y defecto móvil encontrado en la pasada E2E completa (D110).
+- Archivos: `scripts/ci/lib/refund_filter_checks.py` (`mixed_order`, 10 comprobaciones nuevas), `scripts/ci/lib/http_checks.py` y `supabase/tests/postgrest_local_checks.py` (token `service_role` local), `apps/web/src/utils/orderRefunds.js` (`refundHeading`), `apps/web/src/pages/admin/AdminOrdersPage.jsx` (título), nuevo `apps/web/src/__tests__/refundHeading.test.jsx` (3), `apps/web/e2e/synthetic/backend.cjs` (fixture `/__synthetic-extra-refund/`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 63 ampliado, recorrido 65 nuevo), `apps/web/src/pages/CartPage.jsx` y `apps/web/src/components/Header/Header.jsx` (`minWidth: 0` / `flexShrink: 0`).
+- Pruebas (ejecutadas aquí): `bash supabase/tests/postgrest_local.sh` **24/24** contra PostgREST real (`dockerd` arrancado a mano; imagen de Docker Hub); recorrido 63 falla sin el cambio del título y pasa con él; recorrido 65 falla sin cada uno de los dos arreglos (APLICAR 419 px, «Buscar» 423 px en 375) y pasa con ellos; `pnpm test:unit` 679/679; ESLint 0; build OK; `pnpm test:e2e-synthetic` **65/65** (la primera pasada completa, antes del arreglo, dio 63/64 por el recorrido 33); `check_commits.sh` y `migrations_policy.sh` OK.
+- Errores pendientes: ninguno nuevo. Sin verificar en GitHub (`db-supabase` con las comprobaciones mixtas y `e2e-synthetic` 65) hasta el run del push.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `cbf6c18` (arreglo móvil), `ba7c43c` (devoluciones mixtas) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(ch) de Pendiente (mismo patrón `flex: 1` sin `minWidth: 0` en filas de campo + botón del admin).
+
