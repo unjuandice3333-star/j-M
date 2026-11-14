@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-14 (ejecución 127: el cliente ve con claridad que su pedido fue reembolsado — título «Pedido reembolsado», monto devuelto, plazo bancario y «no se enviará» solo si no se despachó — en la confirmación/seguimiento y en «Mis pedidos»; sin migración — D100 —; vitest 647/647, E2E sintético recorrido 59 ampliado)
+Última actualización: 2026-11-14 (ejecución 127: el cliente ve con claridad que su pedido fue reembolsado — título «Pedido reembolsado», monto devuelto, plazo bancario y «no se enviará» solo si no se despachó — en la confirmación/seguimiento y en «Mis pedidos»; sin migración — D100 —; vitest 647/647, E2E sintético 59/59 en pasada completa)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
