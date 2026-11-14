@@ -408,6 +408,7 @@ export const Header = () => {
                 autoFocus
                 style={{
                   flex: 1,
+                  minWidth: 0, // ejecución 135: el ancho intrínseco del campo empujaba «Buscar» fuera de la pantalla en móvil
                   padding: '0.85rem 1.1rem',
                   border: '1px solid #D4D4D8',
                   borderRadius: '6px',
@@ -418,6 +419,7 @@ export const Header = () => {
               <button
                 type="submit"
                 style={{
+                  flexShrink: 0,
                   backgroundColor: '#09090B',
                   color: '#FFFFFF',
                   padding: '0 1.5rem',

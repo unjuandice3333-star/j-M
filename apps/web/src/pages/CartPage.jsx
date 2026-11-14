@@ -333,6 +333,7 @@ export const CartPage = () => {
                         onChange={(e) => setCouponInput(e.target.value)}
                         style={{
                           flex: 1,
+                          minWidth: 0, // ejecución 135: sin esto el ancho intrínseco del campo empujaba APLICAR fuera de la pantalla en móvil
                           padding: '0.6rem 0.8rem',
                           border: '1px solid #D4D4D8',
                           borderRadius: '4px',
@@ -345,6 +346,7 @@ export const CartPage = () => {
                         type="submit"
                         disabled={applying}
                         style={{
+                          flexShrink: 0,
                           backgroundColor: '#09090B',
                           color: '#FFFFFF',
                           padding: '0 1.1rem',
