@@ -352,6 +352,9 @@ function start(port = 54321) {
     else if (table === 'v_variant_availability') data = S.inventories.map((i) => ({ variant_id: i.variant_id, product_id: i.variants.products.id, available: avail(i) }));
     else if (table === 'online_orders') data = ctx.role === 'admin' ? S.tables.online_orders : S.tables.online_orders.filter((o) => ctx.userId && o.user_id === ctx.userId);
     else if (table === 'profiles') data = ctx.role === 'admin' ? S.tables.profiles : S.tables.profiles.filter((p) => p.id === ctx.userId);
+    // Ejecución 131: order_refunds como tabla (en el sintético vive dentro de cada pedido). RLS order_refunds_read: quien ve el pedido.
+    else if (table === 'order_refunds') data = S.tables.online_orders.filter((o) => ctx.role === 'admin' || (ctx.userId && o.user_id === ctx.userId))
+      .flatMap((o) => (o.order_refunds || []).map((r) => ({ ...r, order_id: o.id })));
     else if (table === 'coupon_redemptions') data = ctx.role === 'admin' ? S.tables.coupon_redemptions : []; // RLS coupon_redemptions_admin_read
     else if (table === 'newsletter_subscribers') data = ctx.role === 'admin' ? S.tables.newsletter_subscribers : []; // RLS newsletter_admin_read
     else if (table === 'product_reviews') data = ctx.role === 'admin' ? S.tables.product_reviews : S.tables.product_reviews.filter((r) => r.status === 'approved'); // RLS product_reviews_read
@@ -364,6 +367,10 @@ function start(port = 54321) {
         const pred = parseLogic('or', v.replace(/^\(|\)$/g, ''));
         data = data.filter(pred);
         continue;
+      }
+      // Ejecución 131: embebido `pending_refunds:order_refunds!inner(id)` filtrado por estado (solo pedidos con alguna devolución así).
+      if (table === 'online_orders' && k === 'pending_refunds.status') {
+        const st = /^eq\.(.*)$/.exec(v)?.[1]; data = data.filter((o) => (o.order_refunds || []).some((r) => r.status === st)); continue;
       }
       const m = /^(eq|in|neq)\.(.*)$/.exec(v); if (!m) continue;
       if (m[1] === 'eq') data = data.filter((r) => String(r[k]) === m[2]);

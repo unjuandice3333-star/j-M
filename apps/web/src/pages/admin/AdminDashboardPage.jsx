@@ -11,7 +11,8 @@ import {
 } from '../../components/Common/icons';
 import { formatCOP } from '../../utils/currency';
 import supabase from '../../config/supabase';
-import { adminService, countOrdersToPrepare } from '../../services/adminService';
+import { adminService, countOrdersToPrepare, pendingRefundsSummary } from '../../services/adminService';
+import { PENDING_REFUND_PARAM } from '../../utils/orderRefunds';
 
 // M27: métricas de la BD (admin_dashboard_metrics; exige is_admin()). Sin valores de ejemplo: si la consulta falla,
 // se muestra el error. Rango: desde el inicio del periodo elegido hasta ahora.
@@ -28,6 +29,8 @@ export const AdminDashboardPage = () => {
   // Ejecución 76: pedidos pagados esperando preparación, de CUALQUIER fecha (no dependen del periodo elegido: un pedido
   // pagado hace 40 días sigue pendiente). Si el conteo falla, el resto del panel funciona igual.
   const [toPrepare, setToPrepare] = useState(undefined);
+  // Ejecución 131: devoluciones registradas pendientes de hacer en Wompi (cualquier fecha). null = no se pudo contar.
+  const [pendingRefunds, setPendingRefunds] = useState(undefined);
 
   // Ejecución 122 (D95): vence primero los pedidos con la ventana de pago cumplida (una vez por visita; nunca falla).
   const expiry = useRef(null);
@@ -36,6 +39,7 @@ export const AdminDashboardPage = () => {
   useEffect(() => {
     let alive = true;
     expireOnce().then(() => countOrdersToPrepare()).then((n) => { if (alive) setToPrepare(n); }, () => { if (alive) setToPrepare(null); });
+    pendingRefundsSummary().then((r) => { if (alive) setPendingRefunds(r); }, () => { if (alive) setPendingRefunds(null); });
     return () => { alive = false; };
   }, []);
 
@@ -131,6 +135,13 @@ export const AdminDashboardPage = () => {
           value={`${metrics.needs_attention} pedido${Number(metrics.needs_attention) === 1 ? '' : 's'}`}
           detail="Stock faltante, reembolso o pago anulado · Ver pedidos →"
           warn={Number(metrics.needs_attention) > 0} icon={AlertTriangle} />
+        {/* Ejecución 131: el panel no mueve dinero; estas devoluciones ya están registradas y falta hacerlas en Wompi. */}
+        <KpiCard title="DEVOLUCIONES PENDIENTES" to={`/admin/pedidos?devolucion=${PENDING_REFUND_PARAM}`} linkLabel="Ver pedidos con devolución pendiente en Wompi"
+          value={pendingRefunds === undefined ? '…' : pendingRefunds === null ? '—' : `${pendingRefunds.count} devoluci${pendingRefunds.count === 1 ? 'ón' : 'ones'}`}
+          detail={pendingRefunds === undefined ? 'Contando devoluciones…' : pendingRefunds === null ? 'No se pudo contar las devoluciones pendientes.'
+            : pendingRefunds.count === 0 ? 'Nada pendiente de devolver en Wompi'
+              : `${formatCOP(pendingRefunds.amount)} por devolver en Wompi · Ver pedidos →`}
+          warn={pendingRefunds === null || (pendingRefunds?.count ?? 0) > 0} icon={CreditCard} />
       </div>
       )}
 

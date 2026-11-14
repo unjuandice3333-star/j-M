@@ -57,3 +57,23 @@ export function validateProviderRefundId(value) {
   }
   return null;
 }
+
+// Ejecución 131: devoluciones que siguen `requested` (pendientes de hacer en Wompi) en el dashboard y en
+// `/admin/pedidos?devolucion=pendiente`. Lectura de `order_refunds` (RLS `order_refunds_read`), sin migración.
+export const PENDING_REFUND_PARAM = 'pendiente';
+
+/** ¿La URL pide solo pedidos con devolución pendiente? (`?devolucion=pendiente`; otro valor se ignora). */
+export const pendingRefundFromParam = (value) => value === PENDING_REFUND_PARAM;
+
+/**
+ * Resumen de devoluciones pendientes: cuántas, cuánto dinero falta devolver y en cuántos pedidos.
+ * Ignora las que no están `requested` (por si la lectura no se filtró en la BD).
+ */
+export function summarizePendingRefunds(rows) {
+  const pending = (rows ?? []).filter((r) => (r?.status ?? 'requested') === 'requested');
+  return {
+    count: pending.length,
+    amount: pending.reduce((n, r) => n + (Number(r.amount) || 0), 0),
+    orders: new Set(pending.map((r) => r.order_id).filter(Boolean)).size,
+  };
+}

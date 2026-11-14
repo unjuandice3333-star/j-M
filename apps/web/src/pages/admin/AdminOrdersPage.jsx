@@ -10,7 +10,7 @@ import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 import { DialogPanel } from '../../components/Common/DialogPanel';
 import { attentionReasons, sortedEvents, eventText, validateResolveNote, canRefundFromAttention, RESOLVE_NOTE_MAX } from '../../utils/orderAttention';
-import { refundRecords, refundTotal, hasPendingRefund, refundStockText, validateProviderRefundId, PROVIDER_REFUND_ID_MAX } from '../../utils/orderRefunds';
+import { refundRecords, refundTotal, hasPendingRefund, refundStockText, validateProviderRefundId, PROVIDER_REFUND_ID_MAX, pendingRefundFromParam, PENDING_REFUND_PARAM } from '../../utils/orderRefunds';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_ERROR_ID = 'order-modal-error';
@@ -58,6 +58,14 @@ export const AdminOrdersPage = () => {
   const setOnlyAttention = (on) => {
     const next = new URLSearchParams(searchParams);
     if (on) next.set('revision', '1'); else next.delete('revision');
+    setSearchParams(next, { replace: true });
+  };
+  // Ejecución 131: solo pedidos con alguna devolución registrada que falta hacer en Wompi (`?devolucion=pendiente`),
+  // enlazado desde la tarjeta «DEVOLUCIONES PENDIENTES» del dashboard. Se combina con el resto de filtros.
+  const onlyPendingRefund = pendingRefundFromParam(searchParams.get('devolucion'));
+  const setOnlyPendingRefund = (on) => {
+    const next = new URLSearchParams(searchParams);
+    if (on) next.set('devolucion', PENDING_REFUND_PARAM); else next.delete('devolucion');
     setSearchParams(next, { replace: true });
   };
   // Ejecución 82: la búsqueda (`?q=`) y el método de envío (`?envio=`) también viven en la URL para enlazar una búsqueda
@@ -127,6 +135,7 @@ export const AdminOrdersPage = () => {
 
   const [totalCount, setTotalCount] = useState(null);
   const [summaryRows, setSummaryRows] = useState([]);
+  const [pendingRefunds, setPendingRefunds] = useState(undefined);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const debouncedQuery = urlQuery;
   const requestSeq = useRef(0);
@@ -135,7 +144,10 @@ export const AdminOrdersPage = () => {
   // conteos se aplicaban sobre esos. Ahora estado, método y texto se filtran en la BD, la lista llega por páginas
   // (`.range()`) con conteo exacto, y los conteos de las pestañas salen de TODOS los pedidos (solo status y método).
   const buildOrdersQuery = (filters, from) => {
-    let q = supabase.from('online_orders').select(ORDER_SELECT, { count: 'exact' });
+    // Ejecución 131: la devolución pendiente se filtra en la BD con un embebido `!inner` APARTE (alias), para que el
+    // detalle siga mostrando todas las devoluciones del pedido (también las ya hechas).
+    let q = supabase.from('online_orders').select(filters.pendingRefund ? `${ORDER_SELECT}, pending_refunds:order_refunds!inner ( id )` : ORDER_SELECT, { count: 'exact' });
+    if (filters.pendingRefund) q = q.eq('pending_refunds.status', 'requested');
     if (filters.status !== 'todos') q = q.eq('status', filters.status);
     if (filters.method !== 'todos') q = q.eq('shipping_method_code', filters.method);
     if (filters.attention) q = q.eq('needs_attention', true);
@@ -156,9 +168,11 @@ export const AdminOrdersPage = () => {
     const { data, error } = await fetchAllRows(() => supabase.from('online_orders').select('id, status, shipping_method_code, needs_attention')
       .order('created_at', { ascending: false }).order('id', { ascending: false }));
     setSummaryRows(error ? [] : data);
+    // Ejecución 131: pedidos con devolución pendiente (para el contador del filtro). Si falla, el filtro sigue disponible.
+    adminService.pendingRefundsSummary().then(setPendingRefunds, () => setPendingRefunds(null));
   };
 
-  const filters = { status: selectedStatusTab, method: methodFilter, query: debouncedQuery, attention: onlyAttention, coupon: couponFilter, customer: customerFilter };
+  const filters = { status: selectedStatusTab, method: methodFilter, query: debouncedQuery, attention: onlyAttention, pendingRefund: onlyPendingRefund, coupon: couponFilter, customer: customerFilter };
 
   const fetchDbOrders = async ({ append = false } = {}) => {
     const seq = ++requestSeq.current;
@@ -198,7 +212,7 @@ export const AdminOrdersPage = () => {
   useEffect(() => {
     if (!customerReady) { requestSeq.current += 1; setIsLoading(true); return; } // espera el perfil del cliente
     fetchDbOrders();
-  }, [selectedStatusTab, methodFilter, debouncedQuery, onlyAttention, couponFilter, customerFilter, customerReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedStatusTab, methodFilter, debouncedQuery, onlyAttention, onlyPendingRefund, couponFilter, customerFilter, customerReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchSummary();
@@ -394,6 +408,11 @@ export const AdminOrdersPage = () => {
           Solo los que requieren revisión ({attentionCount})
         </label>
 
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 700, color: pendingRefunds?.orders > 0 ? '#B91C1C' : '#52525B' }}>
+          <input type="checkbox" checked={onlyPendingRefund} onChange={(e) => setOnlyPendingRefund(e.target.checked)} />
+          Solo con devolución pendiente en Wompi ({pendingRefunds === undefined ? '…' : pendingRefunds === null ? '—' : pendingRefunds.orders})
+        </label>
+
         {/* Status Tabs */}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           {TABS.map((st) => (
@@ -454,6 +473,7 @@ export const AdminOrdersPage = () => {
                     <div style={{ fontWeight: 700 }}>{ord.customerName}</div>
                     <div style={{ fontSize: '0.75rem', color: '#71717A' }}>{ord.customer_email} · {ord.shipping_city}</div>
                     {ord.needs_attention && <div style={{ fontSize: '0.72rem', color: '#B91C1C', fontWeight: 800 }}>REQUIERE REVISIÓN</div>}
+                    {hasPendingRefund(refundRecords(ord)) && <div data-testid="order-row-pending-refund" style={{ fontSize: '0.72rem', color: '#B91C1C', fontWeight: 800 }}>DEVOLUCIÓN PENDIENTE EN WOMPI</div>}
                   </td>
                   <td style={{ ...tdOrder, fontSize: '0.78rem', color: '#27272A' }}>
                     {ord.paymentMethod}

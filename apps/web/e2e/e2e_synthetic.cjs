@@ -2351,6 +2351,56 @@ async function main() {
       if (!events.some((e) => e.includes('Devolución hecha en Wompi') && e.includes('12345-1700000000-99999'))) throw new Error(`historial: ${events.join(' | ')}`);
     }, browser);
 
+    // Ejecución 131: los recorridos corren en paralelo y comparten el backend; no se afirman conteos globales exactos.
+    await journey('63. Admin: devoluciones pendientes en Wompi — tarjeta del dashboard, filtro ?devolucion=pendiente y salida al marcarla hecha', async (p) => {
+      const mk = async (name, status) => (await (await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ customer_name: name, customer_email: `${name.toLowerCase().replace(/\s+/g, '.')}@correo.co`, status }) })).json()).order_number;
+      const num = await mk('Devolucion Pendiente', 'paid');
+      const other = await mk('Sin Devolucion', 'paid');
+      p.on('dialog', (d) => d.accept().catch(() => {}));
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      // Cancelar el pedido pagado registra la devolución (requested).
+      await p.goto(`${BASE}/admin/pedidos?q=${num}`);
+      await p.locator('tbody tr').filter({ hasText: num }).getByRole('button', { name: 'GESTIONAR' }).click();
+      await p.locator('#order-next-status').selectOption('cancelled');
+      await p.getByLabel('Nota del cambio').fill('Cliente desistió');
+      await p.getByRole('button', { name: 'GUARDAR CAMBIOS' }).click();
+      await p.locator('#order-next-status').waitFor({ state: 'detached', timeout: 8000 });
+      const order = async () => (await state()).orders.find((x) => x.order_number === num);
+      for (let i = 0; i < 25 && !(await order()).order_refunds.length; i += 1) await new Promise((r) => setTimeout(r, 200));
+      // Dashboard: tarjeta con al menos esta devolución, monto y enlace al filtro.
+      await p.goto(`${BASE}/admin/dashboard`);
+      const card = p.getByRole('link', { name: /^Ver pedidos con devolución pendiente en Wompi: \d+ devoluci/ });
+      await card.waitFor({ timeout: 8000 });
+      const n = Number(/: (\d+) devoluci/.exec(await card.getAttribute('aria-label'))[1]);
+      if (!(n >= 1)) throw new Error(`conteo de devoluciones pendientes: ${n}`);
+      if (!/por devolver en Wompi/.test(await card.textContent())) throw new Error(`detalle de la tarjeta: ${await card.textContent()}`);
+      if ((await card.locator('[data-warn]').getAttribute('data-warn')) !== 'true') throw new Error('la tarjeta no alerta');
+      await card.click();
+      await p.waitForURL(/\/admin\/pedidos\?devolucion=pendiente$/, { timeout: 8000 });
+      const filter = p.getByLabel(/^Solo con devolución pendiente en Wompi \(\d+\)$/);
+      await filter.waitFor({ timeout: 8000 });
+      if (!(await filter.isChecked())) throw new Error('el filtro no queda marcado desde el enlace');
+      const row = p.locator('tbody tr').filter({ hasText: num });
+      await row.waitFor({ timeout: 8000 });
+      if (!(await row.getByTestId('order-row-pending-refund').count())) throw new Error('la fila no marca la devolución pendiente');
+      if (await p.locator('tbody tr').filter({ hasText: other }).count()) throw new Error('aparece un pedido sin devolución');
+      // Marcarla hecha en Wompi la saca del filtro.
+      await row.getByRole('button', { name: 'GESTIONAR' }).click();
+      await p.getByLabel('Id de la devolución en Wompi').fill('W-63-0001');
+      await p.getByTestId('order-refund-mark-processed').click();
+      await expectText(p, 'marcada como hecha en Wompi');
+      await p.goto(`${BASE}/admin/pedidos?devolucion=pendiente&q=${num}`);
+      await expectText(p, 'No hay pedidos con estos filtros.');
+      // Sin el filtro el pedido sigue en la lista, sin la marca.
+      await filter.uncheck();
+      const after = p.locator('tbody tr').filter({ hasText: num });
+      await after.waitFor({ timeout: 8000 });
+      if (await after.getByTestId('order-row-pending-refund').count()) throw new Error('sigue marcada como pendiente');
+      if (/devolucion=/.test(p.url())) throw new Error(`el parámetro sigue en la URL: ${p.url()}`);
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });

@@ -13,6 +13,8 @@
 // =============================================================================
 import supabase from '../config/supabase';
 import { toOrderError } from './orderService';
+import { fetchAllRows } from '../utils/fetchAll';
+import { summarizePendingRefunds } from '../utils/orderRefunds';
 
 const ADMIN_HINTS = {
   JM_FORBIDDEN: 'No tienes permisos para esta operación.',
@@ -90,6 +92,17 @@ export async function countOrdersToPrepare() {
 }
 
 /**
+ * Ejecución 131: devoluciones registradas que siguen pendientes de hacer en Wompi (`order_refunds.status = 'requested'`),
+ * de cualquier fecha. Devuelve { count, amount, orders }. Lee todas las filas (sin el corte de `max_rows`).
+ */
+export async function pendingRefundsSummary() {
+  const { data, error } = await fetchAllRows(() => supabase.from('order_refunds').select('id, order_id, amount, status')
+    .eq('status', 'requested').order('created_at', { ascending: true }).order('id', { ascending: true }));
+  if (error) throw adminError(error, 'No se pudieron contar las devoluciones pendientes.');
+  return summarizePendingRefunds(data);
+}
+
+/**
  * Ejecución 122 (D95): vence los pedidos `payment_pending` cuya ventana de pago ya pasó (admin_expire_pending_orders,
  * misma lógica que la tarea programada `expire_pending_orders`) y libera su reserva de stock. pg_cron puede no estar
  * habilitado en el proyecto: sin esto, esos pedidos seguían bloqueando stock y el panel los mostraba «Pago pendiente».
@@ -149,6 +162,7 @@ export const adminService = {
     return data;
   },
   countOrdersToPrepare,
+  pendingRefundsSummary,
   dashboardMetrics: (from, to) => call('admin_dashboard_metrics', { p_from: from, p_to: to }, 'No se pudieron cargar las métricas.'),
 
   /** Producto completo para edición (cualquier estado; RLS: solo admin). */
