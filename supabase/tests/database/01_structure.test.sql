@@ -49,7 +49,7 @@ SELECT set_eq($$
         'my_newsletter_subscription','set_my_newsletter_subscription','my_product_reviewables','submit_product_review','my_review_invitations',
         'admin_upsert_product','admin_set_product_status',
         'admin_adjust_inventory','admin_transition_order','admin_dashboard_metrics','admin_set_user_role','admin_expire_pending_orders',
-        'admin_resolve_order_attention','admin_refund_order_attention'],
+        'admin_resolve_order_attention','admin_refund_order_attention','admin_mark_refund_processed'],
   'authenticated: RPC de tienda + RPC admin (que validan el rol internamente)');
 
 SELECT ok(NOT has_function_privilege('authenticated', 'public.apply_payment_event(jsonb,text)', 'EXECUTE')

@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { refundRecords, refundTotal, hasPendingRefund, refundStockText, refundStatusLabel } from '../utils/orderRefunds';
+import { refundRecords, refundTotal, hasPendingRefund, refundStockText, refundStatusLabel, validateProviderRefundId } from '../utils/orderRefunds';
 
 function fakeSupabase() {
   const state = { tables: {}, rpc: {}, rpcCalls: [] };
@@ -42,7 +42,7 @@ let supa;
 vi.mock('../config/supabase', () => ({ get default() { return supa; }, get supabase() { return supa; } }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const REFUND = { amount: 160000, reason: 'Cliente desistió', status: 'requested', restock: true, provider_refund_id: null, created_at: '2026-11-14T12:00:00Z' };
+const REFUND = { id: 'rf-1', amount: 160000, reason: 'Cliente desistió', status: 'requested', restock: true, provider_refund_id: null, created_at: '2026-11-14T12:00:00Z' };
 const order = (extra = {}) => ({
   id: 'id-1', order_number: 'JM-000001', customer_name: 'Ana', customer_email: 'ana@x.co', customer_phone: '300',
   shipping_address: 'Cra 1', shipping_city: 'Bogotá', shipping_department: 'Bogotá D.C.', shipping_method_code: 'standard',
@@ -125,5 +125,76 @@ describe('AdminOrdersPage: devolución registrada', () => {
     await render();
     await openFirst();
     expect(container.querySelector('[data-testid="order-refunds"]')).toBeNull();
+  });
+});
+
+// Ejecución 130 (D103): marcar la devolución como hecha en Wompi (admin_mark_refund_processed).
+const typeInto = async (el, value) => {
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+  await act(async () => { setter.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await flush();
+};
+
+describe('utils/orderRefunds: marcar como hecha', () => {
+  it('valida el id de Wompi y solo las abiertas con id son marcables', () => {
+    expect(validateProviderRefundId('  ')).toMatch(/id de la devolución/);
+    expect(validateProviderRefundId('x'.repeat(101))).toMatch(/100/);
+    expect(validateProviderRefundId(' W-1 ')).toBeNull();
+    const recs = refundRecords(order({ order_refunds: [
+      REFUND, { ...REFUND, id: 'rf-2', status: 'approved' }, { ...REFUND, id: 'rf-3', status: 'processed' },
+      { ...REFUND, id: 'rf-4', status: 'rejected' }, { ...REFUND, id: undefined },
+    ] }));
+    expect(recs.map((r) => r.markable)).toEqual([true, true, false, false, false]);
+  });
+});
+
+describe('AdminOrdersPage: marcar devolución como hecha en Wompi', () => {
+  let confirmSpy;
+  beforeEach(() => { confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true); });
+  afterEach(() => confirmSpy.mockRestore());
+
+  it('sin id no llama a la BD; con id la marca, avisa y recarga como «Devuelta»', async () => {
+    supa.state.tables.online_orders = [order()];
+    supa.state.rpc.admin_mark_refund_processed = (args) => {
+      supa.state.tables.online_orders = [order({ order_refunds: [{ ...REFUND, status: 'processed', provider_refund_id: args.p_provider_refund_id }] })];
+      return { data: { ok: true, status: 'processed' }, error: null };
+    };
+    await render();
+    await openFirst();
+    await click(container.querySelector('[data-testid="order-refund-mark-processed"]'));
+    expect(container.querySelector('[data-testid="order-refund-mark-error"]').textContent).toMatch(/id de la devolución/);
+    expect(container.querySelector('[data-testid="order-refund-provider-id"]').getAttribute('aria-invalid')).toBe('true');
+    expect(supa.state.rpcCalls.filter(([n]) => n === 'admin_mark_refund_processed')).toHaveLength(0);
+
+    await typeInto(container.querySelector('[data-testid="order-refund-provider-id"]'), '  W-REF-55  ');
+    await click(container.querySelector('[data-testid="order-refund-mark-processed"]'));
+    expect(supa.state.rpcCalls.filter(([n]) => n === 'admin_mark_refund_processed'))
+      .toEqual([['admin_mark_refund_processed', { p_refund_id: 'rf-1', p_provider_refund_id: 'W-REF-55' }]]);
+    expect(container.textContent).toContain('JM-000001: devolución marcada como hecha en Wompi.');
+    await openFirst();
+    expect(container.querySelector('[data-testid="order-refund-status"]').textContent).toBe('Estado: Devuelta · Wompi W-REF-55');
+    expect(container.querySelector('[data-testid="order-refund-mark"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-refund-pending"]')).toBeNull();
+  });
+
+  it('si el admin no confirma, no se llama a la BD', async () => {
+    confirmSpy.mockReturnValue(false);
+    supa.state.tables.online_orders = [order()];
+    supa.state.rpc.admin_mark_refund_processed = { ok: true };
+    await render();
+    await openFirst();
+    await typeInto(container.querySelector('[data-testid="order-refund-provider-id"]'), 'W-1');
+    await click(container.querySelector('[data-testid="order-refund-mark-processed"]'));
+    expect(supa.state.rpcCalls.filter(([n]) => n === 'admin_mark_refund_processed')).toHaveLength(0);
+  });
+
+  it('otro admin ya la marcó: muestra el error de la BD junto al campo', async () => {
+    supa.state.tables.online_orders = [order()];
+    supa.state.rpc.admin_mark_refund_processed = () => ({ data: null, error: { message: 'Esta devolución ya está marcada como hecha', hint: 'JM_REFUND_ALREADY_PROCESSED', code: 'P0001' } });
+    await render();
+    await openFirst();
+    await typeInto(container.querySelector('[data-testid="order-refund-provider-id"]'), 'W-1');
+    await click(container.querySelector('[data-testid="order-refund-mark-processed"]'));
+    expect(container.querySelector('[data-testid="order-refund-mark-error"]').textContent).toMatch(/ya está marcada/);
   });
 });

@@ -37,6 +37,12 @@ const ADMIN_HINTS = {
   JM_USER_NOT_FOUND: 'El usuario no existe.',
   JM_NOTE_TOO_LONG: 'La nota no puede superar 500 caracteres.',
   JM_ATTENTION_NOT_REQUIRED: 'Este pedido ya no está pendiente de revisión (otro administrador pudo cerrarla).',
+  // Ejecución 130 (D103): marcar una devolución como hecha en Wompi.
+  JM_PROVIDER_REFUND_ID_REQUIRED: 'Escribe el id de la devolución en Wompi.',
+  JM_PROVIDER_REFUND_ID_TOO_LONG: 'El id de Wompi no puede superar 100 caracteres.',
+  JM_REFUND_NOT_FOUND: 'La devolución ya no existe. Recarga el pedido.',
+  JM_REFUND_ALREADY_PROCESSED: 'Esta devolución ya está marcada como hecha (otro administrador pudo hacerlo).',
+  JM_REFUND_NOT_PENDING: 'Esta devolución fue rechazada: no se puede marcar como hecha.',
 };
 
 /** Traduce errores de la BD (HINT JM_*, restricciones, RLS) a mensajes de administración. */
@@ -134,6 +140,14 @@ export const adminService = {
     const data = await call('admin_refund_order_attention', { p_order_id: orderId, p_note: note }, 'No se pudo registrar el reembolso.');
     notifyOrdersChanged();
     return data;
+  },
+  /**
+   * Ejecución 130 (D103): marca una devolución registrada como hecha en Wompi (requested/approved → processed) con el
+   * id de la devolución del proveedor; deja el evento REFUND_PROCESSED. No mueve dinero.
+   */
+  async markRefundProcessed(refundId, providerRefundId) {
+    return call('admin_mark_refund_processed', { p_refund_id: refundId, p_provider_refund_id: providerRefundId },
+      'No se pudo marcar la devolución como hecha.');
   },
   countOrdersToPrepare,
   dashboardMetrics: (from, to) => call('admin_dashboard_metrics', { p_from: from, p_to: to }, 'No se pudieron cargar las métricas.'),
