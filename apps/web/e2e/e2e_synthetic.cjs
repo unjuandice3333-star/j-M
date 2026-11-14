@@ -121,9 +121,12 @@ async function measureMobileScreens(p, list, failures, { links = false } = {}) {
       await p.goto(`${BASE}${url}`);
       await p.locator('main').first().waitFor({ timeout: 10000 });
       await p.waitForLoadState('networkidle').catch(() => {});
-      if (text) await p.getByText(text, { exact: false }).first().waitFor({ timeout: 8000 });
+      // D116: el recorrido 69 falló una vez en CI con solo «locator.waitFor: Timeout 8000ms» (sin decir qué pantalla);
+      // ahora el error nombra pantalla, ancho y texto esperado, e incluye el comienzo de lo que sí se veía.
+      const seen = async () => (await p.locator('main').first().innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 160);
+      if (text) await p.getByText(text, { exact: false }).first().waitFor({ timeout: 15000 }).catch(async () => { throw new Error(`${width}px ${url}: no apareció «${text}»; se veía: «${await seen()}»`); });
       if (opener) await opener(p).click();
-      if (dialog) { await p.getByRole('dialog', { name: dialog }).waitFor({ timeout: 8000 }); await p.waitForTimeout(400); }
+      if (dialog) { await p.getByRole('dialog', { name: dialog }).waitFor({ timeout: 8000 }).catch(async () => { throw new Error(`${width}px ${url}: no se abrió «${dialog}»; se veía: «${await seen()}»`); }); await p.waitForTimeout(400); }
       if (!process.env.NO_WIDEN) await p.addStyleTag({ content: 'body *{letter-spacing:0.06em !important} input,select,textarea{font-size:1.05rem !important}' });
       await p.waitForTimeout(250);
       const where = `${width}px ${url}${dialog ? ` · ${dialog}` : ''}`;
@@ -144,7 +147,7 @@ async function measureMobileScreens(p, list, failures, { links = false } = {}) {
         }
         // `html, body { overflow-x: hidden }`: lo que se sale por la derecha no desborda, se corta. Los iconos de la
         // cabecera (búsqueda, cuenta, favoritos, carrito) deben quedar enteros en la pantalla.
-        for (const el of document.querySelectorAll('header .header-action-btn, header .header-icon-touch')) {
+        for (const el of document.querySelectorAll('header .header-action-btn, header .header-icon-touch, .jm-admin-header button, .jm-admin-header input, .jm-admin-header > div')) {
           const b = el.getBoundingClientRect(); if (b.width && (b.left < -0.5 || b.right > vw + 0.5)) bad.push(`cabecera ${name(el)}[${b.left.toFixed(0)},${b.right.toFixed(0)}]`);
         }
         const scrollers = []; // contenedores que se desplazan en X sin ser una tabla ni un carrusel con snap
@@ -3259,7 +3262,7 @@ async function main() {
       await addToCart(p, 'camiseta-basica', 'M', 'Negro');
       await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'lina.gomez@correo.co' });
       await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
-      await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 20000 }); await expectText(p, 'Pedido registrado');
+      await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 20000 }); await expectText(p, 'Pedido registrado', 15000);
       const order = (await state()).orders[0];
       const confirm = `/checkout/confirmacion?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.public_token)}`;
       const failures = [];
@@ -3287,6 +3290,33 @@ async function main() {
       await fetch(`${API_URL}/__synthetic-mark-paid/${order.order_number}`);
       await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.includes('auth-token')) localStorage.removeItem(k); });
       await measureMobileScreens(p, [[confirm, null, null, order.order_number], ['/cuenta/favoritos', null, null, null]], failures, { links: true });
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
+    }, browser, null, MOBILE);
+
+    // Ejecución 140 (punto 0(cl)(2), D116): la medida del recorrido 69 (con ENLACES) sobre las listas del admin que
+    // los recorridos 66/67 solo medían por sus barras o sus modales: dashboard, pedidos, inventario, productos,
+    // clientes, descuentos, reseñas, boletín, imágenes, colecciones, analytics y configuración, a 375 y 320 px.
+    await journey('70. Móvil 320/375: listas del admin (pedidos, inventario, productos, clientes, cupones, reseñas, boletín, envíos…) con sus enlaces dentro de la pantalla', async (p) => {
+      const order = (await (await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ customer_name: 'Movil Listas', customer_email: 'movil.listas@correo.co', status: 'paid' }) })).json()).order_number;
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      const failures = [];
+      await measureMobileScreens(p, [
+        ['/admin/dashboard', null, null, null],
+        ['/admin/pedidos', null, null, order],
+        [`/admin/pedidos?estado=paid&q=${order}`, null, null, order],
+        ['/admin/inventario', null, null, null],
+        ['/admin/productos', null, null, 'Polo Clásico'],
+        ['/admin/clientes?rol=todos', null, null, 'Ver detalle'],
+        ['/admin/descuentos', null, null, 'JM10'],
+        ['/admin/reviews', null, null, null],
+        ['/admin/boletin', null, null, null],
+        ['/admin/imagenes', null, null, null],
+        ['/admin/colecciones', null, null, 'Editar'],
+        ['/admin/analytics', null, null, null],
+        ['/admin/configuracion', null, null, 'Estándar'],
+      ], failures, { links: true });
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser, null, MOBILE);
 
