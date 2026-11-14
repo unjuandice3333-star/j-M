@@ -1118,3 +1118,15 @@
 - Commits: código + documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bv) de Pendiente.
+
+## Ejecución 123 — 2026-11-14 00:30 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-u9tirn` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `28165a3`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bv)(1) de Pendiente. La ficha de producto vuelve a leer la disponibilidad de sus variantes al volver a la pestaña (y al abrirse con catálogo de >30 s) y corrige talla/cantidad elegidas con aviso (D96).
+- Archivos: `apps/web/src/services/productService.js` (`getVariantAvailability`), `apps/web/src/store/eCommerceStore.js` (`refreshProductStock`, `productsLoadedAt`), `apps/web/src/pages/ProductDetailPage.jsx`, nuevo `apps/web/src/__tests__/productStockRefresh.test.jsx` (8), `apps/web/src/__tests__/sizeAdvice.test.jsx` (catálogo recién cargado en el estado inicial), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 57).
+- Pruebas (ejecutadas aquí): `productStockRefresh.test.jsx` 8/8 (7 fallan sin los cambios de `src`, `git stash`; la de error de red pasa en ambos casos por diseño); recorrido 57 pasa y falla sin el cambio; `pnpm test:unit` 622/622 (63 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 57/57 en una pasada completa. Sin migración: pgTAP no re-ejecutado.
+- Defectos reales corregidos: (1) la ficha mostraba como disponible una talla agotada después de entrar a la tienda y la cantidad elegida podía superar el stock real; (2) cualquier recarga del catálogo con la ficha abierta borraba la talla elegida y desplazaba la página al inicio (reinicio ligado al objeto producto).
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni contra Supabase real remoto.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261113120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `f592314` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bv)(2) de Pendiente (pedido vencido pagado tarde → «Requiere revisión» en el admin, en E2E).
