@@ -1267,3 +1267,15 @@
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(ch) de Pendiente (mismo patrón `flex: 1` sin `minWidth: 0` en filas de campo + botón del admin).
 
+
+## Ejecución 136 — 2026-11-14 ~16:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-l0ymed` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `b1b05f9`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior (API de Actions): run `ci` nº 165 (`b1b05f9`) todo ✔ salvo `security` (gitleaks del historial, conocido); `e2e-supabase` nº 143 ✔.
+- Tarea: punto 0(ch) de Pendiente (filas flex del admin en móvil, D111). Hallazgo: `/admin/dashboard` (436 px) y `/admin/productos` (621 px) se desplazaban en horizontal a 375/320 dentro de `main` (`overflowX: auto`), invisible para las comprobaciones de desborde de página.
+- Archivos: `apps/web/src/pages/admin/AdminDashboardPage.jsx`, `AdminProductsPage.jsx`, `AdminOrdersPage.jsx`, `AdminCustomersPage.jsx`, `AdminDiscountsPage.jsx`, `AdminNewsletterPage.jsx`; `apps/web/e2e/e2e_synthetic.cjs` (recorrido 66).
+- Pruebas (ejecutadas aquí): recorrido 66 0/1 sin los cambios de `src` (`git stash`) y 1/1 con ellos; `pnpm test:unit` 679/679; ESLint 0; build OK; `pnpm test:e2e-synthetic` **66/66**; `check_commits.sh` OK.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `b73303e` (arreglo + recorrido 66) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(ci) de Pendiente (modales y formularios del admin en móvil).
