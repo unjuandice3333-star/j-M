@@ -1337,4 +1337,6 @@
 - Errores pendientes: recorridos 30 y 69 intermitentes en CI (sin datos nuevos: el E2E no corrió en el run 171).
 - Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Commits: `8d78abe` + el de documentación; publicados en la rama autorizada.
-- Siguiente: comprobar el run `ci` de este push (instalación + E2E 70/70); luego punto 0(cm) de Pendiente.
+- GitHub: run `ci` nº 172 (`9351e0a`) → Chromium en 25 s; governance, quality, db-local, db-supabase, e2e-synthetic (70) ✔; `security` ✘ (gitleaks, conocido); `e2e-supabase` nº 150 ✔.
+- Notificación: no enviada (CI recuperado; bloqueos ya notificados).
+- Siguiente: punto 0(cm) de Pendiente (recorridos 30 y 69 intermitentes: leer su diagnóstico si vuelven a fallar en CI).
