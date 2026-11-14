@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { attentionReasons, eventText, validateResolveNote } from '../utils/orderAttention';
+import { attentionReasons, eventText, validateResolveNote, canRefundFromAttention } from '../utils/orderAttention';
 
 function fakeSupabase() {
   const state = { tables: {}, rpc: {}, rpcCalls: [] };
@@ -92,6 +92,16 @@ describe('utils/orderAttention', () => {
     expect(validateResolveNote('a'.repeat(501))).toMatch(/500/);
     expect(validateResolveNote(' ok ')).toBeNull();
   });
+
+  it('ejecución 126: el atajo de reembolso solo con marca y si la máquina de estados permite → refunded', () => {
+    const tr = [{ from: 'paid', to: 'refunded', actor: 'admin' }, { from: 'paid', to: 'processing', actor: 'admin' }];
+    expect(canRefundFromAttention(order(), tr)).toBe(true);
+    expect(canRefundFromAttention(order({ needs_attention: false }), tr)).toBe(false);
+    expect(canRefundFromAttention(order({ status: 'cancelled' }), tr)).toBe(false);
+    expect(canRefundFromAttention(order(), [])).toBe(false);
+    expect(eventText(ev('ATTENTION_RESOLVED', '2026-11-14T13:00:00Z', { actor: 'admin', note: 'sin polo', metadata: { refunded: true } })))
+      .toBe('Revisión cerrada con reembolso · admin · sin polo');
+  });
 });
 
 let container; let root;
@@ -168,6 +178,48 @@ describe('AdminOrdersPage: revisión del pedido', () => {
     await type(container.querySelector('#order-resolve-note'), 'ok');
     await click(container.querySelector('[data-testid="order-resolve-attention"]'));
     expect(container.querySelector('#order-resolve-error').textContent).toMatch(/otro administrador/);
+  });
+
+  it('ejecución 126: «Reembolsar y cerrar» confirma, llama a la RPC atómica con el motivo y recarga', async () => {
+    supa.state.tables.online_orders = [order()];
+    supa.state.rpc.get_order_status_catalog = { transitions: [{ from: 'paid', to: 'refunded', actor: 'admin', requires_note: true }] };
+    supa.state.rpc.admin_refund_order_attention = ({ p_order_id }) => {
+      supa.state.tables.online_orders = supa.state.tables.online_orders.map((o) => (o.id === p_order_id ? { ...o, status: 'refunded', needs_attention: false } : o));
+      return { data: { order_id: p_order_id, status: 'refunded', needs_attention: false }, error: null };
+    };
+    const confirm = vi.spyOn(window, 'confirm');
+    await render();
+    await openFirst();
+    const btn = container.querySelector('[data-testid="order-refund-attention"]');
+    expect(btn).not.toBeNull();
+    // Sin motivo: aviso enlazado y sin confirmación ni llamada.
+    await click(btn);
+    expect(container.querySelector('#order-resolve-error').textContent).toMatch(/Escribe/);
+    expect(confirm).not.toHaveBeenCalled();
+    await type(container.querySelector('#order-resolve-note'), '  Sin polo: reembolsado en Wompi  ');
+    // Cancelar la confirmación no llama a la BD.
+    confirm.mockReturnValueOnce(false);
+    await click(container.querySelector('[data-testid="order-refund-attention"]'));
+    expect(confirm.mock.calls[0][0]).toMatch(/JM-000001.*\$\s?160\.000/s);
+    expect(supa.state.rpcCalls.some(([n]) => n === 'admin_refund_order_attention')).toBe(false);
+    confirm.mockReturnValueOnce(true);
+    await click(container.querySelector('[data-testid="order-refund-attention"]'));
+    expect(supa.state.rpcCalls.find(([n]) => n === 'admin_refund_order_attention')[1])
+      .toEqual({ p_order_id: 'id-1', p_note: 'Sin polo: reembolsado en Wompi' });
+    expect(supa.state.rpcCalls.some(([n]) => n === 'admin_transition_order' || n === 'admin_resolve_order_attention')).toBe(false);
+    expect(container.querySelector('[role="status"]').textContent).toBe('JM-000001: reembolso registrado y revisión cerrada.');
+    expect(container.textContent).not.toContain('REQUIERE REVISIÓN');
+    confirm.mockRestore();
+  });
+
+  it('ejecución 126: sin transición → refunded (pedido cancelado con pago a reembolsar) no se ofrece el atajo', async () => {
+    supa.state.tables.online_orders = [order({ status: 'cancelled', order_events: [ev('PAYMENT_REQUIRES_REFUND', '2026-11-14T12:00:00Z', { metadata: { reference: 'R', order_status: 'cancelled' } })] })];
+    supa.state.rpc.get_order_status_catalog = { transitions: [{ from: 'paid', to: 'refunded', actor: 'admin', requires_note: true }] };
+    await render();
+    await openFirst();
+    expect(container.querySelector('[data-testid="order-attention"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="order-refund-attention"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-resolve-attention"]')).not.toBeNull();
   });
 
   it('un pedido sin marca no muestra el panel de revisión', async () => {

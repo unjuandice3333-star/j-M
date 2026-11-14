@@ -63,7 +63,8 @@ function seed() {
   };
 }
 
-const TRANSITIONS = { payment_pending: ['cancelled'], paid: ['processing', 'cancelled'], processing: ['shipped', 'cancelled'], shipped: ['delivered'], delivered: [], cancelled: [] };
+// Ejecución 126: paid/processing → refunded como en la máquina de estados de la BD (admin, requiere nota).
+const TRANSITIONS = { payment_pending: ['cancelled'], paid: ['processing', 'cancelled', 'refunded'], processing: ['shipped', 'cancelled', 'refunded'], shipped: ['delivered'], delivered: [], cancelled: [], refunded: [] };
 
 function start(port = 54321) {
   let S = seed();
@@ -183,7 +184,7 @@ function start(port = 54321) {
     validate_coupon: (a) => validateCoupon(a.p_code, a.p_subtotal),
     get_order_status_catalog: () => ({
       statuses: Object.keys(TRANSITIONS).map((st) => ({ status: st, label: st, description: st })),
-      transitions: Object.entries(TRANSITIONS).flatMap(([from, tos]) => tos.map((to) => ({ from, to, actor: 'admin', requires_note: to === 'cancelled' }))),
+      transitions: Object.entries(TRANSITIONS).flatMap(([from, tos]) => tos.map((to) => ({ from, to, actor: 'admin', requires_note: to === 'cancelled' || to === 'refunded' }))),
     }),
     create_order: (a, ctx) => {
       const items = a.p_items || [];
@@ -257,6 +258,24 @@ function start(port = 54321) {
       o.needs_attention = false;
       o.order_events.unshift({ event_type: 'ATTENTION_RESOLVED', from_status: null, to_status: null, actor: 'admin', note, metadata: { order_status: o.status }, created_at: new Date().toISOString() });
       return { order_id: o.id, status: o.status, needs_attention: false };
+    },
+    // Ejecución 126: mismo contrato que la migración 20261116120000 (reembolso + cierre de la revisión en un paso;
+    // reingresa SOLO las líneas con venta registrada, como private.restore_stock_for_order).
+    admin_refund_order_attention: (a, ctx) => {
+      if (ctx.role !== 'admin') return err('42501', 'permission denied', 'JM_FORBIDDEN');
+      const note = String(a.p_note ?? '').trim();
+      if (!note) return err('P0001', 'x', 'JM_NOTE_REQUIRED');
+      if (note.length > 500) return err('P0001', 'x', 'JM_NOTE_TOO_LONG');
+      const o = S.tables.online_orders.find((x) => x.id === a.p_order_id); if (!o) return err('P0001', 'x', 'JM_ORDER_NOT_FOUND');
+      if (!o.needs_attention) return err('P0001', 'x', 'JM_ATTENTION_NOT_REQUIRED');
+      if (!(TRANSITIONS[o.status] || []).includes('refunded')) return err('P0001', 'x', 'JM_INVALID_TRANSITION');
+      const from = o.status;
+      for (const it of o.sold || []) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); if (inv) inv.stock += it.quantity; }
+      o.sold = [];
+      transition(o, 'refunded', 'admin', note);
+      o.needs_attention = false;
+      o.order_events.unshift({ event_type: 'ATTENTION_RESOLVED', from_status: null, to_status: null, actor: 'admin', note, metadata: { order_status: 'refunded', previous_status: from, refunded: true }, created_at: new Date().toISOString() });
+      return { order_id: o.id, status: 'refunded', needs_attention: false };
     },
     admin_dashboard_metrics: (a, ctx) => {
       if (ctx.role !== 'admin') return err('42501', 'permission denied', 'JM_FORBIDDEN');
@@ -392,7 +411,8 @@ function start(port = 54321) {
           for (const it of o.online_order_items) {
             const inv = S.inventories.find((i) => i.variant_id === it.variant_id);
             if (!late) { inv.reserved -= it.quantity; inv.stock -= it.quantity; } else if (inv && avail(inv) >= it.quantity) inv.stock -= it.quantity;
-            else shortages.push({ variant_id: it.variant_id, quantity: it.quantity, available: inv ? Math.max(0, avail(inv)) : 0 });
+            else { shortages.push({ variant_id: it.variant_id, quantity: it.quantity, available: inv ? Math.max(0, avail(inv)) : 0 }); continue; }
+            (o.sold ||= []).push({ variant_id: it.variant_id, quantity: it.quantity }); // líneas con «venta» (ejecución 126)
           }
           if (shortages.length) {
             o.needs_attention = true;

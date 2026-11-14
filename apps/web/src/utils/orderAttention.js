@@ -5,6 +5,7 @@
 //   PAYMENT_REQUIRES_REFUND     { reference, provider_transaction_id, order_status }  pago que hay que reembolsar
 //   PAYMENT_VOIDED_AFTER_PAID   { reference }                                         pago anulado tras pagado
 //   ATTENTION_RESOLVED          note = cómo se resolvió (admin_resolve_order_attention)
+//                               metadata.refunded = true si se cerró reembolsando (admin_refund_order_attention, ejecución 126)
 // Solo cuentan las causas posteriores al último ATTENTION_RESOLVED (un pedido puede volver a marcarse).
 // =============================================================================
 export const EVENT_LABEL = {
@@ -81,7 +82,7 @@ export function attentionReasons(order) {
 
 /** Texto de una línea del historial (sin fecha). */
 export function eventText(e, statusLabel = {}) {
-  const parts = [eventLabel(e.event_type)];
+  const parts = [e.event_type === 'ATTENTION_RESOLVED' && e.metadata?.refunded ? 'Revisión cerrada con reembolso' : eventLabel(e.event_type)];
   if (e.to_status) parts[0] += ` → ${statusLabel[e.to_status] ?? e.to_status}`;
   parts.push(actorLabel(e.actor));
   if (e.note) parts.push(e.note);
@@ -96,4 +97,14 @@ export function validateResolveNote(note) {
   if (!v) return 'Escribe cómo se resolvió (queda en el historial).';
   if (v.length > RESOLVE_NOTE_MAX) return `La nota no puede superar ${RESOLVE_NOTE_MAX} caracteres.`;
   return null;
+}
+
+/**
+ * Ejecución 126: el atajo «Reembolsar y cerrar» solo se ofrece si la máquina de estados permite al admin pasar el
+ * pedido a `refunded` desde su estado actual (paid, processing o delivered). Un pedido cancelado/vencido con un pago
+ * a reembolsar no cambia de estado: se reembolsa en Wompi y se cierra con «Marcar como revisado».
+ */
+export function canRefundFromAttention(order, adminTransitions = []) {
+  if (!order?.needs_attention) return false;
+  return adminTransitions.some((t) => t.from === order.status && t.to === 'refunded');
 }

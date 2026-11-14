@@ -2145,6 +2145,62 @@ async function main() {
       if (await p.getByTestId('order-review-notice').count()) throw new Error('el aviso sigue tras cerrar la revisión');
     }, browser);
 
+    await journey('59. Admin: pedido pagado tarde con una línea sin stock → «Reembolsar y cerrar» registra el reembolso, reingresa solo lo vendido y cierra la revisión', async (p, ctx) => {
+      // A pide la última L negra + 2 M negras y no paga a tiempo
+      await addToCart(p, 'camiseta-basica', 'L', 'Negro');
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await p.goto(`${BASE}/checkout`);
+      await fillCheckout(p, { email: 'reembolso@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      let st = await state();
+      const late = st.orders.find((o) => o.customer_email === 'reembolso@correo.co');
+      const mBefore = st.inventories.find((i) => i.sku === 'CAM-M-NEG').stock;
+      await fetch(`${API_URL}/__synthetic-expire-window/${late.order_number}`);
+      const adm = await ctx.newPage();
+      await login(adm, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await adm.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      for (let i = 0; i < 50 && (await state()).orders.find((o) => o.id === late.id).status !== 'expired'; i += 1) await new Promise((r) => setTimeout(r, 200));
+      // otra compra (B) se lleva la L; luego llega tarde el pago de A (webhook SINTÉTICO): la M se vende, la L falta
+      await fetch(`${API_URL}/__synthetic-set-stock/CAM-L-NEG/0`);
+      const r = await fetch(`${API_URL}/__synthetic-mark-paid/${late.order_number}`).then(j);
+      if (r.shortages.length !== 1) throw new Error(`se esperaba 1 faltante: ${JSON.stringify(r)}`);
+      st = await state();
+      if (st.inventories.find((i) => i.sku === 'CAM-M-NEG').stock !== mBefore - 2) throw new Error('las 2 M debían venderse');
+      await adm.goto(`${BASE}/admin/pedidos?revision=1`);
+      const row = adm.locator('tbody tr').filter({ hasText: late.order_number });
+      await row.getByRole('button', { name: 'GESTIONAR' }).click();
+      const box = adm.getByTestId('order-attention');
+      await box.getByText('El pago llegó cuando ya no había stock').waitFor({ timeout: 8000 });
+      // sin motivo: aviso enlazado, sin diálogo ni cambios
+      let asked = null;
+      adm.on('dialog', (d) => { asked = d.message(); d.accept().catch(() => {}); });
+      await adm.getByTestId('order-refund-attention').click();
+      await expectText(adm, 'Escribe cómo se resolvió');
+      if (asked) throw new Error('pidió confirmación sin motivo');
+      if ((await state()).orders.find((o) => o.id === late.id).status !== 'paid') throw new Error('cambió sin motivo');
+      await adm.getByLabel('Cómo se resolvió').fill('Sin talla L para reponer: reembolsado en Wompi');
+      await adm.getByTestId('order-refund-attention').click();
+      await adm.getByRole('status').filter({ hasText: `${late.order_number}: reembolso registrado y revisión cerrada.` }).waitFor({ timeout: 8000 });
+      if (!asked || !asked.includes(late.order_number) || !/Wompi/.test(asked)) throw new Error(`confirmación: «${asked}»`);
+      await row.waitFor({ state: 'detached', timeout: 8000 });
+      st = await state();
+      const done = st.orders.find((o) => o.id === late.id);
+      const closed = done.order_events.find((e) => e.event_type === 'ATTENTION_RESOLVED');
+      if (done.status !== 'refunded' || done.needs_attention || !closed?.metadata?.refunded || closed.note !== 'Sin talla L para reponer: reembolsado en Wompi') throw new Error(`reembolso: ${JSON.stringify(done)}`);
+      if (st.inventories.find((i) => i.sku === 'CAM-M-NEG').stock !== mBefore) throw new Error('las M vendidas debían volver al inventario');
+      if (st.inventories.find((i) => i.sku === 'CAM-L-NEG').stock !== 0) throw new Error('la L que faltó NO debía reingresar');
+      // el historial lo dice en palabras; el dashboard ya no cuenta la revisión
+      await adm.goto(`${BASE}/admin/pedidos?q=${late.order_number}`);
+      await adm.locator('tbody tr').filter({ hasText: late.order_number }).getByRole('button', { name: 'GESTIONAR' }).click();
+      if (await adm.getByTestId('order-attention').count()) throw new Error('el panel de revisión sigue abierto');
+      await adm.locator('summary', { hasText: 'Historial del pedido' }).click();
+      await adm.getByTestId('order-event').filter({ hasText: 'Revisión cerrada con reembolso · admin · Sin talla L para reponer' }).waitFor({ timeout: 8000 });
+      await adm.goto(`${BASE}/admin/dashboard`);
+      await expectText(adm, '0 pedidos');
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });

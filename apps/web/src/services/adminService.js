@@ -7,6 +7,7 @@
 //   admin_dashboard_metrics(desde, hasta)
 //   admin_expire_pending_orders()                 vence pedidos con la ventana de pago cumplida (libera reservas)
 //   admin_resolve_order_attention(id, nota)       cierra la revisión de un pedido (needs_attention) con motivo
+//   admin_refund_order_attention(id, nota)        registra el reembolso (→ refunded) y cierra la revisión en una transacción
 // Lecturas administrativas: tablas con RLS (solo admin): online_orders, inventories, coupons, profiles…
 // =============================================================================
 import supabase from '../config/supabase';
@@ -122,6 +123,15 @@ export const adminService = {
   /** Ejecución 124 (D97): quita la marca «requiere revisión» con el motivo (evento ATTENTION_RESOLVED). */
   async resolveOrderAttention(orderId, note) {
     const data = await call('admin_resolve_order_attention', { p_order_id: orderId, p_note: note }, 'No se pudo cerrar la revisión del pedido.');
+    notifyOrdersChanged();
+    return data;
+  },
+  /**
+   * Ejecución 126: registra el reembolso (transición `refunded` con motivo; reingresa solo lo vendido) y cierra la
+   * revisión en la MISMA transacción. No mueve dinero: la devolución se hace en Wompi.
+   */
+  async refundOrderAttention(orderId, note) {
+    const data = await call('admin_refund_order_attention', { p_order_id: orderId, p_note: note }, 'No se pudo registrar el reembolso.');
     notifyOrdersChanged();
     return data;
   },

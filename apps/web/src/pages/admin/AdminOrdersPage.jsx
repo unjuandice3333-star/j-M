@@ -9,7 +9,7 @@ import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 import { DialogPanel } from '../../components/Common/DialogPanel';
-import { attentionReasons, sortedEvents, eventText, validateResolveNote, RESOLVE_NOTE_MAX } from '../../utils/orderAttention';
+import { attentionReasons, sortedEvents, eventText, validateResolveNote, canRefundFromAttention, RESOLVE_NOTE_MAX } from '../../utils/orderAttention';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_ERROR_ID = 'order-modal-error';
@@ -229,6 +229,30 @@ export const AdminOrdersPage = () => {
       setResolveError(err.message || 'No se pudo cerrar la revisión.');
       // Otro admin ya la cerró: se recarga la lista para que deje de mostrarse como pendiente.
       if (err.hint === 'JM_ATTENTION_NOT_REQUIRED') refreshAll();
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
+  // Ejecución 126: reembolsar y cerrar la revisión en un solo paso (admin_refund_order_attention, una transacción).
+  // Antes eran dos acciones separadas (cambio a «Reembolsado» + «Marcar como revisado») y el pedido podía quedar
+  // reembolsado pero todavía «Requiere revisión». Usa el mismo motivo del panel; pide confirmación porque no se deshace.
+  const handleRefundAttention = async () => {
+    if (!selectedOrder) return;
+    const invalid = validateResolveNote(resolveNote);
+    if (invalid) { setResolveError(invalid); setTimeout(() => document.getElementById('order-resolve-note')?.focus(), 0); return; }
+    if (!window.confirm(`¿Registrar el reembolso de ${selectedOrder.order_number} por ${formatCOP(Number(selectedOrder.total))}? `
+      + 'El pedido pasa a «Reembolsado», vuelve al inventario solo lo que sí se vendió y se cierra la revisión. '
+      + 'El dinero se devuelve desde Wompi; esto solo lo registra.')) return;
+    setIsResolving(true); setResolveError(null);
+    try {
+      await adminService.refundOrderAttention(selectedOrder.rawId, resolveNote.trim());
+      setNotice(`${selectedOrder.order_number}: reembolso registrado y revisión cerrada.`);
+      setSelectedOrder(null);
+      await refreshAll();
+    } catch (err) {
+      setResolveError(err.message || 'No se pudo registrar el reembolso.');
+      if (err.hint === 'JM_ATTENTION_NOT_REQUIRED' || err.hint === 'JM_INVALID_TRANSITION') refreshAll();
     } finally {
       setIsResolving(false);
     }
@@ -527,6 +551,12 @@ export const AdminOrdersPage = () => {
                     style={{ backgroundColor: '#7F1D1D', color: '#FFFFFF', padding: '0.65rem 1rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.8rem', minHeight: '40px', opacity: isResolving ? 0.7 : 1 }}>
                     {isResolving ? 'GUARDANDO…' : 'MARCAR COMO REVISADO'}
                   </button>
+                  {canRefundFromAttention(selectedOrder, transitions) && (
+                    <button type="button" data-testid="order-refund-attention" onClick={handleRefundAttention} disabled={isResolving}
+                      style={{ backgroundColor: '#FFFFFF', color: '#7F1D1D', border: '1px solid #7F1D1D', padding: '0.65rem 1rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.8rem', minHeight: '40px', opacity: isResolving ? 0.7 : 1 }}>
+                      REEMBOLSAR Y CERRAR
+                    </button>
+                  )}
                 </div>
               </section>
             )}
