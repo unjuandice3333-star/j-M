@@ -5,6 +5,10 @@ import { orderService, toOrderError } from '../services/orderService';
 import { wishlistService } from '../services/wishlistService';
 import { resolveLookSelection } from '../utils/lookSelection';
 
+// D118: cambios de favoritos hechos mientras syncWishlist lee la BD (productId → { op, sent }).
+let wishlistSyncsInFlight = 0;
+const pendingWishlistOps = new Map();
+
 export const DEFAULT_EDITORIAL_IMAGES = {
   hero_main: 'https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&q=80&w=2000',
   style_urbana: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&q=80&w=1000',
@@ -401,21 +405,44 @@ export const useECommerceStore = create(
           if (wishlistOwner) set({ wishlist: [], wishlistOwner: null, wishlistError: null });
           return;
         }
+        wishlistSyncsInFlight += 1;
         try {
           if (wishlistOwner === null && wishlist.length) {
             // Uno a uno: un producto local que ya no existe (FK) no impide guardar el resto.
             await Promise.allSettled(wishlist.map((id) => wishlistService.addMany(userId, [id])));
           }
-          const ids = await wishlistService.getIds();
+          const fetched = await wishlistService.getIds();
+          // D118: lo que el cliente marcó o desmarcó mientras se leía la BD no se pierde. Antes la lectura
+          // sobrescribía la lista y un favorito guardado justo tras iniciar sesión desaparecía.
+          const ids = fetched.filter((id) => pendingWishlistOps.get(id)?.op !== 'remove');
+          const unsent = [];
+          for (const [id, { op, sent }] of pendingWishlistOps) {
+            if (op === 'add' && !ids.includes(id)) ids.push(id);
+            if (!sent) unsent.push([id, op]);
+          }
           set({ wishlist: ids, wishlistOwner: userId, wishlistError: null });
+          for (const [id, op] of unsent) {
+            const entry = pendingWishlistOps.get(id);
+            if (entry) entry.sent = true;
+            try {
+              if (op === 'remove') await wishlistService.remove(userId, id);
+              else await wishlistService.addMany(userId, [id]);
+            } catch (err) {
+              set((st) => ({ wishlist: op === 'remove' ? [...st.wishlist.filter((x) => x !== id), id] : st.wishlist.filter((x) => x !== id), wishlistError: err.message }));
+            }
+          }
         } catch (err) {
           set({ wishlistError: err.message });
+        } finally {
+          wishlistSyncsInFlight -= 1;
+          if (!wishlistSyncsInFlight) pendingWishlistOps.clear();
         }
       },
       toggleWishlist: async (productId) => {
         const { wishlist, wishlistOwner } = get();
         const had = wishlist.includes(productId);
         set({ wishlist: had ? wishlist.filter((id) => id !== productId) : [...wishlist, productId], wishlistError: null });
+        if (wishlistSyncsInFlight) pendingWishlistOps.set(productId, { op: had ? 'remove' : 'add', sent: Boolean(wishlistOwner) });
         if (!wishlistOwner) return { ok: true };
         try {
           if (had) await wishlistService.remove(wishlistOwner, productId);

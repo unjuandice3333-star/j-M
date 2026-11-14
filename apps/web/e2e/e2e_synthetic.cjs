@@ -3320,6 +3320,58 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser, null, MOBILE);
 
+    // Ejecución 142 (D118): el recorrido 69 falló en CI con «MIS FAVORITOS (0)»: el favorito se marcó mientras
+    // syncWishlist aún leía la BD tras iniciar sesión y la lectura lo borró. Aquí la lectura de wishlist_items se
+    // retrasa 1,5 s para reproducir la carrera siempre: marcar uno y desmarcar otro durante la lectura debe quedar.
+    await journey('71. Favoritos marcados y quitados mientras se sincroniza la lista tras iniciar sesión no se pierden', async (p) => {
+      // Respuesta de la lectura retrasada 1,5 s DESPUÉS de leer la BD: lo que el cliente haga en ese tiempo no está en ella.
+      let reads = 0;
+      await p.route('**/rest/v1/wishlist_items*', async (route) => {
+        if (route.request().method() !== 'GET') return route.continue();
+        reads += 1;
+        const resp = await route.fetch().catch(() => null);
+        if (!resp) return route.abort().catch(() => {});
+        await new Promise((r) => setTimeout(r, 1500));
+        await route.fulfill({ response: resp }).catch(() => {});
+      });
+      const db = async (want) => {
+        let rows = [];
+        for (let i = 0; i < 20; i += 1) { rows = (await state()).wishlist; if (rows.length === want) break; await p.waitForTimeout(250); }
+        return rows;
+      };
+      await p.goto(`${BASE}/login`); await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Rosa Pérez');
+      await p.locator('input[type=email]').fill('rosa.perez@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      // (1) primera sincronización de la cuenta: el favorito aún es solo local cuando se marca
+      const before = reads;
+      await p.goto(`${BASE}/ropa`);
+      await p.getByRole('button', { name: 'Guardar en favoritos: Camiseta Básica' }).first().click();
+      await p.waitForTimeout(2500);
+      if (reads === before) throw new Error('(1) la lectura de favoritos no pasó por la ruta retrasada');
+      if (!(await p.getByRole('button', { name: 'Quitar de favoritos: Camiseta Básica' }).count())) throw new Error('(1) la lectura borró de la pantalla el favorito recién marcado');
+      let rows = await db(1);
+      if (rows.length !== 1) throw new Error(`(1) BD: se esperaba 1 favorito, hay ${rows.length}`);
+      const camiseta = rows[0].product_id;
+      // (2) con la cuenta ya sincronizada: guardar uno y quitar otro mientras la lectura (anterior a ambos) vuelve
+      const before2 = reads;
+      await p.reload();
+      await p.getByRole('button', { name: 'Quitar de favoritos: Camiseta Básica' }).first().click();
+      await p.getByRole('button', { name: 'Guardar en favoritos: Polo Clásico' }).first().click();
+      await p.waitForTimeout(2500);
+      if (reads === before2) throw new Error('(2) la lectura de favoritos no pasó por la ruta retrasada');
+      const fails = [];
+      if (!(await p.getByRole('button', { name: 'Quitar de favoritos: Polo Clásico' }).count())) fails.push('Polo Clásico desapareció de la pantalla');
+      if (await p.getByRole('button', { name: 'Quitar de favoritos: Camiseta Básica' }).count()) fails.push('Camiseta Básica reapareció en la pantalla');
+      rows = await db(1);
+      if (rows.length !== 1 || rows[0].product_id === camiseta) fails.push(`BD: ${rows.length} favoritos (${rows.map((r) => r.product_id).join(', ')})`);
+      if (fails.length) throw new Error(`(2) ${fails.join(' · ')}`);
+      await p.unroute('**/rest/v1/wishlist_items*');
+      await p.goto(`${BASE}/cuenta/favoritos`);
+      await expectText(p, 'MIS FAVORITOS (1)', 10000); await expectText(p, 'Polo Clásico', 10000);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);
