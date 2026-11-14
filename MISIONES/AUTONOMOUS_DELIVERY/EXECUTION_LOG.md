@@ -1142,3 +1142,15 @@
 - Commits: `675df04` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bw) de Pendiente.
+
+## Ejecución 125 — 2026-11-14 03:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-ws6b2k` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `aa8a90c`, árbol limpio. `pnpm install --frozen-lockfile` OK; paquetes apt de pgTAP/pg_cron instalados (D6). `run_local.sh` se ejecuta como usuario `postgres` (initdb no corre como root).
+- Tarea: punto 0(bw)(2) de Pendiente: el cliente no sabía que su pedido pagado estaba en revisión (D98).
+- Archivos: nueva migración `supabase/migrations/20261115120000_order_public_under_review.sql`, nuevo `supabase/tests/database/99a_order_public_under_review.test.sql`, nuevo `apps/web/src/utils/orderReview.js`, `apps/web/src/pages/OrderConfirmationPage.jsx`, `apps/web/src/pages/AccountPage.jsx`, `apps/web/src/services/orderService.js` (lee `needs_attention`), nuevos `apps/web/src/__tests__/orderReviewConfirmation.test.jsx` (5) y `accountOrderReview.test.jsx` (3), `apps/web/e2e/synthetic/backend.cjs` (`under_review`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 58 ampliado).
+- Pruebas (ejecutadas aquí): pgTAP 414/414 (18 archivos), concurrencia 12/12, determinismo OK; `migrations_policy.sh` OK; `pnpm test:unit` 638/638 (66 archivos); 3 de las 8 pruebas nuevas fallan sin los cambios de `src` (`git stash`); ESLint `apps packages scripts --max-warnings 0` OK (primera pasada: 3 avisos de variables sin uso en las pruebas nuevas, corregidos); `pnpm build` OK; `pnpm test:e2e-synthetic` 58/58 en pasada completa. Una pasada anterior dio 57/58 (recorrido 46, foco fuera de pantalla en «Mis datos») mientras yo hacía `git stash` sobre `AccountPage.jsx` con el servidor Vite en marcha; el 46 pasó 2/2 aislado y la pasada completa posterior fue 58/58.
+- Defecto real corregido: el cliente con un pedido pagado sin stock veía «Compra completada» y la promesa de despacho.
+- Errores pendientes: ninguno nuevo. La migración `20261115120000` se suma a las pendientes de aplicar en Supabase QA. No probado en WebKit ni contra Supabase real remoto.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261115120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `8d8d4c7` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bx) de Pendiente (atajo de reembolso en el panel de revisión + pgTAP de reingreso solo de las líneas vendidas).
