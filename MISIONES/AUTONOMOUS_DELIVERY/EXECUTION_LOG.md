@@ -1193,3 +1193,14 @@
 - Commits: el de código + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(ca) de Pendiente (marcar una devolución como hecha en Wompi desde el admin: RPC aditiva + pgTAP + UI + E2E).
+
+## Ejecución 130 — 2026-11-14 ~09:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-rj2p6i` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `539fa1d`, árbol limpio. `pnpm install --frozen-lockfile` OK. pgTAP/pg_cron/pg_prove instalados con apt; `run_local.sh` como usuario `postgres`.
+- Tarea: punto 0(ca) de Pendiente: marcar una devolución registrada como hecha en Wompi desde el admin (D103).
+- Archivos: nueva migración `supabase/migrations/20261117120000_admin_mark_refund_processed.sql`; nuevo `supabase/tests/database/99c_admin_mark_refund_processed.test.sql` (18); `supabase/tests/database/01_structure.test.sql` (RPC en la lista de `authenticated`); `apps/web/src/services/adminService.js` (`markRefundProcessed` + 5 pistas de error); `apps/web/src/utils/orderRefunds.js` (`id`, `validateProviderRefundId`); `apps/web/src/utils/orderAttention.js` (etiqueta `REFUND_PROCESSED`); `apps/web/src/pages/admin/AdminOrdersPage.jsx` (`order_refunds.id` en el select, campo + botón por devolución pendiente); `apps/web/src/__tests__/adminOrderRefunds.test.jsx` (+5); `apps/web/e2e/synthetic/backend.cjs` (id de devolución + RPC con el mismo contrato); `apps/web/e2e/e2e_synthetic.cjs` (recorrido 62).
+- Pruebas (ejecutadas aquí): pgTAP 453/453 (20 archivos; `99c` 18/18), concurrencia 12/12, determinismo OK; `adminOrderRefunds.test.jsx` 10/10 (4 fallan sin el cambio de `src`, `git stash`); `pnpm test:unit` 663/663 (69 archivos); recorrido 62 falla sin el cambio y pasa con él; `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` pasada completa **62/62**.
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni contra Supabase real remoto.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: el de código + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(cb) de Pendiente (devoluciones pendientes de hacer en Wompi: alerta en el dashboard + filtro en pedidos).
