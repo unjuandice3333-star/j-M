@@ -1276,6 +1276,7 @@
 - Pruebas (ejecutadas aquí): recorrido 66 0/1 sin los cambios de `src` (`git stash`) y 1/1 con ellos; `pnpm test:unit` 679/679; ESLint 0; build OK; `pnpm test:e2e-synthetic` **66/66**; `check_commits.sh` OK.
 - Errores pendientes: ninguno nuevo.
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
-- Commits: `b73303e` (arreglo + recorrido 66) + el de documentación; publicados en la rama autorizada.
+- GitHub: run `ci` nº 166 (`9f3d4fb`) → governance, quality, db-local, db-supabase, **e2e-synthetic** (66 recorridos) ✔; `security` ✘ (gitleaks, conocido); `e2e-supabase` nº 144 ✔.
+- Commits: `b73303e` (arreglo + recorrido 66), `9f3d4fb` (documentación) + el del resultado del CI; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(ci) de Pendiente (modales y formularios del admin en móvil).
