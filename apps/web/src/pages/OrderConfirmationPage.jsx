@@ -15,6 +15,7 @@ import { orderService } from '../services/orderService';
 import { wompiService } from '../services/wompi';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
 import { useAuthStore } from '../store/authStore';
+import { orderReviewMessage } from '../utils/orderReview';
 
 const POLL_MS = 5000;
 const POLL_MAX = 36; // ~3 minutos
@@ -190,6 +191,7 @@ export const OrderConfirmationPage = () => {
   const windowClosed = isPending && expiresAt !== null && expiresAt.getTime() <= Date.now();
   const reached = new Set((order.timeline ?? []).map((t) => t.to_status));
   const methodLabel = shippingMethodLabel(order.shipping?.method, shippingMethods);
+  const reviewMessage = orderReviewMessage(order, order.customer_email);
 
   return (
     <div style={{ backgroundColor: '#FFFFFF', padding: '3rem 0 5rem 0', minHeight: '85vh' }}>
@@ -206,7 +208,7 @@ export const OrderConfirmationPage = () => {
             {isPaidFlow ? '¡Gracias por tu compra!' : isPending ? 'Pedido registrado' : 'Pedido cerrado'} · {order.order_number}
           </h1>
           <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
-            {isPaidFlow && `Confirmamos el pago. Te avisaremos a ${order.customer_email} cuando despachemos tu pedido.`}
+            {isPaidFlow && !reviewMessage && `Confirmamos el pago. Te avisaremos a ${order.customer_email} cuando despachemos tu pedido.`}
             {windowClosed && 'El tiempo para pagar este pedido terminó. La reserva se liberará en unos minutos; puedes hacer un pedido nuevo.'}
             {isPending && !windowClosed && (payError
               ? 'Tu pedido quedó registrado y los productos están reservados, pero no se pudo abrir el pago. Puedes reintentarlo.'
@@ -217,6 +219,12 @@ export const OrderConfirmationPage = () => {
             {st === 'cancelled' && 'Este pedido fue cancelado.'}
             {st === 'refunded' && 'Este pedido fue reembolsado.'}
           </p>
+          {reviewMessage && (
+            <p data-testid="order-review-notice" style={{ fontSize: '0.92rem', color: '#92400E', backgroundColor: '#FFFBEB', border: '1px solid #FDE68A',
+              borderRadius: '8px', padding: '0.8rem 1rem', margin: '1rem auto 0 auto', maxWidth: '620px', textAlign: 'left' }}>
+              <strong>Pedido en revisión.</strong> {reviewMessage}
+            </p>
+          )}
           {isPending && !windowClosed && expiresAt && <p style={{ fontSize: '0.82rem', color: '#71717A' }}>Reserva válida hasta {expiresAt.toLocaleString('es-CO')}.</p>}
         </div>
 

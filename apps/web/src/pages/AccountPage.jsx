@@ -18,6 +18,7 @@ import supabase from '../config/supabase';
 import { orderService } from '../services/orderService';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
+import { orderReviewKind, orderReviewMessage } from '../utils/orderReview';
 import { AccountDetails } from '../components/Account/AccountDetails';
 import { AccountSectionNav, useAccountSectionFocus } from '../components/Account/AccountSectionNav';
 import { ReviewInvitations } from '../components/Account/ReviewInvitations';
@@ -201,6 +202,8 @@ export const AccountPage = () => {
           border: '#A7F3D0',
           icon: <CheckCircle2 size={14} color="#10B981" />
         };
+      case 'under_review':
+        return { label: 'Pago recibido · en revisión', bg: '#FFFBEB', text: '#92400E', border: '#FDE68A', icon: <Clock size={14} color="#D97706" /> };
       case 'payment_pending':
       case 'pending':
         return {
@@ -423,7 +426,10 @@ export const AccountPage = () => {
                 {userOrders.map((ord) => {
                   const windowState = paymentWindow(ord);
                   // Ventana vencida aunque el job de expiración aún no haya cambiado el estado: mostrarlo como vencido.
-                  const badge = getStatusBadge(windowState === 'closed' ? 'expired' : ord.status);
+                  const reviewMessage = orderReviewMessage(ord, user?.email);
+                  const badge = orderReviewKind(ord) === 'fulfillment'
+                    ? getStatusBadge('under_review')
+                    : getStatusBadge(windowState === 'closed' ? 'expired' : ord.status);
                   const formattedDate = new Date(ord.created_at).toLocaleDateString('es-CO', {
                     year: 'numeric',
                     month: 'short',
@@ -479,6 +485,13 @@ export const AccountPage = () => {
                           {badge.label}
                         </div>
                       </div>
+
+                      {reviewMessage && (
+                        <p data-testid="order-review-notice" style={{ fontSize: '0.85rem', color: '#92400E', backgroundColor: '#FFFBEB', border: '1px solid #FDE68A',
+                          borderRadius: '8px', padding: '0.7rem 0.9rem', margin: '0 0 1rem 0' }}>
+                          <strong>Pedido en revisión.</strong> {reviewMessage}
+                        </p>
+                      )}
 
                       {/* PRODUCT ITEMS IN THIS ORDER */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>

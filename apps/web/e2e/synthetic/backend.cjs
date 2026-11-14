@@ -216,7 +216,7 @@ function start(port = 54321) {
       S.idem.set(a.p_idempotency_key, res);
       return res;
     },
-    get_order_public: (a) => { const o = S.tables.online_orders.find((x) => x.order_number === a.p_order_number && x.public_token === a.p_public_token); return o ? { id: o.id, order_number: o.order_number, status: o.status, payment_expires_at: o.payment_expires_at, customer_name: o.customer_name, customer_email: o.customer_email, shipping: { department: o.shipping_department, city: o.shipping_city, address: o.shipping_address, neighborhood: o.shipping_neighborhood, method: o.shipping_method_code }, total: o.total, subtotal: o.subtotal, shipping_cost: o.shipping_cost, discount_total: o.discount_total, items: o.online_order_items, created_at: o.created_at } : null; },
+    get_order_public: (a) => { const o = S.tables.online_orders.find((x) => x.order_number === a.p_order_number && x.public_token === a.p_public_token); return o ? { id: o.id, order_number: o.order_number, status: o.status, payment_expires_at: o.payment_expires_at, under_review: o.needs_attention === true, customer_name: o.customer_name, customer_email: o.customer_email, shipping: { department: o.shipping_department, city: o.shipping_city, address: o.shipping_address, neighborhood: o.shipping_neighborhood, method: o.shipping_method_code }, total: o.total, subtotal: o.subtotal, shipping_cost: o.shipping_cost, discount_total: o.discount_total, items: o.online_order_items, created_at: o.created_at } : null; },
     cancel_my_order: (a) => {
       const o = S.tables.online_orders.find((x) => x.id === a.p_order_id && (x.public_token === a.p_public_token));
       if (!o) return err('P0001', 'no existe', 'JM_ORDER_NOT_FOUND');

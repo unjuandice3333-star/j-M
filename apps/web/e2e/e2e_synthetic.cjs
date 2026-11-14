@@ -2071,7 +2071,7 @@ async function main() {
       await p.getByRole('button', { name: /^Abrir carrito, 1 producto/ }).waitFor({ timeout: 8000 });
     }, browser);
 
-    await journey('58. Admin: pedido vencido pagado tarde sin stock → «Requiere revisión» con la causa y la línea faltante; el admin cierra la revisión con motivo', async (p, ctx) => {
+    await journey('58. Admin: pedido vencido pagado tarde sin stock → «Requiere revisión» con la causa y la línea faltante (el cliente ve «en revisión»); el admin cierra la revisión con motivo', async (p, ctx) => {
       // A reserva la última L negra y no paga a tiempo
       await addToCart(p, 'camiseta-basica', 'L', 'Negro');
       await p.goto(`${BASE}/checkout`);
@@ -2103,6 +2103,13 @@ async function main() {
       st = await state();
       const cam = st.inventories.find((i) => i.sku === 'CAM-L-NEG');
       if (cam.stock !== 0 || cam.reserved !== 0) throw new Error(`el inventario no debía quedar negativo: ${JSON.stringify(cam)}`);
+      // el CLIENTE (enlace de seguimiento) ve que su pedido pagado está en revisión, sin la promesa de despacho (ejecución 125)
+      await p.reload();
+      const notice = p.getByTestId('order-review-notice');
+      await notice.waitFor({ timeout: 8000 });
+      if (!/Estamos revisando la disponibilidad de tu pedido y te escribiremos a tarde@correo\.co/.test(await notice.textContent())) throw new Error(`aviso: «${await notice.textContent()}»`);
+      if (await p.getByText('cuando despachemos tu pedido').count()) throw new Error('promete el despacho de un pedido en revisión');
+      if (await p.getByText(/CAM-L-NEG|PAID_WITHOUT_STOCK|faltan/).count()) throw new Error('el cliente ve el detalle interno de la revisión');
       // dashboard: alerta con 1 pedido → lista filtrada
       await adm.goto(`${BASE}/admin/dashboard`);
       await expectText(adm, '1 pedido');
@@ -2132,6 +2139,10 @@ async function main() {
       if (done.needs_attention || done.status !== 'paid' || !resolved || resolved.note !== 'Repuse 1 unidad del proveedor y despaché' || resolved.actor !== 'admin') throw new Error(`cierre: ${JSON.stringify(done)}`);
       await adm.goto(`${BASE}/admin/dashboard`);
       await expectText(adm, '0 pedidos');
+      // revisión cerrada: el cliente vuelve a ver la confirmación normal
+      await p.reload();
+      await expectText(p, 'cuando despachemos tu pedido');
+      if (await p.getByTestId('order-review-notice').count()) throw new Error('el aviso sigue tras cerrar la revisión');
     }, browser);
 
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {

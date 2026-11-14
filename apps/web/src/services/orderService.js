@@ -102,7 +102,7 @@ export const orderService = {
   /** Pedidos del usuario autenticado (RLS: solo los suyos). */
   async getMyOrders() {
     const { data, error } = await supabase.from('online_orders')
-      .select('id, order_number, public_token, status, total, subtotal, discount_total, shipping_cost, shipping_method_code, coupon_code, created_at, payment_expires_at, paid_at, shipped_at, delivered_at, carrier, tracking_number, tracking_url, shipping_city, shipping_department, shipping_address, online_order_items ( product_name, size_code, color_name, quantity, unit_price, line_total, image_url )')
+      .select('id, order_number, public_token, status, needs_attention, total, subtotal, discount_total, shipping_cost, shipping_method_code, coupon_code, created_at, payment_expires_at, paid_at, shipped_at, delivered_at, carrier, tracking_number, tracking_url, shipping_city, shipping_department, shipping_address, online_order_items ( product_name, size_code, color_name, quantity, unit_price, line_total, image_url )')
       .order('created_at', { ascending: false });
     if (error) throw toOrderError(error, 'No se pudieron cargar tus pedidos.');
     return data;
