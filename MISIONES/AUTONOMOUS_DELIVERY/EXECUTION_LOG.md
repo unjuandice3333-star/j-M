@@ -1253,3 +1253,15 @@
 - Commits: `36dc967`, `a2521a0` (docs), `419c450`, `97e2072` + el de documentación; publicados en la rama autorizada.
 - Notificación: enviada (CI rojo desde la ejecución 122, ya corregido).
 - Siguiente: comprobar el run `ci` del último push; luego punto 0(cg) de Pendiente (pedido con una devolución hecha y otra pendiente a la vez).
+
+## Ejecución 135 — 2026-11-14 ~14:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-urp2dm` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `cbdf1db`, árbol limpio. CI del push anterior (run `ci` nº 163): todo ✔ salvo `security` (gitleaks, conocido); `e2e-supabase` nº 141 ✔.
+- Tarea: punto 0(cg) de Pendiente. Al prepararlo se encontró un defecto real: los pagos aprobados duplicados o posteriores a la cancelación (`requires_refund`) no registraban devolución en `order_refunds` (D109).
+- Archivos: nueva migración `supabase/migrations/20261118120000_register_duplicate_payment_refund.sql`; nueva prueba `supabase/tests/database/99d_duplicate_payment_refund.test.sql` (20); `supabase/seeds/20_qa_orders.sql` (O9: devolución hecha + pendiente); `scripts/ci/lib/refund_filter_checks.py` (2 comprobaciones); `apps/web/src/utils/orderRefunds.js` (`transactionReference`, `duplicatePayment`, `pendingRefundReferences`); `apps/web/src/pages/admin/AdminOrdersPage.jsx` (`ORDER_SELECT` con `payment_transactions.id/requires_refund` y `order_refunds.payment_transaction_id`, transacción por devolución); `apps/web/src/__tests__/adminOrderRefunds.test.jsx` (+3), `adminPendingRefunds.test.jsx` (select actualizado).
+- Pruebas (ejecutadas aquí): `run_local.sh` → pgTAP 473/473, concurrencia 12/12, orden Supabase 485/485, determinismo OK (con el seed nuevo); sin la migración la 99d falla 9/20 (comprobado); `postgrest_local.sh` 16/16 contra PostgREST real; vitest 679/679 (71 archivos); ESLint 0; build OK; `migrations_policy.sh` OK; `pnpm test:e2e-synthetic` 64/64 (sin recorrido nuevo: ver errores pendientes).
+- Errores pendientes: el backend sintético no emula el trigger nuevo; anular el intento duplicado de un pedido pagado marca `PAYMENT_VOIDED_AFTER_PAID` (preexistente, inocuo).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261118120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `d2cc19d` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: enviada (defecto de dinero no rastreado corregido; requiere aplicar la migración en QA cuando se desbloquee).
+- Siguiente: comprobar el run `ci` de este push (en especial `db-supabase`, que reconstruye con el seed O9 y ejecuta `http_checks.py`); luego punto 0(ch) de Pendiente.
+
