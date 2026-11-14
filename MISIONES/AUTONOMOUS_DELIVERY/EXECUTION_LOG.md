@@ -1248,6 +1248,8 @@
 - Pruebas (ejecutadas aquí): recorrido 64 falla sin el cambio de `src` (`git stash`) y pasa con él; 29/33/35/64 pasan (la primera versión del arreglo dejaba FILTRAR con 18 px de alto → corregido a 36 px); `pnpm test:e2e-synthetic` pasada completa **64/64**; `pnpm test:unit` 676/676; ESLint 0; build OK; `migrations_policy.sh` OK; `check_commits.sh` OK; redactor del nuevo script probado con JWT/llave falsos.
 - Errores pendientes: causa de `db-supabase` en GitHub desconocida (artefacto inaccesible: CDN 403). `e2e-synthetic` corregido en local, sin confirmar en GitHub.
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
-- Commits: `36dc967` (código) + el de documentación; publicados en la rama autorizada.
-- Notificación: enviada (CI rojo desde hace 12 ejecuciones sin que constara en el estado).
-- Siguiente: punto 0(cf) de Pendiente (leer el detalle de `db-supabase` en el run del push y corregirlo).
+- Continuación en la misma ejecución: el paso nuevo mostró en el run nº 161 la causa de `db-supabase` (pgTAP 98/99/99a/99b tras la prueba de concurrencia que hace COMMIT). Corregido (`419c450`: `zz_concurrency`, paso 4b en `run_local.sh`, comprobación pg_cron de la prueba 30), reproducido antes y verificado después con `run_local.sh` (453/453, 12/12, 465/465 en orden Supabase, determinismo OK; se instalaron `postgresql-16-pgtap`, `postgresql-16-cron` y `pg_prove` en el contenedor). Recorrido 46 intermitente con carga de CPU (2/6) → espera de red quieta (`97e2072`): 8/8 con carga, E2E 64/64.
+- GitHub: run `ci` nº 162 (`419c450`) → governance, quality, db-local, **db-supabase**, **e2e-synthetic** ✔; `security` ✘ (gitleaks, conocido).
+- Commits: `36dc967`, `a2521a0` (docs), `419c450`, `97e2072` + el de documentación; publicados en la rama autorizada.
+- Notificación: enviada (CI rojo desde la ejecución 122, ya corregido).
+- Siguiente: comprobar el run `ci` del último push; luego punto 0(cg) de Pendiente (pedido con una devolución hecha y otra pendiente a la vez).
