@@ -85,6 +85,26 @@ pg_prove -h "$WORKDIR" -p "$PORT" -U "$PG_SUPERUSER" -d "$DB" --ext .sql -v \
 CONC_RC=${PIPESTATUS[0]}
 set -e
 
+step "4b. Orden de \`supabase test db\` (todas las pruebas, alfabético, una BD nueva)"
+# Ejecución 134: `supabase test db` ejecuta TODOS los archivos en orden alfabético sobre la misma BD, incluida la de
+# concurrencia, que hace COMMIT real (vende la última unidad del polo). Si un archivo que depende de ese stock queda
+# DESPUÉS de ella, falla solo en GitHub (job db-supabase rojo desde la ejecución 122). Esta pasada lo reproduce aquí.
+"${PSQL[@]}" -d postgres -c "CREATE DATABASE ${DB}_order"
+build_db "${DB}_order" > "$OUTDIR/rebuild_order.log" 2>&1
+"${PSQL[@]}" -d "${DB}_order" -c "CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions" >/dev/null
+"${PSQL[@]}" -d "${DB}_order" -c "CREATE EXTENSION IF NOT EXISTS dblink WITH SCHEMA extensions" >/dev/null
+mapfile -t ALL_TESTS < <(LC_ALL=C ls "$ROOT"/supabase/tests/database/*.test.sql)
+ORDER_RC=0
+last="$(basename "${ALL_TESTS[-1]}")"
+if [[ "$last" != *concurrency* ]]; then
+  echo "ERROR: la prueba de concurrencia (hace COMMIT) debe ser la última en orden alfabético; la última es $last"; ORDER_RC=1
+fi
+set +e
+pg_prove -h "$WORKDIR" -p "$PORT" -U "$PG_SUPERUSER" -d "${DB}_order" --ext .sql "${ALL_TESTS[@]}" > "$OUTDIR/pgtap_order.log" 2>&1
+[[ $? -eq 0 ]] || ORDER_RC=1
+set -e
+grep -E '^Files=|^Result|Failed' "$OUTDIR/pgtap_order.log" || true
+
 step "5. Determinismo de seeds (dos reconstrucciones)"
 "${PSQL[@]}" -d postgres -c "CREATE DATABASE ${DB}_b"
 build_db "${DB}_b" > "$OUTDIR/rebuild_b.log" 2>&1
@@ -111,7 +131,7 @@ echo "huella reconstrucción C: $FP_2"
 if [[ "$FP_1" == "$FP_2" ]]; then DET_RC=0; echo "DETERMINISMO: OK"; else DET_RC=1; echo "DETERMINISMO: FALLA"; fi
 
 step "Resumen"
-echo "pgTAP funcional: rc=$PGTAP_RC | concurrencia: rc=$CONC_RC | determinismo: rc=$DET_RC"
+echo "pgTAP funcional: rc=$PGTAP_RC | concurrencia: rc=$CONC_RC | orden supabase: rc=$ORDER_RC | determinismo: rc=$DET_RC"
 echo "Logs en $OUTDIR"
 # Cualquier código distinto de cero es fallo (la suma podría desbordar módulo 256 y dar 0)
-exit $(( (PGTAP_RC | CONC_RC | DET_RC) != 0 ))
+exit $(( (PGTAP_RC | CONC_RC | ORDER_RC | DET_RC) != 0 ))

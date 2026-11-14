@@ -54,8 +54,16 @@ SELECT is(tests.exec_as('anon', 'SELECT public.expire_pending_orders() AS n') ->
           'anon no puede ejecutar expire_pending_orders');
 SELECT is(tests.exec_as('c1', 'SELECT public.expire_pending_orders() AS n') ->> 'sqlstate', '42501',
           'cliente no puede ejecutar expire_pending_orders');
-SELECT ok(CASE WHEN to_regclass('cron.job') IS NULL THEN true
-               ELSE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'jm-expire-pending-orders' AND schedule = '*/5 * * * *') END,
+-- Consulta dinámica: con `cron.job` escrito literalmente, la sentencia falla al analizarse en una BD sin pg_cron
+-- aunque la rama no se ejecute (ejecución 134).
+CREATE FUNCTION pg_temp.jm_cron_job_ok() RETURNS boolean LANGUAGE plpgsql AS $f$
+DECLARE r boolean;
+BEGIN
+  IF to_regclass('cron.job') IS NULL THEN RETURN true; END IF;
+  EXECUTE $q$SELECT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'jm-expire-pending-orders' AND schedule = '*/5 * * * *')$q$ INTO r;
+  RETURN r;
+END $f$;
+SELECT ok(pg_temp.jm_cron_job_ok(),
           'job pg_cron de expiración programado cada 5 minutos (si pg_cron está disponible)');
 
 SELECT * FROM finish();

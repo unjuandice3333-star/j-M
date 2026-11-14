@@ -1,6 +1,6 @@
--- 95 · Concurrencia REAL con dos conexiones independientes (dblink).
--- A diferencia de las demás pruebas, las conexiones A y B hacen COMMIT: ejecutar al final
--- (orden alfabético de `supabase test db`) y siempre tras `supabase db reset` / run_local.sh.
+-- zz · Concurrencia REAL con dos conexiones independientes (dblink).
+-- A diferencia de las demás pruebas, las conexiones A y B hacen COMMIT: DEBE ser la última (prefijo `zz_`,
+-- orden alfabético de `supabase test db`; run_local.sh lo comprueba) y siempre tras un `db reset`.
 --
 -- Infraestructura de la prueba (M24D, H2), autocontenida y versionada aquí:
 --   * habilita dblink (idempotente);
