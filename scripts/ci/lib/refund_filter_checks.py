@@ -59,6 +59,17 @@ def run(call, check, tokens):
           got is not None and all(o.get("order_refunds") and any(r["status"] == "requested" for r in o["order_refunds"])
                                   and o.get("online_order_items") and isinstance(o.get("pending_refunds"), list) for o in b))
 
+    # Ejecución 135 (D109): seed O9 — devolución hecha + devolución pendiente de un pago tardío en el MISMO pedido.
+    mixed = [o for o in (b if got is not None else [])
+             if {r["status"] for r in o.get("order_refunds") or []} >= {"processed", "requested"}]
+    check("devoluciones: pedido con una devolución hecha y otra pendiente aparece en el filtro con ambas",
+          len(mixed) >= 1, f"pedidos mixtos={len(mixed)}")
+    txs = {t["id"]: t for o in mixed for t in o.get("payment_transactions") or []}
+    check("devoluciones: la pendiente del pago tardío apunta a su intento marcado requires_refund (sin reingreso)",
+          bool(mixed) and all(any(r["status"] == "requested" and not r["restock"]
+                                  and txs.get(r.get("payment_transaction_id"), {}).get("requires_refund") is True
+                                  for r in o["order_refunds"]) for o in mixed))
+
     s, b = call("GET", base + "&status=eq.cancelled", token=tokens["admin"])
     check("devoluciones: combinado con el filtro de estado (cancelados) solo trae cancelados con devolución pendiente",
           s == 200 and isinstance(b, list) and b and all(o["status"] == "cancelled" for o in b)

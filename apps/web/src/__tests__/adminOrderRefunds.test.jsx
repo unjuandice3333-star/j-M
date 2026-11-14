@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { refundRecords, refundTotal, hasPendingRefund, refundStockText, refundStatusLabel, validateProviderRefundId } from '../utils/orderRefunds';
+import { refundRecords, refundTotal, hasPendingRefund, refundStockText, refundStatusLabel, validateProviderRefundId, pendingRefundReferences } from '../utils/orderRefunds';
 
 function fakeSupabase() {
   const state = { tables: {}, rpc: {}, rpcCalls: [] };
@@ -187,3 +187,45 @@ describe('AdminOrdersPage: marcar la devolución como hecha en Wompi (ejecución
   });
 });
 
+
+// Ejecución 135 (D109): pago duplicado o posterior a la cancelación → su propia devolución pendiente (trigger de la BD).
+describe('Devolución de un cobro duplicado o tardío (ejecución 135)', () => {
+  const TXS = [
+    { id: 'tx-1', reference: 'JM-000001-1', status: 'APPROVED', requires_refund: false },
+    { id: 'tx-2', reference: 'JM-000001-2', status: 'APPROVED', requires_refund: true },
+  ];
+  const BOTH = [
+    { ...REFUND, payment_transaction_id: 'tx-1', status: 'processed', provider_refund_id: 'W-1' },
+    { ...REFUND, id: 'ref-2', payment_transaction_id: 'tx-2', reason: 'Pago aprobado que el pedido no puede usar', restock: false, created_at: '2026-11-15T09:00:00Z' },
+  ];
+
+  it('utils: cada devolución con su transacción; la del duplicado no pide reingresar prenda', () => {
+    const o = order({ payment_transactions: TXS, order_refunds: BOTH });
+    const recs = refundRecords(o);
+    expect(recs.map((r) => [r.transactionReference, r.duplicatePayment, r.pending])).toEqual([
+      ['JM-000001-1', false, false], ['JM-000001-2', true, true]]);
+    expect(refundStockText(recs[1])).toMatch(/no hay prenda que reingresar/);
+    expect(pendingRefundReferences(o, recs)).toEqual(['JM-000001-2']);
+  });
+
+  it('utils: sin enlace al intento usa el pago válido (no el marcado para reembolso)', () => {
+    const o = order({ payment_transactions: [TXS[1], TXS[0]], order_refunds: [REFUND] });
+    expect(pendingRefundReferences(o, refundRecords(o))).toEqual(['JM-000001-1']);
+    expect(refundRecords(o)[0]).toMatchObject({ transactionReference: null, duplicatePayment: false });
+  });
+
+  it('pedido con una devolución hecha y otra pendiente: muestra ambas y pide hacer solo la del duplicado', async () => {
+    supa.state.tables.online_orders = [order({ needs_attention: true, payment_transactions: TXS, order_refunds: BOTH })];
+    await render();
+    await openFirst();
+    const statuses = [...container.querySelectorAll('[data-testid="order-refund-status"]')].map((e) => e.textContent);
+    expect(statuses).toEqual(['Estado: Devuelta · Wompi W-1', 'Estado: Registrada · pendiente de hacer en Wompi']);
+    const txs = [...container.querySelectorAll('[data-testid="order-refund-transaction"]')].map((e) => e.textContent);
+    expect(txs).toEqual(['Transacción en Wompi: JM-000001-1', 'Transacción en Wompi: JM-000001-2 (cobro duplicado o tardío)']);
+    expect(container.querySelectorAll('[data-testid="order-refund-mark-processed"]')).toHaveLength(1);
+    const note = container.querySelector('[data-testid="order-refund-pending"]').textContent;
+    expect(note).toContain('transacción JM-000001-2');
+    expect(note).not.toContain('JM-000001-1');
+    expect(container.querySelector('[data-testid="order-refunds"]').textContent).toContain('no hay prenda que reingresar');
+  });
+});

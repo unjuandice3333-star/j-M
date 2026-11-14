@@ -169,7 +169,7 @@ describe('AdminOrdersPage: ?devolucion=pendiente', () => {
     const sel = supa.state.selects.filter(([t]) => t === 'online_orders').map(([, c]) => c).find((c) => c.includes('!inner'));
     expect(sel).toMatch(/pending_refunds:order_refunds!inner \( id \)/);
     // El detalle conserva TODAS las devoluciones del pedido (embebido sin filtrar).
-    expect(sel).toMatch(/order_refunds \( id, amount, reason, status/);
+    expect(sel).toMatch(/order_refunds \( id, payment_transaction_id, amount, reason, status/);
     expect(container.querySelectorAll('[data-testid="order-row-pending-refund"]').length).toBe(1);
   });
 

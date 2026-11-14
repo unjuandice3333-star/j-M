@@ -118,4 +118,29 @@ SELECT public.admin_transition_order((pg_temp.order_by_key('qa-seed-order-07')).
 SELECT public.admin_transition_order((pg_temp.order_by_key('qa-seed-order-07')).id, 'delivered');
 SELECT public.admin_transition_order((pg_temp.order_by_key('qa-seed-order-07')).id, 'refunded', 'Prueba de reembolso posventa');
 
+-- O9 · cliente2 · pagado, cancelado por el admin con la devolución YA hecha en Wompi, y después Wompi aprueba un
+-- segundo intento del mismo pedido (pago tardío) → otra devolución PENDIENTE (ejecución 135, D109).
+-- Es el pedido con una devolución hecha y otra pendiente a la vez. Reingreso neto de stock: cero.
+CREATE FUNCTION pg_temp.approve_attempt(p_att jsonb, p_tag text) RETURNS jsonb LANGUAGE sql AS $$
+  SELECT public.apply_payment_event(
+    jsonb_build_object('event', 'transaction.updated', 'environment', 'test',
+      'data', jsonb_build_object('transaction', jsonb_build_object(
+        'id', 'qa-tx-' || (p_att ->> 'reference'), 'reference', p_att ->> 'reference', 'status', 'APPROVED',
+        'amount_in_cents', (p_att ->> 'amount_in_cents')::bigint, 'currency', 'COP', 'payment_method_type', 'CARD'))),
+    'qa-checksum-' || (p_att ->> 'reference') || '-' || p_tag)
+$$;
+CREATE TEMP TABLE qa_o9_att (n int PRIMARY KEY, att jsonb);
+SELECT pg_temp.as_user('00000000-0000-4000-8000-00000000a004');
+SELECT public.create_order(pg_temp.customer('Cliente Dos QA', 'cliente2@qa.jm.test'), pg_temp.shipping(),
+  jsonb_build_array(jsonb_build_object('variant_id', pg_temp.variant('JM-TEE-001-NEGRO-L'), 'quantity', 1)),
+  NULL, 'standard', 'qa-seed-order-09');
+INSERT INTO qa_o9_att SELECT n, public.create_payment_attempt(o.id, o.public_token)
+  FROM generate_series(1, 2) n, pg_temp.order_by_key('qa-seed-order-09') o ORDER BY n;
+SELECT pg_temp.approve_attempt(att, 'APPROVED') FROM qa_o9_att WHERE n = 1;
+SELECT pg_temp.as_user('00000000-0000-4000-8000-00000000a002');
+SELECT public.admin_transition_order((pg_temp.order_by_key('qa-seed-order-09')).id, 'cancelled', 'Prueba: cliente desiste tras pagar');
+SELECT public.admin_mark_refund_processed(r.id, 'qa-wompi-refund-o9-1')
+  FROM public.order_refunds r WHERE r.order_id = (pg_temp.order_by_key('qa-seed-order-09')).id;
+SELECT pg_temp.approve_attempt(att, 'APPROVED-late') FROM qa_o9_att WHERE n = 2;
+
 SELECT pg_temp.as_user(NULL);

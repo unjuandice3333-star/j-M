@@ -10,7 +10,7 @@ import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 import { DialogPanel } from '../../components/Common/DialogPanel';
 import { attentionReasons, sortedEvents, eventText, validateResolveNote, canRefundFromAttention, RESOLVE_NOTE_MAX } from '../../utils/orderAttention';
-import { refundRecords, refundTotal, hasPendingRefund, refundStockText, validateProviderRefundId, PROVIDER_REFUND_ID_MAX, pendingRefundFromParam, PENDING_REFUND_PARAM } from '../../utils/orderRefunds';
+import { refundRecords, refundTotal, hasPendingRefund, refundStockText, pendingRefundReferences, validateProviderRefundId, PROVIDER_REFUND_ID_MAX, pendingRefundFromParam, PENDING_REFUND_PARAM } from '../../utils/orderRefunds';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_ERROR_ID = 'order-modal-error';
@@ -21,9 +21,9 @@ const ORDER_SELECT = `
         subtotal, discount_total, shipping_cost, total, coupon_code, status, created_at, paid_at, needs_attention,
         carrier, tracking_number, tracking_url,
         online_order_items ( variant_id, product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
-        payment_transactions ( reference, status, amount_in_cents, payment_method_type, created_at ),
+        payment_transactions ( id, reference, status, amount_in_cents, payment_method_type, requires_refund, created_at ),
         order_events ( event_type, from_status, to_status, actor, note, metadata, created_at ),
-        order_refunds ( id, amount, reason, status, restock, provider_refund_id, created_at )`;
+        order_refunds ( id, payment_transaction_id, amount, reason, status, restock, provider_refund_id, created_at )`;
 
 const mapOrder = (o) => ({
   ...o, id: o.order_number, rawId: o.id, date: new Date(o.created_at).toLocaleString('es-CO'),
@@ -631,6 +631,7 @@ export const AdminOrdersPage = () => {
                         <div style={{ fontWeight: 800 }}>{formatCOP(r.amount)} · {r.createdAt ? new Date(r.createdAt).toLocaleString('es-CO') : 'sin fecha'}</div>
                         <div>Motivo: {r.reason}</div>
                         <div data-testid="order-refund-status">Estado: {r.statusLabel}{r.providerRefundId ? ` · Wompi ${r.providerRefundId}` : ''}</div>
+                        {r.transactionReference && <div data-testid="order-refund-transaction">Transacción en Wompi: {r.transactionReference}{r.duplicatePayment ? ' (cobro duplicado o tardío)' : ''}</div>}
                         <div>{refundStockText(r)}</div>
                         {r.pending && r.id && (() => {
                           const fieldId = `order-refund-provider-${r.id}`;
@@ -659,7 +660,7 @@ export const AdminOrdersPage = () => {
                   </ul>
                   {hasPendingRefund(refunds) && (
                     <p data-testid="order-refund-pending" style={{ marginTop: '0.6rem', fontWeight: 700 }}>
-                      El panel solo registra la devolución: el dinero se devuelve desde el panel de Wompi (transacción {(selectedOrder.payment_transactions ?? []).find((t) => t.status === 'APPROVED')?.reference ?? 'aprobada del pedido'}). Después de hacerla, escribe aquí el id que te da Wompi y márcala como devuelta.
+                      El panel solo registra la devolución: el dinero se devuelve desde el panel de Wompi ({(() => { const refs = pendingRefundReferences(selectedOrder, refunds); return refs.length > 1 ? `transacciones ${refs.join(', ')}` : `transacción ${refs[0] ?? 'aprobada del pedido'}`; })()}). Después de hacerla, escribe aquí el id que te da Wompi y márcala como devuelta.
                     </p>
                   )}
                 </section>

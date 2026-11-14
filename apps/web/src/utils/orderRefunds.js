@@ -16,6 +16,16 @@ export const REFUND_STATUS_LABEL = {
 
 export const refundStatusLabel = (status) => REFUND_STATUS_LABEL[status] ?? status ?? 'Sin estado';
 
+// Ejecución 135 (D109): un pago aprobado que el pedido no puede usar (duplicado o posterior a la cancelación,
+// `payment_transactions.requires_refund`) también genera su devolución `requested` (trigger de la BD), ligada a
+// ESE intento. Cada devolución indica su propia transacción de Wompi; un pedido puede tener una hecha y otra pendiente.
+
+/** Transacción de Wompi a la que corresponde una devolución (por `payment_transaction_id`), o null. */
+function refundTransaction(order, refund) {
+  if (!refund?.payment_transaction_id) return null;
+  return (order?.payment_transactions ?? []).find((t) => t.id && t.id === refund.payment_transaction_id) ?? null;
+}
+
 /** Devoluciones del pedido en orden cronológico, listas para mostrar (no muta el arreglo original). */
 export function refundRecords(order) {
   return [...(order?.order_refunds ?? [])]
@@ -30,6 +40,8 @@ export function refundRecords(order) {
       restock: r.restock === true,
       providerRefundId: r.provider_refund_id || null,
       createdAt: r.created_at ?? null,
+      transactionReference: refundTransaction(order, r)?.reference ?? null,
+      duplicatePayment: refundTransaction(order, r)?.requires_refund === true,
     }));
 }
 
@@ -40,9 +52,22 @@ export const refundTotal = (records) => records.filter((r) => r.status !== 'reje
 export const hasPendingRefund = (records) => records.some((r) => r.pending);
 
 /** Texto del inventario para una devolución. */
-export const refundStockText = (record) => (record.restock
-  ? 'Inventario repuesto al cancelar'
-  : 'Inventario sin reponer: regístralo al recibir la prenda (Inventario → ajuste «devolución»)');
+export const refundStockText = (record) => {
+  if (record.duplicatePayment) return 'Cobro duplicado o posterior a la cancelación: no hay prenda que reingresar';
+  return record.restock
+    ? 'Inventario repuesto al cancelar'
+    : 'Inventario sin reponer: regístralo al recibir la prenda (Inventario → ajuste «devolución»)';
+};
+
+/**
+ * Referencias de Wompi de las devoluciones pendientes (sin repetir). Si alguna no está ligada a un intento conocido,
+ * usa la del pago aprobado válido del pedido (el que NO está marcado para reembolso).
+ */
+export function pendingRefundReferences(order, records) {
+  const valid = (order?.payment_transactions ?? []).find((t) => t.status === 'APPROVED' && t.requires_refund !== true)?.reference ?? null;
+  const refs = records.filter((r) => r.pending).map((r) => r.transactionReference ?? valid).filter(Boolean);
+  return [...new Set(refs)];
+}
 
 // Ejecución 130 (D103): misma regla que admin_mark_refund_processed (btrim, 1–100, [A-Za-z0-9._:-]).
 export const PROVIDER_REFUND_ID_MAX = 100;
