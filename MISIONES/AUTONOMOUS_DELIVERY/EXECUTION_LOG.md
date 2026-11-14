@@ -1327,3 +1327,14 @@
 - Commits: el de pruebas + el de documentación; publicados en la rama autorizada.
 - Notificación: enviada (el CI de la rama quedó rojo en `e2e-synthetic` tras la ejecución 139).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(cm) de Pendiente.
+
+## Ejecución 141 — 2026-11-14 ~21:30 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-03nio0` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `f6be327`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior (API de Actions): run `ci` nº 171 (`f6be327`): governance, quality, db-local, db-supabase ✔; `security` ✘ (gitleaks, conocido); **`e2e-synthetic` cancelado** (apt colgado 15 min dentro de `playwright install --with-deps`); `e2e-supabase` nº 149 ✔.
+- Tarea: instalación de Chromium acotada y con reintentos (D117).
+- Archivos: `scripts/ci/install_chromium.sh` (nuevo), `scripts/ci/install_chromium.test.mjs` (nuevo, 4 pruebas), `.github/workflows/ci.yml`, `.github/workflows/e2e-supabase.yml`, `package.json` (`test:env`).
+- Pruebas (ejecutadas aquí): `pnpm test:env` 146/146; ESLint 0; YAML válido; `check_commits.sh` OK. No re-ejecutados: vitest y E2E (sin cambios en `apps/`).
+- Errores pendientes: recorridos 30 y 69 intermitentes en CI (sin datos nuevos: el E2E no corrió en el run 171).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `8d78abe` + el de documentación; publicados en la rama autorizada.
+- Siguiente: comprobar el run `ci` de este push (instalación + E2E 70/70); luego punto 0(cm) de Pendiente.
