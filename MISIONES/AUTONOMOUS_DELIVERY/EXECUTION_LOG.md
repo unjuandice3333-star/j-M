@@ -1130,3 +1130,15 @@
 - Commits: `f592314` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bv)(2) de Pendiente (pedido vencido pagado tarde → «Requiere revisión» en el admin, en E2E).
+
+## Ejecución 124 — 2026-11-14 02:05 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-q1fv90` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `85284fa`, árbol limpio. `pnpm install --frozen-lockfile` OK; paquetes apt de pgTAP/pg_cron instalados (D6).
+- Tarea: punto 0(bv)(2) de Pendiente. Al escribir el E2E se halló que el admin no veía la causa de la revisión ni podía cerrarla → RPC `admin_resolve_order_attention` + panel de revisión en el detalle del pedido (D97).
+- Archivos: nueva migración `supabase/migrations/20261114120000_admin_resolve_order_attention.sql`, nuevo `supabase/tests/database/99_admin_resolve_attention.test.sql`, `supabase/tests/database/01_structure.test.sql`, nuevo `apps/web/src/utils/orderAttention.js`, `apps/web/src/services/adminService.js`, `apps/web/src/pages/admin/AdminOrdersPage.jsx`, nuevo `apps/web/src/__tests__/adminOrderAttention.test.jsx` (8), `apps/web/e2e/synthetic/backend.cjs` (pago tardío con el contrato de `commit_stock_for_order`, RPC sintética, métrica `needs_attention` real, eventos `STATUS_CHANGED`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 58).
+- Pruebas (ejecutadas aquí): `supabase/tests/run_local.sh` pgTAP 408/408 (17 archivos), concurrencia 12/12, determinismo OK (primera pasada: solo el `plan()` del archivo nuevo mal contado, corregido); `pnpm test:unit` 630/630 (64 archivos); `adminOrderAttention` 3 pruebas de UI fallan sin los cambios de `src` (`git stash`; las 4 de la utilidad nueva y la de «sin marca» pasan por diseño); recorrido 58 falla sin los cambios y pasa con ellos; `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 58/58 en una pasada completa.
+- Defecto real corregido: un pedido pagado tarde sin stock (o con pago a reembolsar/anulado) quedaba «Requiere revisión» para siempre, sin explicar la causa ni la línea faltante, con el historial en códigos internos.
+- Errores pendientes: ninguno nuevo. La migración `20261114120000` se suma a las pendientes de aplicar en Supabase QA. No probado en WebKit ni contra Supabase real remoto.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261114120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `675df04` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bw) de Pendiente.
