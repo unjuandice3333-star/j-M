@@ -6,6 +6,7 @@
 //   admin_transition_order(id, estado, nota, tracking)  máquina de estados de la BD
 //   admin_dashboard_metrics(desde, hasta)
 //   admin_expire_pending_orders()                 vence pedidos con la ventana de pago cumplida (libera reservas)
+//   admin_resolve_order_attention(id, nota)       cierra la revisión de un pedido (needs_attention) con motivo
 // Lecturas administrativas: tablas con RLS (solo admin): online_orders, inventories, coupons, profiles…
 // =============================================================================
 import supabase from '../config/supabase';
@@ -33,6 +34,8 @@ const ADMIN_HINTS = {
   JM_ORDER_NOT_FOUND: 'El pedido no existe.',
   JM_LAST_SUPER_ADMIN: 'No se puede quitar el último super administrador.',
   JM_USER_NOT_FOUND: 'El usuario no existe.',
+  JM_NOTE_TOO_LONG: 'La nota no puede superar 500 caracteres.',
+  JM_ATTENTION_NOT_REQUIRED: 'Este pedido ya no está pendiente de revisión (otro administrador pudo cerrarla).',
 };
 
 /** Traduce errores de la BD (HINT JM_*, restricciones, RLS) a mensajes de administración. */
@@ -113,6 +116,12 @@ export const adminService = {
     call('admin_adjust_inventory', { p_variant_id: variantId, p_quantity_change: quantityChange, p_movement_type: movementType, p_reason: reason }, 'No se pudo ajustar el inventario.'),
   async transitionOrder(orderId, to, note = null, tracking = null) {
     const data = await call('admin_transition_order', { p_order_id: orderId, p_to: to, p_note: note, p_tracking: tracking }, 'No se pudo cambiar el estado del pedido.');
+    notifyOrdersChanged();
+    return data;
+  },
+  /** Ejecución 124 (D97): quita la marca «requiere revisión» con el motivo (evento ATTENTION_RESOLVED). */
+  async resolveOrderAttention(orderId, note) {
+    const data = await call('admin_resolve_order_attention', { p_order_id: orderId, p_note: note }, 'No se pudo cerrar la revisión del pedido.');
     notifyOrdersChanged();
     return data;
   },

@@ -246,19 +246,31 @@ function start(port = 54321) {
       }
       return n;
     },
+    // Ejecución 124 (D97): mismo contrato que la migración 20261114120000 (solo admin, motivo obligatorio ≤ 500, solo si está marcado).
+    admin_resolve_order_attention: (a, ctx) => {
+      if (ctx.role !== 'admin') return err('42501', 'permission denied', 'JM_FORBIDDEN');
+      const note = String(a.p_note ?? '').trim();
+      if (!note) return err('P0001', 'x', 'JM_NOTE_REQUIRED');
+      if (note.length > 500) return err('P0001', 'x', 'JM_NOTE_TOO_LONG');
+      const o = S.tables.online_orders.find((x) => x.id === a.p_order_id); if (!o) return err('P0001', 'x', 'JM_ORDER_NOT_FOUND');
+      if (!o.needs_attention) return err('P0001', 'x', 'JM_ATTENTION_NOT_REQUIRED');
+      o.needs_attention = false;
+      o.order_events.unshift({ event_type: 'ATTENTION_RESOLVED', from_status: null, to_status: null, actor: 'admin', note, metadata: { order_status: o.status }, created_at: new Date().toISOString() });
+      return { order_id: o.id, status: o.status, needs_attention: false };
+    },
     admin_dashboard_metrics: (a, ctx) => {
       if (ctx.role !== 'admin') return err('42501', 'permission denied', 'JM_FORBIDDEN');
       const os = S.tables.online_orders; const paid = os.filter((o) => ['paid', 'processing', 'shipped', 'delivered'].includes(o.status));
       const by = {}; for (const o of os) by[o.status] = (by[o.status] || 0) + 1;
       return { gross_sales: paid.reduce((n, o) => n + o.total, 0), paid_orders: paid.length, average_ticket: paid.length ? Math.round(paid.reduce((n, o) => n + o.total, 0) / paid.length) : 0,
-        units_sold: paid.reduce((n, o) => n + o.online_order_items.reduce((m, i) => m + i.quantity, 0), 0), low_stock_variants: S.inventories.filter((i) => avail(i) <= i.min_stock).length, needs_attention: 0, orders_by_status: by, total_orders: os.length };
+        units_sold: paid.reduce((n, o) => n + o.online_order_items.reduce((m, i) => m + i.quantity, 0), 0), low_stock_variants: S.inventories.filter((i) => avail(i) <= i.min_stock).length, needs_attention: os.filter((o) => o.needs_attention).length, orders_by_status: by, total_orders: os.length };
     },
   };
   function transition(o, to, actor, note) {
     const from = o.status; o.status = to; if (to === 'cancelled' || (to === 'expired' && from === 'payment_pending')) for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); if (inv) inv.reserved = Math.max(0, inv.reserved - it.quantity); }
     if (to === 'paid') o.paid_at = new Date().toISOString();
     if (to === 'delivered') o.delivered_at = new Date().toISOString();
-    o.order_events.unshift({ event_type: 'status', from_status: from, to_status: to, actor, note: note || null, created_at: new Date().toISOString() });
+    o.order_events.unshift({ event_type: 'STATUS_CHANGED', from_status: from, to_status: to, actor, note: note || null, metadata: {}, created_at: new Date().toISOString() });
   }
 
   // Divide por comas de primer nivel (respeta paréntesis y valores entre comillas con escapes \).
@@ -372,7 +384,22 @@ function start(port = 54321) {
         if (p.startsWith('/__synthetic-mark-delivered/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o || o.status !== 'paid') return send(res, 404, {}); for (const st of ['processing', 'shipped', 'delivered']) transition(o, st, 'sintético'); return send(res, 200, { status: o.status }); }
         // Ejecución 119: otra compra (fuera de este navegador) se lleva unidades: fija el stock FÍSICO de un SKU.
         if (p.startsWith('/__synthetic-set-stock/')) { const [, sku, n] = p.split('/').slice(1); const inv = S.inventories.find((i) => i.variants.sku === decodeURIComponent(sku)); if (!inv) return send(res, 404, {}); inv.stock = Number(n); return send(res, 200, { sku: inv.variants.sku, stock: inv.stock }); }
-        if (p.startsWith('/__synthetic-mark-paid/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {}); for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); inv.reserved -= it.quantity; inv.stock -= it.quantity; } transition(o, 'paid', 'sintético'); return send(res, 200, { status: 'paid' }); }
+        if (p.startsWith('/__synthetic-mark-paid/')) {
+          const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o) return send(res, 404, {});
+          // Ejecución 124: pago TARDÍO (pedido ya vencido, sin reserva) con el mismo contrato que private.commit_stock_for_order:
+          // descuenta si hay disponible; si no, el pago se respeta, el pedido queda `paid` con needs_attention y evento PAID_WITHOUT_STOCK.
+          const late = o.status === 'expired'; const shortages = [];
+          for (const it of o.online_order_items) {
+            const inv = S.inventories.find((i) => i.variant_id === it.variant_id);
+            if (!late) { inv.reserved -= it.quantity; inv.stock -= it.quantity; } else if (inv && avail(inv) >= it.quantity) inv.stock -= it.quantity;
+            else shortages.push({ variant_id: it.variant_id, quantity: it.quantity, available: inv ? Math.max(0, avail(inv)) : 0 });
+          }
+          if (shortages.length) {
+            o.needs_attention = true;
+            o.order_events.unshift({ event_type: 'PAID_WITHOUT_STOCK', from_status: o.status, to_status: 'paid', actor: 'webhook', note: null, metadata: { shortages }, created_at: new Date().toISOString() });
+          }
+          transition(o, 'paid', late ? 'webhook' : 'sintético'); return send(res, 200, { status: 'paid', shortages });
+        }
         if (p === '/auth/v1/signup') {
           if (S.users.some((u) => u.email === body.email)) return send(res, 422, { code: 'user_already_exists', msg: 'User already registered', message: 'User already registered' });
           const u = { id: crypto.randomUUID(), email: body.email, password: body.password, role: 'customer', full_name: body.data?.full_name || '' };

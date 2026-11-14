@@ -2071,6 +2071,69 @@ async function main() {
       await p.getByRole('button', { name: /^Abrir carrito, 1 producto/ }).waitFor({ timeout: 8000 });
     }, browser);
 
+    await journey('58. Admin: pedido vencido pagado tarde sin stock → «Requiere revisión» con la causa y la línea faltante; el admin cierra la revisión con motivo', async (p, ctx) => {
+      // A reserva la última L negra y no paga a tiempo
+      await addToCart(p, 'camiseta-basica', 'L', 'Negro');
+      await p.goto(`${BASE}/checkout`);
+      await fillCheckout(p, { email: 'tarde@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/);
+      let st = await state();
+      const late = st.orders.find((o) => o.customer_email === 'tarde@correo.co');
+      await fetch(`${API_URL}/__synthetic-expire-window/${late.order_number}`);
+      // el admin abre el panel: el pedido vence y la unidad vuelve a la venta
+      const adm = await ctx.newPage();
+      await login(adm, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await adm.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      for (let i = 0; i < 50 && (await state()).orders.find((o) => o.id === late.id).status !== 'expired'; i += 1) await new Promise((r) => setTimeout(r, 200));
+      // B compra esa unidad y paga
+      const b = await ctx.browser().newContext({ viewport: { width: 1280, height: 900 } });
+      const bp = await b.newPage();
+      await addToCart(bp, 'camiseta-basica', 'L', 'Negro');
+      await bp.goto(`${BASE}/checkout`);
+      await fillCheckout(bp, { email: 'atiempo@correo.co' });
+      await bp.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await bp.waitForURL(/\/checkout\/confirmacion/);
+      const onTime = (await state()).orders.find((o) => o.customer_email === 'atiempo@correo.co');
+      await fetch(`${API_URL}/__synthetic-mark-paid/${onTime.order_number}`);
+      await b.close();
+      // llega tarde el pago de A (webhook SINTÉTICO): se respeta, sin stock → requiere revisión
+      const r = await fetch(`${API_URL}/__synthetic-mark-paid/${late.order_number}`).then(j);
+      if (r.shortages.length !== 1) throw new Error(`se esperaba 1 faltante: ${JSON.stringify(r)}`);
+      st = await state();
+      const cam = st.inventories.find((i) => i.sku === 'CAM-L-NEG');
+      if (cam.stock !== 0 || cam.reserved !== 0) throw new Error(`el inventario no debía quedar negativo: ${JSON.stringify(cam)}`);
+      // dashboard: alerta con 1 pedido → lista filtrada
+      await adm.goto(`${BASE}/admin/dashboard`);
+      await expectText(adm, '1 pedido');
+      await adm.goto(`${BASE}/admin/pedidos?revision=1`);
+      const row = adm.locator('tbody tr').filter({ hasText: late.order_number });
+      await row.getByText('REQUIERE REVISIÓN').waitFor({ timeout: 8000 });
+      if (await adm.locator('tbody tr').filter({ hasText: onTime.order_number }).count()) throw new Error('el pedido pagado a tiempo no requiere revisión');
+      await row.getByRole('button', { name: 'GESTIONAR' }).click();
+      const box = adm.getByTestId('order-attention');
+      await box.getByText('El pago llegó cuando ya no había stock').waitFor({ timeout: 8000 });
+      const line = await adm.getByTestId('order-attention-shortage').textContent();
+      if (!/CAM-L-NEG/.test(line) || !/pagó 1, había 0 disponibles · faltan 1/.test(line)) throw new Error(`línea faltante: «${line}»`);
+      await adm.locator('summary', { hasText: 'Historial del pedido' }).click();
+      await adm.getByTestId('order-event').filter({ hasText: 'Pagado sin stock suficiente → Pagado · Wompi (webhook)' }).waitFor();
+      if (await adm.getByText('PAID_WITHOUT_STOCK').count()) throw new Error('el historial muestra códigos internos');
+      // sin motivo no se cierra; con motivo sí
+      await adm.getByTestId('order-resolve-attention').click();
+      await expectText(adm, 'Escribe cómo se resolvió');
+      if (await adm.locator('#order-resolve-note').getAttribute('aria-invalid') !== 'true') throw new Error('la nota vacía no quedó marcada');
+      if (!(await state()).orders.find((o) => o.id === late.id).needs_attention) throw new Error('se cerró sin motivo');
+      await adm.getByLabel('Cómo se resolvió').fill('Repuse 1 unidad del proveedor y despaché');
+      await adm.getByTestId('order-resolve-attention').click();
+      await adm.getByRole('status').filter({ hasText: `${late.order_number}: revisión cerrada.` }).waitFor({ timeout: 8000 });
+      await row.waitFor({ state: 'detached', timeout: 8000 }); // sale de la lista «solo los que requieren revisión»
+      const done = (await state()).orders.find((o) => o.id === late.id);
+      const resolved = done.order_events.find((e) => e.event_type === 'ATTENTION_RESOLVED');
+      if (done.needs_attention || done.status !== 'paid' || !resolved || resolved.note !== 'Repuse 1 unidad del proveedor y despaché' || resolved.actor !== 'admin') throw new Error(`cierre: ${JSON.stringify(done)}`);
+      await adm.goto(`${BASE}/admin/dashboard`);
+      await expectText(adm, '0 pedidos');
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });

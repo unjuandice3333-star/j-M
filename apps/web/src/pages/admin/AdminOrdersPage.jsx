@@ -9,6 +9,7 @@ import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import { attentionReasons, sortedEvents, eventText, validateResolveNote, RESOLVE_NOTE_MAX } from '../../utils/orderAttention';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_ERROR_ID = 'order-modal-error';
@@ -18,9 +19,9 @@ const ORDER_SELECT = `
         shipping_department, shipping_city, shipping_address, shipping_neighborhood, shipping_notes, shipping_method_code,
         subtotal, discount_total, shipping_cost, total, coupon_code, status, created_at, paid_at, needs_attention,
         carrier, tracking_number, tracking_url,
-        online_order_items ( product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
+        online_order_items ( variant_id, product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
         payment_transactions ( reference, status, amount_in_cents, payment_method_type, created_at ),
-        order_events ( event_type, from_status, to_status, actor, note, created_at )`;
+        order_events ( event_type, from_status, to_status, actor, note, metadata, created_at )`;
 
 const mapOrder = (o) => ({
   ...o, id: o.order_number, rawId: o.id, date: new Date(o.created_at).toLocaleString('es-CO'),
@@ -113,6 +114,10 @@ export const AdminOrdersPage = () => {
   const [modalError, setModalError] = useState(null);
   const [modalErrorFields, setModalErrorFields] = useState([]);
   const [notice, setNotice] = useState(null);
+  // Ejecución 124 (D97): cierre de la revisión (needs_attention) con motivo obligatorio.
+  const [resolveNote, setResolveNote] = useState('');
+  const [resolveError, setResolveError] = useState(null);
+  const [isResolving, setIsResolving] = useState(false);
 
   const [totalCount, setTotalCount] = useState(null);
   const [summaryRows, setSummaryRows] = useState([]);
@@ -207,6 +212,26 @@ export const AdminOrdersPage = () => {
     setModalStatus('');
     setModalNote(''); setModalCarrier(ord.carrier || ''); setModalTracking(ord.tracking_number || ''); setModalTrackingUrl(ord.tracking_url || '');
     setModalError(null); setModalErrorFields([]);
+    setResolveNote(''); setResolveError(null);
+  };
+
+  const handleResolveAttention = async () => {
+    if (!selectedOrder) return;
+    const invalid = validateResolveNote(resolveNote);
+    if (invalid) { setResolveError(invalid); setTimeout(() => document.getElementById('order-resolve-note')?.focus(), 0); return; }
+    setIsResolving(true); setResolveError(null);
+    try {
+      await adminService.resolveOrderAttention(selectedOrder.rawId, resolveNote.trim());
+      setNotice(`${selectedOrder.order_number}: revisión cerrada.`);
+      setSelectedOrder(null);
+      await refreshAll();
+    } catch (err) {
+      setResolveError(err.message || 'No se pudo cerrar la revisión.');
+      // Otro admin ya la cerró: se recarga la lista para que deje de mostrarse como pendiente.
+      if (err.hint === 'JM_ATTENTION_NOT_REQUIRED') refreshAll();
+    } finally {
+      setIsResolving(false);
+    }
   };
 
   // Ejecución 111 (D82): un error de validación del cambio de estado se enlaza al campo que lo causa (aria-invalid +
@@ -471,6 +496,41 @@ export const AdminOrdersPage = () => {
               {selectedOrder.tracking_number && <div><strong>Guía:</strong> {selectedOrder.carrier} {selectedOrder.tracking_number}</div>}
             </div>
 
+            {/* Ejecución 124 (D97): por qué requiere revisión (causa leída de order_events) y cierre con motivo. */}
+            {selectedOrder.needs_attention && (
+              <section data-testid="order-attention" aria-labelledby="order-attention-title"
+                style={{ backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '1rem 1.25rem', marginBottom: '1.25rem', fontSize: '0.85rem', color: '#7F1D1D' }}>
+                <h3 id="order-attention-title" style={{ fontSize: '0.85rem', fontWeight: 900, letterSpacing: '0.05em', marginBottom: '0.5rem' }}>REQUIERE REVISIÓN</h3>
+                {attentionReasons(selectedOrder).map((r, i) => (
+                  <div key={i} data-testid={`order-attention-reason-${r.kind}`} style={{ marginBottom: '0.6rem' }}>
+                    <div style={{ fontWeight: 800 }}>{r.title}</div>
+                    <div>{r.detail}</div>
+                    {r.lines?.length > 0 && (
+                      <ul style={{ margin: '0.35rem 0 0 1rem', listStyle: 'disc' }}>
+                        {r.lines.map((l) => (
+                          <li key={l.variantId} data-testid="order-attention-shortage">
+                            {l.label}: pagó {l.quantity}, había {l.available} disponible{l.available === 1 ? '' : 's'} · faltan {l.missing}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+                <label htmlFor="order-resolve-note" style={{ display: 'block', fontWeight: 800, margin: '0.5rem 0 0.3rem' }}>Cómo se resolvió</label>
+                {resolveError && <div role="alert" id="order-resolve-error" style={{ color: '#991B1B', fontWeight: 700, marginBottom: '0.3rem' }}>{resolveError}</div>}
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <input id="order-resolve-note" value={resolveNote} maxLength={RESOLVE_NOTE_MAX} onChange={(e) => setResolveNote(e.target.value)}
+                    placeholder="Ej.: repuse 1 unidad y despaché / reembolsado en Wompi"
+                    aria-invalid={Boolean(resolveError)} aria-describedby={resolveError ? 'order-resolve-error' : undefined}
+                    style={{ ...orderInput, flex: '1 1 240px' }} />
+                  <button type="button" data-testid="order-resolve-attention" onClick={handleResolveAttention} disabled={isResolving}
+                    style={{ backgroundColor: '#7F1D1D', color: '#FFFFFF', padding: '0.65rem 1rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.8rem', minHeight: '40px', opacity: isResolving ? 0.7 : 1 }}>
+                    {isResolving ? 'GUARDANDO…' : 'MARCAR COMO REVISADO'}
+                  </button>
+                </div>
+              </section>
+            )}
+
             {/* Cambio de estado (máquina de estados de la BD) */}
             <div style={{ backgroundColor: '#FAFAFA', padding: '1.25rem', borderRadius: '8px', border: '1px solid #E4E4E7', marginBottom: '1.5rem' }}>
               <label htmlFor="order-next-status" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: '#09090B', marginBottom: '0.4rem' }}>
@@ -531,8 +591,8 @@ export const AdminOrdersPage = () => {
             <details style={{ marginBottom: '1.25rem', fontSize: '0.8rem' }}>
               <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Historial del pedido</summary>
               <ul style={{ marginTop: '0.5rem' }}>
-                {[...(selectedOrder.order_events ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((e, i) => (
-                  <li key={i}>{new Date(e.created_at).toLocaleString('es-CO')} · {e.event_type}{e.to_status ? ` → ${STATUS_LABEL[e.to_status] ?? e.to_status}` : ''} · {e.actor}{e.note ? ` · ${e.note}` : ''}</li>
+                {sortedEvents(selectedOrder).map((e, i) => (
+                  <li key={i} data-testid="order-event">{new Date(e.created_at).toLocaleString('es-CO')} · {eventText(e, STATUS_LABEL)}</li>
                 ))}
               </ul>
             </details>
