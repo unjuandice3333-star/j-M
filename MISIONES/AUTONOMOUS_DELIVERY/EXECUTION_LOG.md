@@ -1261,7 +1261,7 @@
 - Pruebas (ejecutadas aquí): `run_local.sh` → pgTAP 473/473, concurrencia 12/12, orden Supabase 485/485, determinismo OK (con el seed nuevo); sin la migración la 99d falla 9/20 (comprobado); `postgrest_local.sh` 16/16 contra PostgREST real; vitest 679/679 (71 archivos); ESLint 0; build OK; `migrations_policy.sh` OK; `pnpm test:e2e-synthetic` 64/64 (sin recorrido nuevo: ver errores pendientes).
 - Errores pendientes: el backend sintético no emula el trigger nuevo; anular el intento duplicado de un pedido pagado marca `PAYMENT_VOIDED_AFTER_PAID` (preexistente, inocuo).
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261118120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
-- Commits: `d2cc19d` (código) + el de documentación; publicados en la rama autorizada.
+- Commits: `d2cc19d` (código) + el de documentación; publicados SOLO en la rama de sesión `claude/gracious-pasteur-urp2dm` (descendiente directa de `cbdf1db`): el push a `mission/m26-dev-qa-environments` fue denegado por los permisos de esta sesión. Pendiente: avanzar la rama de misión (fast-forward) a esa rama; la próxima ejecución debe partir de ella si la de misión sigue en `cbdf1db`.
 - Notificación: enviada (defecto de dinero no rastreado corregido; requiere aplicar la migración en QA cuando se desbloquee).
 - Siguiente: comprobar el run `ci` de este push (en especial `db-supabase`, que reconstruye con el seed O9 y ejecuta `http_checks.py`); luego punto 0(ch) de Pendiente.
 
