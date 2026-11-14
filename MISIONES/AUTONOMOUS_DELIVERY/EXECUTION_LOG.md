@@ -1154,3 +1154,15 @@
 - Commits: `8d8d4c7` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bx) de Pendiente (atajo de reembolso en el panel de revisión + pgTAP de reingreso solo de las líneas vendidas).
+
+## Ejecución 126 — 2026-11-14 04:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-bz2ld6` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `87fe70e`, árbol limpio. `pnpm install --frozen-lockfile` OK; paquetes apt de pgTAP/pg_cron instalados (D6).
+- Tarea: punto 0(bw)(1) de Pendiente: atajo «Reembolsar y cerrar» en el panel de revisión + pgTAP de reingreso solo de las líneas vendidas (D99).
+- Archivos: nueva migración `supabase/migrations/20261116120000_admin_refund_order_attention.sql`, nuevo `supabase/tests/database/99b_admin_refund_attention.test.sql`, `supabase/tests/database/01_structure.test.sql`, `apps/web/src/services/adminService.js` (`refundOrderAttention`), `apps/web/src/utils/orderAttention.js` (`canRefundFromAttention`, «Revisión cerrada con reembolso»), `apps/web/src/pages/admin/AdminOrdersPage.jsx`, `apps/web/src/__tests__/adminOrderAttention.test.jsx` (+3), `apps/web/e2e/synthetic/backend.cjs` (→ refunded, RPC sintética, líneas vendidas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 59).
+- Pruebas (ejecutadas aquí): pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (primera pasada: el seed deja 5 camisas, no 6 → aserciones relativas); `migrations_policy.sh` OK; `pnpm test:unit` 641/641 (66 archivos); 2 de las 3 vitest nuevas fallan sin los cambios de `src` (`git stash`; la de «sin atajo» pasa por diseño); el recorrido 59 falla sin el cambio; ESLint `--max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` 59/59 en pasada completa.
+- Defecto real corregido: reembolsar un pedido en revisión exigía dos acciones separadas y podía quedar reembolsado pero «Requiere revisión» (contando en el dashboard).
+- Errores pendientes: ninguno nuevo. La migración `20261116120000` se suma a las pendientes de aplicar en Supabase QA. No probado contra Supabase real remoto.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261116120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `bdf594f` (código) + `963e553` (documentación) + registro; publicados.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(bx) de Pendiente (vista del cliente para un pedido `refunded`, E2E).

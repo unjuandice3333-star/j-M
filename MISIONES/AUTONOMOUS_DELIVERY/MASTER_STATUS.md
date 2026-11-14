@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-14 (ejecución 126: «Reembolsar y cerrar» en el panel de revisión del pedido — reembolso + cierre de la revisión en UNA transacción, reingreso solo de lo vendido; migración aditiva `20261116120000` — D99 —; pgTAP 435/435, vitest 641/641, E2E sintético 58+59 OK (pasada completa en curso))
+Última actualización: 2026-11-14 (ejecución 126: «Reembolsar y cerrar» en el panel de revisión del pedido — reembolso + cierre de la revisión en UNA transacción, reingreso solo de lo vendido; migración aditiva `20261116120000` — D99 —; pgTAP 435/435, vitest 641/641, E2E sintético 59/59)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
