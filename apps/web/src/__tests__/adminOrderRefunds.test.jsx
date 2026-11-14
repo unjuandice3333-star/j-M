@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { refundRecords, refundTotal, hasPendingRefund, refundStockText, refundStatusLabel } from '../utils/orderRefunds';
+import { refundRecords, refundTotal, hasPendingRefund, refundStockText, refundStatusLabel, validateProviderRefundId } from '../utils/orderRefunds';
 
 function fakeSupabase() {
   const state = { tables: {}, rpc: {}, rpcCalls: [] };
@@ -42,7 +42,7 @@ let supa;
 vi.mock('../config/supabase', () => ({ get default() { return supa; }, get supabase() { return supa; } }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const REFUND = { amount: 160000, reason: 'Cliente desistió', status: 'requested', restock: true, provider_refund_id: null, created_at: '2026-11-14T12:00:00Z' };
+const REFUND = { id: 'ref-1', amount: 160000, reason: 'Cliente desistió', status: 'requested', restock: true, provider_refund_id: null, created_at: '2026-11-14T12:00:00Z' };
 const order = (extra = {}) => ({
   id: 'id-1', order_number: 'JM-000001', customer_name: 'Ana', customer_email: 'ana@x.co', customer_phone: '300',
   shipping_address: 'Cra 1', shipping_city: 'Bogotá', shipping_department: 'Bogotá D.C.', shipping_method_code: 'standard',
@@ -127,3 +127,63 @@ describe('AdminOrdersPage: devolución registrada', () => {
     expect(container.querySelector('[data-testid="order-refunds"]')).toBeNull();
   });
 });
+
+describe('validateProviderRefundId (misma regla que admin_mark_refund_processed)', () => {
+  it('obligatorio, sin espacios internos, ≤ 100 caracteres', () => {
+    expect(validateProviderRefundId('  ')).toMatch(/Escribe el id/);
+    expect(validateProviderRefundId('id con espacios')).toMatch(/solo admite/);
+    expect(validateProviderRefundId('a'.repeat(101))).toMatch(/solo admite/);
+    expect(validateProviderRefundId('  12345-1700000000-99999 ')).toBeNull();
+  });
+});
+
+const input = async (el, value) => {
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+  await act(async () => { setter.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); });
+};
+
+describe('AdminOrdersPage: marcar la devolución como hecha en Wompi (ejecución 130)', () => {
+  it('sin id: error enlazado al campo, foco en él y sin llamar a la BD', async () => {
+    supa.state.tables.online_orders = [order()];
+    await render();
+    await openFirst();
+    await click(container.querySelector('[data-testid="order-refund-mark-processed"]'));
+    const field = container.querySelector('[data-testid="order-refund-provider-id"]');
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(field.getAttribute('aria-describedby')).toBe('order-refund-error-ref-1');
+    expect(container.querySelector('#order-refund-error-ref-1').textContent).toMatch(/Escribe el id/);
+    expect(document.activeElement).toBe(field);
+    expect(supa.state.rpcCalls.some(([n]) => n === 'admin_mark_refund_processed')).toBe(false);
+  });
+
+  it('con id: llama a la RPC con la devolución y el id recortado, y avisa', async () => {
+    supa.state.tables.online_orders = [order()];
+    supa.state.rpc.admin_mark_refund_processed = { refund_id: 'ref-1', status: 'processed' };
+    await render();
+    await openFirst();
+    await input(container.querySelector('[data-testid="order-refund-provider-id"]'), '  W-12345  ');
+    await click(container.querySelector('[data-testid="order-refund-mark-processed"]'));
+    expect(supa.state.rpcCalls.find(([n]) => n === 'admin_mark_refund_processed')[1])
+      .toEqual({ p_refund_id: 'ref-1', p_provider_refund_id: 'W-12345' });
+    expect(container.textContent).toContain('JM-000001: devolución de');
+    expect(container.textContent).toContain('marcada como hecha en Wompi');
+  });
+
+  it('la BD la rechaza (otro admin ya la marcó): muestra el motivo junto al campo', async () => {
+    supa.state.tables.online_orders = [order()];
+    supa.state.rpc.admin_mark_refund_processed = () => ({ data: null, error: { message: 'La devolución ya no está pendiente', hint: 'JM_REFUND_NOT_PENDING', code: 'P0001' } });
+    await render();
+    await openFirst();
+    await input(container.querySelector('[data-testid="order-refund-provider-id"]'), 'W-1');
+    await click(container.querySelector('[data-testid="order-refund-mark-processed"]'));
+    expect(container.querySelector('[data-testid="order-refund-error"]').textContent).toMatch(/ya no está pendiente/);
+  });
+
+  it('devolución ya hecha: sin campo ni botón', async () => {
+    supa.state.tables.online_orders = [order({ order_refunds: [{ ...REFUND, status: 'processed', provider_refund_id: 'W-77' }] })];
+    await render();
+    await openFirst();
+    expect(container.querySelector('[data-testid="order-refund-mark-processed"]')).toBeNull();
+  });
+});
+

@@ -21,6 +21,7 @@ export function refundRecords(order) {
   return [...(order?.order_refunds ?? [])]
     .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
     .map((r) => ({
+      id: r.id ?? null,
       amount: Number(r.amount) || 0,
       reason: (r.reason ?? '').trim() || 'Sin motivo',
       status: r.status ?? 'requested',
@@ -42,3 +43,17 @@ export const hasPendingRefund = (records) => records.some((r) => r.pending);
 export const refundStockText = (record) => (record.restock
   ? 'Inventario repuesto al cancelar'
   : 'Inventario sin reponer: regístralo al recibir la prenda (Inventario → ajuste «devolución»)');
+
+// Ejecución 130 (D103): misma regla que admin_mark_refund_processed (btrim, 1–100, [A-Za-z0-9._:-]).
+export const PROVIDER_REFUND_ID_MAX = 100;
+const PROVIDER_REFUND_ID_RE = /^[A-Za-z0-9._:-]+$/;
+
+/** Valida el id de la devolución en Wompi. Devuelve el mensaje de error o null. */
+export function validateProviderRefundId(value) {
+  const v = String(value ?? '').trim();
+  if (!v) return 'Escribe el id de la devolución en Wompi (lo ves en el detalle de la transacción).';
+  if (v.length > PROVIDER_REFUND_ID_MAX || !PROVIDER_REFUND_ID_RE.test(v)) {
+    return 'El id de Wompi solo admite letras, números, punto, guion, dos puntos y guion bajo (máx. 100).';
+  }
+  return null;
+}

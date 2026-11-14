@@ -281,6 +281,21 @@ function start(port = 54321) {
       o.order_events.unshift({ event_type: 'ATTENTION_RESOLVED', from_status: null, to_status: null, actor: 'admin', note, metadata: { order_status: 'refunded', previous_status: from, refunded: true }, created_at: new Date().toISOString() });
       return { order_id: o.id, status: 'refunded', needs_attention: false };
     },
+    // Ejecución 130 (D103): mismo contrato que la migración 20261117120000 (solo admin; requested → processed con el id de Wompi).
+    admin_mark_refund_processed: (a, ctx) => {
+      if (ctx.role !== 'admin') return err('42501', 'permission denied', 'JM_FORBIDDEN');
+      const ref = String(a.p_provider_refund_id ?? '').trim();
+      if (!ref) return err('P0001', 'x', 'JM_PROVIDER_REFUND_ID_REQUIRED');
+      if (ref.length > 100 || !/^[A-Za-z0-9._:-]+$/.test(ref)) return err('P0001', 'x', 'JM_PROVIDER_REFUND_ID_INVALID');
+      const o = S.tables.online_orders.find((x) => (x.order_refunds || []).some((r) => r.id === a.p_refund_id));
+      const r = o && o.order_refunds.find((x) => x.id === a.p_refund_id);
+      if (!r) return err('P0001', 'x', 'JM_REFUND_NOT_FOUND');
+      if (r.status !== 'requested') return err('P0001', 'x', 'JM_REFUND_NOT_PENDING');
+      if (S.tables.online_orders.some((x) => (x.order_refunds || []).some((y) => y.id !== r.id && y.provider_refund_id === ref))) return err('P0001', 'x', 'JM_PROVIDER_REFUND_ID_IN_USE');
+      r.status = 'processed'; r.provider_refund_id = ref;
+      o.order_events.unshift({ event_type: 'REFUND_PROCESSED', from_status: null, to_status: null, actor: 'admin', note: ref, metadata: { refund_id: r.id, amount: r.amount, provider_refund_id: ref }, created_at: new Date().toISOString() });
+      return { refund_id: r.id, order_id: o.id, status: 'processed', provider_refund_id: ref };
+    },
     admin_dashboard_metrics: (a, ctx) => {
       if (ctx.role !== 'admin') return err('42501', 'permission denied', 'JM_FORBIDDEN');
       const os = S.tables.online_orders; const paid = os.filter((o) => ['paid', 'processing', 'shipped', 'delivered'].includes(o.status));
@@ -293,7 +308,7 @@ function start(port = 54321) {
     const from = o.status; o.status = to; if (to === 'cancelled' || (to === 'expired' && from === 'payment_pending')) for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); if (inv) inv.reserved = Math.max(0, inv.reserved - it.quantity); }
     // Ejecución 129: registro de devolución como private.transition_order (order_refunds; el dinero se devuelve en Wompi).
     if (['cancelled', 'refunded'].includes(to) && ['paid', 'processing', 'delivered'].includes(from) && !(to === 'cancelled' && from === 'delivered')) {
-      (o.order_refunds = o.order_refunds || []).push({ amount: o.total, reason: note || '', status: 'requested', restock: from !== 'delivered', provider_refund_id: null, created_at: new Date().toISOString() });
+      (o.order_refunds = o.order_refunds || []).push({ id: crypto.randomUUID(), amount: o.total, reason: note || '', status: 'requested', restock: from !== 'delivered', provider_refund_id: null, created_at: new Date().toISOString() });
     }
     if (to === 'paid') o.paid_at = new Date().toISOString();
     if (to === 'delivered') o.delivered_at = new Date().toISOString();

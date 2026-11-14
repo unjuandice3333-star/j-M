@@ -8,6 +8,7 @@
 //   admin_expire_pending_orders()                 vence pedidos con la ventana de pago cumplida (libera reservas)
 //   admin_resolve_order_attention(id, nota)       cierra la revisión de un pedido (needs_attention) con motivo
 //   admin_refund_order_attention(id, nota)        registra el reembolso (→ refunded) y cierra la revisión en una transacción
+//   admin_mark_refund_processed(id, id_wompi)     marca una devolución registrada como hecha en Wompi (requested → processed)
 // Lecturas administrativas: tablas con RLS (solo admin): online_orders, inventories, coupons, profiles…
 // =============================================================================
 import supabase from '../config/supabase';
@@ -36,6 +37,11 @@ const ADMIN_HINTS = {
   JM_LAST_SUPER_ADMIN: 'No se puede quitar el último super administrador.',
   JM_USER_NOT_FOUND: 'El usuario no existe.',
   JM_NOTE_TOO_LONG: 'La nota no puede superar 500 caracteres.',
+  JM_PROVIDER_REFUND_ID_REQUIRED: 'Escribe el id de la devolución en Wompi.',
+  JM_PROVIDER_REFUND_ID_INVALID: 'El id de Wompi solo admite letras, números, punto, guion, dos puntos y guion bajo (máx. 100).',
+  JM_PROVIDER_REFUND_ID_IN_USE: 'Ese id de Wompi ya está registrado en otra devolución.',
+  JM_REFUND_NOT_FOUND: 'La devolución no existe.',
+  JM_REFUND_NOT_PENDING: 'Esta devolución ya no está pendiente (otro administrador pudo marcarla).',
   JM_ATTENTION_NOT_REQUIRED: 'Este pedido ya no está pendiente de revisión (otro administrador pudo cerrarla).',
 };
 
@@ -132,6 +138,13 @@ export const adminService = {
    */
   async refundOrderAttention(orderId, note) {
     const data = await call('admin_refund_order_attention', { p_order_id: orderId, p_note: note }, 'No se pudo registrar el reembolso.');
+    notifyOrdersChanged();
+    return data;
+  },
+  /** Ejecución 130 (D103): deja constancia de que la devolución ya se hizo en Wompi (evento REFUND_PROCESSED). */
+  async markRefundProcessed(refundId, providerRefundId) {
+    const data = await call('admin_mark_refund_processed', { p_refund_id: refundId, p_provider_refund_id: providerRefundId },
+      'No se pudo marcar la devolución como hecha.');
     notifyOrdersChanged();
     return data;
   },

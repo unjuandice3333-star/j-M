@@ -17,6 +17,7 @@ export const EVENT_LABEL = {
   PAYMENT_REQUIRES_REFUND: 'Pago a reembolsar',
   PAYMENT_VOIDED_AFTER_PAID: 'Pago anulado después de pagado',
   ATTENTION_RESOLVED: 'Revisión cerrada',
+  REFUND_PROCESSED: 'Devolución hecha en Wompi',
 };
 export const eventLabel = (type) => EVENT_LABEL[type] ?? type;
 

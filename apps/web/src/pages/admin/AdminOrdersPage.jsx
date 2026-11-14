@@ -10,7 +10,7 @@ import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 import { DialogPanel } from '../../components/Common/DialogPanel';
 import { attentionReasons, sortedEvents, eventText, validateResolveNote, canRefundFromAttention, RESOLVE_NOTE_MAX } from '../../utils/orderAttention';
-import { refundRecords, refundTotal, hasPendingRefund, refundStockText } from '../../utils/orderRefunds';
+import { refundRecords, refundTotal, hasPendingRefund, refundStockText, validateProviderRefundId, PROVIDER_REFUND_ID_MAX } from '../../utils/orderRefunds';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_ERROR_ID = 'order-modal-error';
@@ -23,7 +23,7 @@ const ORDER_SELECT = `
         online_order_items ( variant_id, product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
         payment_transactions ( reference, status, amount_in_cents, payment_method_type, created_at ),
         order_events ( event_type, from_status, to_status, actor, note, metadata, created_at ),
-        order_refunds ( amount, reason, status, restock, provider_refund_id, created_at )`;
+        order_refunds ( id, amount, reason, status, restock, provider_refund_id, created_at )`;
 
 const mapOrder = (o) => ({
   ...o, id: o.order_number, rawId: o.id, date: new Date(o.created_at).toLocaleString('es-CO'),
@@ -120,6 +120,10 @@ export const AdminOrdersPage = () => {
   const [resolveNote, setResolveNote] = useState('');
   const [resolveError, setResolveError] = useState(null);
   const [isResolving, setIsResolving] = useState(false);
+  // Ejecución 130 (D103): id de Wompi por devolución pendiente, error enlazado a su campo y devolución en curso.
+  const [refundIds, setRefundIds] = useState({});
+  const [refundError, setRefundError] = useState(null);
+  const [refundBusy, setRefundBusy] = useState(null);
 
   const [totalCount, setTotalCount] = useState(null);
   const [summaryRows, setSummaryRows] = useState([]);
@@ -215,6 +219,34 @@ export const AdminOrdersPage = () => {
     setModalNote(''); setModalCarrier(ord.carrier || ''); setModalTracking(ord.tracking_number || ''); setModalTrackingUrl(ord.tracking_url || '');
     setModalError(null); setModalErrorFields([]);
     setResolveNote(''); setResolveError(null);
+    setRefundIds({}); setRefundError(null); setRefundBusy(null);
+  };
+
+  // Ejecución 130 (D103): marca una devolución registrada como hecha en Wompi (admin_mark_refund_processed).
+  // No mueve dinero: deja constancia del id de Wompi y de quién lo hizo (evento REFUND_PROCESSED).
+  const handleMarkRefundProcessed = async (refund) => {
+    if (!selectedOrder || !refund?.id) return;
+    const value = refundIds[refund.id] ?? '';
+    const invalid = validateProviderRefundId(value);
+    if (invalid) {
+      setRefundError({ id: refund.id, message: invalid });
+      setTimeout(() => document.getElementById(`order-refund-provider-${refund.id}`)?.focus(), 0);
+      return;
+    }
+    setRefundBusy(refund.id); setRefundError(null);
+    try {
+      await adminService.markRefundProcessed(refund.id, value.trim());
+      setNotice(`${selectedOrder.order_number}: devolución de ${formatCOP(refund.amount)} marcada como hecha en Wompi.`);
+      setSelectedOrder(null);
+      await refreshAll();
+    } catch (err) {
+      setRefundError({ id: refund.id, message: err.message || 'No se pudo marcar la devolución como hecha.' });
+      setTimeout(() => document.getElementById(`order-refund-provider-${refund.id}`)?.focus(), 0);
+      // Otro admin ya la marcó: se recarga para dejar de mostrarla como pendiente.
+      if (err.hint === 'JM_REFUND_NOT_PENDING') refreshAll();
+    } finally {
+      setRefundBusy(null);
+    }
   };
 
   const handleResolveAttention = async () => {
@@ -580,12 +612,34 @@ export const AdminOrdersPage = () => {
                         <div>Motivo: {r.reason}</div>
                         <div data-testid="order-refund-status">Estado: {r.statusLabel}{r.providerRefundId ? ` · Wompi ${r.providerRefundId}` : ''}</div>
                         <div>{refundStockText(r)}</div>
+                        {r.pending && r.id && (() => {
+                          const fieldId = `order-refund-provider-${r.id}`;
+                          const errId = `order-refund-error-${r.id}`;
+                          const err = refundError?.id === r.id ? refundError.message : null;
+                          return (
+                            <div style={{ marginTop: '0.5rem' }}>
+                              <label htmlFor={fieldId} style={{ display: 'block', fontWeight: 800, marginBottom: '0.3rem' }}>Id de la devolución en Wompi</label>
+                              {err && <div role="alert" id={errId} data-testid="order-refund-error" style={{ color: '#991B1B', fontWeight: 700, marginBottom: '0.3rem' }}>{err}</div>}
+                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <input id={fieldId} data-testid="order-refund-provider-id" value={refundIds[r.id] ?? ''} maxLength={PROVIDER_REFUND_ID_MAX}
+                                  onChange={(e) => setRefundIds((m) => ({ ...m, [r.id]: e.target.value }))}
+                                  placeholder="Ej.: 12345-1700000000-99999"
+                                  aria-invalid={Boolean(err)} aria-describedby={err ? errId : undefined}
+                                  style={{ ...orderInput, flex: '1 1 220px' }} />
+                                <button type="button" data-testid="order-refund-mark-processed" onClick={() => handleMarkRefundProcessed(r)} disabled={refundBusy !== null}
+                                  style={{ backgroundColor: '#78350F', color: '#FFFFFF', padding: '0.65rem 1rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.8rem', minHeight: '40px', opacity: refundBusy !== null ? 0.7 : 1 }}>
+                                  {refundBusy === r.id ? 'GUARDANDO…' : 'MARCAR COMO DEVUELTA'}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </li>
                     ))}
                   </ul>
                   {hasPendingRefund(refunds) && (
                     <p data-testid="order-refund-pending" style={{ marginTop: '0.6rem', fontWeight: 700 }}>
-                      El panel solo registra la devolución: el dinero se devuelve desde el panel de Wompi (transacción {(selectedOrder.payment_transactions ?? []).find((t) => t.status === 'APPROVED')?.reference ?? 'aprobada del pedido'}).
+                      El panel solo registra la devolución: el dinero se devuelve desde el panel de Wompi (transacción {(selectedOrder.payment_transactions ?? []).find((t) => t.status === 'APPROVED')?.reference ?? 'aprobada del pedido'}). Después de hacerla, escribe aquí el id que te da Wompi y márcala como devuelta.
                     </p>
                   )}
                 </section>

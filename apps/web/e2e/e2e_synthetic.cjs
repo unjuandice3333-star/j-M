@@ -2307,6 +2307,50 @@ async function main() {
       if (await p.getByTestId('order-refunds').count()) throw new Error('un pedido cancelado sin pago muestra devolución');
     }, browser);
 
+    await journey('62. Admin: marcar la devolución como hecha en Wompi (id obligatorio, estado «Devuelta», historial) sin tocar estado ni stock', async (p) => {
+      const num = (await (await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ customer_name: 'Devolucion Wompi', customer_email: 'devolucion.wompi@correo.co', status: 'paid' }) })).json()).order_number;
+      p.on('dialog', (d) => d.accept().catch(() => {}));
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      const open = async () => {
+        await p.goto(`${BASE}/admin/pedidos?q=${num}`);
+        await p.locator('tbody tr').filter({ hasText: num }).getByRole('button', { name: 'GESTIONAR' }).click();
+        await p.getByText(`ORDEN #${num}`).waitFor({ timeout: 8000 });
+      };
+      await open();
+      await p.locator('#order-next-status').selectOption('cancelled');
+      await p.getByLabel('Nota del cambio').fill('Cliente desistió');
+      await p.getByRole('button', { name: 'GUARDAR CAMBIOS' }).click();
+      await p.locator('#order-next-status').waitFor({ state: 'detached', timeout: 8000 });
+      const order = async () => (await state()).orders.find((x) => x.order_number === num);
+      for (let i = 0; i < 25 && (await order()).status !== 'cancelled'; i += 1) await new Promise((r) => setTimeout(r, 200));
+      const stockBefore = JSON.stringify((await state()).inventories);
+      await open();
+      const field = p.getByLabel('Id de la devolución en Wompi');
+      await field.waitFor({ timeout: 8000 });
+      // Sin id: error enlazado al campo y foco en él; la BD no cambia.
+      await p.getByTestId('order-refund-mark-processed').click();
+      await p.getByTestId('order-refund-error').waitFor({ timeout: 5000 });
+      if ((await field.getAttribute('aria-invalid')) !== 'true') throw new Error('el campo vacío no queda marcado como inválido');
+      if (!(await field.evaluate((el) => el === document.activeElement))) throw new Error('el foco no va al campo del id');
+      if ((await order()).order_refunds[0].status !== 'requested') throw new Error('se marcó sin id');
+      await field.fill('  12345-1700000000-99999  ');
+      await p.getByTestId('order-refund-mark-processed').click();
+      await expectText(p, 'marcada como hecha en Wompi');
+      const o = await order();
+      if (o.order_refunds[0].status !== 'processed' || o.order_refunds[0].provider_refund_id !== '12345-1700000000-99999') throw new Error(`devolución: ${JSON.stringify(o.order_refunds)}`);
+      if (o.status !== 'cancelled') throw new Error(`el estado del pedido cambió: ${o.status}`);
+      if (JSON.stringify((await state()).inventories) !== stockBefore) throw new Error('el stock cambió al marcar la devolución');
+      await open();
+      if ((await p.getByTestId('order-refund-status').textContent()) !== 'Estado: Devuelta · Wompi 12345-1700000000-99999') throw new Error('estado tras marcar');
+      if (await p.getByTestId('order-refund-pending').count()) throw new Error('sigue pidiendo hacerla en Wompi');
+      if (await p.getByTestId('order-refund-mark-processed').count()) throw new Error('el botón sigue visible');
+      // El historial (plegado) registra el evento con el id de Wompi.
+      const events = await p.getByTestId('order-event').allTextContents();
+      if (!events.some((e) => e.includes('Devolución hecha en Wompi') && e.includes('12345-1700000000-99999'))) throw new Error(`historial: ${events.join(' | ')}`);
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
