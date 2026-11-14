@@ -15,7 +15,7 @@ import { orderService } from '../services/orderService';
 import { wompiService } from '../services/wompi';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
 import { useAuthStore } from '../store/authStore';
-import { orderReviewMessage, orderRefundMessage } from '../utils/orderReview';
+import { orderReviewMessage, orderRefundMessage, orderPaidCancellationMessage } from '../utils/orderReview';
 
 const POLL_MS = 5000;
 const POLL_MAX = 36; // ~3 minutos
@@ -188,6 +188,7 @@ export const OrderConfirmationPage = () => {
   const isClosed = ['cancelled', 'expired', 'refunded'].includes(st);
   const isRefunded = st === 'refunded';
   const refundMessage = orderRefundMessage(order, formatCOP);
+  const paidCancelMessage = orderPaidCancellationMessage(order, formatCOP);
   const expiresAt = order.payment_expires_at ? new Date(order.payment_expires_at) : null;
   // La ventana de pago terminó aunque el job de expiración aún no haya cambiado el estado: no ofrecer «Pagar ahora».
   const windowClosed = isPending && expiresAt !== null && expiresAt.getTime() <= Date.now();
@@ -208,7 +209,7 @@ export const OrderConfirmationPage = () => {
             {order.status_label || (isRefunded ? 'Reembolsado' : '')}
           </span>
           <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0' }}>
-            {isPaidFlow ? '¡Gracias por tu compra!' : isPending ? 'Pedido registrado' : isRefunded ? 'Pedido reembolsado' : 'Pedido cerrado'} · {order.order_number}
+            {isPaidFlow ? '¡Gracias por tu compra!' : isPending ? 'Pedido registrado' : isRefunded ? 'Pedido reembolsado' : paidCancelMessage ? 'Pedido cancelado' : 'Pedido cerrado'} · {order.order_number}
           </h1>
           <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
             {isPaidFlow && !reviewMessage && `Confirmamos el pago. Te avisaremos a ${order.customer_email} cuando despachemos tu pedido.`}
@@ -219,7 +220,8 @@ export const OrderConfirmationPage = () => {
                 ? 'Aún no recibimos la confirmación del pago. Si ya pagaste, la confirmación puede tardar unos minutos: recarga esta página.'
                 : 'Esperando la confirmación del pago de Wompi… esta página se actualiza sola.')}
             {st === 'expired' && 'El tiempo para pagar este pedido terminó y la reserva se liberó.'}
-            {st === 'cancelled' && 'Este pedido fue cancelado.'}
+            {st === 'cancelled' && !paidCancelMessage && 'Este pedido fue cancelado.'}
+            {paidCancelMessage && <span data-testid="order-refund-notice">{paidCancelMessage}</span>}
             {isRefunded && <span data-testid="order-refund-notice">{refundMessage}</span>}
           </p>
           {reviewMessage && (

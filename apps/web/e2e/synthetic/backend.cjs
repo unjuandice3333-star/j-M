@@ -217,7 +217,11 @@ function start(port = 54321) {
       S.idem.set(a.p_idempotency_key, res);
       return res;
     },
-    get_order_public: (a) => { const o = S.tables.online_orders.find((x) => x.order_number === a.p_order_number && x.public_token === a.p_public_token); return o ? { id: o.id, order_number: o.order_number, status: o.status, payment_expires_at: o.payment_expires_at, under_review: o.needs_attention === true, customer_name: o.customer_name, customer_email: o.customer_email, shipping: { department: o.shipping_department, city: o.shipping_city, address: o.shipping_address, neighborhood: o.shipping_neighborhood, method: o.shipping_method_code }, total: o.total, subtotal: o.subtotal, shipping_cost: o.shipping_cost, discount_total: o.discount_total, items: o.online_order_items, created_at: o.created_at } : null; },
+    get_order_public: (a) => { const o = S.tables.online_orders.find((x) => x.order_number === a.p_order_number && x.public_token === a.p_public_token); return o ? { id: o.id, order_number: o.order_number, status: o.status, payment_expires_at: o.payment_expires_at, under_review: o.needs_attention === true, customer_name: o.customer_name, customer_email: o.customer_email, shipping: { department: o.shipping_department, city: o.shipping_city, address: o.shipping_address, neighborhood: o.shipping_neighborhood, method: o.shipping_method_code }, total: o.total, subtotal: o.subtotal, shipping_cost: o.shipping_cost, discount_total: o.discount_total, items: o.online_order_items, created_at: o.created_at,
+      // ejecución 128: mismo contrato que la migración 20261115120000 (fechas, guía e historial ORDER_CREATED/STATUS_CHANGED en orden cronológico)
+      paid_at: o.paid_at ?? null, shipped_at: o.shipped_at ?? null, delivered_at: o.delivered_at ?? null,
+      tracking: { carrier: o.carrier ?? null, tracking_number: o.tracking_number ?? null, tracking_url: o.tracking_url ?? null },
+      timeline: [...(o.order_events || [])].filter((e) => ['created', 'STATUS_CHANGED'].includes(e.event_type)).reverse().map((e) => ({ to_status: e.to_status, created_at: e.created_at })) } : null; },
     cancel_my_order: (a) => {
       const o = S.tables.online_orders.find((x) => x.id === a.p_order_id && (x.public_token === a.p_public_token));
       if (!o) return err('P0001', 'no existe', 'JM_ORDER_NOT_FOUND');
@@ -378,7 +382,8 @@ function start(port = 54321) {
             customer_name: body.customer_name || 'Fixture', customer_email: String(body.customer_email || '').toLowerCase(), customer_phone: '3000000000', customer_document: null,
             shipping_department: 'A', shipping_city: 'B', shipping_address: 'C 123', shipping_neighborhood: null, shipping_notes: null, shipping_method_code: 'standard',
             subtotal: 50000, discount_total: 0, shipping_cost: 12000, total: 62000, coupon_code: null, status: body.status || 'paid', created_at: now, payment_expires_at: body.payment_expires_at || null,
-            paid_at: now, needs_attention: false, carrier: null, tracking_number: null, tracking_url: null, shipped_at: null, delivered_at: null,
+            // ejecución 128: solo hay fecha de pago si el estado implica un pago (o el recorrido lo pide), como en la BD
+            paid_at: (body.paid || ['paid', 'processing', 'shipped', 'delivered', 'refunded'].includes(body.status || 'paid')) ? now : null, needs_attention: false, carrier: null, tracking_number: null, tracking_url: null, shipped_at: null, delivered_at: null,
             online_order_items: [], payment_transactions: [], order_events: [] };
           // Ejecución 90: opcionalmente con cupón (descuento fijo) y una línea con un SKU real del catálogo sintético.
           if (body.coupon_code) { o.coupon_code = String(body.coupon_code).toUpperCase(); o.discount_total = 5000; o.total = 57000; }

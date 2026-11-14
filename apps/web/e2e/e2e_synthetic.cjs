@@ -2208,6 +2208,72 @@ async function main() {
       await expectText(adm, '0 pedidos');
     }, browser);
 
+    await journey('60. Cliente registrado: pedido pagado que el admin cancela y otro que reembolsa → «Mis pedidos» y el seguimiento dicen que el dinero vuelve y que no se enviará', async (p) => {
+      const email = 'lina.mora@correo.co';
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Lina Mora');
+      await p.locator('input[type=email]').fill(email); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      // dos compras pagadas (webhook SINTÉTICO): A la cancelará el admin, B la reembolsará
+      const buy = async () => {
+        await addToCart(p, 'polo-clasico', 'M');
+        await p.goto(`${BASE}/checkout`);
+        await p.waitForFunction((e) => document.querySelector('input[name=email]')?.value === e, email, { timeout: 8000 });
+        await fillCheckout(p, { firstName: 'Lina', lastName: 'Mora', email });
+        const known = new Set((await state()).orders.map((o) => o.id));
+        await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+        await p.waitForURL(/\/checkout\/confirmacion/);
+        const o = (await state()).orders.find((x) => x.customer_email === email && !known.has(x.id));
+        if (!o || !o.user_id) throw new Error('pedido no creado o sin user_id');
+        await fetch(`${API_URL}/__synthetic-mark-paid/${o.order_number}`);
+        await p.reload();
+        await p.getByText('¡Gracias por tu compra!', { exact: false }).first().waitFor({ timeout: 8000 });
+        return o;
+      };
+      const A = await buy();
+      const B = await buy();
+      // el admin, en su propio navegador, cancela A y reembolsa B (ambos exigen motivo)
+      const actx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      try {
+        const adm = await actx.newPage();
+        adm.on('dialog', (d) => d.accept().catch(() => {}));
+        await login(adm, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+        await adm.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+        for (const [o, to, note] of [[A, 'cancelled', 'Sin tela para confeccionar'], [B, 'refunded', 'Cliente desistió; devuelto en Wompi']]) {
+          await adm.goto(`${BASE}/admin/pedidos`);
+          await adm.locator('tbody tr').filter({ hasText: o.order_number }).getByRole('button', { name: 'GESTIONAR' }).click();
+          await adm.locator('#order-next-status').selectOption(to);
+          await adm.getByLabel('Nota del cambio').fill(note);
+          await adm.getByRole('button', { name: 'GUARDAR CAMBIOS' }).click();
+          await adm.locator('#order-next-status').waitFor({ state: 'detached', timeout: 8000 });
+          for (let i = 0; i < 25 && (await state()).orders.find((x) => x.id === o.id).status !== to; i += 1) await new Promise((r) => setTimeout(r, 200));
+          const now = (await state()).orders.find((x) => x.id === o.id).status;
+          if (now !== to) throw new Error(`${o.order_number}: estado ${now} ≠ ${to}`);
+        }
+      } finally { await actx.close(); }
+      // el cliente vuelve a «Mis pedidos»
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      // la tarjeta de un pedido: el div más interno con su número y sin el del otro pedido
+      const card = (num) => p.locator('div').filter({ hasText: `PEDIDO #${num}` }).filter({ hasNotText: `PEDIDO #${num === A.order_number ? B.order_number : A.order_number}` }).first();
+      const noticeA = card(A.order_number).getByTestId('order-refund-notice');
+      await noticeA.waitFor({ timeout: 8000 });
+      const tA = await noticeA.textContent();
+      if (!tA.includes('Pedido cancelado · devolución registrada.') || !tA.includes('Este pedido no se enviará.') || !/devoluci[oó]n de \$/.test(tA)) throw new Error(`aviso de A: «${tA}»`);
+      const tB = await card(B.order_number).getByTestId('order-refund-notice').textContent();
+      if (!tB.includes('Reembolso registrado.') || !tB.includes('Este pedido no se enviará.')) throw new Error(`aviso de B: «${tB}»`);
+      if ((await p.getByTestId('order-refund-notice').count()) !== 2) throw new Error('se esperaban exactamente 2 avisos de devolución');
+      await card(A.order_number).getByText('Cancelado', { exact: true }).first().waitFor({ timeout: 4000 });
+      await card(B.order_number).getByText('Reembolsado', { exact: true }).first().waitFor({ timeout: 4000 });
+      // el enlace de seguimiento de A (como el del correo): título claro, sin «Pedido cerrado» ni pago
+      await p.goto(`${BASE}/checkout/confirmacion?order=${A.order_number}&token=${A.public_token}`);
+      await p.getByText(`Pedido cancelado · ${A.order_number}`).waitFor({ timeout: 8000 });
+      const body = await p.locator('main, body').first().textContent();
+      if (body.includes('Pedido cerrado') || body.includes('Este pedido fue cancelado.') || body.includes('Pagar ahora')) throw new Error('confirmación de A con textos de pedido cerrado sin pago');
+      if (!(await p.getByTestId('order-refund-notice').textContent()).includes('Este pedido no se enviará.')) throw new Error('confirmación de A sin aviso de devolución');
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });

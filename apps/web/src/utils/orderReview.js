@@ -47,3 +47,22 @@ export function orderRefundMessage(order, formatAmount) {
   const base = `Registramos la devolución${amount}. El dinero vuelve al mismo medio con el que pagaste; según tu banco, puede tardar algunos días hábiles en verse reflejado.`;
   return orderWasShipped(order) ? base : `${base} Este pedido no se enviará.`;
 }
+
+// Ejecución 128: pedido `cancelled` por el admin DESPUÉS de pagado (transición paid/processing → cancelled: la BD
+// reingresa el stock y registra la devolución en `order_refunds`). Antes el cliente solo leía «Este pedido fue
+// cancelado.», sin saber que su dinero vuelve. Un pedido cancelado sin pago (pendiente) no recibe este aviso, y el
+// caso «pago recibido después de cerrado» lo cubre el aviso de revisión (orderReviewKind === 'refund').
+
+/** ¿El pedido llegó a pagarse? `paid_at` (ambas fuentes) o el historial de la confirmación. */
+export function orderWasPaid(order) {
+  if (!order) return false;
+  if (order.paid_at) return true;
+  return (order.timeline ?? []).some((t) => t.to_status === 'paid');
+}
+
+/** Texto para el cliente de un pedido cancelado después de pagado (o null si no aplica). */
+export function orderPaidCancellationMessage(order, formatAmount) {
+  if (!order || order.status !== 'cancelled' || !orderWasPaid(order) || orderReviewKind(order)) return null;
+  const amount = Number(order.total) > 0 && formatAmount ? ` de ${formatAmount(order.total)}` : '';
+  return `Cancelamos este pedido después de recibir tu pago y registramos la devolución${amount}. El dinero vuelve al mismo medio con el que pagaste; según tu banco, puede tardar algunos días hábiles en verse reflejado. Este pedido no se enviará.`;
+}
