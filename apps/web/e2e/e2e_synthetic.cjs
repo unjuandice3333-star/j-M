@@ -2333,7 +2333,9 @@ async function main() {
       await p.getByTestId('order-refund-mark-processed').click();
       await p.getByTestId('order-refund-error').waitFor({ timeout: 5000 });
       if ((await field.getAttribute('aria-invalid')) !== 'true') throw new Error('el campo vacío no queda marcado como inválido');
-      if (!(await field.evaluate((el) => el === document.activeElement))) throw new Error('el foco no va al campo del id');
+      // El foco se mueve en un setTimeout tras pintar el error: se espera (hasta 3 s) en vez de leerlo en el mismo instante
+      // (ejecución 132: la lectura inmediata fallaba ~1 de cada 5 pasadas también sin cambios de código).
+      if (!(await field.evaluate((el) => new Promise((ok) => { const t0 = Date.now(); const tick = () => (el === document.activeElement ? ok(true) : Date.now() - t0 > 3000 ? ok(false) : setTimeout(tick, 50)); tick(); })))) throw new Error('el foco no va al campo del id');
       if ((await order()).order_refunds[0].status !== 'requested') throw new Error('se marcó sin id');
       await field.fill('  12345-1700000000-99999  ');
       await p.getByTestId('order-refund-mark-processed').click();
@@ -2352,7 +2354,7 @@ async function main() {
     }, browser);
 
     // Ejecución 131: los recorridos corren en paralelo y comparten el backend; no se afirman conteos globales exactos.
-    await journey('63. Admin: devoluciones pendientes en Wompi — tarjeta del dashboard, filtro ?devolucion=pendiente y salida al marcarla hecha', async (p) => {
+    await journey('63. Admin: devoluciones pendientes en Wompi — menú, campana, tarjeta del dashboard, filtro ?devolucion=pendiente y salida al marcarla hecha', async (p) => {
       const mk = async (name, status) => (await (await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ customer_name: name, customer_email: `${name.toLowerCase().replace(/\s+/g, '.')}@correo.co`, status }) })).json()).order_number;
       const num = await mk('Devolucion Pendiente', 'paid');
@@ -2369,6 +2371,21 @@ async function main() {
       await p.locator('#order-next-status').waitFor({ state: 'detached', timeout: 8000 });
       const order = async () => (await state()).orders.find((x) => x.order_number === num);
       for (let i = 0; i < 25 && !(await order()).order_refunds.length; i += 1) await new Promise((r) => setTimeout(r, 200));
+      // Ejecución 132 (0(cc)): el menú «Pedidos» y la campana avisan de la devolución pendiente.
+      await p.goto(`${BASE}/admin/dashboard`);
+      const navRefunds = p.getByTestId('admin-nav-refund-badge');
+      await navRefunds.waitFor({ timeout: 8000 });
+      const refundsInNav = async () => (await navRefunds.count() ? Number(/^(\d+) devoluci/.exec(await navRefunds.getAttribute('aria-label'))?.[1]) : 0);
+      const n0 = await refundsInNav();
+      if (!(n0 >= 1)) throw new Error(`insignia de devoluciones en el menú: ${n0}`);
+      if (!(await p.getByRole('link', { name: /^Pedidos/ }).filter({ has: navRefunds }).count())) throw new Error('la insignia no está en «Pedidos»');
+      await p.getByTestId('admin-notifications').click();
+      const bellRefunds = p.getByTestId('admin-notification-devoluciones');
+      await bellRefunds.waitFor({ timeout: 8000 });
+      if ((await bellRefunds.textContent()) !== `${n0} ${n0 === 1 ? 'devolución pendiente' : 'devoluciones pendientes'} en Wompi`) throw new Error(`campana: ${await bellRefunds.textContent()}`);
+      await bellRefunds.click();
+      await p.waitForURL(/\/admin\/pedidos\?devolucion=pendiente$/, { timeout: 8000 });
+      await p.locator('tbody tr').filter({ hasText: num }).waitFor({ timeout: 8000 });
       // Dashboard: tarjeta con al menos esta devolución, monto y enlace al filtro.
       await p.goto(`${BASE}/admin/dashboard`);
       const card = p.getByRole('link', { name: /^Ver pedidos con devolución pendiente en Wompi: \d+ devoluci/ });
@@ -2391,6 +2408,11 @@ async function main() {
       await p.getByLabel('Id de la devolución en Wompi').fill('W-63-0001');
       await p.getByTestId('order-refund-mark-processed').click();
       await expectText(p, 'marcada como hecha en Wompi');
+      // El aviso del menú baja en uno sin recargar (evento del panel) y desaparece si era la única.
+      await p.waitForFunction((want) => {
+        const b = document.querySelector('[data-testid="admin-nav-refund-badge"]');
+        return (b ? Number(/^(\d+) devoluci/.exec(b.getAttribute('aria-label'))?.[1]) : 0) === want;
+      }, n0 - 1, { timeout: 8000 }).catch(async () => { throw new Error(`el menú no bajó de ${n0} a ${n0 - 1}: ${await refundsInNav()}`); });
       await p.goto(`${BASE}/admin/pedidos?devolucion=pendiente&q=${num}`);
       await expectText(p, 'No hay pedidos con estos filtros.');
       // Sin el filtro el pedido sigue en la lista, sin la marca.

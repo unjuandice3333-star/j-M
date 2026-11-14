@@ -53,7 +53,7 @@ describe('<AdminNotifications>', () => {
     expect(container.querySelector('[data-testid="admin-notifications-badge"]')).toBeNull();
     act(() => btn().click());
     expect(btn().getAttribute('aria-expanded')).toBe('true');
-    expect(container.querySelector('#jm-admin-notifications').textContent).toContain('No hay pedidos por preparar ni reseñas por moderar');
+    expect(container.querySelector('#jm-admin-notifications').textContent).toContain('No hay pedidos por preparar, devoluciones pendientes ni reseñas por moderar');
   });
 
   it('abre la lista y el enlace lleva a la lista filtrada cerrando el panel', () => {

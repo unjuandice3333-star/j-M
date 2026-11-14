@@ -6,7 +6,7 @@ import { SkipToContent, useRouteFocus, MAIN_ID } from '../components/Common/Rout
 import { AdminGlobalSearch } from '../components/Common/AdminGlobalSearch';
 import { AdminNotifications } from '../components/Common/AdminNotifications';
 import { countPendingReviews, REVIEWS_CHANGED_EVENT } from '../services/reviewsAdminService.js';
-import { countOrdersToPrepare, ORDERS_CHANGED_EVENT, ORDERS_POLL_MS } from '../services/adminService.js';
+import { countOrdersToPrepare, pendingRefundsSummary, ORDERS_CHANGED_EVENT, ORDERS_POLL_MS } from '../services/adminService.js';
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -85,6 +85,18 @@ export const AdminLayout = () => {
     window.addEventListener(ORDERS_CHANGED_EVENT, refresh);
     return () => { alive = false; clearInterval(timer); window.removeEventListener(ORDERS_CHANGED_EVENT, refresh); };
   }, [location.pathname]);
+  // Ejecución 132 (pendiente 0(cc)): devoluciones registradas que siguen pendientes de hacer en Wompi. Se crean y se
+  // cierran desde el panel (cancelar/reembolsar, «marcar hecha»), que emiten ORDERS_CHANGED_EVENT; además se recuenta al
+  // navegar y con el mismo sondeo (otro administrador puede registrarlas). Si la lectura falla no se muestra aviso.
+  const [pendingRefunds, setPendingRefunds] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const refresh = () => pendingRefundsSummary().then((r) => { if (alive) setPendingRefunds(r?.count ?? 0); }, () => { if (alive) setPendingRefunds(0); });
+    refresh();
+    const timer = setInterval(refresh, ORDERS_POLL_MS);
+    window.addEventListener(ORDERS_CHANGED_EVENT, refresh);
+    return () => { alive = false; clearInterval(timer); window.removeEventListener(ORDERS_CHANGED_EVENT, refresh); };
+  }, [location.pathname]);
   const { user, profile, logout } = useAuthStore();
 
   const handleLogout = async () => {
@@ -97,7 +109,8 @@ export const AdminLayout = () => {
     { label: 'Productos', path: '/admin/productos', icon: ShoppingBag },
     { label: 'Imágenes Home', path: '/admin/imagenes', icon: Image },
     { label: 'Inventario', path: '/admin/inventario', icon: Boxes },
-    { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList, badge: badgeText(ordersToPrepare), badgeLabel: `${ordersToPrepare} pedido${ordersToPrepare === 1 ? '' : 's'} por preparar` },
+    { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList, badge: badgeText(ordersToPrepare), badgeLabel: `${ordersToPrepare} pedido${ordersToPrepare === 1 ? '' : 's'} por preparar`,
+      refundBadge: badgeText(pendingRefunds), refundBadgeLabel: `${pendingRefunds} ${pendingRefunds === 1 ? 'devolución pendiente' : 'devoluciones pendientes'} en Wompi` },
     { label: 'Clientes', path: '/admin/clientes', icon: Users },
     { label: 'Boletín', path: '/admin/boletin', icon: Mail },
     { label: 'Colecciones', path: '/admin/colecciones', icon: FolderKanban },
@@ -195,6 +208,12 @@ export const AdminLayout = () => {
                     {item.badge}
                   </span>
                 )}
+                {/* Ejecución 132: devoluciones pendientes en Wompi, distinta de «por preparar» (ámbar, con flecha de retorno) */}
+                {item.refundBadge && (
+                  <span data-testid="admin-nav-refund-badge" aria-label={item.refundBadgeLabel} title={item.refundBadgeLabel} style={{ backgroundColor: '#FCD34D', color: '#09090B', fontSize: '0.68rem', fontWeight: 800, padding: '2px 7px', borderRadius: '999px' }}>
+                    ↩ {item.refundBadge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -285,7 +304,7 @@ export const AdminLayout = () => {
           {/* Admin User Profile Action */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
             {/* Ejecución 105: la campana era decorativa; ahora avisa de pedidos por preparar y reseñas por moderar */}
-            <AdminNotifications ordersToPrepare={ordersToPrepare} pendingReviews={pendingReviews} />
+            <AdminNotifications ordersToPrepare={ordersToPrepare} pendingReviews={pendingReviews} pendingRefunds={pendingRefunds} />
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderLeft: '1px solid #E4E4E7', paddingLeft: '1.5rem' }}>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#09090B', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem' }}>
