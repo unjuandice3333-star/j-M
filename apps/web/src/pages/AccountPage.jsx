@@ -121,10 +121,13 @@ export const AccountPage = () => {
     }
   }, []);
 
+  // Depende del id, no del objeto: un evento de sesión (refresco del token, perfil) crea otro objeto `user`
+  // y relanzaba la carga, dejando la lista en «cargando» un instante sin que nada hubiera cambiado.
+  const userId = user?.id;
   useEffect(() => {
-    if (!isLoggedIn || !user) return;
+    if (!isLoggedIn || !userId) return;
     fetchUserOrders();
-  }, [isLoggedIn, user, fetchUserOrders]);
+  }, [isLoggedIn, userId, fetchUserOrders]);
 
   // Acciones por pedido desde la lista (antes había que abrir el detalle para pagar o cancelar).
   const [orderBusy, setOrderBusy] = useState(null); // id del pedido en curso

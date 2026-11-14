@@ -108,3 +108,24 @@ describe('Mis pedidos: pedido en revisión', () => {
     expect(container.textContent).toContain('Compra completada'); // el otro pedido
   });
 });
+
+// Ejecución 137 (D112): el evento de sesión que llega tras leer el perfil vuelve a fijar `user` con OTRO objeto y el
+// mismo id. Antes eso relanzaba la carga de «Mis pedidos» (lista → «cargando» → lista); en GitHub hizo fallar el recorrido 60.
+describe('Mis pedidos: un nuevo objeto `user` del mismo cliente no recarga la lista', () => {
+  it('lee los pedidos una sola vez y no vuelve a «cargando»', async () => {
+    supa.state.orders = [order({ id: 'o-1', order_number: 'JM-1', status: 'paid', paid_at: new Date().toISOString() })];
+    await mount();
+    const reads = () => supa.state.selects.filter((s) => s.table === 'online_orders').length;
+    expect(reads()).toBe(1);
+    expect(container.textContent).toContain('PEDIDO #JM-1');
+    const { useAuthStore } = await import('../store/authStore');
+    await act(async () => { useAuthStore.setState({ user: { id: ME, email: 'ana@correo.com', aud: 'authenticated' } }); });
+    await flush();
+    expect(reads()).toBe(1);
+    expect(container.textContent).toContain('PEDIDO #JM-1');
+    // otro cliente en la misma pestaña sí recarga
+    await act(async () => { useAuthStore.setState({ user: { id: 'ffffffff-bbbb-4ccc-8ddd-eeeeeeeeeeee', email: 'otro@correo.com' } }); });
+    await flush();
+    expect(reads()).toBe(2);
+  });
+});
