@@ -1350,4 +1350,6 @@
 - Errores pendientes: recorrido 30 intermitente (sin datos nuevos).
 - Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Commits: `46a4caf`, `1abb53d` y los de D119 (ver `git log`), en la rama autorizada.
-- Siguiente: comprobar el run `ci` del push (69 y 71 en GitHub); luego punto 0(cm)(2) (flujos de la tienda sin E2E: reseñas a 320 px, cuenta con varias direcciones).
+- GitHub: run `ci` nº 175 (`11aec3f`) → governance, quality, db-local, db-supabase, e2e-synthetic (71) ✔; solo `security` ✘ (gitleaks, conocido); `e2e-supabase` nº 153 ✔.
+- Notificación: no enviada (defecto corregido y verificado; bloqueos ya notificados).
+- Siguiente: punto 0(cm)(2) (flujos de la tienda sin E2E: reseñas a 320 px, cuenta con varias direcciones).
