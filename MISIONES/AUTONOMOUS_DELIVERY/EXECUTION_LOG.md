@@ -1227,3 +1227,16 @@
 - Commits: `10582d7` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(cd) de Pendiente (filtro `!inner` de devoluciones pendientes contra Supabase local real en el job `e2e-supabase`).
+
+## Ejecución 133 — 2026-11-14 ~12:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-1iu8mr` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `4405e8b`, árbol limpio.
+- Tarea: punto 0(cd) de Pendiente: comprobar el filtro `order_refunds!inner` de `/admin/pedidos?devolucion=pendiente` y la lectura de `order_refunds` de la campana contra PostgREST real (D106).
+- Entorno: `dockerd` arranca en este contenedor (antes no había demonio); Docker Hub accesible, imágenes de Supabase en ECR → 403 en la CDN, así que no hay `supabase start`. Se usó PostgreSQL 16 + contenedor oficial `postgrest/postgrest:v12.2.3`.
+- Archivos: nuevos `scripts/ci/lib/refund_filter_checks.py` (14 comprobaciones compartidas; leen `ORDER_SELECT` de `AdminOrdersPage.jsx`), `supabase/tests/postgrest_local.sh` (clúster efímero loopback + PostgREST en Docker + JWT de la ejecución), `supabase/tests/postgrest_local_checks.py`; `scripts/ci/lib/http_checks.py` (`call(..., want_headers)` y ejecuta las comprobaciones de devoluciones al final, job `db-supabase`).
+- Pruebas (ejecutadas aquí): `bash supabase/tests/postgrest_local.sh` → **14/14 PASS** contra PostgREST real (filtro exacto 2/2 pedidos, `Content-Range` 2, combinado con cancelados 1, RLS cliente1/cliente2/anon, `admin_mark_refund_processed` cliente 403 / admin 200, el pedido sale del filtro). `py_compile` de los 3 scripts OK. Sin cambios en `src`/SQL: vitest, ESLint, build y pgTAP no re-ejecutados.
+- No verificado: `http_checks.py` ampliado en GitHub Actions (`db-supabase`) — se verá en la próxima ejecución del CI.
+- Errores pendientes: ninguno nuevo. Limitación: ningún seed tiene un pedido con una devolución hecha y otra pendiente a la vez.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `baeabd6` (pruebas) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ce) de Pendiente.
