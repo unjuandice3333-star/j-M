@@ -1315,3 +1315,15 @@
 - Commits: `1bc1eac` (arreglo + recorrido 69) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(cl) de Pendiente.
+
+## Ejecución 140 — 2026-11-14 ~20:30 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-idkbyj` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `40bb9c5`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior (API de Actions): run `ci` nº 170 (`40bb9c5`) ✘ en `e2e-synthetic` (68/69: recorrido 69, `waitFor` 8 s sin detalle) y `security` (gitleaks, conocido); resto ✔; `e2e-supabase` nº 148 ✔.
+- Tarea: hacer diagnosticable el fallo del recorrido 69 y punto 0(cl)(2) (admin restante a 320 px con enlaces), D116.
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs` (errores con pantalla/texto en `measureMobileScreens`, esperas de 15 s, cabecera del admin en la medida, recorrido 70 nuevo); documentación de la misión.
+- Pruebas (ejecutadas aquí): recorrido 69 aislado 6/6 (3 con CPU saturada); recorrido 70 3/3; `pnpm test:unit` 680/680; ESLint 0; build OK; `pnpm test:e2e-synthetic` **70/70**.
+- Errores pendientes: recorridos 30 y 69 intermitentes en CI (causa sin localizar; ahora con diagnóstico).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: el de pruebas + el de documentación; publicados en la rama autorizada.
+- Notificación: enviada (el CI de la rama quedó rojo en `e2e-synthetic` tras la ejecución 139).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(cm) de Pendiente.
