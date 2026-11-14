@@ -1154,3 +1154,18 @@
 - Commits: `8d8d4c7` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bx) de Pendiente (atajo de reembolso en el panel de revisión + pgTAP de reingreso solo de las líneas vendidas).
+
+## Ejecución 126 — 2026-11-14 ~04:10 UTC (rutina programada; entrada reconstruida en la 127)
+- La ejecución 126 publicó `bdf594f` (código: `admin_refund_order_attention`, migración `20261116120000`, D99) y `963e553` (MASTER_STATUS + DECISIONS) pero no escribió su entrada en este registro. Datos según MASTER_STATUS: pgTAP 435/435, vitest 641/641, E2E sintético 58 y 59 OK; la pasada completa quedó «en curso» sin resultado registrado.
+
+## Ejecución 127 — 2026-11-14 05:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-fj8bzz` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `963e553`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bx)(1) de Pendiente: el cliente con un pedido `refunded` veía «Pedido cerrado» con X roja y una frase sin monto ni plazo; «Mis pedidos» solo la insignia (D100).
+- Archivos: `apps/web/src/utils/orderReview.js` (`orderRefundMessage`, `orderWasShipped`), `apps/web/src/pages/OrderConfirmationPage.jsx`, `apps/web/src/pages/AccountPage.jsx`, nuevo `apps/web/src/__tests__/orderRefundNotice.test.jsx` (6), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 59 ampliado: el cliente recarga su seguimiento tras el reembolso).
+- Pruebas (ejecutadas aquí): `orderRefundNotice.test.jsx` 6/6 (las 6 fallan sin los cambios de `src`, `git stash`); recorrido 59 pasa y falla sin el cambio; `pnpm test:unit` 647/647 (67 archivos); `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK. Sin migración: pgTAP no re-ejecutado. Pasada completa de `pnpm test:e2e-synthetic`: ver línea siguiente.
+- Defecto real corregido: tras el reembolso el cliente no sabía si recibiría el dinero ni si el pedido se enviaría.
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni contra Supabase real remoto.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261116120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `1063f24` (código) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(by) de Pendiente.
