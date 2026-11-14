@@ -1291,3 +1291,15 @@
 - Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
 - Commits: `8870e53` (D112), `5d9b50c` (D113 + recorrido 67) + el de documentación; publicados en la rama autorizada.
 - Siguiente: comprobar el run `ci` del push; luego punto 0(cj) de Pendiente (misma medida sobre modales/formularios de la tienda a 320 px).
+
+## Ejecución 138 — 2026-11-14 ~18:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-okkvyu` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `8b2ef41`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior (API de Actions): run `ci` nº 168 (`8b2ef41`) todo ✔ salvo `security` (gitleaks del historial, conocido); `e2e-supabase` nº 146 ✔. El recorrido 60 pasó en GitHub tras D112.
+- Tarea: punto 0(cj) de Pendiente (formularios y modales de la tienda a 320 px, D114).
+- Archivos: `apps/web/src/components/Header/Header.jsx` (clases de marca e iconos), `apps/web/src/index.css` (reglas ≤ 400 px), `apps/web/src/pages/ProductDetailPage.jsx`, `HomePage.jsx`, `InfoPage.jsx`, `WishlistPage.jsx`, `components/Footer/Footer.jsx`, `components/Account/AccountDetails.jsx` (`minmax(min(Xpx, 100%), 1fr)`), `components/Modals/SizeGuideModal.jsx` (pestañas con `flexWrap`), `pages/Login.jsx` (`<main>`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 68).
+- Pruebas (ejecutadas aquí): recorrido 68 falla sin los cambios de `src` y pasa con ellos (con fuentes ensanchadas; sin ensanchar el desborde de la cabecera también existía: 369 px); captura a 320 px revisada; `pnpm test:unit` 680/680; `npx --no-install eslint .` 0; build OK; `pnpm test:e2e-synthetic` **68/68**.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261117120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `dca1732` (arreglo + recorrido 68) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(ck) de Pendiente (catálogo, inicio, favoritos, confirmación, páginas informativas y pie a 320 px).
