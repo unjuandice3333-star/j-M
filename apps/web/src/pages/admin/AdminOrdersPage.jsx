@@ -536,7 +536,7 @@ export const AdminOrdersPage = () => {
               width: '100%',
               maxWidth: '680px',
               borderRadius: '12px',
-              padding: '2rem',
+              padding: 'clamp(1rem, 5vw, 2rem)',
               maxHeight: '90vh',
               overflowY: 'auto'
             }}
@@ -677,16 +677,16 @@ export const AdminOrdersPage = () => {
                 </div>
               ) : null}
               {allowedNext(selectedOrder.status).length > 0 && (
-                <div style={{ display: 'grid', gap: '0.6rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.6rem' }}>
                   <select {...fieldA11y('status')} value={modalStatus} onChange={(e) => setModalStatus(e.target.value)}
-                    style={{ padding: '0.7rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontWeight: 700, fontSize: '0.85rem' }}>
+                    style={{ padding: '0.7rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontWeight: 700, fontSize: '0.85rem', minWidth: 0, width: '100%' }}>
                     <option value="">Selecciona…</option>
                     {allowedNext(selectedOrder.status).map((t) => (
                       <option key={t.to} value={t.to}>{STATUS_LABEL[t.to]}{t.requires_note ? ' (requiere motivo)' : ''}</option>
                     ))}
                   </select>
                   {modalStatus === 'shipped' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 9rem), 1fr))', gap: '0.5rem' }}>
                       <input {...fieldA11y('carrier')} aria-label="Transportadora" placeholder="Transportadora (ej. Coordinadora)" value={modalCarrier} onChange={(e) => setModalCarrier(e.target.value)} style={orderInput} />
                       <input {...fieldA11y('tracking')} aria-label="Número de guía" placeholder="Número de guía" value={modalTracking} onChange={(e) => setModalTracking(e.target.value)} style={orderInput} />
                       <input {...fieldA11y('url')} aria-label="URL de rastreo" type="url" inputMode="url" placeholder="URL de rastreo (opcional, https://)" value={modalTrackingUrl} onChange={(e) => setModalTrackingUrl(e.target.value)} style={{ ...orderInput, gridColumn: '1 / -1' }} />
@@ -758,7 +758,7 @@ export const AdminOrdersPage = () => {
 // Enlaces del detalle (cliente, SKU, cupón): son controles sueltos, no enlaces dentro de una frase, así que en
 // móvil necesitan ≥ 32 px de alto táctil (ejecución 108); inline-flex conserva el flujo del texto.
 const detailLink = { textDecoration: 'underline', color: '#3730A3', fontWeight: 700, display: 'inline-flex', alignItems: 'center', minHeight: '32px', verticalAlign: 'middle' };
-const orderInput = { padding: '0.65rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem' };
+const orderInput = { padding: '0.65rem', border: '1px solid #D4D4D8', borderRadius: '6px', fontSize: '0.85rem', minWidth: 0 };
 
 const thOrder = {
   padding: '0.85rem 1rem',

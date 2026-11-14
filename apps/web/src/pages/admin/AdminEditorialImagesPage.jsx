@@ -183,7 +183,7 @@ export const AdminEditorialImagesPage = () => {
       {editing && (
         <div className="modal-overlay" onClick={() => !saving && setEditing(null)}>
           <DialogPanel onClose={() => { if (!saving) setEditing(null); }} aria-label={`Editar ${editing.item.title}`}
-            style={{ backgroundColor: '#FFF', width: '100%', maxWidth: 720, borderRadius: 12, padding: '1.5rem', maxHeight: '90vh', overflowY: 'auto', display: 'grid', gap: '1rem' }}>
+            style={{ backgroundColor: '#FFF', width: '100%', maxWidth: 720, borderRadius: 12, padding: 'clamp(1rem, 5vw, 1.5rem)', maxHeight: '90vh', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <h2 style={{ fontSize: '1.1rem', fontWeight: 900 }}>{editing.item.title}</h2>
               <button onClick={() => setEditing(null)} aria-label="Cerrar" style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
@@ -199,12 +199,12 @@ export const AdminEditorialImagesPage = () => {
                   }} />
               </label>
             </div>
-            <label style={{ display: 'grid', gap: '0.3rem', fontSize: '0.8rem', fontWeight: 700 }}>O una URL https
+            <label style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.3rem', fontSize: '0.8rem', fontWeight: 700 }}>O una URL https
               <input id={EDIT_URL_ID} {...urlA11y} type="url" inputMode="url" value={editing.externalUrl} placeholder="https://…" onChange={(e) => setEditing((x) => ({ ...x, externalUrl: e.target.value, storagePath: null, preview: e.target.value || x.preview, ...(x.errorField === 'url' ? { error: null, errorField: null } : {}) }))}
-                style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: 6, fontWeight: 400 }} />
+                style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: 6, fontWeight: 400, minWidth: 0 }} />
             </label>
-            <label style={{ display: 'grid', gap: '0.3rem', fontSize: '0.8rem', fontWeight: 700 }}>Texto alternativo (accesibilidad)
-              <input value={editing.alt} onChange={(e) => setEditing((x) => ({ ...x, alt: e.target.value }))} style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: 6, fontWeight: 400 }} />
+            <label style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.3rem', fontSize: '0.8rem', fontWeight: 700 }}>Texto alternativo (accesibilidad)
+              <input value={editing.alt} onChange={(e) => setEditing((x) => ({ ...x, alt: e.target.value }))} style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: 6, fontWeight: 400, minWidth: 0 }} />
             </label>
             {library.length > 0 && (
               <div>
@@ -220,7 +220,7 @@ export const AdminEditorialImagesPage = () => {
               </div>
             )}
             {editing.error && <div role="alert" id={EDIT_ERROR_ID} style={{ color: '#B91C1C', fontWeight: 600 }}>{editing.error}</div>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button style={btnLight} onClick={() => setEditing(null)} disabled={saving}>Cancelar</button>
               <button style={btnDark} onClick={save} disabled={saving || uploading || (!editing.storagePath && !editing.externalUrl.trim())}>{saving ? 'Guardando…' : 'Guardar y publicar'}</button>
             </div>

@@ -2268,7 +2268,14 @@ async function main() {
       if (!tA.includes('Pedido cancelado · devolución registrada.') || !tA.includes('Este pedido no se enviará.') || !/devoluci[oó]n de \$/.test(tA)) throw new Error(`aviso de A: «${tA}»`);
       const tB = await card(B.order_number).getByTestId('order-refund-notice').textContent();
       if (!tB.includes('Reembolso registrado.') || !tB.includes('Este pedido no se enviará.')) throw new Error(`aviso de B: «${tB}»`);
-      if ((await p.getByTestId('order-refund-notice').count()) !== 2) throw new Error('se esperaban exactamente 2 avisos de devolución');
+      // la lista puede volver a pintarse (recarga al recuperar el foco): esperar a que se estabilice en 2
+      let notices = -1;
+      for (let i = 0; i < 40; i += 1) {
+        notices = await p.getByTestId('order-refund-notice').count();
+        if (notices === 2) break;
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      if (notices !== 2) throw new Error(`se esperaban exactamente 2 avisos de devolución; hay ${notices}`);
       await card(A.order_number).getByText('Cancelado', { exact: true }).first().waitFor({ timeout: 4000 });
       await card(B.order_number).getByText('Reembolsado', { exact: true }).first().waitFor({ timeout: 4000 });
       // el enlace de seguimiento de A (como el del correo): título claro, sin «Pedido cerrado» ni pago
@@ -3074,6 +3081,71 @@ async function main() {
       await p.getByRole('table').getByText('Polo Clásico').first().waitFor({ timeout: 8000 });
       if (await p.getByRole('table').getByText('Camiseta Básica').count()) throw new Error('la búsqueda «polo» sigue mostrando la camiseta');
       await assertTappable(p.getByRole('button', { name: 'CREAR NUEVO PRODUCTO' }), '320px /admin/productos «CREAR NUEVO PRODUCTO»');
+    }, browser, null, MOBILE);
+
+    await journey('67. Móvil 320/375: formulario de producto, detalle del pedido y modales del admin sin desplazamiento horizontal oculto aunque las fuentes sean más anchas', async (p) => {
+      const order = (await (await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ customer_name: 'Movil Detalle', customer_email: 'movil.detalle@correo.co', status: 'processing' }) })).json()).order_number;
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      // [url, abrir (o null: la página misma), nombre del diálogo, texto que indica que cargó]
+      const screens = [
+        ['/admin/productos/nuevo', null, null, 'Nombre'],
+        ['/admin/productos?q=POL-001', (q) => q.locator('tr', { hasText: 'Polo Clásico' }).getByTitle('Editar prenda'), null, 'Polo Clásico'],
+        [`/admin/pedidos?q=${order}`, (q) => q.locator('tbody tr').filter({ hasText: order }).getByRole('button', { name: 'GESTIONAR' }), `Orden #`, null],
+        ['/admin/descuentos', (q) => q.getByRole('button', { name: /CREAR CUPÓN/ }), 'Crear cupón', null],
+        ['/admin/descuentos', (q) => q.locator('tbody tr', { hasText: 'JM10' }).getByRole('button', { name: 'Editar' }), 'Editar cupón', null],
+        ['/admin/colecciones', (q) => q.getByRole('button', { name: 'Editar', exact: false }).first(), 'Editar colección', null],
+        ['/admin/configuracion', (q) => q.getByRole('button', { name: /^Editar / }).first(), 'Editar método de envío', null],
+        ['/admin/imagenes', (q) => q.getByRole('button', { name: /^Cambiar imagen / }).first(), /^Editar /, null],
+        ['/admin/clientes?rol=todos', (q) => q.getByRole('button', { name: 'Ver detalle' }).first(), /^Cliente /, null],
+      ];
+      const failures = [];
+      for (const width of [375, 320]) {
+        await p.setViewportSize({ width, height: 812 });
+        for (const [url, opener, dialog, text] of screens) {
+          await p.goto(`${BASE}${url}`);
+          await p.locator('main').first().waitFor({ timeout: 10000 });
+          await p.waitForLoadState('networkidle').catch(() => {});
+          if (opener) { await opener(p).first().click(); if (!dialog) await p.waitForLoadState('networkidle').catch(() => {}); }
+          if (dialog) await p.getByRole('dialog', { name: dialog }).waitFor({ timeout: 8000 });
+          // en preparación → «Enviado» muestra transportadora, guía y URL de rastreo
+          if (dialog === 'Orden #') { await p.locator('#order-next-status').selectOption('shipped'); await p.getByLabel('Número de guía').waitFor({ timeout: 4000 }); }
+          if (text) await p.getByText(text, { exact: false }).first().waitFor({ timeout: 8000 });
+          if (!process.env.NO_WIDEN) await p.addStyleTag({ content: 'body *{letter-spacing:0.06em !important} input,select,textarea{font-size:1.05rem !important}' });
+          await p.waitForTimeout(250);
+          const where = `${width}px ${url}${dialog ? ` · ${typeof dialog === 'string' ? dialog : 'diálogo'}` : ''}`;
+          // Igual que el recorrido 66, pero sobre el diálogo o `main`: un contenedor con overflow (el panel con
+          // `overflowY: auto` también desplaza en X) esconde lo que no cabe en vez de desbordar la página.
+          const r = await p.evaluate((isDialog) => {
+            const vw = document.documentElement.clientWidth;
+            const root = isDialog ? document.querySelector('[role=dialog]') : document.querySelector('main');
+            const name = (el) => `${el.tagName.toLowerCase()}«${(el.getAttribute('aria-label') || el.textContent || el.placeholder || el.name || '').trim().slice(0, 24)}»`;
+            const bad = []; let controls = 0;
+            for (const el of root.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea, button')) {
+              const b = el.getBoundingClientRect(); if (!b.width || !b.height) continue;
+              controls += 1;
+              let clipped = false; // dentro de una tabla desplazable propia: se considera intencional
+              for (let a = el.parentElement; a && a !== root; a = a.parentElement) { if (a.querySelector(':scope > table') && getComputedStyle(a).overflowX !== 'visible') { clipped = true; break; } }
+              if (!clipped && (b.left < -0.5 || b.right > vw + 0.5)) bad.push(`${name(el)}[${b.left.toFixed(0)},${b.right.toFixed(0)}]`);
+            }
+            const scrollers = []; // contenedores (el propio raíz incluido) que se desplazan en X sin ser una tabla
+            for (const el of [root, ...root.querySelectorAll('*')]) {
+              const cs = getComputedStyle(el);
+              if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1 && !el.querySelector(':scope > table')) scrollers.push(`${name(el)} ${el.scrollWidth}>${el.clientWidth}`);
+            }
+            const rb = root.getBoundingClientRect();
+            return { vw, sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth), bad, scrollers, controls, rootOut: rb.left < -0.5 || rb.right > vw + 0.5 };
+          }, !!dialog);
+          if (process.env.E2E_DEBUG) console.log(where, r.controls, r.bad.join(' '), '|', r.scrollers.join(' '));
+          if (!r.controls) failures.push(`${where}: sin controles visibles`);
+          else if (r.bad.length) failures.push(`${where}: ${r.bad.slice(0, 3).join(' ')}`);
+          else if (r.scrollers.length) failures.push(`${where}: se desplaza en horizontal ${r.scrollers.slice(0, 2).join(' ')}`);
+          else if (r.rootOut) failures.push(`${where}: el panel se sale de la pantalla`);
+          else if (r.sw > r.vw) failures.push(`${where}: desborde ${r.sw}px > ${r.vw}px`);
+        }
+      }
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser, null, MOBILE);
 
     await browser.close();
