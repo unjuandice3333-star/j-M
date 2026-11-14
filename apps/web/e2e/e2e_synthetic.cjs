@@ -244,7 +244,8 @@ function makeFocusChecker(p, failures, checked) {
         return { id, text: m.textContent.trim(), visible: cs.display !== 'none' && cs.visibility !== 'hidden' && b.width > 0 && b.height > 0, inView: inView(m) };
       });
       const label = el.getAttribute('aria-label') || (el.labels && el.labels[0] ? el.labels[0].textContent.trim() : '') || el.id || el.tagName;
-      return { tag: el.tagName, label, invalid: el.getAttribute('aria-invalid'), msgs, fieldInView: inView(el) };
+      const fb = el.getBoundingClientRect();
+      return { tag: el.tagName, label, invalid: el.getAttribute('aria-invalid'), msgs, fieldInView: inView(el), pos: `campo y=${Math.round(fb.top)}..${Math.round(fb.bottom)} vh=${vh} scrollY=${Math.round(window.scrollY)} url=${location.pathname}` };
     });
     if (r.none) { failures.push(`${where}: el foco no quedó en ningún control`); return; }
     const who = `${where} [${r.tag} «${r.label}»]`;
@@ -257,7 +258,7 @@ function makeFocusChecker(p, failures, checked) {
       else if (!m.inView) failures.push(`${who}: el aviso #${m.id} queda fuera de la pantalla`);
     }
     if (text && !r.msgs.some((m) => text.test(m.text || ''))) failures.push(`${who}: el aviso no dice ${text} (dice «${r.msgs.map((m) => m.text).join(' | ')}»)`);
-    if (!r.fieldInView) failures.push(`${who}: el campo con foco queda fuera de la pantalla`);
+    if (!r.fieldInView) failures.push(`${who}: el campo con foco queda fuera de la pantalla (${r.pos})`);
     checked.push(where);
   };
 }
@@ -1447,7 +1448,11 @@ async function main() {
       for (const [vp, sfx] of [[{ width: 1280, height: 900 }, ''], [{ width: 375, height: 812 }, ' (móvil)']]) {
         await p.setViewportSize(vp);
         await p.goto(`${BASE}/cuenta`); const nameIn = p.locator('#profile-full-name');
-        await nameIn.waitFor({ timeout: 8000 }); await nameIn.fill(' ');
+        await nameIn.waitFor({ timeout: 8000 });
+        // Ejecución 134: con el equipo cargado (GitHub), las secciones de arriba terminaban de cargar DESPUÉS del clic
+        // y desplazaban el formulario por debajo del pliegue (campo en y=1026 con scrollY=0): esperar a la red quieta.
+        await p.waitForLoadState('networkidle').catch(() => {});
+        await nameIn.fill(' ');
         await p.getByRole('button', { name: 'Guardar datos' }).click();
         await expectFocusLinked(`mis datos sin nombre${sfx}`, { text: /nombre completo/, name: /Nombre completo/ });
         await p.getByRole('button', { name: /Agregar dirección/ }).click();
