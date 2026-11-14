@@ -3,11 +3,11 @@
 // Antes la lectura sobrescribía la lista: el recorrido E2E 69 vio «MIS FAVORITOS (0)» en CI.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const db = vi.hoisted(() => ({ rows: new Set(), gate: null, calls: [] }));
+const db = vi.hoisted(() => ({ rows: new Set(), gate: null, calls: [], failAdd: false }));
 vi.mock('../services/wishlistService', () => ({
   wishlistService: {
     async getIds() { const snap = [...db.rows]; if (db.gate) await db.gate; return snap; },
-    async addMany(_u, ids) { db.calls.push(['add', ...ids]); ids.forEach((id) => db.rows.add(id)); },
+    async addMany(_u, ids) { if (db.failAdd) throw new Error('No se pudo guardar en tu lista de deseos.'); db.calls.push(['add', ...ids]); ids.forEach((id) => db.rows.add(id)); },
     async remove(_u, id) { db.calls.push(['remove', id]); db.rows.delete(id); },
   },
   default: {},
@@ -22,7 +22,7 @@ const store = () => useECommerceStore.getState();
 describe('syncWishlist con cambios durante la lectura', () => {
   beforeEach(() => {
     db.rows = new Set(['a']); db.gate = null; db.calls = [];
-    useECommerceStore.setState({ wishlist: [], wishlistOwner: null, wishlistError: null });
+    useECommerceStore.setState({ wishlist: [], wishlistOwner: null, wishlistError: null, wishlistOutbox: {} });
   });
 
   it('un favorito marcado antes de terminar la sincronización queda en la lista y en la BD', async () => {
@@ -52,5 +52,61 @@ describe('syncWishlist con cambios durante la lectura', () => {
     expect(store().wishlist).toEqual(['a']);
     await store().toggleWishlist('c');
     expect(db.calls).toEqual([['add', 'c']]);
+  });
+});
+
+// D119: la petición del favorito se cortó (recarga o pestaña cerrada) antes de llegar a la BD.
+describe('wishlistOutbox: cambios sin confirmar se reenvían al sincronizar', () => {
+  beforeEach(() => {
+    db.rows = new Set(['a']); db.gate = null; db.calls = [];
+    useECommerceStore.setState({ wishlist: [], wishlistOwner: null, wishlistError: null, wishlistOutbox: {} });
+  });
+
+  it('queda en la bandeja mientras la petición está en vuelo y sale al confirmarse', async () => {
+    useECommerceStore.setState({ wishlist: ['a'], wishlistOwner: 'u1' });
+    const p = store().toggleWishlist('b');
+    expect(store().wishlistOutbox).toEqual({ b: 'add' });
+    await p;
+    expect(store().wishlistOutbox).toEqual({});
+  });
+
+  it('tras recargar con un guardado sin confirmar, la sincronización lo envía y no lo pierde', async () => {
+    useECommerceStore.setState({ wishlist: ['a', 'b'], wishlistOwner: 'u1', wishlistOutbox: { b: 'add' } });
+    await store().syncWishlist('u1');
+    expect(db.rows.has('b')).toBe(true);
+    expect(store().wishlist).toEqual(['a', 'b']);
+    expect(store().wishlistOutbox).toEqual({});
+  });
+
+  it('tras recargar con un borrado sin confirmar, la sincronización lo borra y no reaparece', async () => {
+    useECommerceStore.setState({ wishlist: [], wishlistOwner: 'u1', wishlistOutbox: { a: 'remove' } });
+    await store().syncWishlist('u1');
+    expect(db.rows.has('a')).toBe(false);
+    expect(store().wishlist).toEqual([]);
+  });
+
+  it('si la página se está yendo (recarga), el error de la petición cortada no revierte nada y queda en la bandeja', async () => {
+    useECommerceStore.setState({ wishlist: ['a'], wishlistOwner: 'u1' });
+    db.failAdd = true;
+    window.dispatchEvent(new Event('beforeunload'));
+    const r = await store().toggleWishlist('b');
+    expect(r.ok).toBe(false);
+    expect(store().wishlist).toEqual(['a', 'b']);
+    expect(store().wishlistOutbox).toEqual({ b: 'add' });
+    // de vuelta en la página (bfcache) un error real sí revierte
+    window.dispatchEvent(new Event('pageshow'));
+    await store().toggleWishlist('c');
+    expect(store().wishlist).toEqual(['a', 'b']);
+    db.failAdd = false;
+  });
+
+  it('la bandeja de otra cuenta no se aplica y se descarta; cerrar sesión la vacía', async () => {
+    useECommerceStore.setState({ wishlist: ['b'], wishlistOwner: 'u2', wishlistOutbox: { b: 'add' } });
+    await store().syncWishlist('u1');
+    expect(db.calls).toEqual([]);
+    expect(store().wishlistOutbox).toEqual({});
+    useECommerceStore.setState({ wishlistOutbox: { a: 'remove' } });
+    await store().syncWishlist(null);
+    expect(store().wishlistOutbox).toEqual({});
   });
 });

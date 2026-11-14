@@ -3323,7 +3323,7 @@ async function main() {
     // Ejecución 142 (D118): el recorrido 69 falló en CI con «MIS FAVORITOS (0)»: el favorito se marcó mientras
     // syncWishlist aún leía la BD tras iniciar sesión y la lectura lo borró. Aquí la lectura de wishlist_items se
     // retrasa 1,5 s para reproducir la carrera siempre: marcar uno y desmarcar otro durante la lectura debe quedar.
-    await journey('71. Favoritos marcados y quitados mientras se sincroniza la lista tras iniciar sesión no se pierden', async (p) => {
+    await journey('71. Favoritos marcados y quitados mientras se sincroniza la lista, o con la petición cortada por una recarga, no se pierden', async (p) => {
       // Respuesta de la lectura retrasada 1,5 s DESPUÉS de leer la BD: lo que el cliente haga en ese tiempo no está en ella.
       let reads = 0;
       await p.route('**/rest/v1/wishlist_items*', async (route) => {
@@ -3368,8 +3368,24 @@ async function main() {
       if (rows.length !== 1 || rows[0].product_id === camiseta) fails.push(`BD: ${rows.length} favoritos (${rows.map((r) => r.product_id).join(', ')})`);
       if (fails.length) throw new Error(`(2) ${fails.join(' · ')}`);
       await p.unroute('**/rest/v1/wishlist_items*');
+      // (3) D119: la petición que guarda el favorito se corta (recarga o pestaña cerrada justo después del clic,
+      // como hace el recorrido 69 con su p.goto inmediato). Al volver, la sincronización debe reenviarla.
+      // La petición queda retenida (sin respuesta) y la página se recarga con ella en vuelo.
+      let held = 0;
+      await p.route('**/rest/v1/wishlist_items*', (route) => {
+        if (route.request().method() === 'POST' && !held) { held += 1; return undefined; } // retenida: nunca llega a la BD
+        return route.continue();
+      });
+      await p.getByRole('button', { name: 'Guardar en favoritos: Camiseta Básica' }).first().click();
+      for (let i = 0; i < 20 && !held; i += 1) await p.waitForTimeout(100);
+      if (!held) throw new Error('(3) el clic no envió la petición de guardado');
+      if ((await state()).wishlist.length !== 1) throw new Error('(3) la petición cortada llegó a la BD: el caso no se reprodujo');
+      await p.reload();
+      rows = await db(2);
+      await p.unroute('**/rest/v1/wishlist_items*', { behavior: 'ignoreErrors' });
+      if (rows.length !== 2) throw new Error(`(3) tras recargar, la BD tiene ${rows.length} favoritos (se esperaban 2): el guardado cortado se perdió`);
       await p.goto(`${BASE}/cuenta/favoritos`);
-      await expectText(p, 'MIS FAVORITOS (1)', 10000); await expectText(p, 'Polo Clásico', 10000);
+      await expectText(p, 'MIS FAVORITOS (2)', 10000); await expectText(p, 'Polo Clásico', 10000); await expectText(p, 'Camiseta Básica', 10000);
     }, browser);
 
     await browser.close();

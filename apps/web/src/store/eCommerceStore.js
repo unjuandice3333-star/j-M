@@ -8,6 +8,14 @@ import { resolveLookSelection } from '../utils/lookSelection';
 // D118: cambios de favoritos hechos mientras syncWishlist lee la BD (productId → { op, sent }).
 let wishlistSyncsInFlight = 0;
 const pendingWishlistOps = new Map();
+// D119: al recargar o cerrar la página el navegador cancela las peticiones en vuelo y su error llega a la página que
+// se va; no es un rechazo de la BD, así que no se revierte nada (lo pendiente queda en wishlistOutbox para reenviarse).
+let pageLeaving = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => { pageLeaving = true; });
+  window.addEventListener('pagehide', () => { pageLeaving = true; });
+  window.addEventListener('pageshow', () => { pageLeaving = false; });
+}
 
 export const DEFAULT_EDITORIAL_IMAGES = {
   hero_main: 'https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&q=80&w=2000',
@@ -108,6 +116,9 @@ export const useECommerceStore = create(
       // Con sesión, la fuente de verdad es public.wishlist_items; el navegador solo guarda una copia.
       wishlistOwner: null,
       wishlistError: null,
+      // D119: cambios de favoritos de la cuenta aún no confirmados por la BD (productId → 'add' | 'remove').
+      // Se guarda en el navegador: si la página se recarga o se cierra con la petición en vuelo, se reenvían al sincronizar.
+      wishlistOutbox: {},
       isCartOpen: false,
       isSearchOpen: false,
       isMobileMenuOpen: false,
@@ -402,11 +413,21 @@ export const useECommerceStore = create(
       syncWishlist: async (userId) => {
         const { wishlist, wishlistOwner } = get();
         if (!userId) {
-          if (wishlistOwner) set({ wishlist: [], wishlistOwner: null, wishlistError: null });
+          if (wishlistOwner) set({ wishlist: [], wishlistOwner: null, wishlistError: null, wishlistOutbox: {} });
           return;
         }
         wishlistSyncsInFlight += 1;
         try {
+          const outbox = wishlistOwner === userId ? { ...get().wishlistOutbox } : {};
+          if (wishlistOwner !== userId && Object.keys(get().wishlistOutbox).length) set({ wishlistOutbox: {} });
+          // D119: reenviar lo que quedó sin confirmar (petición cortada por una recarga). Ambas operaciones son idempotentes.
+          for (const [id, op] of Object.entries(outbox)) {
+            try {
+              if (op === 'remove') await wishlistService.remove(userId, id);
+              else await wishlistService.addMany(userId, [id]);
+            } catch { /* la lectura de abajo deja la lista como la tenga la BD */ }
+            set((st) => { if (st.wishlistOutbox[id] !== op) return {}; const { [id]: _done, ...rest } = st.wishlistOutbox; return { wishlistOutbox: rest }; });
+          }
           if (wishlistOwner === null && wishlist.length) {
             // Uno a uno: un producto local que ya no existe (FK) no impide guardar el resto.
             await Promise.allSettled(wishlist.map((id) => wishlistService.addMany(userId, [id])));
@@ -444,11 +465,21 @@ export const useECommerceStore = create(
         set({ wishlist: had ? wishlist.filter((id) => id !== productId) : [...wishlist, productId], wishlistError: null });
         if (wishlistSyncsInFlight) pendingWishlistOps.set(productId, { op: had ? 'remove' : 'add', sent: Boolean(wishlistOwner) });
         if (!wishlistOwner) return { ok: true };
+        const op = had ? 'remove' : 'add';
+        set((st) => ({ wishlistOutbox: { ...st.wishlistOutbox, [productId]: op } }));
+        const settle = () => set((st) => {
+          if (st.wishlistOutbox[productId] !== op) return {};
+          const { [productId]: _done, ...rest } = st.wishlistOutbox;
+          return { wishlistOutbox: rest };
+        });
         try {
           if (had) await wishlistService.remove(wishlistOwner, productId);
           else await wishlistService.addMany(wishlistOwner, [productId]);
+          settle();
           return { ok: true };
         } catch (err) {
+          if (pageLeaving) return { ok: false, message: err.message };
+          settle();
           // Revertir: la UI no debe mostrar como guardado algo que la BD no tiene.
           set((st) => ({ wishlist: had ? [...st.wishlist.filter((id) => id !== productId), productId] : st.wishlist.filter((id) => id !== productId), wishlistError: err.message }));
           return { ok: false, message: err.message };
@@ -542,6 +573,7 @@ export const useECommerceStore = create(
         items: state.items,
         wishlist: state.wishlist,
         wishlistOwner: state.wishlistOwner,
+        wishlistOutbox: state.wishlistOutbox,
         appliedCoupon: state.appliedCoupon,
         savedAddresses: state.savedAddresses,
         orders: state.orders,
