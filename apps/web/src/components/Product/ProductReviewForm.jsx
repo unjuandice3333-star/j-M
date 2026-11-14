@@ -105,7 +105,7 @@ export const ProductReviewForm = ({ productId }) => {
       {notice && <div role={notice.ok ? 'status' : 'alert'} style={{ ...(notice.ok ? { color: '#065F46', fontWeight: 600 } : errText), marginBottom: '0.75rem' }}>{notice.text}</div>}
 
       {reviewed.map((r) => (
-        <div key={r.orderItemId} data-testid="my-review" style={{ fontSize: '0.85rem', color: '#3F3F46', marginBottom: '0.6rem' }}>
+        <div key={r.orderItemId} data-testid="my-review" style={{ fontSize: '0.85rem', color: '#3F3F46', marginBottom: '0.6rem', overflowWrap: 'anywhere' }}>
           <strong>{r.review.title}</strong> ({r.review.rating} de 5) · {purchaseLabel(r)}
           <div>{STATUS_TEXT[r.review.status] ?? ''}</div>
           {r.review.adminReply && <div style={{ color: '#52525B' }}>Respuesta de J&M: {r.review.adminReply}</div>}

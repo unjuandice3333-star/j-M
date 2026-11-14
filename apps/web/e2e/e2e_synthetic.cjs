@@ -3388,6 +3388,101 @@ async function main() {
       await expectText(p, 'MIS FAVORITOS (2)', 10000); await expectText(p, 'Polo Clásico', 10000); await expectText(p, 'Camiseta Básica', 10000);
     }, browser);
 
+    // Ejecución 143 (punto 0(cm)(2), D120): flujos de la tienda que no tenían recorrido en móvil estrecho: libreta con
+    // VARIAS direcciones (una muy larga) a 320 px — agregar, editar, hacer principal y eliminar — y la ficha de producto
+    // con reseñas publicadas y el formulario de reseña de un comprador, hasta enviarla.
+    await journey('72. Móvil 320: libreta con varias direcciones (agregar, editar, principal, eliminar) y reseña de un comprador, todo dentro de la pantalla', async (p) => {
+      await p.setViewportSize({ width: 320, height: 640 });
+      await p.goto(`${BASE}/login`); await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Sara Ortiz');
+      await p.locator('input[type=email]').fill('sara.ortiz@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await p.goto(`${BASE}/cuenta/direcciones`);
+      const libreta = p.getByTestId('address-book'); await libreta.waitFor({ timeout: 10000 });
+      const failures = [];
+      // el primer campo del formulario debe quedar enfocado y a la vista (en móvil la lista empuja el formulario hacia abajo)
+      const formInView = async (where) => {
+        const f = libreta.getByTestId('address-form'); await f.waitFor({ timeout: 5000 });
+        await p.waitForTimeout(500);
+        const r = await f.evaluate((form) => { const el = form.querySelector('input[name=recipient_name]'); const b = el.getBoundingClientRect();
+          return { focused: document.activeElement === el, top: b.top, bottom: b.bottom, vh: window.innerHeight }; });
+        if (!r.focused) failures.push(`${where}: el foco no fue a «Quien recibe»`);
+        if (r.top < 0 || r.bottom > r.vh) failures.push(`${where}: «Quien recibe» fuera de la vista (${r.top.toFixed(0)}–${r.bottom.toFixed(0)} de ${r.vh})`);
+        return f;
+      };
+      const nueva = async (dept, city, line, extra = {}) => {
+        await libreta.getByRole('button', { name: 'Agregar dirección' }).click();
+        const f = await formInView(`agregar ${city}`);
+        await f.locator('input[name=recipient_name]').fill(extra.name || 'Sara Ortiz'); await f.locator('input[name=phone]').fill('3001112233');
+        await f.locator('select[name=department]').selectOption({ label: dept });
+        await f.locator('input[name=city]').fill(city); await f.locator('input[name=address_line]').fill(line);
+        if (extra.reference) await f.locator('textarea[name=reference]').fill(extra.reference);
+        await f.getByRole('button', { name: 'Guardar dirección' }).click();
+        await libreta.getByText(line).first().waitFor({ timeout: 8000 });
+      };
+      const larga = 'Carrera 43A # 1 Sur-100, Torre Empresarial Milla de Oro, Oficina 1503';
+      await nueva('Antioquia', 'Medellín', 'Calle 10 # 5-20');
+      await nueva('Cundinamarca', 'Bogotá', 'Avenida Carrera 68 # 24-35 Sur');
+      await nueva('Antioquia', 'Envigado', larga, { name: 'María José Fernández de los Ríos', reference: 'Portería principal; preguntar por recepción del piso 15 y dejar el paquete con el vigilante de turno' });
+      if ((await libreta.getByTestId('address-item').count()) !== 3) failures.push(`se esperaban 3 direcciones, hay ${await libreta.getByTestId('address-item').count()}`);
+      // editar la PRIMERA de la lista (la más alejada del formulario)
+      await libreta.getByRole('button', { name: 'Editar dirección Calle 10 # 5-20' }).click();
+      const f = await formInView('editar la primera');
+      await f.locator('input[name=city]').fill('Sabaneta'); await f.getByRole('button', { name: 'Guardar dirección' }).click();
+      await libreta.getByTestId('address-item').filter({ hasText: 'Sabaneta' }).waitFor({ timeout: 8000 });
+      // la larga pasa a principal
+      await libreta.getByTestId('address-item').filter({ hasText: 'Torre Empresarial' }).getByRole('button', { name: 'Hacer principal' }).click();
+      await libreta.getByTestId('address-item').filter({ hasText: 'Torre Empresarial' }).getByText('Principal', { exact: true }).waitFor({ timeout: 8000 });
+      // eliminar la de Bogotá: cancelar el diálogo no elimina; aceptarlo sí
+      p.removeAllListeners('dialog'); p.once('dialog', (d) => d.dismiss().catch(() => {}));
+      await libreta.getByRole('button', { name: 'Eliminar dirección Avenida Carrera 68 # 24-35 Sur' }).click();
+      await p.waitForTimeout(500);
+      if ((await libreta.getByTestId('address-item').count()) !== 3) failures.push('cancelar «¿Eliminar esta dirección?» eliminó la dirección');
+      p.on('dialog', (d) => d.accept().catch(() => {}));
+      await libreta.getByRole('button', { name: 'Eliminar dirección Avenida Carrera 68 # 24-35 Sur' }).click();
+      await libreta.getByText('Dirección eliminada.').waitFor({ timeout: 8000 });
+      await p.reload(); await libreta.getByTestId('address-item').first().waitFor({ timeout: 10000 });
+      const items = await libreta.getByTestId('address-item').allInnerTexts();
+      if (items.length !== 2 || items.some((t) => t.includes('Bogotá')) || !items.some((t) => t.includes('Sabaneta'))) failures.push(`tras recargar: ${items.map((t) => t.replace(/\s+/g, ' ').slice(0, 40)).join(' | ')}`);
+      // medida de la libreta (con la dirección larga como principal) y del formulario de edición abierto
+      const btn = (name) => (q) => q.getByRole('button', { name }).first();
+      await measureMobileScreens(p, [
+        ['/cuenta/direcciones', null, null, 'Torre Empresarial'],
+        ['/cuenta/direcciones', btn(/^Editar dirección Carrera 43A/), null, 'Torre Empresarial'],
+      ], failures, { links: true });
+      // checkout: la principal sale primero y el selector de direcciones guardadas cabe a 320
+      await p.setViewportSize({ width: 320, height: 640 });
+      await addToCart(p, 'polo-clasico', 'M');
+      await measureMobileScreens(p, [['/checkout', null, null, 'CONFIRMAR Y PAGAR']], failures);
+      await p.waitForFunction((l) => document.querySelector('input[name=address]')?.value === l, larga, { timeout: 8000 }).catch(() => failures.push('el checkout no propuso la dirección principal'));
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 20000 });
+      const order = (await state()).orders[0];
+      if (order.shipping_address !== larga) failures.push(`pedido con dirección ${order.shipping_address}`);
+      // reseña: ficha con una reseña publicada larga (con respuesta) y el formulario del comprador con pedido entregado
+      await fetch(`${API_URL}/__synthetic-mark-paid/${order.order_number}`);
+      await fetch(`${API_URL}/__synthetic-mark-delivered/${order.order_number}`);
+      await fetch(`${API_URL}/__synthetic-review`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug: 'polo-clasico', author_name: 'Bartolomé Q.', city: 'Santa Rosa de Cabal', title: 'Excelente_calidad_y_horma_perfecta_para_el_día_a_día',
+          comment: 'Lo uso para la oficina y para el fin de semana; después de varias lavadas conserva el color y la forma. https://ejemplo.co/una-direccion-muy-larga-sin-espacios-que-no-debe-desbordar', admin_reply: '¡Gracias por tu opinión, Bartolomé!' }) });
+      await measureMobileScreens(p, [['/producto/polo-clasico', null, null, 'Bartolomé Q.']], failures, { links: true });
+      await p.setViewportSize({ width: 320, height: 640 });
+      await p.goto(`${BASE}/producto/polo-clasico`);
+      const caja = p.getByTestId('review-form'); await caja.getByText(order.order_number).waitFor({ timeout: 10000 });
+      await caja.getByRole('button', { name: '5 de 5 estrellas' }).click();
+      await caja.locator('#review-title').fill('Me_queda_perfecto_la_talla_M_y_la_tela_es_fresquisima');
+      await caja.locator('#review-comment').fill('La talla M me quedó justa y la tela es fresca para el calor.');
+      await caja.locator('#review-city').fill('Envigado');
+      await caja.getByRole('button', { name: 'Enviar opinión' }).click();
+      await caja.getByText(/Recibimos tu opinión/).waitFor({ timeout: 8000 }).catch(() => failures.push('no apareció la confirmación de la reseña'));
+      const mine = (await state()).reviews.find((r) => r.title.startsWith('Me_queda_perfecto'));
+      if (!mine || mine.status !== 'pending' || mine.rating !== 5) failures.push(`reseña guardada: ${JSON.stringify(mine && { status: mine.status, rating: mine.rating })}`);
+      // «Tu opinión» con la reseña enviada (título largo sin espacios) también dentro de la pantalla
+      await measureMobileScreens(p, [['/producto/polo-clasico', null, null, 'Me_queda_perfecto']], failures, { links: true });
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
+    }, browser, null, MOBILE);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

@@ -152,6 +152,14 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
   const [errors, setErrors] = useState({});
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const formRef = useRef(null);
+  // D120: el formulario aparece DEBAJO de la lista; con varias direcciones en móvil quedaba fuera de la vista y
+  // «Editar»/«Agregar dirección» parecían no hacer nada. Al abrirlo se lleva a la vista y el foco va al primer campo.
+  useEffect(() => {
+    const el = formRef.current; if (!el) return;
+    if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start' });
+    el.querySelector('[name="recipient_name"]')?.focus({ preventScroll: true });
+  }, []);
   const change = (e) => {
     const { name, type, checked, value } = e.target;
     setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
@@ -181,7 +189,7 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
     </div>
   );
   return (
-    <form onSubmit={submit} noValidate data-testid="address-form" style={{ border: '1px dashed #D4D4D8', borderRadius: '10px', padding: '1rem', marginTop: '1rem' }}>
+    <form ref={formRef} onSubmit={submit} noValidate data-testid="address-form" aria-label={initial.id ? 'Editar dirección' : 'Nueva dirección'} style={{ border: '1px dashed #D4D4D8', borderRadius: '10px', padding: '1rem', marginTop: '1rem', scrollMarginTop: '96px' }}>
       <div style={grid}>
         {field('recipient_name', 'Quien recibe', { maxLength: 150, autoComplete: 'name' })}
         {field('phone', 'Teléfono', { type: 'tel', maxLength: 30, autoComplete: 'tel' })}

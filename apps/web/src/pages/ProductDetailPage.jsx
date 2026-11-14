@@ -741,8 +741,9 @@ export const ProductDetailPage = () => {
           <ProductReviewForm productId={product.id} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1.5rem' }}>
             {reviews.map((rev) => (
-              <div key={rev.id} style={{ border: '1px solid #E4E4E7', padding: '1.5rem', borderRadius: '8px', backgroundColor: '#FAFAFA' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              // D120: una palabra o URL larga en la reseña ensanchaba la tarjeta (ítem de grid con min-width: auto) y la ficha desbordaba a 320 px
+              <div key={rev.id} style={{ border: '1px solid #E4E4E7', padding: 'clamp(1rem, 4vw, 1.5rem)', borderRadius: '8px', backgroundColor: '#FAFAFA', minWidth: 0, overflowWrap: 'anywhere' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.25rem 0.75rem', marginBottom: '0.5rem' }}>
                   <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{rev.author_name}{rev.city ? ` (${rev.city})` : ''}</div>
                   <span style={{ fontSize: '0.75rem', color: '#71717A' }}>{new Date(rev.created_at).toLocaleDateString('es-CO')}</span>
                 </div>

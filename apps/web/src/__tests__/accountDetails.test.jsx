@@ -331,6 +331,32 @@ describe('«Mi cuenta»: datos y direcciones', () => {
     expect(supa.db.customer_addresses.map((r) => [r.id, r.is_default])).toEqual([['d1', true]]);
     expect(book.querySelectorAll('[data-testid="address-item"]')).toHaveLength(1);
   });
+  it('al abrir el formulario (agregar o editar) lo lleva a la vista y enfoca «Quien recibe» (D120)', async () => {
+    supa.db.customer_addresses.push(
+      { id: 'd1', user_id: ME, created_at: '2026-11-01T00:00:00Z', ...addr({ is_default: true }) },
+      { id: 'd2', user_id: ME, created_at: '2026-11-02T00:00:00Z', ...addr({ address_line: 'Carrera 7 # 1-2' }) },
+    );
+    const scrolled = [];
+    const orig = window.HTMLElement.prototype.scrollIntoView;
+    window.HTMLElement.prototype.scrollIntoView = function scrollIntoView(opts) { scrolled.push([this.getAttribute('data-testid'), opts]); };
+    try {
+      await mountAccount();
+      const book = host.querySelector('[data-testid="address-book"]');
+      await click(book.querySelector('[aria-label="Editar dirección Carrera 7 # 1-2"]'));
+      await flush();
+      const form = book.querySelector('[data-testid="address-form"]');
+      expect(form.getAttribute('aria-label')).toBe('Editar dirección');
+      expect(document.activeElement).toBe(form.querySelector('[name="recipient_name"]'));
+      expect(scrolled).toEqual([['address-form', { block: 'start' }]]);
+      await click(button('Cancelar', form));
+      await click(button('Agregar dirección', book));
+      await flush();
+      const nueva = book.querySelector('[data-testid="address-form"]');
+      expect(nueva.getAttribute('aria-label')).toBe('Nueva dirección');
+      expect(document.activeElement).toBe(nueva.querySelector('[name="recipient_name"]'));
+      expect(scrolled).toHaveLength(2);
+    } finally { window.HTMLElement.prototype.scrollIntoView = orig; }
+  });
 });
 
 describe('Checkout: direcciones guardadas', () => {
