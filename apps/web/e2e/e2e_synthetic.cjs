@@ -3148,6 +3148,94 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser, null, MOBILE);
 
+    // Ejecución 138 (punto 0(cj)): la misma medida del recorrido 67 sobre la TIENDA: páginas con formularios
+    // (carrito, checkout, acceso, cuenta, direcciones, restablecer) y sus modales (menú, búsqueda, carrito, filtros,
+    // guías de tallas y fit, recomendador) a 375 y 320 px con fuentes ensanchadas. Ningún control fuera de la
+    // pantalla, ningún contenedor que se desplace en horizontal escondiendo contenido, la página sin desborde.
+    await journey('68. Móvil 320/375: formularios y modales de la tienda sin desplazamiento horizontal oculto aunque las fuentes sean más anchas', async (p) => {
+      await p.goto(`${BASE}/login`); await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Rosa Mora');
+      await p.locator('input[type=email]').fill('rosa.mora@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      const btn = (name) => (q) => q.getByRole('button', { name }).first();
+      // [url, abrir (o null), nombre del diálogo (o null: se mide `main`), texto que indica que cargó]
+      const screens = [
+        ['/carrito', null, null, 'APLICAR'],
+        ['/checkout', null, null, 'CONFIRMAR Y PAGAR'],
+        ['/cuenta/datos', null, null, 'Mis datos'],
+        ['/cuenta/direcciones', btn('Agregar dirección'), null, 'Direcciones'],
+        ['/producto/camiseta-basica', null, null, 'AGREGAR AL CARRITO'],
+        ['/producto/camiseta-basica', btn(/Guía de medidas/), 'Guía de tallas', null],
+        ['/producto/camiseta-basica', btn('¿Qué significa el Fit?'), '¿Qué significa el fit?', null],
+        ['/producto/camiseta-basica', btn(/Encuentra tu talla/), 'Encuentra tu talla ideal', null],
+        ['/ropa', btn(/FILTRAR/), 'Filtros', null],
+        ['/ropa', btn('Abrir menú de navegación'), 'Menú', null],
+        ['/ropa', btn('Buscar en la tienda'), 'Buscar', null],
+        ['/ropa', btn(/^Abrir carrito/), 'Carrito', null],
+        ['/guia-de-tallas', null, null, null],
+        ['/contacto', null, null, null],
+      ];
+      const failures = []; const run = async (list) => {
+        for (const width of [375, 320]) {
+          await p.setViewportSize({ width, height: 812 });
+          for (const [url, opener, dialog, text] of list) {
+            await p.goto(`${BASE}${url}`);
+            await p.locator('main').first().waitFor({ timeout: 10000 });
+            await p.waitForLoadState('networkidle').catch(() => {});
+            if (text) await p.getByText(text, { exact: false }).first().waitFor({ timeout: 8000 });
+            if (opener) await opener(p).click();
+            if (dialog) { await p.getByRole('dialog', { name: dialog }).waitFor({ timeout: 8000 }); await p.waitForTimeout(400); }
+            if (!process.env.NO_WIDEN) await p.addStyleTag({ content: 'body *{letter-spacing:0.06em !important} input,select,textarea{font-size:1.05rem !important}' });
+            await p.waitForTimeout(250);
+            const where = `${width}px ${url}${dialog ? ` · ${dialog}` : ''}`;
+            const r = await p.evaluate((isDialog) => {
+              const vw = document.documentElement.clientWidth;
+              const root = isDialog ? [...document.querySelectorAll('[role=dialog]')].pop() : document.querySelector('main');
+              const name = (el) => `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}«${(el.getAttribute('aria-label') || el.textContent || el.placeholder || el.name || '').trim().slice(0, 24)}»`;
+              const bad = []; let controls = 0;
+              for (const el of root.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea, button')) {
+                const b = el.getBoundingClientRect(); if (!b.width || !b.height) continue;
+                controls += 1;
+                let clipped = false; // dentro de una tabla o un carrusel desplazable propio: intencional
+                for (let a = el.parentElement; a && a !== root; a = a.parentElement) { const cs = getComputedStyle(a); if ((a.querySelector(':scope > table') || cs.scrollSnapType !== 'none') && cs.overflowX !== 'visible') { clipped = true; break; } }
+                if (!clipped && (b.left < -0.5 || b.right > vw + 0.5)) bad.push(`${name(el)}[${b.left.toFixed(0)},${b.right.toFixed(0)}]`);
+              }
+              // `html, body { overflow-x: hidden }`: lo que se sale por la derecha no desborda, se corta. Los iconos de la
+              // cabecera (búsqueda, cuenta, favoritos, carrito) deben quedar enteros en la pantalla.
+              for (const el of document.querySelectorAll('header .header-action-btn, header .header-icon-touch')) {
+                const b = el.getBoundingClientRect(); if (b.width && (b.left < -0.5 || b.right > vw + 0.5)) bad.push(`cabecera ${name(el)}[${b.left.toFixed(0)},${b.right.toFixed(0)}]`);
+              }
+              const scrollers = []; // contenedores que se desplazan en X sin ser una tabla ni un carrusel con snap
+              for (const el of [root, ...root.querySelectorAll('*')]) {
+                const cs = getComputedStyle(el);
+                if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1 && !el.querySelector(':scope > table') && cs.scrollSnapType === 'none') scrollers.push(`${name(el)} ${el.scrollWidth}>${el.clientWidth}`);
+              }
+              const rb = root.getBoundingClientRect();
+              return { vw, sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth), bad, scrollers, controls, rootOut: rb.left < -0.5 || rb.right > vw + 0.5 };
+            }, !!dialog);
+            if (process.env.E2E_DEBUG) console.log(where, r.controls, r.bad.join(' '), '|', r.scrollers.join(' '), r.sw);
+            if (process.env.E2E_DEBUG && r.sw > r.vw) console.log('   ancho:', await p.evaluate(() => { const vw = document.documentElement.clientWidth; return [...document.querySelectorAll('body *')].filter((el) => { const b = el.getBoundingClientRect(); const pb = el.parentElement.getBoundingClientRect(); return b.width && b.right > vw + 0.5 && !(pb.right > vw + 0.5); }).slice(0, 5).map((el) => `${el.tagName}.${el.className}«${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30)}» r=${el.getBoundingClientRect().right.toFixed(0)}`).join(' ; '); }));
+            if (r.bad.length) failures.push(`${where}: ${r.bad.slice(0, 3).join(' ')}`);
+            else if (r.scrollers.length) failures.push(`${where}: se desplaza en horizontal ${r.scrollers.slice(0, 2).join(' ')}`);
+            else if (r.rootOut) failures.push(`${where}: el panel se sale de la pantalla`);
+            else if (r.sw > r.vw) failures.push(`${where}: desborde ${r.sw}px > ${r.vw}px`);
+          }
+        }
+      };
+      await run(screens);
+      // sin sesión: acceso (iniciar sesión y crear cuenta) y la cuenta como invitado
+      await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.includes('auth-token')) localStorage.removeItem(k); });
+      await run([
+        ['/login', null, null, null],
+        ['/login', btn('Crear cuenta'), null, null],
+        ['/cuenta', null, null, null],
+        ['/cuenta/restablecer', null, null, null],
+      ]);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
+    }, browser, null, MOBILE);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

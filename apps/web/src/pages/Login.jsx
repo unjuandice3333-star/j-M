@@ -63,7 +63,7 @@ export const Login = () => {
   };
 
   return (
-    <div className={styles.container}>
+    <main className={styles.container}>
       <div className={styles.loginCard}>
         <div className={styles.header}>
           {/* Ejecución 103: la página no tenía <h1>; el título visible es el logo y el nombre accesible dice qué se hace aquí. */}
@@ -134,7 +134,7 @@ export const Login = () => {
           </button>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 

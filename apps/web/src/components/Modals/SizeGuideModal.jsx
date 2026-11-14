@@ -47,7 +47,7 @@ const SizeGuideContent = ({ initialTab, closeModal }) => {
         </div>
 
         {/* CATEGORY TABS */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '0.5rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #E4E4E7', paddingBottom: '0.5rem' }}>
           {SIZE_CHART_TABS.map((tab) => (
             <button
               key={tab}

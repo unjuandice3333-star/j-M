@@ -206,8 +206,10 @@ export const Header = () => {
               userSelect: 'none'
             }}
             aria-label="J&M Fashion Store - Ir a Inicio"
+            className="jm-header-brand"
           >
             <span
+              className="jm-header-brand-name"
               style={{
                 fontFamily: "'Outfit', sans-serif",
                 fontSize: '1.4rem',
@@ -218,9 +220,10 @@ export const Header = () => {
                 marginBottom: '2px'
               }}
             >
-              J&amp;M FASHION STORE
+              J&amp;M<span className="jm-header-brand-rest"> FASHION STORE</span>
             </span>
             <span
+              className="jm-header-brand-tag"
               style={{
                 fontSize: '0.58rem',
                 fontWeight: 700,
@@ -267,7 +270,7 @@ export const Header = () => {
           </nav>
 
           {/* ICONS ACTION BAR */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="jm-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {/* Search Trigger */}
             <button
               onClick={() => setSearchOpen(true)}

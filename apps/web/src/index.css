@@ -143,6 +143,17 @@ button {
   input[type=range] { height: 32px; }
 }
 
+/* Pantallas muy estrechas (≤ 400 px, p. ej. 320): la cabecera (menú + marca + 4 iconos) medía ~380 px y el botón
+   del carrito quedaba fuera de la pantalla (oculto por `overflow-x: hidden`). La marca pasa a dos líneas
+   («J&M» / «FASHION STORE»), se oculta el lema y los iconos se juntan; cada icono conserva 36 px táctiles. */
+@media (max-width: 400px) {
+  .jm-header-actions { gap: 0.15rem !important; }
+  .jm-header-brand { min-width: 0; flex-shrink: 1; margin: 0 0.25rem; }
+  .jm-header-brand-name { font-size: 1.25rem !important; letter-spacing: 0.12em !important; }
+  .jm-header-brand-rest { display: block; font-size: 0.5rem; letter-spacing: 0.14em; margin-top: 3px; white-space: nowrap; }
+  .jm-header-brand-tag { display: none !important; }
+}
+
 /* Accessibility: Prefers Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

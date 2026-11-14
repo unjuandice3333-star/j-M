@@ -213,7 +213,7 @@ export const InfoPage = () => {
             </div>
 
             {/* INSTRUCTIONS & RECOMMENDATIONS */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem' }}>
               <div style={{ border: '1px solid #E4E4E7', padding: '1.5rem', borderRadius: '10px' }}>
                 <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#09090B', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
                   ¿CÓMO MEDIR TU CUERPO?
@@ -253,7 +253,7 @@ export const InfoPage = () => {
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem', marginBottom: '3rem' }}>
               <div style={{ border: '1px solid #E4E4E7', borderRadius: '10px', padding: '1.75rem' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#09090B', marginBottom: '1rem', textTransform: 'uppercase' }}>
                   📦 TIEMPOS DE ENTREGA ESTIMADOS
@@ -415,7 +415,7 @@ export const InfoPage = () => {
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '2rem' }}>
               <div style={{ border: '1px solid #E4E4E7', padding: '2rem', borderRadius: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                   <MessageCircle size={28} color="#25D366" />

@@ -17,7 +17,7 @@ const input = { width: '100%', padding: '0.7rem 0.85rem', border: '1px solid #D4
 const primaryBtn = { backgroundColor: '#09090B', color: '#FFFFFF', border: 'none', padding: '0.65rem 1.2rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase', cursor: 'pointer' };
 const ghostBtn = { backgroundColor: '#FFFFFF', color: '#09090B', border: '1px solid #E4E4E7', padding: '0.5rem 0.85rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' };
 const heading = { fontSize: '1.1rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' };
-const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' };
+const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: '1rem' };
 
 const FieldError = ({ id, msg }) => (msg ? <div id={id} role="alert" style={{ color: '#B91C1C', fontSize: '0.75rem', marginTop: '0.25rem' }}>{msg}</div> : null);
 const Banner = ({ id, kind, children }) => (

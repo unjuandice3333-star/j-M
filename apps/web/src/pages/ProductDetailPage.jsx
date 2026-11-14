@@ -297,7 +297,7 @@ export const ProductDetailPage = () => {
         {/* TOP SECTION: GALLERY + PRODUCT ACTION BOX */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))',
           gap: '3.5rem',
           alignItems: 'flex-start',
           marginBottom: '4rem'
@@ -739,7 +739,7 @@ export const ProductDetailPage = () => {
             <p style={{ color: '#71717A', fontSize: '0.9rem', marginBottom: '1rem' }}>Este producto todavía no tiene opiniones.</p>
           )}
           <ProductReviewForm productId={product.id} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1.5rem' }}>
             {reviews.map((rev) => (
               <div key={rev.id} style={{ border: '1px solid #E4E4E7', padding: '1.5rem', borderRadius: '8px', backgroundColor: '#FAFAFA' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -769,7 +769,7 @@ export const ProductDetailPage = () => {
             <h2 style={{ fontSize: '1.5rem', fontWeight: 900, textTransform: 'uppercase', marginBottom: '2rem' }}>
               TAMBIÉN TE PUEDE INTERESAR
             </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(250px, 100%), 1fr))', gap: '1.5rem' }}>
               {relatedProducts.map((prod) => (
                 <ProductCard key={prod.id} product={prod} />
               ))}

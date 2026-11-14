@@ -22,7 +22,7 @@ export const Footer = () => {
         {/* BRAND PROPOSITION BADGES */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
           gap: '2rem',
           paddingBottom: '3.5rem',
           borderBottom: '1px solid #1F1F23',
@@ -61,7 +61,7 @@ export const Footer = () => {
         {/* FOOTER NAVIGATION COLUMNS */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))',
           gap: '2.5rem',
           marginBottom: '3.5rem'
         }}>
