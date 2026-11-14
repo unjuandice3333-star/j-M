@@ -2071,6 +2071,62 @@ async function main() {
       await p.getByRole('button', { name: /^Abrir carrito, 1 producto/ }).waitFor({ timeout: 8000 });
     }, browser);
 
+    await journey('58. Pago tardío de un pedido vencido (webhook expired → paid): con stock se descuenta; sin stock el admin lo ve «Requiere revisión» con la prenda faltante', async (p) => {
+      const pedir = async (slug, size, color, email) => {
+        await addToCart(p, slug, size, color);
+        await p.goto(`${BASE}/checkout`);
+        await fillCheckout(p, { email });
+        await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+        await p.waitForURL(/\/checkout\/confirmacion/);
+        const o = (await state()).orders.find((x) => x.customer_email === email);
+        if (!o || o.status !== 'payment_pending') throw new Error(`pedido de ${email}: ${o?.status}`);
+        await fetch(`${API_URL}/__synthetic-expire-window/${o.order_number}`);
+        return o;
+      };
+      const inv = async (sku) => (await state()).inventories.find((i) => i.sku === sku);
+      const sinStock = await pedir('camiseta-basica', 'L', 'Negro', 'tarde-sin@correo.co');   // CAM-L-NEG: última unidad
+      const conStock = await pedir('camiseta-basica', 'S', 'Blanco', 'tarde-con@correo.co');  // CAM-S-BLA: 3 unidades
+      // el admin abre el panel: ambos vencen y liberan su reserva
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await p.getByRole('link', { name: 'Ver pedidos que requieren revisión: 0 pedidos' }).waitFor({ timeout: 8000 });
+      let st = await state();
+      for (const o of [sinStock, conStock]) if (st.orders.find((x) => x.id === o.id).status !== 'expired') throw new Error(`${o.order_number} no venció`);
+      if ((await inv('CAM-L-NEG')).reserved !== 0 || (await inv('CAM-S-BLA')).reserved !== 0) throw new Error('reservas no liberadas');
+      // otra compra se lleva la última L negra mientras el pedido estaba vencido
+      await fetch(`${API_URL}/__synthetic-set-stock/CAM-L-NEG/0`);
+      // llegan tarde las aprobaciones (webhook SINTÉTICO, no Wompi)
+      const pagoCon = await fetch(`${API_URL}/__synthetic-mark-paid/${conStock.order_number}`).then(j);
+      const pagoSin = await fetch(`${API_URL}/__synthetic-mark-paid/${sinStock.order_number}`).then(j);
+      if (pagoCon.needs_attention || pagoCon.shortages.length) throw new Error(`con stock no debía requerir revisión: ${JSON.stringify(pagoCon)}`);
+      if (!pagoSin.needs_attention || pagoSin.shortages.length !== 1) throw new Error(`sin stock debía requerir revisión: ${JSON.stringify(pagoSin)}`);
+      const sBla = await inv('CAM-S-BLA'); const lNeg = await inv('CAM-L-NEG');
+      if (sBla.stock !== 2 || sBla.reserved !== 0) throw new Error(`con stock: inventario ${JSON.stringify(sBla)}`);
+      if (lNeg.stock !== 0 || lNeg.reserved !== 0) throw new Error(`sin stock: el inventario no debía tocarse ${JSON.stringify(lNeg)}`);
+      // dashboard: la tarjeta cuenta el pedido y lleva a la lista filtrada
+      await p.goto(`${BASE}/admin/dashboard`);
+      await p.getByRole('link', { name: 'Ver pedidos que requieren revisión: 1 pedido' }).click({ timeout: 8000 });
+      await p.waitForURL(/\/admin\/pedidos\?revision=1$/, { timeout: 8000 });
+      const rowSin = p.locator('tbody tr').filter({ hasText: sinStock.order_number });
+      await rowSin.getByText('REQUIERE REVISIÓN').waitFor({ timeout: 8000 });
+      if (await p.locator('tbody tr').filter({ hasText: conStock.order_number }).count()) throw new Error('el pagado con stock no debía aparecer en «requieren revisión»');
+      // detalle: el motivo y la prenda faltante, y el historial legible
+      await rowSin.getByRole('button', { name: 'GESTIONAR' }).click();
+      const aviso = p.getByTestId('order-attention-stock');
+      await aviso.waitFor({ timeout: 8000 });
+      const txt = await aviso.innerText();
+      if (!/ya no había stock/.test(txt) || !/Camiseta Básica · Talla L · Negro \(SKU CAM-L-NEG\): pidió 1, disponibles al pagar 0/.test(txt)) throw new Error(`aviso: ${txt}`);
+      await p.getByText('Historial del pedido').click();
+      await p.getByText(/Pagado sin stock suficiente → Pagado/).waitFor({ timeout: 8000 });
+      await p.keyboard.press('Escape');
+      await p.locator('#order-next-status').waitFor({ state: 'detached', timeout: 8000 });
+      // el pagado con stock no muestra aviso
+      await p.getByLabel(/^Solo los que requieren revisión/).uncheck();
+      await p.locator('tbody tr').filter({ hasText: conStock.order_number }).getByRole('button', { name: 'GESTIONAR' }).click({ timeout: 8000 });
+      await p.locator('#order-next-status').waitFor({ timeout: 8000 });
+      if (await p.getByTestId('order-attention').count()) throw new Error('aviso de revisión en un pedido sin faltantes');
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });

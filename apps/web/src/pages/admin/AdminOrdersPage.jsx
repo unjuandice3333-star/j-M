@@ -9,6 +9,7 @@ import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import { attentionReasons, eventLabel } from '../../utils/orderAttention';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_ERROR_ID = 'order-modal-error';
@@ -18,9 +19,9 @@ const ORDER_SELECT = `
         shipping_department, shipping_city, shipping_address, shipping_neighborhood, shipping_notes, shipping_method_code,
         subtotal, discount_total, shipping_cost, total, coupon_code, status, created_at, paid_at, needs_attention,
         carrier, tracking_number, tracking_url,
-        online_order_items ( product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
+        online_order_items ( variant_id, product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
         payment_transactions ( reference, status, amount_in_cents, payment_method_type, created_at ),
-        order_events ( event_type, from_status, to_status, actor, note, created_at )`;
+        order_events ( event_type, from_status, to_status, actor, note, metadata, created_at )`;
 
 const mapOrder = (o) => ({
   ...o, id: o.order_number, rawId: o.id, date: new Date(o.created_at).toLocaleString('es-CO'),
@@ -454,6 +455,24 @@ export const AdminOrdersPage = () => {
               </div>
             )}
 
+            {/* Ejecución 124 (D97): motivo de «Requiere revisión» leído de order_events (p. ej. pago tardío sin stock). */}
+            {selectedOrder.needs_attention && (
+              <div data-testid="order-attention" role="note" aria-label="Requiere revisión"
+                style={{ backgroundColor: '#FEF2F2', color: '#7F1D1D', padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', border: '1px solid #FCA5A5' }}>
+                <strong style={{ display: 'block', marginBottom: '0.25rem' }}>REQUIERE REVISIÓN</strong>
+                {attentionReasons(selectedOrder).map((r, i) => (
+                  <div key={i} data-testid={`order-attention-${r.kind}`} style={{ marginTop: i ? '0.5rem' : 0 }}>
+                    {r.text}
+                    {r.lines?.length > 0 && (
+                      <ul style={{ margin: '0.35rem 0 0 1.1rem', listStyle: 'disc' }}>
+                        {r.lines.map((l, j) => <li key={j}>{l}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div style={{ fontSize: '0.85rem', marginBottom: '1rem', display: 'grid', gap: '0.25rem' }}>
               <div><strong>Estado:</strong> {STATUS_LABEL[selectedOrder.status]} · <strong>Creado:</strong> {selectedOrder.date}</div>
               <div><strong>Cliente:</strong> {selectedOrder.customer_name} · {selectedOrder.customer_email} · {selectedOrder.customer_phone}
@@ -532,7 +551,7 @@ export const AdminOrdersPage = () => {
               <summary style={{ cursor: 'pointer', fontWeight: 700 }}>Historial del pedido</summary>
               <ul style={{ marginTop: '0.5rem' }}>
                 {[...(selectedOrder.order_events ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((e, i) => (
-                  <li key={i}>{new Date(e.created_at).toLocaleString('es-CO')} · {e.event_type}{e.to_status ? ` → ${STATUS_LABEL[e.to_status] ?? e.to_status}` : ''} · {e.actor}{e.note ? ` · ${e.note}` : ''}</li>
+                  <li key={i}>{new Date(e.created_at).toLocaleString('es-CO')} · {eventLabel(e.event_type)}{e.to_status ? ` → ${STATUS_LABEL[e.to_status] ?? e.to_status}` : ''} · {e.actor}{e.note ? ` · ${e.note}` : ''}</li>
                 ))}
               </ul>
             </details>
