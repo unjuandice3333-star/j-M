@@ -10,7 +10,7 @@ import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 import { DialogPanel } from '../../components/Common/DialogPanel';
 import { attentionReasons, sortedEvents, eventText, validateResolveNote, canRefundFromAttention, RESOLVE_NOTE_MAX } from '../../utils/orderAttention';
-import { refundRecords, refundTotal, hasPendingRefund, refundStockText, validateProviderRefundId, PROVIDER_REFUND_ID_MAX, pendingRefundFromParam, PENDING_REFUND_PARAM } from '../../utils/orderRefunds';
+import { refundRecords, refundHeading, hasPendingRefund, refundStockText, validateProviderRefundId, PROVIDER_REFUND_ID_MAX, pendingRefundFromParam, PENDING_REFUND_PARAM } from '../../utils/orderRefunds';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_ERROR_ID = 'order-modal-error';
@@ -623,7 +623,7 @@ export const AdminOrdersPage = () => {
                 <section data-testid="order-refunds" aria-labelledby="order-refunds-title"
                   style={{ backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: '8px', padding: '1rem 1.25rem', marginBottom: '1.25rem', fontSize: '0.85rem', color: '#78350F' }}>
                   <h3 id="order-refunds-title" style={{ fontSize: '0.85rem', fontWeight: 900, letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-                    DEVOLUCIÓN REGISTRADA · {formatCOP(refundTotal(refunds))}
+                    {refundHeading(refunds, formatCOP)}
                   </h3>
                   <ul style={{ display: 'grid', gap: '0.5rem' }}>
                     {refunds.map((r, i) => (

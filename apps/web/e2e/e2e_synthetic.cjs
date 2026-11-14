@@ -2426,6 +2426,37 @@ async function main() {
       await after.waitFor({ timeout: 8000 });
       if (await after.getByTestId('order-row-pending-refund').count()) throw new Error('sigue marcada como pendiente');
       if (/devolucion=/.test(p.url())) throw new Error(`el parámetro sigue en la URL: ${p.url()}`);
+      // Ejecución 135 (0(cg)): el mismo pedido con una devolución HECHA y otra PENDIENTE (fixture sintético).
+      const extra = await fetch(`${API_URL}/__synthetic-extra-refund/${num}`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ amount: 15000, reason: 'Diferencia de envío' }) });
+      if (!extra.ok) throw new Error(`fixture de segunda devolución: HTTP ${extra.status}`);
+      await p.goto(`${BASE}/admin/pedidos?devolucion=pendiente&q=${num}`);
+      const again = p.locator('tbody tr').filter({ hasText: num });
+      await again.waitFor({ timeout: 8000 });
+      if ((await again.count()) !== 1) throw new Error(`el pedido aparece ${await again.count()} veces en el filtro`);
+      if (!(await again.getByTestId('order-row-pending-refund').count())) throw new Error('la fila no marca la segunda devolución pendiente');
+      await again.getByRole('button', { name: 'GESTIONAR' }).click();
+      const items = p.getByTestId('order-refund');
+      await items.nth(1).waitFor({ timeout: 8000 });
+      if ((await items.count()) !== 2) throw new Error(`devoluciones en el detalle: ${await items.count()}`);
+      const st = await p.getByTestId('order-refund-status').allTextContents();
+      if (!/Hecha|Procesad|Devuelta/i.test(st[0]) || !/W-63-0001/.test(st[0]) || /W-63/.test(st[1])) throw new Error(`estados: ${JSON.stringify(st)}`);
+      if ((await p.getByTestId('order-refund-provider-id').count()) !== 1) throw new Error('solo la pendiente debe tener campo para el id de Wompi');
+      const heading = await p.locator('#order-refunds-title').textContent();
+      if (!/DEVOLUCIONES REGISTRADAS · \$\s?77\.000/.test(heading)) throw new Error(`título: ${heading}`);
+      if (!/1 pendiente/.test(heading)) throw new Error(`el título no dice cuántas faltan: ${heading}`);
+      // El mismo id de Wompi no sirve para la segunda devolución.
+      await p.getByLabel('Id de la devolución en Wompi').fill('W-63-0001');
+      await p.getByTestId('order-refund-mark-processed').click();
+      await expectText(p, 'Ese id de Wompi ya está registrado en otra devolución.');
+      await p.getByLabel('Id de la devolución en Wompi').fill('W-63-0002');
+      await p.getByTestId('order-refund-mark-processed').click();
+      await expectText(p, 'marcada como hecha en Wompi');
+      await p.getByTestId('order-refund-pending').waitFor({ state: 'detached', timeout: 8000 });
+      const refundsNow = (await order()).order_refunds.map((r) => `${r.status}:${r.provider_refund_id}`).sort();
+      if (JSON.stringify(refundsNow) !== JSON.stringify(['processed:W-63-0001', 'processed:W-63-0002'])) throw new Error(`backend: ${refundsNow}`);
+      await p.goto(`${BASE}/admin/pedidos?devolucion=pendiente&q=${num}`);
+      await expectText(p, 'No hay pedidos con estos filtros.');
     }, browser);
 
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
@@ -2949,6 +2980,51 @@ async function main() {
       // el selector sigue funcionando
       await p.locator('#catalog-sort').selectOption('precio-asc');
       if ((await p.locator('#catalog-sort').inputValue()) !== 'precio-asc') throw new Error('el orden no cambió');
+    }, browser, null, MOBILE);
+
+    // Ejecución 135: el recorrido 33 falló 1 de 2 pasadas completas con «/carrito: desborde 376px > 375px · APLICAR».
+    // El campo del cupón tenía `flex: 1` sin `minWidth: 0` y no podía encogerse por debajo de su ancho intrínseco
+    // (depende de la fuente), así que empujaba el botón fuera. Aquí se ensancha la fuente para que no dependa del runner.
+    await journey('65. Móvil 320/375: el cupón del carrito y el buscador de la cabecera caben en la pantalla aunque las fuentes sean más anchas', async (p) => {
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      for (const width of [375, 320]) {
+        await p.setViewportSize({ width, height: 812 });
+        await p.goto(`${BASE}/carrito`);
+        const apply = p.getByRole('button', { name: 'APLICAR' });
+        await apply.waitFor({ timeout: 8000 });
+        await p.addStyleTag({ content: 'body *{letter-spacing:0.06em !important} input{font-size:1.05rem !important}' });
+        await p.waitForTimeout(200);
+        const r = await p.evaluate(() => {
+          const vw = document.documentElement.clientWidth; const box = (el) => el && el.getBoundingClientRect();
+          const inp = box(document.querySelector('input[aria-label="Código del cupón"]'));
+          const btn = box([...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'APLICAR'));
+          return { vw, sw: document.documentElement.scrollWidth, inp: [inp.left, inp.right], btn: [btn.left, btn.right], bw: btn.width };
+        });
+        for (const [k, v] of Object.entries({ inp: r.inp, btn: r.btn })) {
+          if (v[0] < 0 || v[1] > r.vw + 0.5) throw new Error(`${width}px: ${k} fuera de la pantalla [${v.map((x) => x.toFixed(1))}] vw=${r.vw}`);
+        }
+        if (r.sw > r.vw) throw new Error(`${width}px: desborde horizontal ${r.sw}px > ${r.vw}px`);
+        if (r.bw < 60) throw new Error(`${width}px: APLICAR aplastado (${r.bw.toFixed(1)}px)`);
+      }
+      // El buscador de la cabecera tenía el mismo patrón (campo `flex: 1` sin `minWidth: 0` + botón «Buscar»).
+      for (const width of [375, 320]) {
+        await p.setViewportSize({ width, height: 812 });
+        await p.goto(`${BASE}/`);
+        await p.getByRole('button', { name: 'Buscar en la tienda' }).click();
+        const go = p.getByRole('dialog', { name: 'Buscar' }).getByRole('button', { name: 'Buscar', exact: true });
+        await go.waitFor({ timeout: 8000 });
+        await p.addStyleTag({ content: 'body *{letter-spacing:0.06em !important} input{font-size:1.05rem !important}' });
+        await p.waitForTimeout(200);
+        const b = await go.boundingBox(); const vw = await p.evaluate(() => document.documentElement.clientWidth);
+        if (!b || b.x < 0 || b.x + b.width > vw + 0.5) throw new Error(`${width}px: «Buscar» fuera de la pantalla [${b && [b.x, b.x + b.width].map((x) => x.toFixed(1))}] vw=${vw}`);
+        if (b.width < 60) throw new Error(`${width}px: «Buscar» aplastado (${b.width.toFixed(1)}px)`);
+      }
+      await p.setViewportSize({ width: 375, height: 812 });
+      await p.goto(`${BASE}/carrito`);
+      // el cupón sigue funcionando
+      await p.getByLabel('Código del cupón').fill('JM10');
+      await p.getByRole('button', { name: 'APLICAR' }).click();
+      await expectText(p, 'JM10');
     }, browser, null, MOBILE);
 
     await browser.close();

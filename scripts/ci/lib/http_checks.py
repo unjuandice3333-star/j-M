@@ -164,7 +164,7 @@ check("cancelación: processing → cancelled con nota (reingreso de stock)", s 
 # ---------------- DEVOLUCIONES PENDIENTES EN WOMPI (ejecución 133) ----------------
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # python -I no añade la carpeta del script
 import refund_filter_checks
-refund_filter_checks.run(call, check, tokens)
+refund_filter_checks.run(call, check, {**tokens, "service": SERVICE})
 
 json.dump({"passed": sum(1 for r in results if r[1]), "total": len(results),
            "results": [{"check": n, "ok": ok, "detail": d} for n, ok, d in results]},

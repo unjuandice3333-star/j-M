@@ -39,6 +39,17 @@ export const refundTotal = (records) => records.filter((r) => r.status !== 'reje
 /** ¿Hay alguna devolución registrada que todavía debe hacerse en Wompi? */
 export const hasPendingRefund = (records) => records.some((r) => r.pending);
 
+/**
+ * Ejecución 135: título del bloque de devoluciones. Con una sola, igual que antes; con varias, en plural y diciendo
+ * cuántas faltan por hacer en Wompi (un pedido puede tener una hecha y otra pendiente a la vez).
+ */
+export function refundHeading(records, format = String) {
+  const total = format(refundTotal(records));
+  if (records.length <= 1) return `DEVOLUCIÓN REGISTRADA · ${total}`;
+  const pending = records.filter((r) => r.pending).length;
+  return `DEVOLUCIONES REGISTRADAS · ${total}${pending ? ` · ${pending} ${pending === 1 ? 'pendiente' : 'pendientes'} de hacer en Wompi` : ''}`;
+}
+
 /** Texto del inventario para una devolución. */
 export const refundStockText = (record) => (record.restock
   ? 'Inventario repuesto al cancelar'

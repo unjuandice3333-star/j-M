@@ -431,6 +431,13 @@ function start(port = 54321) {
           const row = { key, image_url: body.image_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%2210%22/%3E', storage_path: null, alt_text: body.alt_text || null, title: null, body: null, updated_at: new Date().toISOString() };
           S.tables.site_content.push(row); return send(res, 200, row);
         }
+        // Ejecución 135: FIXTURE sintético — segunda devolución `requested` en un pedido que ya tiene otra (la app hoy no la crea;
+        // el esquema lo permite y la BD real se prueba igual con service_role en refund_filter_checks.py).
+        if (p.startsWith('/__synthetic-extra-refund/')) {
+          const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o || !(o.order_refunds || []).length) return send(res, 404, {});
+          const r = { id: crypto.randomUUID(), amount: Number(body.amount) || 1000, reason: body.reason || 'Segunda devolución (fixture)', status: 'requested', restock: false, provider_refund_id: null, created_at: new Date().toISOString() };
+          o.order_refunds.push(r); return send(res, 200, { id: r.id });
+        }
         if (p.startsWith('/__synthetic-mark-delivered/')) { const o = S.tables.online_orders.find((x) => x.order_number === p.split('/').pop()); if (!o || o.status !== 'paid') return send(res, 404, {}); for (const st of ['processing', 'shipped', 'delivered']) transition(o, st, 'sintético'); return send(res, 200, { status: o.status }); }
         // Ejecución 119: otra compra (fuera de este navegador) se lleva unidades: fija el stock FÍSICO de un SKU.
         if (p.startsWith('/__synthetic-set-stock/')) { const [, sku, n] = p.split('/').slice(1); const inv = S.inventories.find((i) => i.variants.sku === decodeURIComponent(sku)); if (!inv) return send(res, 404, {}); inv.stock = Number(n); return send(res, 200, { sku: inv.variants.sku, stock: inv.stock }); }

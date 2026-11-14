@@ -38,6 +38,7 @@ def check(name, cond, detail=""):
     print(("PASS " if cond else "FAIL ") + name + (f"  [{detail}]" if detail else ""))
 
 tokens = {"admin": jwt("00000000-0000-4000-8000-00000000a002"),
+          "service": jwt("00000000-0000-4000-8000-00000000a002", role="service_role"),
           **{k: jwt(v) for k, v in refund_filter_checks.CUSTOMERS.items()}}
 s, b = call("POST", "/rest/v1/rpc/is_admin", {}, token=tokens["admin"])
 check("JWT local: is_admin() verdadero para admin@qa", s == 200 and b is True, f"HTTP {s} {b}")

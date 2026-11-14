@@ -7,7 +7,10 @@ Comprueba, con JWT reales y RLS real:
   * que el embebido completo `order_refunds` del detalle NO queda recortado por el filtro;
   * la lectura de la campana / dashboard (`order_refunds?status=eq.requested`) para el admin y su aislamiento por RLS
     para clientes y anon;
-  * `admin_mark_refund_processed` vía API: el pedido sale del filtro.
+  * `admin_mark_refund_processed` vía API: el pedido sale del filtro;
+  * ejecución 135: un pedido con una devolución HECHA y otra PENDIENTE a la vez (la segunda se inserta con la llave
+    `service_role` del stack local; la app hoy no crea dos por pedido, pero el esquema lo permite): vuelve al filtro
+    UNA sola vez, el conteo es por pedido, el detalle trae ambas sin recortar, y al marcar la segunda sale del filtro.
 
 Lo usan `http_checks.py` (job `db-supabase`: GoTrue + PostgREST oficiales) y `supabase/tests/postgrest_local.sh`
 (PostgreSQL 16 + contenedor PostgREST). `call(method, path, body=None, token=None, headers=None)` debe devolver
@@ -30,7 +33,7 @@ def order_select():
 
 
 def run(call, check, tokens):
-    """tokens: {'admin': jwt, 'cliente1': jwt, 'cliente2': jwt}."""
+    """tokens: {'admin': jwt, 'cliente1': jwt, 'cliente2': jwt, 'service': jwt service_role (solo stack local)}."""
     sel = order_select()
     filt = f"{sel},pending_refunds:order_refunds!inner(id)"
     base = f"/rest/v1/online_orders?select={filt}&pending_refunds.status=eq.requested&order=created_at.desc,id.desc"
@@ -86,6 +89,7 @@ def run(call, check, tokens):
                 {"p_refund_id": target["id"], "p_provider_refund_id": "qa-refund-" + secrets.token_hex(6)}, token=tokens["admin"])
     check("devoluciones: admin_mark_refund_processed vía API (admin)", s == 200 and isinstance(b, dict) and b.get("status") == "processed",
           f"HTTP {s} {b}")
+    target = dict(target, provider_refund_id=b.get("provider_refund_id") if isinstance(b, dict) else None)
     still = any(r["order_id"] == target["order_id"] and r["id"] != target["id"] for r in refunds)
     s, b = call("GET", base, token=tokens["admin"])
     after = {o["id"] for o in b} if s == 200 and isinstance(b, list) else None
@@ -96,3 +100,53 @@ def run(call, check, tokens):
           s == 200 and isinstance(b, list) and len(b) == 1
           and any(r["id"] == target["id"] and r["status"] == "processed" and r["provider_refund_id"] for r in b[0]["order_refunds"]),
           f"HTTP {s}")
+
+    mixed_order(call, check, tokens, base, page, ref_q, sel, target)
+
+
+def mixed_order(call, check, tokens, base, page, ref_q, sel, done):
+    """Pedido con una devolución ya hecha en Wompi (`done`, recién marcada) y otra pendiente a la vez."""
+    oid = done["order_id"]
+    s, b = call("POST", "/rest/v1/order_refunds?select=id,order_id,status",
+                {"order_id": oid, "amount": 1000, "reason": "QA ejecución 135: segunda devolución del mismo pedido"},
+                token=tokens.get("service"), headers={"Prefer": "return=representation"})
+    second = b[0] if s == 201 and isinstance(b, list) and b else None
+    check("devoluciones mixtas: service_role registra una segunda devolución pendiente en el mismo pedido",
+          second is not None and second["status"] == "requested", f"HTTP {s}")
+    if second is None:
+        return
+    s, b = call("POST", "/rest/v1/order_refunds", {"order_id": oid, "amount": 1000, "reason": "x"}, token=tokens["admin"])
+    check("devoluciones mixtas: un admin no inserta devoluciones directamente (solo vía RPC)", s in (401, 403), f"HTTP {s}")
+
+    s, refunds = call("GET", ref_q, token=tokens["admin"])
+    want = {r["order_id"] for r in refunds} if s == 200 and isinstance(refunds, list) else None
+    s, b, h = call("GET", base, token=tokens["admin"], headers=page, want_headers=True)
+    rows = [o for o in b if o["id"] == oid] if s in (200, 206) and isinstance(b, list) else []
+    total = (h.get("Content-Range") or h.get("content-range") or "").split("/")[-1]
+    check("devoluciones mixtas: el pedido vuelve al filtro una sola vez (sin filas duplicadas por el !inner)",
+          len(rows) == 1 and len(b) == len({o["id"] for o in b}), f"HTTP {s} filas del pedido={len(rows)}")
+    check("devoluciones mixtas: filtro y conteo exacto por pedido, no por devolución",
+          want is not None and {o["id"] for o in b} == want and total == str(len(want)), f"Content-Range total={total!r}")
+    statuses = sorted(r["status"] for r in rows[0]["order_refunds"]) if rows else []
+    check("devoluciones mixtas: el detalle filtrado trae la hecha y la pendiente (embebido completo sin recortar)",
+          {done["id"], second["id"]} <= {r["id"] for r in rows[0]["order_refunds"]} if rows else False,
+          f"estados={statuses}")
+    check("devoluciones mixtas: el embebido del filtro solo cuenta las pendientes",
+          bool(rows) and len(rows[0]["pending_refunds"]) == statuses.count("requested") >= 1, f"estados={statuses}")
+
+    s, b = call("POST", "/rest/v1/rpc/admin_mark_refund_processed",
+                {"p_refund_id": second["id"], "p_provider_refund_id": done.get("provider_refund_id") or "dup"}, token=tokens["admin"])
+    check("devoluciones mixtas: no se reutiliza el id de Wompi de la devolución ya hecha",
+          s == 400 and isinstance(b, dict) and b.get("hint") == "JM_PROVIDER_REFUND_ID_IN_USE", f"HTTP {s} {b}")
+    s, b = call("POST", "/rest/v1/rpc/admin_mark_refund_processed",
+                {"p_refund_id": second["id"], "p_provider_refund_id": "qa-refund-" + secrets.token_hex(6)}, token=tokens["admin"])
+    check("devoluciones mixtas: marcar la segunda como hecha (admin)", s == 200 and isinstance(b, dict) and b.get("status") == "processed",
+          f"HTTP {s} {b}")
+    s, b = call("GET", base, token=tokens["admin"])
+    check("devoluciones mixtas: con ambas hechas el pedido sale del filtro",
+          s == 200 and isinstance(b, list) and oid not in {o["id"] for o in b}, f"HTTP {s}")
+    s, b = call("GET", f"/rest/v1/online_orders?select={sel}&id=eq.{oid}", token=tokens["admin"])
+    check("devoluciones mixtas: el detalle sin filtro conserva las dos devoluciones procesadas",
+          s == 200 and isinstance(b, list) and len(b) == 1
+          and all(r["status"] == "processed" for r in b[0]["order_refunds"] if r["id"] in (done["id"], second["id"]))
+          and len({done["id"], second["id"]} & {r["id"] for r in b[0]["order_refunds"]}) == 2, f"HTTP {s}")
