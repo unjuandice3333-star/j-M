@@ -146,6 +146,14 @@ export const productService = {
     return data.map((p) => normalizeProduct(p, availability, ratings));
   },
 
+  /** Disponibilidad actual (stock − reservado) por variante de los productos dados: Map variant_id → unidades. */
+  async getVariantAvailability(productIds) {
+    if (!productIds?.length) return new Map();
+    const av = await fetchAllIn((ids) => supabase.from('v_variant_availability').select('variant_id, available').in('product_id', ids).order('variant_id'), productIds);
+    if (av.error) throw new CatalogError('No se pudo consultar la disponibilidad', av.error);
+    return new Map(av.data.map((r) => [r.variant_id, Math.max(0, Number(r.available) || 0)]));
+  },
+
   /** Un producto activo por slug (null si no existe o no está publicado). */
   async getProductBySlug(slug) {
     const { data, error } = await supabase.from('products').select(PRODUCT_SELECT).eq('slug', slug).eq('status', 'active').maybeSingle();

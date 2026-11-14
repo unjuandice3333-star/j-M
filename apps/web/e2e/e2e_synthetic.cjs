@@ -2035,6 +2035,42 @@ async function main() {
       if (await other.getByRole('button', { name: 'AGREGAR AL CARRITO' }).first().isDisabled()) throw new Error('la talla liberada no se puede agregar');
     }, browser);
 
+    await journey('57. Ficha de producto: la talla elegida baja de stock o se agota mientras el cliente está en otra pestaña → se ajusta y se avisa al volver', async (p) => {
+      const setStock = (sku, n) => fetch(`${API_URL}/__synthetic-set-stock/${sku}/${n}`).then(j);
+      await p.goto(`${BASE}/producto/polo-clasico`);
+      await p.getByRole('button', { name: 'Talla M', exact: true }).click();
+      const plus = p.getByRole('button', { name: 'Aumentar cantidad' }).first();
+      for (let i = 0; i < 3; i += 1) await plus.click();
+      const qty = () => plus.evaluate((b) => b.previousElementSibling.textContent);
+      if ((await qty()) !== '4') throw new Error(`cantidad inicial: ${await qty()}`);
+      const notice = p.getByTestId('pdp-stock-notice');
+      // otra persona compra: quedan 2; el cliente vuelve a la pestaña
+      await setStock('POL-M-NEG', 2);
+      await p.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await notice.filter({ hasText: 'Solo quedan 2 unidad(es) de la talla M en Negro; ajustamos la cantidad.' }).waitFor({ timeout: 8000 });
+      if ((await qty()) !== '2') throw new Error(`cantidad tras ajustar: ${await qty()}`);
+      if (!(await plus.isDisabled())) throw new Error('«+» debía respetar el nuevo máximo');
+      if ((await p.getByRole('button', { name: 'Talla M', exact: true }).getAttribute('aria-pressed')) !== 'true') throw new Error('se perdió la talla elegida');
+      // se agota del todo mientras el cliente mira otra cosa (cambio de visibilidad)
+      await setStock('POL-M-NEG', 0);
+      await p.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+      await notice.filter({ hasText: 'La talla M en Negro se acaba de agotar. Elige otra talla o color.' }).waitFor({ timeout: 8000 });
+      const sold = p.getByRole('button', { name: 'Talla M agotada' });
+      if (!(await sold.isDisabled())) throw new Error('la talla agotada debía quedar deshabilitada');
+      await expectText(p, 'Producto agotado');
+      // agregar sin talla pide elegirla (no llega al carrito una variante agotada)
+      await p.getByRole('button', { name: 'AGREGAR AL CARRITO' }).first().click();
+      await expectText(p, 'Por favor selecciona una talla antes de agregar al carrito.');
+      if ((await p.evaluate(() => JSON.parse(localStorage.getItem('jm-fashion-store-cart-v14') || '{}')?.state?.items?.length ?? 0)) !== 0) throw new Error('no debía agregarse nada al carrito');
+      // repone stock: vuelve a estar a la venta sin recargar
+      await setStock('POL-M-NEG', 3);
+      await p.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await p.getByRole('button', { name: 'Talla M', exact: true }).click({ timeout: 8000 });
+      if (await notice.count()) throw new Error('el aviso debía desaparecer al elegir talla');
+      await p.getByRole('button', { name: 'AGREGAR AL CARRITO' }).first().click();
+      await p.getByRole('button', { name: /^Abrir carrito, 1 producto/ }).waitFor({ timeout: 8000 });
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });

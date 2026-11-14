@@ -77,7 +77,8 @@ describe('UI', () => {
     document.body.appendChild(host);
     root = createRoot(host);
     db.collections = [];
-    act(() => useECommerceStore.setState({ activeModal: null, recommendedSize: null, products: [], productsLoaded: true }));
+    // catálogo recién cargado: la ficha no vuelve a consultar la disponibilidad al abrirse (ejecución 123)
+    act(() => useECommerceStore.setState({ activeModal: null, recommendedSize: null, products: [], productsLoaded: true, productsLoadedAt: Date.now() }));
   });
   afterEach(() => { act(() => root.unmount()); host.remove(); });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Star,
@@ -29,6 +29,9 @@ import { analyticsService } from '../services/analytics';
 import { isOneSize, sizeHelpFor } from '../utils/sizeAdvice';
 import { DialogPanel } from '../components/Common/DialogPanel';
 
+// Un catálogo cargado hace más de esto se vuelve a consultar al abrir la ficha.
+const STOCK_STALE_MS = 30_000;
+
 export const ProductDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -45,7 +48,8 @@ export const ProductDetailPage = () => {
     openSizeGuide,
     openSizeRecommender,
     recommendedSize,
-    clearRecommendedSize
+    clearRecommendedSize,
+    refreshProductStock
   } = useECommerceStore();
   const shippingPolicy = useShippingPolicy();
 
@@ -68,6 +72,7 @@ export const ProductDetailPage = () => {
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [addedFeedback, setAddedFeedback] = useState(false);
   const [cartError, setCartError] = useState(null);
+  const [stockNotice, setStockNotice] = useState(null);
   const [reviews, setReviews] = useState([]);
   const { hash } = useLocation();
 
@@ -97,20 +102,63 @@ export const ProductDetailPage = () => {
     envios: false
   });
 
-  // Reset state, track analytics and inject JSON-LD Product Schema
+  // Al cambiar de producto: estado inicial, arriba de la página y vista en analítica. Depende del id (no del
+  // objeto): refrescar el stock crea un objeto nuevo y no debe borrar la talla elegida ni mover la página.
+  useEffect(() => {
+    if (!product) return;
+    setSelectedImage(0);
+    setSelectedColor(product.colors?.[0] || null);
+    setSelectedSize(null);
+    setCartError(null);
+    setStockNotice(null);
+    setSizeError(false);
+    setQuantity(1);
+    setAddedFeedback(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // GA4 & Meta Pixel View Item
+    analyticsService.viewItem(product);
+  }, [slug, product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Disponibilidad al día: al entrar con un catálogo cargado hace rato y al volver a la pestaña (otra persona
+  // pudo comprar la última unidad mientras el cliente miraba otra cosa).
+  const productId = product?.id;
+  const refreshing = useRef(false);
+  useEffect(() => {
+    if (!productId || !refreshProductStock) return undefined;
+    const refresh = () => {
+      if (refreshing.current) return;
+      refreshing.current = true;
+      refreshProductStock(productId).finally(() => { refreshing.current = false; });
+    };
+    const loadedAt = useECommerceStore.getState().productsLoadedAt ?? 0;
+    if (Date.now() - loadedAt > STOCK_STALE_MS) refresh();
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => { document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('focus', onVisible); };
+  }, [productId, refreshProductStock]);
+
+  // Si la variante elegida se agotó o bajó de la cantidad elegida (tras refrescar), se avisa y se corrige
+  // antes de que el cliente intente agregarla.
+  const selectedAvailable = selectedVariant?.available;
+  useEffect(() => {
+    if (!selectedSize || selectedAvailable == null) return;
+    const where = `talla ${selectedSize}${selectedColor?.name ? ` en ${selectedColor.name}` : ''}`;
+    if (selectedAvailable <= 0) {
+      setSelectedSize(null);
+      setQuantity(1);
+      setCartError(null);
+      setStockNotice(`La ${where} se acaba de agotar. Elige otra talla o color.`);
+    } else if (quantity > selectedAvailable) {
+      setQuantity(selectedAvailable);
+      setCartError(null);
+      setStockNotice(`Solo quedan ${selectedAvailable} unidad(es) de la ${where}; ajustamos la cantidad.`);
+    }
+  }, [selectedAvailable]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // JSON-LD Product Schema (se actualiza también cuando cambia la disponibilidad)
   useEffect(() => {
     if (product) {
-      setSelectedImage(0);
-      setSelectedColor(product.colors?.[0] || null);
-      setSelectedSize(null);
-      setCartError(null);
-      setSizeError(false);
-      setQuantity(1);
-      setAddedFeedback(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      // GA4 & Meta Pixel View Item
-      analyticsService.viewItem(product);
-
       // JSON-LD Product Schema for Google Search
       const schemaData = {
         '@context': 'https://schema.org/',
@@ -394,7 +442,7 @@ export const ProductDetailPage = () => {
                 {product.colors?.map((c, idx) => (
                   <button
                     key={idx}
-                    onClick={() => { setSelectedColor(c); setSelectedImage(0); setSelectedSize(null); setQuantity(1); setCartError(null); }}
+                    onClick={() => { setSelectedColor(c); setSelectedImage(0); setSelectedSize(null); setQuantity(1); setCartError(null); setStockNotice(null); }}
                     title={c.name}
                     aria-label={`Color ${c.name}`}
                     aria-pressed={selectedColor?.name === c.name}
@@ -452,7 +500,7 @@ export const ProductDetailPage = () => {
                       aria-pressed={isSelected}
                       aria-label={soldOut ? `Talla ${sz} agotada` : `Talla ${sz}`}
                       title={soldOut ? 'Agotada en este color' : v.available <= 3 ? `Últimas ${v.available} unidades` : undefined}
-                      onClick={() => { setSelectedSize(sz); setSizeError(false); setCartError(null); setQuantity(1); }}
+                      onClick={() => { setSelectedSize(sz); setSizeError(false); setCartError(null); setStockNotice(null); setQuantity(1); }}
                       style={{
                         minWidth: '52px',
                         height: '44px',
@@ -472,6 +520,9 @@ export const ProductDetailPage = () => {
                   );
                 })}
               </div>
+              {stockNotice && (
+                <div role="status" data-testid="pdp-stock-notice" style={{ fontSize: '0.82rem', color: '#B45309', fontWeight: 700, marginTop: '0.5rem' }}>{stockNotice}</div>
+              )}
               {!product.inStock && (
                 <div role="status" style={{ fontSize: '0.85rem', color: '#E11D48', fontWeight: 800, marginTop: '0.5rem' }}>Producto agotado</div>
               )}

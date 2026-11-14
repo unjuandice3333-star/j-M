@@ -48,6 +48,7 @@ export const useECommerceStore = create(
       isLoadingProducts: false,
       productsError: null,
       productsLoaded: false,
+      productsLoadedAt: 0,
       shippingMethods: [],
 
       loadProducts: async (force = false) => {
@@ -57,12 +58,43 @@ export const useECommerceStore = create(
         try {
           const { default: productService } = await import('../services/productService');
           const [products, shippingMethods] = await Promise.all([productService.getProducts(), orderService.getShippingMethods()]);
-          set({ products, shippingMethods, isLoadingProducts: false, productsLoaded: true });
+          set({ products, shippingMethods, isLoadingProducts: false, productsLoaded: true, productsLoadedAt: Date.now() });
           get().reconcileCart();
         } catch (err) {
           console.error('[catálogo] no se pudo cargar:', err?.cause?.message || err.message);
           set({ isLoadingProducts: false, productsError: 'No pudimos cargar el catálogo. Revisa tu conexión e inténtalo de nuevo.' });
         }
+      },
+
+      // Vuelve a leer la disponibilidad de UN producto (ficha abierta y el cliente regresa a la pestaña): solo
+      // actualiza `available`/`stock`/`inStock` de sus variantes; el resto del catálogo no cambia de identidad.
+      // Devuelve el producto actualizado, o null si no se pudo consultar (se conserva lo que había).
+      refreshProductStock: async (productId) => {
+        if (!productId || !get().products.some((p) => p.id === productId)) return null;
+        let fresh;
+        try {
+          const { default: productService } = await import('../services/productService');
+          fresh = await productService.getVariantAvailability([productId]);
+        } catch (err) {
+          console.warn('[catálogo] no se pudo refrescar la disponibilidad:', err?.cause?.message || err.message);
+          return null;
+        }
+        let updated = null;
+        let changed = false;
+        const products = get().products.map((p) => {
+          if (p.id !== productId) return p;
+          const rawVariants = (p.rawVariants ?? []).map((v) => {
+            const a = fresh.get(v.id) ?? 0;
+            return a === v.available ? v : { ...v, available: a };
+          });
+          if (rawVariants.every((v, i) => v === p.rawVariants[i])) { updated = p; return p; }
+          const stock = rawVariants.reduce((n, v) => n + v.available, 0);
+          updated = { ...p, rawVariants, stock, inStock: stock > 0 };
+          changed = true;
+          return updated;
+        });
+        if (changed) set({ products });
+        return updated;
       },
 
       // ---------------------------------------------------------------- carrito (persistido en el navegador)
