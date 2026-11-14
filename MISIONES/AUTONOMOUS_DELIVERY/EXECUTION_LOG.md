@@ -1181,3 +1181,15 @@
 - Commits: `6b6d8e4` (código) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: punto 0(bz) de Pendiente (registro de devolución visible en el detalle del pedido del admin).
+
+## Ejecución 129 — 2026-11-14 ~07:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-fh6f5e` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `9770a9e`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- Tarea: punto 0(bz) de Pendiente: el admin no veía en el detalle de un pedido cancelado/reembolsado el registro de devolución de `order_refunds` ni si quedaba pendiente de hacerse en Wompi (D102).
+- Archivos: nuevo `apps/web/src/utils/orderRefunds.js`, `apps/web/src/pages/admin/AdminOrdersPage.jsx` (`order_refunds` en el select + sección «Devolución registrada»), nuevo `apps/web/src/__tests__/adminOrderRefunds.test.jsx` (5), `apps/web/e2e/synthetic/backend.cjs` (registro de devolución en `transition` como `private.transition_order`; fixture con `order_refunds: []`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 61).
+- Pruebas (ejecutadas aquí): `adminOrderRefunds.test.jsx` 5/5 (las 2 de UI fallan sin el cambio de `AdminOrdersPage.jsx`, `git stash`); `pnpm test:unit` 658/658 (69 archivos); recorrido 61 falla sin el cambio y pasa con él; `npx eslint apps packages scripts --max-warnings 0` OK; `pnpm build` OK; `pnpm test:e2e-synthetic` pasada completa **61/61**. Sin migración: pgTAP no re-ejecutado.
+- Revisión de correo/plantilla al cliente: no existe correo transaccional ni plantillas (`supabase/functions` solo tiene `wompi-webhook`; sin `supabase/templates`).
+- Errores pendientes: ninguno nuevo. No probado en WebKit ni contra Supabase real remoto.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones `20261111120000`…`20261116120000` en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: el de código + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: punto 0(ca) de Pendiente (marcar una devolución como hecha en Wompi desde el admin: RPC aditiva + pgTAP + UI + E2E).
