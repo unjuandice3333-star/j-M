@@ -454,6 +454,8 @@ export const HomePage = () => {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'flex-end',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
               marginBottom: '1.5rem'
             }}
           >
@@ -544,7 +546,7 @@ export const HomePage = () => {
                 transition: 'color 0.2s ease',
                 marginLeft: '0.5rem'
               }}
-              className="ver-todo-link"
+              className="ver-todo-link jm-tap-inline"
             >
               <span>VER TODO</span>
               <ChevronRight size={17} className="ver-todo-arrow" style={{ transition: 'transform 0.2s ease' }} />

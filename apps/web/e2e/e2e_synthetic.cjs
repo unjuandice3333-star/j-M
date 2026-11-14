@@ -109,6 +109,61 @@ async function checkAllControls(page, scope, where, failures) {
   }
   return n;
 }
+// Móvil (D114/D115): a 375 y 320 px, con fuentes ensanchadas salvo `NO_WIDEN`, mide cada pantalla de `list`
+// ([url, abrir (o null), nombre del diálogo (o null: se mide `main`), texto que indica que cargó]): ningún control
+// fuera de la pantalla (`html, body { overflow-x: hidden }` corta en vez de desbordar), ningún contenedor que se
+// desplace en X escondiendo contenido (salvo tablas y carruseles con snap), la página sin desborde. Con `links`
+// también se miden los enlaces y el pie de página. Acumula en `failures`.
+async function measureMobileScreens(p, list, failures, { links = false } = {}) {
+  for (const width of [375, 320]) {
+    await p.setViewportSize({ width, height: 812 });
+    for (const [url, opener, dialog, text] of list) {
+      await p.goto(`${BASE}${url}`);
+      await p.locator('main').first().waitFor({ timeout: 10000 });
+      await p.waitForLoadState('networkidle').catch(() => {});
+      if (text) await p.getByText(text, { exact: false }).first().waitFor({ timeout: 8000 });
+      if (opener) await opener(p).click();
+      if (dialog) { await p.getByRole('dialog', { name: dialog }).waitFor({ timeout: 8000 }); await p.waitForTimeout(400); }
+      if (!process.env.NO_WIDEN) await p.addStyleTag({ content: 'body *{letter-spacing:0.06em !important} input,select,textarea{font-size:1.05rem !important}' });
+      await p.waitForTimeout(250);
+      const where = `${width}px ${url}${dialog ? ` · ${dialog}` : ''}`;
+      const r = await p.evaluate(({ isDialog, links }) => {
+        const vw = document.documentElement.clientWidth;
+        const root = isDialog ? [...document.querySelectorAll('[role=dialog]')].pop() : document.querySelector('main');
+        const name = (el) => `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}«${(el.getAttribute('aria-label') || el.textContent || el.placeholder || el.name || '').trim().slice(0, 24)}»`;
+        const bad = []; let controls = 0;
+        const sel = `input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea, button${links ? ', a[href]' : ''}`;
+        // con `links`, también el pie de página (fuera de `main`): enlaces, boletín y redes
+        const footer = !isDialog && links ? [...document.querySelectorAll('footer')].flatMap((x) => [...x.querySelectorAll(sel)]) : [];
+        for (const el of [...root.querySelectorAll(sel), ...footer]) {
+          const b = el.getBoundingClientRect(); if (!b.width || !b.height) continue;
+          controls += 1;
+          let clipped = false; // dentro de una tabla o un carrusel desplazable propio: intencional
+          for (let a = el.parentElement; a && a !== root && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a); if ((a.querySelector(':scope > table') || cs.scrollSnapType !== 'none') && cs.overflowX !== 'visible') { clipped = true; break; } }
+          if (!clipped && (b.left < -0.5 || b.right > vw + 0.5)) bad.push(`${name(el)}[${b.left.toFixed(0)},${b.right.toFixed(0)}]`);
+        }
+        // `html, body { overflow-x: hidden }`: lo que se sale por la derecha no desborda, se corta. Los iconos de la
+        // cabecera (búsqueda, cuenta, favoritos, carrito) deben quedar enteros en la pantalla.
+        for (const el of document.querySelectorAll('header .header-action-btn, header .header-icon-touch')) {
+          const b = el.getBoundingClientRect(); if (b.width && (b.left < -0.5 || b.right > vw + 0.5)) bad.push(`cabecera ${name(el)}[${b.left.toFixed(0)},${b.right.toFixed(0)}]`);
+        }
+        const scrollers = []; // contenedores que se desplazan en X sin ser una tabla ni un carrusel con snap
+        for (const el of [root, ...root.querySelectorAll('*'), ...(!isDialog && links ? document.querySelectorAll('footer, footer *') : [])]) {
+          const cs = getComputedStyle(el);
+          if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1 && !el.querySelector(':scope > table') && cs.scrollSnapType === 'none') scrollers.push(`${name(el)} ${el.scrollWidth}>${el.clientWidth}`);
+        }
+        const rb = root.getBoundingClientRect();
+        return { vw, sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth), bad, scrollers, controls, rootOut: rb.left < -0.5 || rb.right > vw + 0.5 };
+      }, { isDialog: !!dialog, links });
+      if (process.env.E2E_DEBUG) console.log(where, r.controls, r.bad.join(' '), '|', r.scrollers.join(' '), r.sw);
+      if (process.env.E2E_DEBUG && r.sw > r.vw) console.log('   ancho:', await p.evaluate(() => { const vw = document.documentElement.clientWidth; return [...document.querySelectorAll('body *')].filter((el) => { const b = el.getBoundingClientRect(); const pb = el.parentElement.getBoundingClientRect(); return b.width && b.right > vw + 0.5 && !(pb.right > vw + 0.5); }).slice(0, 5).map((el) => `${el.tagName}.${el.className}«${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30)}» r=${el.getBoundingClientRect().right.toFixed(0)}`).join(' ; '); }));
+      if (r.bad.length) failures.push(`${where}: ${r.bad.slice(0, 3).join(' ')}`);
+      else if (r.scrollers.length) failures.push(`${where}: se desplaza en horizontal ${r.scrollers.slice(0, 2).join(' ')}`);
+      else if (r.rootOut) failures.push(`${where}: el panel se sale de la pantalla`);
+      else if (r.sw > r.vw) failures.push(`${where}: desborde ${r.sw}px > ${r.vw}px`);
+    }
+  }
+}
 // Teclado en modales (D71): abre con Enter desde el control enfocado, el foco entra en el diálogo, Tab y Mayús+Tab
 // no salen de él (una vuelta completa + 1), Escape lo cierra y el foco vuelve al control que lo abrió.
 async function checkDialogKeyboard(page, opener, dialogName, where, failures) {
@@ -580,7 +635,7 @@ async function main() {
         try { await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 20000 }); }
         catch (e) {
           const why = await p.evaluate(() => ({ url: location.pathname, alerts: [...document.querySelectorAll('[role=alert]')].map((x) => x.textContent.trim()).filter(Boolean).slice(0, 3),
-            invalid: [...document.querySelectorAll('[aria-invalid=true]')].map((x) => x.name), button: document.querySelector('button[type=submit]')?.disabled,
+            invalid: [...document.querySelectorAll('[aria-invalid=true]')].map((x) => `${x.name}=«${x.value}»`), button: document.querySelector('button[type=submit]')?.disabled,
             session: Object.keys(localStorage).some((k) => k.includes('auth-token')) })).catch(() => ({}));
           throw new Error(`pedido ${i + 1}: sin confirmación tras CONFIRMAR Y PAGAR · ${JSON.stringify(why)} · ${String(e.message).split('\n')[0]}`);
         }
@@ -3177,53 +3232,7 @@ async function main() {
         ['/guia-de-tallas', null, null, null],
         ['/contacto', null, null, null],
       ];
-      const failures = []; const run = async (list) => {
-        for (const width of [375, 320]) {
-          await p.setViewportSize({ width, height: 812 });
-          for (const [url, opener, dialog, text] of list) {
-            await p.goto(`${BASE}${url}`);
-            await p.locator('main').first().waitFor({ timeout: 10000 });
-            await p.waitForLoadState('networkidle').catch(() => {});
-            if (text) await p.getByText(text, { exact: false }).first().waitFor({ timeout: 8000 });
-            if (opener) await opener(p).click();
-            if (dialog) { await p.getByRole('dialog', { name: dialog }).waitFor({ timeout: 8000 }); await p.waitForTimeout(400); }
-            if (!process.env.NO_WIDEN) await p.addStyleTag({ content: 'body *{letter-spacing:0.06em !important} input,select,textarea{font-size:1.05rem !important}' });
-            await p.waitForTimeout(250);
-            const where = `${width}px ${url}${dialog ? ` · ${dialog}` : ''}`;
-            const r = await p.evaluate((isDialog) => {
-              const vw = document.documentElement.clientWidth;
-              const root = isDialog ? [...document.querySelectorAll('[role=dialog]')].pop() : document.querySelector('main');
-              const name = (el) => `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}«${(el.getAttribute('aria-label') || el.textContent || el.placeholder || el.name || '').trim().slice(0, 24)}»`;
-              const bad = []; let controls = 0;
-              for (const el of root.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea, button')) {
-                const b = el.getBoundingClientRect(); if (!b.width || !b.height) continue;
-                controls += 1;
-                let clipped = false; // dentro de una tabla o un carrusel desplazable propio: intencional
-                for (let a = el.parentElement; a && a !== root; a = a.parentElement) { const cs = getComputedStyle(a); if ((a.querySelector(':scope > table') || cs.scrollSnapType !== 'none') && cs.overflowX !== 'visible') { clipped = true; break; } }
-                if (!clipped && (b.left < -0.5 || b.right > vw + 0.5)) bad.push(`${name(el)}[${b.left.toFixed(0)},${b.right.toFixed(0)}]`);
-              }
-              // `html, body { overflow-x: hidden }`: lo que se sale por la derecha no desborda, se corta. Los iconos de la
-              // cabecera (búsqueda, cuenta, favoritos, carrito) deben quedar enteros en la pantalla.
-              for (const el of document.querySelectorAll('header .header-action-btn, header .header-icon-touch')) {
-                const b = el.getBoundingClientRect(); if (b.width && (b.left < -0.5 || b.right > vw + 0.5)) bad.push(`cabecera ${name(el)}[${b.left.toFixed(0)},${b.right.toFixed(0)}]`);
-              }
-              const scrollers = []; // contenedores que se desplazan en X sin ser una tabla ni un carrusel con snap
-              for (const el of [root, ...root.querySelectorAll('*')]) {
-                const cs = getComputedStyle(el);
-                if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1 && !el.querySelector(':scope > table') && cs.scrollSnapType === 'none') scrollers.push(`${name(el)} ${el.scrollWidth}>${el.clientWidth}`);
-              }
-              const rb = root.getBoundingClientRect();
-              return { vw, sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth), bad, scrollers, controls, rootOut: rb.left < -0.5 || rb.right > vw + 0.5 };
-            }, !!dialog);
-            if (process.env.E2E_DEBUG) console.log(where, r.controls, r.bad.join(' '), '|', r.scrollers.join(' '), r.sw);
-            if (process.env.E2E_DEBUG && r.sw > r.vw) console.log('   ancho:', await p.evaluate(() => { const vw = document.documentElement.clientWidth; return [...document.querySelectorAll('body *')].filter((el) => { const b = el.getBoundingClientRect(); const pb = el.parentElement.getBoundingClientRect(); return b.width && b.right > vw + 0.5 && !(pb.right > vw + 0.5); }).slice(0, 5).map((el) => `${el.tagName}.${el.className}«${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30)}» r=${el.getBoundingClientRect().right.toFixed(0)}`).join(' ; '); }));
-            if (r.bad.length) failures.push(`${where}: ${r.bad.slice(0, 3).join(' ')}`);
-            else if (r.scrollers.length) failures.push(`${where}: se desplaza en horizontal ${r.scrollers.slice(0, 2).join(' ')}`);
-            else if (r.rootOut) failures.push(`${where}: el panel se sale de la pantalla`);
-            else if (r.sw > r.vw) failures.push(`${where}: desborde ${r.sw}px > ${r.vw}px`);
-          }
-        }
-      };
+      const failures = []; const run = (list) => measureMobileScreens(p, list, failures);
       await run(screens);
       // sin sesión: acceso (iniciar sesión y crear cuenta) y la cuenta como invitado
       await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.includes('auth-token')) localStorage.removeItem(k); });
@@ -3233,6 +3242,51 @@ async function main() {
         ['/cuenta', null, null, null],
         ['/cuenta/restablecer', null, null, null],
       ]);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
+    }, browser, null, MOBILE);
+
+    // Ejecución 139 (punto 0(ck), D115): la misma medida a 375/320 px con fuentes ensanchadas sobre las páginas de
+    // contenido de la tienda (inicio, catálogos, búsqueda, favoritos, «Mis pedidos», confirmación y seguimiento del
+    // pedido, páginas informativas) midiendo también los ENLACES (tarjetas, migas, menús) y el pie de página.
+    await journey('69. Móvil 320/375: inicio, catálogo, favoritos, confirmación, páginas informativas y pie sin nada fuera de la pantalla', async (p) => {
+      await p.goto(`${BASE}/login`); await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Lina Gómez');
+      await p.locator('input[type=email]').fill('lina.gomez@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await p.goto(`${BASE}/ropa`);
+      await p.getByRole('button', { name: 'Guardar en favoritos: Camiseta Básica' }).first().click();
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'lina.gomez@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 20000 }); await expectText(p, 'Pedido registrado');
+      const order = (await state()).orders[0];
+      const confirm = `/checkout/confirmacion?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.public_token)}`;
+      const failures = [];
+      await measureMobileScreens(p, [
+        ['/', null, null, null],
+        ['/ropa', null, null, 'Camiseta Básica'],
+        ['/ropa/camisetas', null, null, 'Camiseta Básica'],
+        ['/nuevo', null, null, null],
+        ['/ofertas', null, null, null],
+        ['/linea/urbana', null, null, null],
+        ['/buscar?q=camiseta', null, null, 'Camiseta Básica'],
+        ['/buscar?q=zzzz', null, null, null],
+        ['/cuenta/favoritos', null, null, 'Camiseta Básica'],
+        ['/cuenta/pedidos', null, null, `#${order.order_number}`],
+        [confirm, null, null, 'Pedido registrado'],
+        ['/envios', null, null, null],
+        ['/preguntas-frecuentes', null, null, null],
+        ['/cambios-y-devoluciones', null, null, null],
+        ['/nosotros', null, null, null],
+        ['/tiendas', null, null, null],
+        ['/terminos', null, null, null],
+        ['/privacidad', null, null, null],
+      ], failures, { links: true });
+      // pagado y en un navegador sin sesión (enlace de seguimiento)
+      await fetch(`${API_URL}/__synthetic-mark-paid/${order.order_number}`);
+      await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.includes('auth-token')) localStorage.removeItem(k); });
+      await measureMobileScreens(p, [[confirm, null, null, order.order_number], ['/cuenta/favoritos', null, null, null]], failures, { links: true });
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser, null, MOBILE);
 

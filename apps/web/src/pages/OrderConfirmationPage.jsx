@@ -251,12 +251,12 @@ export const OrderConfirmationPage = () => {
         )}
 
         {!isClosed && (
-          <ol aria-label="Estado del pedido" style={{ display: 'flex', justifyContent: 'space-between', listStyle: 'none', padding: 0, margin: '0 0 2.5rem 0', gap: '0.5rem' }}>
+          <ol aria-label="Estado del pedido" style={{ display: 'flex', justifyContent: 'space-between', listStyle: 'none', padding: 0, margin: '0 0 2.5rem 0', gap: 'clamp(0.2rem, 1.5vw, 0.5rem)' }}>
             {STEPS.map((s) => {
               const done = reached.has(s.key) || ORDER_FLOW.indexOf(st) >= ORDER_FLOW.indexOf(s.key);
               const Icon = s.icon;
               return (
-                <li key={s.key} style={{ flex: 1, textAlign: 'center', color: done ? '#09090B' : '#71717A', fontSize: '0.75rem', fontWeight: 700 }}>
+                <li key={s.key} style={{ flex: '1 1 0', minWidth: 0, overflowWrap: 'anywhere', hyphens: 'auto', textAlign: 'center', color: done ? '#09090B' : '#71717A', fontSize: '0.75rem', fontWeight: 700 }}>
                   <Icon size={22} style={{ margin: '0 auto 0.3rem auto' }} color={done ? '#10B981' : '#D4D4D8'} />
                   {s.title}
                 </li>
