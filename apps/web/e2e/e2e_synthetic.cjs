@@ -3027,6 +3027,55 @@ async function main() {
       await expectText(p, 'JM10');
     }, browser, null, MOBILE);
 
+    // Ejecución 136 (D111): mismo patrón (campo `flex: 1` sin `minWidth: 0`) en las barras de búsqueda del admin.
+    // Recorre las pantallas del admin a 375 y 320 px con fuentes más anchas y comprueba que ningún campo, selector
+    // ni botón de la zona principal queda fuera de la pantalla y que la página no se desplaza en horizontal.
+    await journey('66. Móvil 320/375: las barras de búsqueda y filtros del admin caben en la pantalla aunque las fuentes sean más anchas', async (p) => {
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      const routes = ['/admin/dashboard', '/admin/pedidos', '/admin/productos', '/admin/inventario', '/admin/clientes', '/admin/descuentos', '/admin/reviews', '/admin/boletin', '/admin/colecciones', '/admin/imagenes', '/admin/analytics', '/admin/configuracion'];
+      const failures = [];
+      for (const width of [375, 320]) {
+        await p.setViewportSize({ width, height: 812 });
+        for (const route of routes) {
+          await p.goto(`${BASE}${route}`);
+          await p.locator('main').first().waitFor({ timeout: 10000 });
+          await p.waitForLoadState('networkidle').catch(() => {});
+          if (!process.env.NO_WIDEN) await p.addStyleTag({ content: 'body *{letter-spacing:0.06em !important} input,select{font-size:1.05rem !important}' });
+          await p.waitForTimeout(250);
+          // `main` del admin tiene `overflowX: auto`: lo que no cabe NO desborda la página, se desplaza dentro de
+          // `main` y queda fuera de la vista. Por eso se miden los controles contra la pantalla ignorando `main`
+          // (solo cuentan como recortados los que están dentro de un contenedor propio, p. ej. una tabla desplazable)
+          // y además que `main` no tenga desplazamiento horizontal.
+          const r = await p.evaluate(() => {
+            const vw = document.documentElement.clientWidth; const bad = []; const main = document.querySelector('main');
+            for (const el of main.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, button')) {
+              const b = el.getBoundingClientRect(); if (!b.width || !b.height) continue;
+              let clipped = false;
+              for (let a = el.parentElement; a && a !== main; a = a.parentElement) { if (getComputedStyle(a).overflowX !== 'visible') { clipped = true; break; } }
+              if (!clipped && (b.left < -0.5 || b.right > vw + 0.5)) bad.push(`${el.tagName.toLowerCase()}«${(el.getAttribute('aria-label') || el.textContent || el.placeholder || '').trim().slice(0, 24)}»[${b.left.toFixed(0)},${b.right.toFixed(0)}]`);
+            }
+            const wide = []; // diagnóstico: elementos más externos que pasan del borde de `main`
+            const mr = main.getBoundingClientRect().right;
+            for (const el of main.querySelectorAll('*')) { const b = el.getBoundingClientRect(); if (b.width && b.right > mr + 0.5 && !(el.parentElement && el.parentElement !== main && el.parentElement.getBoundingClientRect().right > mr + 0.5)) wide.push(`${el.tagName.toLowerCase()}«${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 24)}»w${b.width.toFixed(0)}`); }
+            return { vw, sw: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth), msw: main.scrollWidth, mcw: main.clientWidth, bad, wide: wide.slice(0, 4) };
+          });
+          if (process.env.E2E_DEBUG) console.log(width, route, r.msw, r.mcw, r.bad.length, r.wide.join(' '));
+          if (r.bad.length) failures.push(`${width}px ${route}: ${r.bad.slice(0, 3).join(' ')}`);
+          else if (r.sw > r.vw) failures.push(`${width}px ${route}: desborde ${r.sw}px > ${r.vw}px`);
+          else if (r.msw > r.mcw + 1) failures.push(`${width}px ${route}: el contenido del admin se desplaza en horizontal (${r.msw}px > ${r.mcw}px)`);
+        }
+      }
+      if (failures.length) throw new Error(failures.slice(0, 6).join(' · '));
+      // en 320 la búsqueda y los filtros de productos siguen funcionando
+      await p.goto(`${BASE}/admin/productos`);
+      await p.getByRole('table').getByText('Camiseta Básica').first().waitFor({ timeout: 8000 });
+      await p.getByLabel('Buscar productos').fill('polo');
+      await p.getByRole('table').getByText('Polo Clásico').first().waitFor({ timeout: 8000 });
+      if (await p.getByRole('table').getByText('Camiseta Básica').count()) throw new Error('la búsqueda «polo» sigue mostrando la camiseta');
+      await assertTappable(p.getByRole('button', { name: 'CREAR NUEVO PRODUCTO' }), '320px /admin/productos «CREAR NUEVO PRODUCTO»');
+    }, browser, null, MOBILE);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

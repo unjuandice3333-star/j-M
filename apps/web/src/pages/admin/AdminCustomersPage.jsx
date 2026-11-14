@@ -102,9 +102,9 @@ export const AdminCustomersPage = () => {
       </div>
 
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#FFF', padding: '1rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', flex: 1, minWidth: 240 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', flex: 1, minWidth: 'min(240px, 100%)' }}>
           <Search size={16} color="#71717A" />
-          <input aria-label="Buscar clientes" type="search" placeholder="Buscar por nombre, correo, teléfono o ciudad" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', outline: 'none', flex: 1, minHeight: 36 }} />
+          <input aria-label="Buscar clientes" type="search" placeholder="Buscar por nombre, correo, teléfono o ciudad" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ border: 'none', outline: 'none', flex: 1, minWidth: 0, minHeight: 36 }} />
         </div>
         <select aria-label="Filtrar por rol" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: '6px' }}>
           <option value="customer">Clientes</option>

@@ -146,7 +146,7 @@ export const AdminDashboardPage = () => {
       )}
 
       {/* RECENT ORDERS & TOP PRODUCTS SECTION */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '2rem' }} className="admin-dashboard-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px', gap: '2rem' }} className="admin-dashboard-grid">
         {/* RECENT ORDERS TABLE */}
         <div style={{ backgroundColor: '#FFFFFF', padding: '1.5rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
@@ -214,7 +214,7 @@ export const AdminDashboardPage = () => {
 
       <style>{`
         @media (max-width: 1000px) {
-          .admin-dashboard-grid { grid-template-columns: 1fr !important; }
+          .admin-dashboard-grid { grid-template-columns: minmax(0, 1fr) !important; }
         }
       `}</style>
     </div>

@@ -377,7 +377,7 @@ export const AdminOrdersPage = () => {
             placeholder="Orden, cliente, correo, teléfono o guía"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.85rem' }}
+            style={{ border: 'none', outline: 'none', width: '100%', minWidth: 0, fontSize: '0.85rem' }}
           />
         </div>
 

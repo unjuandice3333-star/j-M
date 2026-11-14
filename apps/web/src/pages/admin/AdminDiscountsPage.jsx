@@ -109,9 +109,9 @@ export const AdminDiscountsPage = () => {
       {notice && <div role="status" style={{ color: '#065F46', fontWeight: 600 }}>{notice}</div>}
 
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#FFF', padding: '1rem', borderRadius: '10px', border: '1px solid #E4E4E7' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', flex: 1, minWidth: 220 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', flex: 1, minWidth: 'min(220px, 100%)' }}>
           <Search size={16} color="#71717A" />
-          <input aria-label="Buscar cupones" placeholder="Buscar por código o descripción" value={query} onChange={(e) => setParam('q', e.target.value, '')} style={{ border: 'none', outline: 'none', flex: 1, minHeight: 36 }} />
+          <input aria-label="Buscar cupones" placeholder="Buscar por código o descripción" value={query} onChange={(e) => setParam('q', e.target.value, '')} style={{ border: 'none', outline: 'none', flex: 1, minWidth: 0, minHeight: 36 }} />
         </div>
         <select aria-label="Filtrar por estado" value={status} onChange={(e) => setParam('estado', e.target.value, 'todos')} style={{ padding: '0.55rem', border: '1px solid #D4D4D8', borderRadius: '6px' }}>
           {COUPON_STATUS_FILTERS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}

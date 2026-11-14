@@ -63,8 +63,8 @@ export const AdminProductsPage = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* HEADER & ACTION BUTTON */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ minWidth: 0 }}>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>
             CATÁLOGO DE PRODUCTOS ({products.length})
           </h1>
@@ -73,7 +73,7 @@ export const AdminProductsPage = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button
             onClick={resetProductsToDefault}
             title="Restablecer catálogo inicial de demostración"
@@ -123,12 +123,13 @@ export const AdminProductsPage = () => {
         borderRadius: '10px',
         border: '1px solid #E4E4E7',
         display: 'flex',
-        justify: 'space-between',
+        justifyContent: 'space-between',
         alignItems: 'center',
+        flexWrap: 'wrap',
         gap: '1rem'
       }}>
         {/* Search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', width: '320px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #D4D4D8', borderRadius: '6px', padding: '0.5rem 0.8rem', width: '320px', maxWidth: '100%' }}>
           <Search size={16} color="#71717A" />
           <input
             type="text"
@@ -136,12 +137,12 @@ export const AdminProductsPage = () => {
             aria-label="Buscar productos"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.85rem' }}
+            style={{ border: 'none', outline: 'none', width: '100%', minWidth: 0, fontSize: '0.85rem' }}
           />
         </div>
 
         {/* Status Filter Tabs */}
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           {['todos', 'active', 'draft', 'agotado', 'archived'].map((st) => (
             <button
               key={st}
@@ -168,7 +169,7 @@ export const AdminProductsPage = () => {
       {actionMsg && <div role={actionMsg.ok ? 'status' : 'alert'} style={{ color: actionMsg.ok ? '#065F46' : '#B91C1C', fontWeight: 600 }}>{actionMsg.text}</div>}
 
       {/* PRODUCTS TABLE */}
-      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
+      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
           <thead>
             <tr style={{ backgroundColor: '#FAFAFA', borderBottom: '1px solid #E4E4E7', textAlign: 'left' }}>
