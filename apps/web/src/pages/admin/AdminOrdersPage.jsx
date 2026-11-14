@@ -10,6 +10,7 @@ import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 import { DialogPanel } from '../../components/Common/DialogPanel';
 import { attentionReasons, sortedEvents, eventText, validateResolveNote, canRefundFromAttention, RESOLVE_NOTE_MAX } from '../../utils/orderAttention';
+import { refundRecords, refundTotal, hasPendingRefund, refundStockText } from '../../utils/orderRefunds';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ORDER_ERROR_ID = 'order-modal-error';
@@ -21,7 +22,8 @@ const ORDER_SELECT = `
         carrier, tracking_number, tracking_url,
         online_order_items ( variant_id, product_name, sku, size_code, color_name, unit_price, quantity, line_total, image_url ),
         payment_transactions ( reference, status, amount_in_cents, payment_method_type, created_at ),
-        order_events ( event_type, from_status, to_status, actor, note, metadata, created_at )`;
+        order_events ( event_type, from_status, to_status, actor, note, metadata, created_at ),
+        order_refunds ( amount, reason, status, restock, provider_refund_id, created_at )`;
 
 const mapOrder = (o) => ({
   ...o, id: o.order_number, rawId: o.id, date: new Date(o.created_at).toLocaleString('es-CO'),
@@ -560,6 +562,35 @@ export const AdminOrdersPage = () => {
                 </div>
               </section>
             )}
+
+            {/* Ejecución 129 (D102): devoluciones registradas (order_refunds). El panel no mueve dinero: se hacen en Wompi. */}
+            {(() => {
+              const refunds = refundRecords(selectedOrder);
+              if (refunds.length === 0) return null;
+              return (
+                <section data-testid="order-refunds" aria-labelledby="order-refunds-title"
+                  style={{ backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: '8px', padding: '1rem 1.25rem', marginBottom: '1.25rem', fontSize: '0.85rem', color: '#78350F' }}>
+                  <h3 id="order-refunds-title" style={{ fontSize: '0.85rem', fontWeight: 900, letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                    DEVOLUCIÓN REGISTRADA · {formatCOP(refundTotal(refunds))}
+                  </h3>
+                  <ul style={{ display: 'grid', gap: '0.5rem' }}>
+                    {refunds.map((r, i) => (
+                      <li key={i} data-testid="order-refund">
+                        <div style={{ fontWeight: 800 }}>{formatCOP(r.amount)} · {r.createdAt ? new Date(r.createdAt).toLocaleString('es-CO') : 'sin fecha'}</div>
+                        <div>Motivo: {r.reason}</div>
+                        <div data-testid="order-refund-status">Estado: {r.statusLabel}{r.providerRefundId ? ` · Wompi ${r.providerRefundId}` : ''}</div>
+                        <div>{refundStockText(r)}</div>
+                      </li>
+                    ))}
+                  </ul>
+                  {hasPendingRefund(refunds) && (
+                    <p data-testid="order-refund-pending" style={{ marginTop: '0.6rem', fontWeight: 700 }}>
+                      El panel solo registra la devolución: el dinero se devuelve desde el panel de Wompi (transacción {(selectedOrder.payment_transactions ?? []).find((t) => t.status === 'APPROVED')?.reference ?? 'aprobada del pedido'}).
+                    </p>
+                  )}
+                </section>
+              );
+            })()}
 
             {/* Cambio de estado (máquina de estados de la BD) */}
             <div style={{ backgroundColor: '#FAFAFA', padding: '1.25rem', borderRadius: '8px', border: '1px solid #E4E4E7', marginBottom: '1.5rem' }}>

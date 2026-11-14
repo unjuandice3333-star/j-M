@@ -291,6 +291,10 @@ function start(port = 54321) {
   };
   function transition(o, to, actor, note) {
     const from = o.status; o.status = to; if (to === 'cancelled' || (to === 'expired' && from === 'payment_pending')) for (const it of o.online_order_items) { const inv = S.inventories.find((i) => i.variant_id === it.variant_id); if (inv) inv.reserved = Math.max(0, inv.reserved - it.quantity); }
+    // Ejecución 129: registro de devolución como private.transition_order (order_refunds; el dinero se devuelve en Wompi).
+    if (['cancelled', 'refunded'].includes(to) && ['paid', 'processing', 'delivered'].includes(from) && !(to === 'cancelled' && from === 'delivered')) {
+      (o.order_refunds = o.order_refunds || []).push({ amount: o.total, reason: note || '', status: 'requested', restock: from !== 'delivered', provider_refund_id: null, created_at: new Date().toISOString() });
+    }
     if (to === 'paid') o.paid_at = new Date().toISOString();
     if (to === 'delivered') o.delivered_at = new Date().toISOString();
     o.order_events.unshift({ event_type: 'STATUS_CHANGED', from_status: from, to_status: to, actor, note: note || null, metadata: {}, created_at: new Date().toISOString() });
@@ -384,7 +388,7 @@ function start(port = 54321) {
             subtotal: 50000, discount_total: 0, shipping_cost: 12000, total: 62000, coupon_code: null, status: body.status || 'paid', created_at: now, payment_expires_at: body.payment_expires_at || null,
             // ejecución 128: solo hay fecha de pago si el estado implica un pago (o el recorrido lo pide), como en la BD
             paid_at: (body.paid || ['paid', 'processing', 'shipped', 'delivered', 'refunded'].includes(body.status || 'paid')) ? now : null, needs_attention: false, carrier: null, tracking_number: null, tracking_url: null, shipped_at: null, delivered_at: null,
-            online_order_items: [], payment_transactions: [], order_events: [] };
+            online_order_items: [], payment_transactions: [], order_events: [], order_refunds: [] };
           // Ejecución 90: opcionalmente con cupón (descuento fijo) y una línea con un SKU real del catálogo sintético.
           if (body.coupon_code) { o.coupon_code = String(body.coupon_code).toUpperCase(); o.discount_total = 5000; o.total = 57000; }
           if (body.sku) o.online_order_items = [{ id: `oi-${n}`, product_name: 'Fixture', sku: body.sku, size_code: 'M', color_name: 'Negro', unit_price: 50000, quantity: 1, line_total: 50000, image_url: null }];

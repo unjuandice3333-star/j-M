@@ -2274,6 +2274,39 @@ async function main() {
       if (!(await p.getByTestId('order-refund-notice').textContent()).includes('Este pedido no se enviará.')) throw new Error('confirmación de A sin aviso de devolución');
     }, browser);
 
+    await journey('61. Admin: cancelar un pedido pagado deja la devolución registrada en el detalle (monto, motivo, pendiente en Wompi); uno sin pago no', async (p) => {
+      const mk = async (name, status) => (await (await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ customer_name: name, customer_email: `${name.toLowerCase().replace(/\s+/g, '.')}@correo.co`, status }) })).json()).order_number;
+      const paid = await mk('Devolucion Pagada', 'paid');
+      const unpaid = await mk('Cancelado Sinpago', 'payment_pending');
+      p.on('dialog', (d) => d.accept().catch(() => {}));
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      const open = async (num) => {
+        await p.goto(`${BASE}/admin/pedidos?q=${num}`);
+        await p.locator('tbody tr').filter({ hasText: num }).getByRole('button', { name: 'GESTIONAR' }).click();
+        await p.getByText(`ORDEN #${num}`).waitFor({ timeout: 8000 });
+      };
+      for (const [num, note] of [[paid, 'Sin tela: devolver al cliente'], [unpaid, 'Cliente pidió anular']]) {
+        await open(num);
+        if (await p.getByTestId('order-refunds').count()) throw new Error(`${num}: devolución antes de cancelar`);
+        await p.locator('#order-next-status').selectOption('cancelled');
+        await p.getByLabel('Nota del cambio').fill(note);
+        await p.getByRole('button', { name: 'GUARDAR CAMBIOS' }).click();
+        await p.locator('#order-next-status').waitFor({ state: 'detached', timeout: 8000 });
+        for (let i = 0; i < 25 && (await state()).orders.find((x) => x.order_number === num).status !== 'cancelled'; i += 1) await new Promise((r) => setTimeout(r, 200));
+      }
+      await open(paid);
+      const box = p.getByTestId('order-refunds');
+      await box.waitFor({ timeout: 8000 });
+      const t = await box.textContent();
+      if (!/DEVOLUCIÓN REGISTRADA · \$\s?62\.000/.test(t) || !t.includes('Motivo: Sin tela: devolver al cliente') || !t.includes('Inventario repuesto al cancelar')) throw new Error(`sección de devolución: «${t}»`);
+      if ((await p.getByTestId('order-refund-status').textContent()) !== 'Estado: Registrada · pendiente de hacer en Wompi') throw new Error('estado de la devolución');
+      if (!(await p.getByTestId('order-refund-pending').textContent()).includes('panel de Wompi')) throw new Error('sin aviso de hacerla en Wompi');
+      await open(unpaid);
+      if (await p.getByTestId('order-refunds').count()) throw new Error('un pedido cancelado sin pago muestra devolución');
+    }, browser);
+
     await journey('48. Admin: «Cambiar mi contraseña» lleva al cambio con reautenticación de «Mi cuenta»', async (p) => {
       await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
       await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
