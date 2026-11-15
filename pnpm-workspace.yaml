@@ -6,3 +6,5 @@ allowBuilds:
 overrides:
   # D139: ws <8.21.0 tiene GHSA de DoS/memoria (transitiva de @supabase/realtime-js).
   ws@>=8.0.0 <8.21.0: '>=8.21.0'
+  # D142: tinypool <2.1.2 tiene avisos críticos (transitiva de vitest 3.2.x, que pide ^1.1.1).
+  tinypool@<2.1.2: '^2.1.2'
