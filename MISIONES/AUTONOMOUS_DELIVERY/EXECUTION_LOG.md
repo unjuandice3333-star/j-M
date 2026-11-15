@@ -1473,3 +1473,15 @@
 - Commits: `e4ac9f6`, `74c341d` (arreglos + pruebas), `b79fc17` y este de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(cu) — mismo criterio D130 en los demás botones que se deshabilitan al guardar: «Guardar dirección» y «Cambiar contraseña»/«Enviar código» de «Mi cuenta», `ResetPasswordPage`, «Reintentar pago» de la confirmación, y en el admin `AdminSettingsPage`, `AdminDiscountsPage`, `AdminCollectionsPage`, `AdminProductFormPage`.
+
+## Ejecución 153 — 2026-11-15 ~09:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-jt99uq` (ancestro de la rama de misión); se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `fce37e2`, árbol limpio. `pnpm install --frozen-lockfile` OK. CI nº 194: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 172 ✔.
+- Tarea: punto 0(cu) — foco en botones de envío que se deshabilitan en la tienda (D131).
+- Defecto real: «Guardar dirección» (fallo de red), «Cambiar contraseña», «Guardar contraseña» (`/cuenta/restablecer`) y «Pagar ahora» (confirmación, con error) dejaban el foco en `<body>` en Chromium.
+- Archivos: `apps/web/src/components/Account/AccountDetails.jsx`, `apps/web/src/pages/ResetPasswordPage.jsx`, `apps/web/src/pages/OrderConfirmationPage.jsx`, `apps/web/src/__tests__/disabledSubmitFocus.test.jsx` (nuevo, 6), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 82), documentación.
+- Pruebas (ejecutadas aquí): 6 unitarias fallan sin el cambio de `src` y pasan con él; recorrido 82 con 3 fallos sin el cambio y pasa con él; `pnpm test:unit` 734/734; ESLint 0; build OK; `pnpm test:e2e-synthetic` 81/81 (pasada completa con el cambio de `src`) + 82 aislado ✔; `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `03851d2` (arreglo + pruebas unitarias), commit del recorrido 82 + D131 y este de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push (el job `e2e-synthetic` debe dar 82/82); luego punto 0(cv) — criterio D131 en el admin: `AdminSettingsPage`, `AdminDiscountsPage`, `AdminCollectionsPage`, `AdminProductFormPage`.
