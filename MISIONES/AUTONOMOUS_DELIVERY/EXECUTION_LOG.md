@@ -1634,4 +1634,5 @@
 - Errores pendientes: ninguno nuevo.
 - Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, número real de WhatsApp, decisión gitleaks, `e2e-supabase` en `ci-gate`, (opcional) Vite 5 → 6.
 - Commit: `ci: pin workflow actions to node24 releases` + este de documentación; publicados en la rama autorizada.
-- Siguiente (0(di)): comprobar el CI del push: todos los jobs deben seguir verdes (salvo `security`) y sin el aviso de Node 20; si alguno falla por el cambio, revertir solo esa acción.
+- CI del primer push (nº 213, `5767964`): quality, db-local, db-supabase, e2e-synthetic ✔ con las acciones nuevas; `e2e-supabase` nº 191 ✔; **`governance` ✘ por mi cambio**: `setup-node` v5 intenta la caché de pnpm (por `packageManager`) en un job sin pnpm. Corregido con `package-manager-cache: false` en ese job (input verificado en el `action.yml` del SHA) y publicado en un tercer commit.
+- Siguiente (0(di)): comprobar el CI del push de la corrección: todos los jobs deben seguir verdes (salvo `security`) y sin el aviso de Node 20; si alguno falla por el cambio, revertir solo esa acción.

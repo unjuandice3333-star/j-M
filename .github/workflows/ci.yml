@@ -45,6 +45,7 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0 (node24)
         with:
           node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false   # setup-node v5 activa caché por packageManager (pnpm) y este job no instala pnpm
       - name: Base de comparación
         # Si resolve_base.sh falla (exit 2), el paso falla: nunca se valida contra una base sustituta
         run: |
