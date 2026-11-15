@@ -1601,3 +1601,15 @@
 - Commits: `59fca03` (lockfile) + documentación; publicados en la rama autorizada.
 - Notificación: no enviada (mantenimiento rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego 0(df) (opcional: `vitest` 2 → 3.2.x).
+
+## Ejecución 164 — 2026-11-15 ~20:05 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-ngw0qn` (ancestro de la rama autorizada); se trabajó en `mission/m26-dev-qa-environments` en `c19eeaf`, árbol limpio. CI nº 210 ✔ salvo `security` (solo `21_secrets_scan`, gitleaks, decisión del propietario); `e2e-supabase` nº 188 ✔.
+- Tarea: punto 0(df) — `vitest` 2 → 3.2.7 + override `tinypool` (D142).
+- Archivos: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, documentación.
+- Pruebas (ejecutadas aquí): vitest 4.1.12 probado y descartado (no arranca con Vite 5); con 3.2.7 + tinypool 2.2.0: `pnpm test:unit` 790/790 (3 pasadas); `pnpm install --frozen-lockfile` OK; `run_all.sh` etapa `quality` ✔ salvo `16_build` por falta de gitleaks/Docker local (el build en sí OK); `pnpm test:env` 146/146; `check_commits.sh` OK; `pnpm audit` 15 → 12, críticos 3 → 0; `pnpm audit --prod` 0.
+- Errores pendientes: 12 avisos de desarrollo que exigen Vite ≥6 (D142).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, número real de WhatsApp, decisión gitleaks, `e2e-supabase` en `ci-gate`, (nuevo, opcional) Vite 5 → 6.
+- Commits: actualización de vitest + este de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (mantenimiento rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push (job `quality` con vitest 3); luego 0(dg).
+

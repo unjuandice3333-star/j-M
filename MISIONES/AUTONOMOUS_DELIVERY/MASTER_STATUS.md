@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 163: avisos del toolchain de desarrollo 34 → 15 sin cambiar de versión mayor (D141))
+Última actualización: 2026-11-15 (ejecución 164: vitest 2 → 3.2.7 + override de tinypool; avisos críticos de desarrollo 3 → 0 (D142))
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -12,7 +12,7 @@ Rama autorizada: `mission/m26-dev-qa-environments`
 |---|---|
 | `pnpm build` | OK |
 | ESLint (`apps packages scripts`, sin dist*) | 0 errores, 0 avisos |
-| `pnpm test:unit` (vitest, jsdom) | **790/790** (88 archivos, ejecución 162; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
+| `pnpm test:unit` (vitest 3.2.7, jsdom) | **790/790** (88 archivos, ejecución 164; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
 | `pnpm test:env` (node:test) | **142/142** (fallo de entorno corregido: ahora la CLI usa un envDir hermético) |
 | `test-checkout-invariants.mjs` | 10/10 (nota: es un simulador; las pruebas reales son las de vitest) |
 | BD local PostgreSQL 16 (`supabase/tests/run_local.sh`) | pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (ejecución 126; 408/408 en la 124; 393/393 en la 122; 382/382 en la 74; 357/357 en la 71; antes 278/278 en la ejecución 3) |
@@ -66,6 +66,14 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 164 — Vitest 3.2.7 y avisos críticos del toolchain (punto 0(df))
+- **CI del push anterior** (run `ci` nº 210, `c19eeaf`): governance, quality, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial, decisión del propietario); `e2e-supabase` nº 188 ✔.
+- **Cambio (D142):** `vitest` `^2.1.9` → `^3.2.7` (raíz) y override `tinypool@<2.1.2 → ^2.1.2` en `pnpm-workspace.yaml`. Solo cambian dependencias del runner de pruebas (vitest, vite-node, tinypool, tinyspy, tinyrainbow, pathe…); `vite` 5.4.21 y el bundle de la tienda no cambian.
+- **Descartado:** `vitest` 4.1.12 (arranque falla con `ERR_PACKAGE_PATH_NOT_EXPORTED ./module-runner`: exige Vite ≥6, fuera del stack fijado).
+- **Resultado:** `pnpm audit` 15 → **12** (críticos 3 → **0**; quedan 1 alto + 10 moderados + 1 bajo, todos de `vite` 5 / `esbuild` del servidor de desarrollo o de `vitest`/`@vitest/mocker` <4.1.11, que solo se cierran con Vite ≥6). `pnpm audit --prod` sigue en 0.
+- **Verificado aquí:** `pnpm install --frozen-lockfile` OK; `pnpm test:unit` **790/790** (3 pasadas, vitest 3.2.7 con tinypool 2.2.0); etapa `quality` de `run_all.sh`: install, lint, typecheck, unit, webhook, env, plantillas, perfil QA ✔; build OK (en local `16_build` marca FAIL solo porque no hay gitleaks ni Docker para su escaneo, entorno); `pnpm test:env` 146/146; `check_commits.sh` OK. E2E sintético no re-ejecutado: no usa vitest y Vite no cambió.
+- **Siguiente (0(dg)):** comprobar el CI del push (job `quality` con vitest 3). Vite 5 → 6 sería la única vía para los avisos restantes: decisión del propietario (cambia el stack fijado). Bloqueos del propietario sin cambio: baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks.
 
 ## Ejecución 163 — Avisos de seguridad del toolchain de desarrollo (punto 0(de))
 - **CI del push anterior** (run `ci` nº 208, `33d54d2`): governance, quality, db-local, db-supabase y `e2e-synthetic` (87, React Router 7) ✔; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial, decisión del propietario); `e2e-supabase` nº 186 ✔. La migración a React Router 7 queda confirmada en GitHub.
