@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 165: CI nº 211 confirma vitest 3 en GitHub; reconstrucción desde contenedor nuevo verificada)
+Última actualización: 2026-11-15 (ejecución 166: acciones de GitHub refijadas a runtime Node 24, D143)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -66,6 +66,13 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 166 — Acciones de CI en Node 24 (punto 0(dh))
+- **CI del push anterior** (run `ci` nº 212, `5fb4c79`): governance, quality, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial, decisión del propietario); `e2e-supabase` nº 190 ✔.
+- **Hallazgo:** aviso de GitHub «Node.js 20 is deprecated» en las acciones fijadas en v4 (hoy el runner las fuerza a Node 24; cuando se retire Node 20 podrían romper el CI).
+- **Cambio (D143):** `actions/checkout` v5.1.0, `actions/setup-node` v5.0.0, `actions/upload-artifact` v6.0.0 y `pnpm/action-setup` v5.0.0, fijadas por SHA completo; cada `action.yml` declara `node24` (comprobado). Solo `.github/workflows/ci.yml` y `e2e-supabase.yml`; sin cambios en `src`, migraciones ni dependencias.
+- **Verificado aquí:** YAML válido; `migrations_policy.sh` (revisa los workflows) OK; `gate_selftest.sh` 86/90: los 4 restantes son de entorno (sin gitleaks ni Docker: `build`, `secretos` ×2 y `ci-gate` local), sin relación con las acciones. La prueba real es el CI del push.
+- **Siguiente (0(di)):** comprobar que el CI del push sigue verde (salvo `security`) y sin el aviso de Node 20; si una acción falla, revertir solo su SHA. Bloqueos del propietario sin cambio: baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks; opcional Vite 5 → 6.
 
 ## Ejecución 165 — CI de vitest 3 y reconstrucción reproducible (punto 0(dg))
 - **CI del push anterior** (run `ci` nº 211, `36edc02`): governance, **quality (vitest 3.2.7 + tinypool 2.2.0)**, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial, decisión del propietario; `20_migrations_policy` PASS); `e2e-supabase` nº 189 ✔. D142 queda confirmada en GitHub; el override de `tinypool` no se revierte.

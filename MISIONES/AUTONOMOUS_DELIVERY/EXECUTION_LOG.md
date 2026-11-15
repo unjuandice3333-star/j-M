@@ -1624,3 +1624,14 @@
 - Commit: este de documentación; publicado en la rama autorizada.
 - Notificación: no enviada (mantenimiento rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego 0(dh).
+
+## Ejecución 166 — 2026-11-15 ~23:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-hj9503` (rama de la sesión); se trabajó en `mission/m26-dev-qa-environments` en `5fb4c79`, árbol limpio. CI `ci` nº 212 ✔ (governance, quality, db-local, db-supabase, e2e-synthetic) salvo `security` (solo `21_secrets_scan`, gitleaks, decisión del propietario; `20_migrations_policy` PASS); `e2e-supabase` nº 190 ✔.
+- Hallazgo: aviso de GitHub «Node.js 20 is deprecated» en las acciones fijadas (checkout, upload-artifact; también setup-node y pnpm/action-setup v4).
+- Tarea (D143): refijar las 4 acciones a versiones con runtime `node24` (SHA completo, verificado en su `action.yml`).
+- Archivos: `.github/workflows/ci.yml`, `.github/workflows/e2e-supabase.yml`, `DECISIONS.md`, `MASTER_STATUS.md`, `EXECUTION_LOG.md`.
+- Pruebas (ejecutadas aquí): YAML de ambos workflows válido; `scripts/ci/migrations_policy.sh` (revisa workflows) OK; `scripts/ci/gate_selftest.sh` 86/90 (4 de entorno: sin gitleaks ni Docker). La validación real del cambio es el CI del push (no ejecutable en local).
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, número real de WhatsApp, decisión gitleaks, `e2e-supabase` en `ci-gate`, (opcional) Vite 5 → 6.
+- Commit: `ci: pin workflow actions to node24 releases` + este de documentación; publicados en la rama autorizada.
+- Siguiente (0(di)): comprobar el CI del push: todos los jobs deben seguir verdes (salvo `security`) y sin el aviso de Node 20; si alguno falla por el cambio, revertir solo esa acción.
