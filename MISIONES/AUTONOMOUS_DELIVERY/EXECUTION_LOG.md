@@ -1568,3 +1568,14 @@
 - Notificación: no enviada (corrección rutinaria de una prueba; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego 0(dc).
 
+
+## Ejecución 161 — 2026-11-15 ~17:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-qkd5pd`; se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `f63d377`, árbol limpio. CI nº 206 ✔ salvo `security` (solo `21_secrets_scan`, gitleaks, decisión del propietario); `e2e-supabase` nº 184 ✔.
+- Tarea: punto 0(dc) — CI verificado; `pnpm audit --prod` reveló 7 avisos (1 alto) → corrección D139.
+- Archivos: `apps/web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` (override `ws`), `apps/web/src/utils/safeRedirect.js` (nuevo), `pages/AccountPage.jsx`, `pages/Login.jsx`, `pages/admin/AdminLogin.jsx`, `__tests__/safeRedirect.test.jsx` (nuevo), documentación.
+- Pruebas (ejecutadas aquí): `safeRedirect.test.jsx` 24/24 (3 fallan sin el cambio); `pnpm test:unit` 790/790; ESLint 0; build OK; `pnpm test:env` 146/146; `pnpm install --frozen-lockfile` OK; `pnpm test:e2e-synthetic` 87/87; `pnpm audit --prod` 7 → 2 moderados.
+- Errores pendientes: 2 avisos moderados de React Router que exigen v7 (ver D139).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, número real de WhatsApp, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: corrección de seguridad + documentación; publicados en la rama autorizada.
+- Notificación: no enviada (corrección rutinaria; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego 0(dd) (evaluar React Router 7).

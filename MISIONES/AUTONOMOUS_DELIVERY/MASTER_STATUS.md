@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 160: recorrido E2E 7 intermitente en CI nº 204 — carrera de la prueba reproducida y corregida (D138))
+Última actualización: 2026-11-15 (ejecución 161: avisos de dependencias 7 → 2 y rutas de retorno del login endurecidas (D139))
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -12,7 +12,7 @@ Rama autorizada: `mission/m26-dev-qa-environments`
 |---|---|
 | `pnpm build` | OK |
 | ESLint (`apps packages scripts`, sin dist*) | 0 errores, 0 avisos |
-| `pnpm test:unit` (vitest, jsdom) | **766/766** (87 archivos, ejecución 159; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
+| `pnpm test:unit` (vitest, jsdom) | **790/790** (88 archivos, ejecución 161; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
 | `pnpm test:env` (node:test) | **142/142** (fallo de entorno corregido: ahora la CLI usa un envDir hermético) |
 | `test-checkout-invariants.mjs` | 10/10 (nota: es un simulador; las pruebas reales son las de vitest) |
 | BD local PostgreSQL 16 (`supabase/tests/run_local.sh`) | pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (ejecución 126; 408/408 en la 124; 393/393 en la 122; 382/382 en la 74; 357/357 en la 71; antes 278/278 en la ejecución 3) |
@@ -66,6 +66,15 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 161 — Avisos de seguridad de dependencias y rutas de retorno (punto 0(dc))
+- **CI del push anterior** (run `ci` nº 206, `f63d377`): governance, quality, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial, decisión del propietario); `e2e-supabase` nº 184 ✔.
+- **Hallazgo:** `pnpm audit --prod` → 7 avisos (1 alto: `ws` DoS; 6 moderados de React Router, varios de redirección abierta).
+- **Cambio (D139):** `react-router-dom` `^6.30.6`; override `ws >=8.21.0` (resuelve 8.23.0); nuevo `apps/web/src/utils/safeRedirect.js` usado por `AccountPage`, `Login` y `AdminLogin`. Defecto real: `AccountPage` aceptaba `/\evil.com` como retorno y los logins de admin no validaban `from.pathname`.
+- **Resultado:** `pnpm audit --prod` 7 → **2 moderados** (solo corregibles en React Router 7: SSR no aplica; barra invertida mitigada por el helper).
+- **Pruebas nuevas:** `safeRedirect.test.jsx` (24: rutas válidas/maliciosas + render real de `/admin/login` con sesión de admin; las 3 de origen malicioso fallan sin el cambio).
+- **Verificado aquí:** `pnpm test:unit` **790/790** (88 archivos); ESLint 0; build OK; `pnpm test:env` 146/146; `pnpm install --frozen-lockfile` OK; `pnpm test:e2e-synthetic` **87/87** con el router 6.30.6.
+- **Siguiente (0(dd)):** comprobar el CI del push; evaluar la migración a React Router 7 en una ejecución propia (con el E2E completo) para cerrar los 2 avisos restantes. Bloqueos del propietario sin cambio.
 
 ## Ejecución 160 — Recorrido 7 intermitente en CI (punto 0(db))
 - **CI:** run `ci` nº 205 (`10c814a`): governance, quality, db-local, db-supabase y `e2e-synthetic` (87) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 183 ✔. **Pero el run nº 204 (`8a6a96b`, mismo código) falló `e2e-synthetic` 86/87:** recorrido 7 («sin stock al confirmar») → `locator.click: Timeout 30000ms exceeded`.
