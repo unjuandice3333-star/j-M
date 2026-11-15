@@ -9,6 +9,7 @@ import { shippingAdminService } from '../../services/shippingAdminService';
 import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 import { attentionReasons, sortedEvents, eventText, validateResolveNote, canRefundFromAttention, RESOLVE_NOTE_MAX } from '../../utils/orderAttention';
 import { refundRecords, refundHeading, hasPendingRefund, refundStockText, validateProviderRefundId, PROVIDER_REFUND_ID_MAX, pendingRefundFromParam, PENDING_REFUND_PARAM } from '../../utils/orderRefunds';
 
@@ -190,6 +191,15 @@ export const AdminOrdersPage = () => {
   };
 
   const refreshAll = async () => { await Promise.all([fetchDbOrders(), fetchSummary()]); };
+  // Ejecución 148 (D126): al guardar en el detalle el modal se cierra y la tabla se recarga («Cargando pedidos…» la
+  // desmonta); si el pedido salió del filtro (p. ej. «Pagado» → «Procesando» en la pestaña «Pagado») el botón que abrió
+  // el modal ya no existe y el foco caía en <body>. Vuelve a «Ver detalle» del mismo pedido o al que ocupó su lugar.
+  const { containerRef: ordersListRef, remember: rememberOrderRow, settle: settleOrderRow } = useRowFocusRestore();
+  const closeAndRefresh = async () => {
+    if (selectedOrder) rememberOrderRow(selectedOrder.id, 'open');
+    setSelectedOrder(null);
+    try { await refreshAll(); } finally { settleOrderRow(); }
+  };
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -251,8 +261,7 @@ export const AdminOrdersPage = () => {
     try {
       await adminService.markRefundProcessed(refund.id, value.trim());
       setNotice(`${selectedOrder.order_number}: devolución de ${formatCOP(refund.amount)} marcada como hecha en Wompi.`);
-      setSelectedOrder(null);
-      await refreshAll();
+      await closeAndRefresh();
     } catch (err) {
       setRefundError({ id: refund.id, message: err.message || 'No se pudo marcar la devolución como hecha.' });
       setTimeout(() => document.getElementById(`order-refund-provider-${refund.id}`)?.focus(), 0);
@@ -271,8 +280,7 @@ export const AdminOrdersPage = () => {
     try {
       await adminService.resolveOrderAttention(selectedOrder.rawId, resolveNote.trim());
       setNotice(`${selectedOrder.order_number}: revisión cerrada.`);
-      setSelectedOrder(null);
-      await refreshAll();
+      await closeAndRefresh();
     } catch (err) {
       setResolveError(err.message || 'No se pudo cerrar la revisión.');
       // Otro admin ya la cerró: se recarga la lista para que deje de mostrarse como pendiente.
@@ -296,8 +304,7 @@ export const AdminOrdersPage = () => {
     try {
       await adminService.refundOrderAttention(selectedOrder.rawId, resolveNote.trim());
       setNotice(`${selectedOrder.order_number}: reembolso registrado y revisión cerrada.`);
-      setSelectedOrder(null);
-      await refreshAll();
+      await closeAndRefresh();
     } catch (err) {
       setResolveError(err.message || 'No se pudo registrar el reembolso.');
       if (err.hint === 'JM_ATTENTION_NOT_REQUIRED' || err.hint === 'JM_INVALID_TRANSITION') refreshAll();
@@ -335,8 +342,7 @@ export const AdminOrdersPage = () => {
       const tracking = modalStatus === 'shipped' ? { carrier: modalCarrier.trim(), tracking_number: modalTracking.trim(), tracking_url: modalTrackingUrl.trim() || null } : null;
       await adminService.transitionOrder(selectedOrder.rawId, modalStatus, modalNote.trim() || null, tracking);
       setNotice(`${selectedOrder.order_number}: ${STATUS_LABEL[selectedOrder.status]} → ${STATUS_LABEL[modalStatus]}.`);
-      setSelectedOrder(null);
-      await refreshAll();
+      await closeAndRefresh();
     } catch (err) {
       setModalError(err.message || 'No se pudo cambiar el estado.'); setModalErrorFields([]);
     } finally {
@@ -441,13 +447,13 @@ export const AdminOrdersPage = () => {
       {notice && <div role="status" style={{ color: '#065F46', fontWeight: 600 }}>{notice}</div>}
 
       {/* ORDERS TABLE */}
-      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
+      <div ref={ordersListRef} style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
         {isLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#71717A' }}>
             Cargando pedidos…
           </div>
         ) : dbOrders.length === 0 ? (
-          <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
+          <div data-row-empty tabIndex={-1} style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
             No hay pedidos con estos filtros.
           </div>
         ) : (
@@ -466,7 +472,7 @@ export const AdminOrdersPage = () => {
             </thead>
             <tbody>
               {dbOrders.map((ord) => (
-                <tr key={ord.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
+                <tr key={ord.id} data-row-key={ord.id} tabIndex={-1} aria-label={`Pedido ${ord.id}`} style={{ borderBottom: '1px solid #F4F4F5' }}>
                   <td style={{ ...tdOrder, fontWeight: 900 }}>{ord.id}</td>
                   <td style={{ ...tdOrder, color: '#71717A' }}>{ord.date}</td>
                   <td style={tdOrder}>
@@ -491,6 +497,7 @@ export const AdminOrdersPage = () => {
                   </td>
                   <td style={{ ...tdOrder, textAlign: 'right' }}>
                     <button
+                      data-row-action="open"
                       onClick={() => handleOpenModal(ord)}
                       style={{
                         backgroundColor: '#09090B',

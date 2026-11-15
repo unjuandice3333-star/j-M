@@ -235,6 +235,13 @@ function start(port = 54321) {
       if (a.p_to === 'shipped') { if (!a.p_tracking || !a.p_tracking.carrier || !a.p_tracking.tracking_number) return err('P0001', 'x', 'JM_TRACKING_REQUIRED'); o.carrier = a.p_tracking.carrier; o.tracking_number = a.p_tracking.tracking_number; }
       transition(o, a.p_to, 'admin', a.p_note); return { status: a.p_to };
     },
+    // Ejecución 148: mismo contrato que admin_set_product_status (solo admin; active | draft | archived).
+    admin_set_product_status: (a, ctx) => {
+      if (ctx.role !== 'admin') return err('42501', 'permission denied', 'JM_FORBIDDEN');
+      const pr = S.products.find((x) => x.id === a.p_product_id); if (!pr) return err('P0001', 'x', 'JM_PRODUCT_NOT_FOUND');
+      if (!['active', 'draft', 'archived'].includes(a.p_status)) return err('22023', 'x', 'JM_INVALID_STATUS');
+      pr.status = a.p_status; return { status: pr.status };
+    },
     admin_adjust_inventory: (a, ctx) => {
       if (ctx.role !== 'admin') return err('42501', 'permission denied', 'JM_FORBIDDEN');
       const inv = S.inventories.find((i) => i.variant_id === a.p_variant_id); if (!inv) return err('P0001', 'x', 'JM_VARIANT_NOT_FOUND');
@@ -567,6 +574,12 @@ function start(port = 54321) {
           if (table === 'site_content' && req.method === 'DELETE') {
             const hit = ctx.role === 'admin' ? rows(table, q, ctx) : [];
             S.tables.site_content = S.tables.site_content.filter((r) => !hit.includes(r)); return reply(hit);
+          }
+          // Ejecución 148: «Activar/Desactivar» de /admin/descuentos (RLS coupons: solo admin).
+          if (table === 'coupons' && req.method === 'PATCH') {
+            if (Object.keys(body).some((k) => k !== 'is_active')) return send(res, 400, { code: 'PGRST204', message: 'columna no emulada' });
+            const hit = ctx.role === 'admin' ? rows(table, q, ctx) : [];
+            for (const r of hit) Object.assign(r, body); return reply(hit);
           }
           if (table === 'product_reviews' && req.method === 'PATCH') { // moderación de /admin/reviews (RLS product_reviews_admin)
             if (Object.keys(body).some((k) => !['status', 'admin_reply', 'moderated_by', 'moderated_at'].includes(k))) return send(res, 400, { code: 'PGRST204', message: 'columna no emulada' });

@@ -3729,6 +3729,108 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser);
 
+    await journey('77. Admin con teclado: cambiar el estado de un pedido, despublicar un producto o desactivar un cupón que sale del filtro no deja el foco en <body> (D126)', async (p) => {
+      // Ejecución 148 (D126): mismo criterio que D125 en pedidos (el modal se cierra y la tabla se recarga), productos y
+      // cupones. Antes, si la fila salía del filtro, el foco caía en <body> y el siguiente Tab volvía a «Ir al contenido».
+      const tag = crypto.randomBytes(3).toString('hex');
+      const nums = [];
+      for (const i of [1, 2]) {
+        const r = await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ customer_name: `Foco ${tag} ${i}`, customer_email: `foco${i}.${tag}@correo.co`, status: 'paid' }) });
+        nums.push((await r.json()).order_number);
+      }
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, key: a?.getAttribute('data-row-key') || a?.closest('[data-row-key]')?.getAttribute('data-row-key') || null,
+          label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '', action: a?.getAttribute('data-row-action') || null };
+      });
+      const pressOn = async (loc) => { await loc.focus(); await p.keyboard.press('Enter'); };
+      const settle = () => p.waitForTimeout(200);
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+
+      // Pedidos en «Pagado» de este recorrido: el primero pasa a «En preparación» → sale del filtro → foco en el segundo.
+      await p.goto(`${BASE}/admin/pedidos?estado=paid&q=${encodeURIComponent(tag)}`);
+      const ord = (n) => p.locator('tbody tr', { hasText: n });
+      await ord(nums[1]).waitFor({ timeout: 10000 });
+      const first = (await ord(nums[0]).count()) ? 0 : 1;
+      const [gone, stays] = first === 0 ? [nums[0], nums[1]] : [nums[1], nums[0]];
+      await pressOn(ord(gone).getByRole('button', { name: 'GESTIONAR' }));
+      await p.locator('#order-next-status').selectOption('processing');
+      await pressOn(p.getByRole('button', { name: 'GUARDAR CAMBIOS' }));
+      await p.locator('#order-next-status').waitFor({ state: 'detached' });
+      await ord(gone).waitFor({ state: 'detached', timeout: 10000 });
+      await ord(stays).waitFor();
+      await settle();
+      let f = await focusInfo();
+      if (f.label !== `Pedido ${stays}`) failures.push(`pedidos: tras cambiar el estado, foco en ${JSON.stringify(f)} (se esperaba el pedido ${stays})`);
+      await p.keyboard.press('Tab');
+      f = await focusInfo();
+      if (/Ir al contenido/i.test(f.label)) failures.push('pedidos: el siguiente Tab volvió a «Ir al contenido»');
+      // el último: lista vacía → foco en el aviso de vacío
+      await pressOn(ord(stays).getByRole('button', { name: 'GESTIONAR' }));
+      await p.locator('#order-next-status').selectOption('processing');
+      await pressOn(p.getByRole('button', { name: 'GUARDAR CAMBIOS' }));
+      await p.getByText('No hay pedidos con estos filtros.').waitFor({ timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (!/No hay pedidos/.test(f.label)) failures.push(`pedidos: con la lista vacía, foco en ${JSON.stringify(f)}`);
+      // sin filtro de estado la fila sigue: foco de vuelta en «GESTIONAR» del mismo pedido
+      await p.goto(`${BASE}/admin/pedidos?q=${encodeURIComponent(tag)}`);
+      await ord(gone).waitFor({ timeout: 10000 });
+      await pressOn(ord(gone).getByRole('button', { name: 'GESTIONAR' }));
+      await p.locator('#order-next-status').selectOption('cancelled').catch(() => {});
+      const opt = await p.locator('#order-next-status').inputValue();
+      if (opt) {
+        const t = await p.locator('#order-next-status option:checked').textContent();
+        if (/motivo/.test(t || '')) await p.getByLabel('Nota del cambio').fill(`foco ${tag}`);
+        await pressOn(p.getByRole('button', { name: 'GUARDAR CAMBIOS' }));
+        await p.locator('#order-next-status').waitFor({ state: 'detached' });
+        await p.getByRole('status').filter({ hasText: gone }).waitFor({ timeout: 10000 });
+        await settle();
+        f = await focusInfo();
+        if (f.action !== 'open' || f.key == null) failures.push(`pedidos: con la fila presente, foco en ${JSON.stringify(f)} (se esperaba GESTIONAR)`);
+        else if (!(await ord(gone).getByRole('button', { name: 'GESTIONAR' }).evaluate((el) => el === document.activeElement))) failures.push('pedidos: el foco volvió a GESTIONAR de otro pedido');
+      } else failures.push('pedidos: «En preparación» no ofrece «Cancelado» en el sintético');
+
+      // Productos en «Publicado»: despublicar el Polo → sale del filtro → foco en la fila que queda.
+      await p.goto(`${BASE}/admin/productos?estado=active`);
+      const prow = (name) => p.locator('tbody tr', { hasText: name });
+      await prow('Polo Clásico').waitFor({ timeout: 10000 });
+      await pressOn(prow('Polo Clásico').getByRole('button', { name: 'DESPUBLICAR' }));
+      await prow('Polo Clásico').waitFor({ state: 'detached', timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (f.label !== 'Producto Camiseta Básica') failures.push(`productos: tras despublicar, foco en ${JSON.stringify(f)} (se esperaba la fila de Camiseta Básica)`);
+      // en «Borrador» publicarlo de nuevo (deja el catálogo como estaba) → lista vacía → aviso de vacío
+      await p.goto(`${BASE}/admin/productos?estado=draft`);
+      await prow('Polo Clásico').waitFor({ timeout: 10000 });
+      await pressOn(prow('Polo Clásico').getByRole('button', { name: 'PUBLICAR' }));
+      await p.getByText('No hay productos registrados').waitFor({ timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (!/No hay productos/.test(f.label)) failures.push(`productos: con la lista vacía, foco en ${JSON.stringify(f)}`);
+
+      // Cupones en «Inactivos»: activar LIQUIDACION → sale → aviso de vacío; en «Todos» la fila sigue → mismo botón.
+      await p.goto(`${BASE}/admin/descuentos?estado=inactivos`);
+      const crow = p.locator('tbody tr', { hasText: 'LIQUIDACION' });
+      await crow.waitFor({ timeout: 10000 });
+      await pressOn(crow.getByRole('button', { name: 'Activar' }));
+      await p.getByText('No hay cupones con este filtro.').waitFor({ timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (!/No hay cupones/.test(f.label)) failures.push(`cupones: con la lista vacía, foco en ${JSON.stringify(f)}`);
+      await p.goto(`${BASE}/admin/descuentos`);
+      await crow.waitFor({ timeout: 10000 });
+      await pressOn(crow.getByRole('button', { name: 'Desactivar' }));
+      await crow.getByRole('button', { name: 'Activar' }).waitFor({ timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (f.action !== 'toggle' || f.label !== 'Activar') failures.push(`cupones: con la fila presente, foco en ${JSON.stringify(f)} (se esperaba «Activar» de LIQUIDACION)`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

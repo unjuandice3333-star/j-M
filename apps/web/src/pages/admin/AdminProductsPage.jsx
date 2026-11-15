@@ -9,6 +9,7 @@ import SafeProductImage from '../../components/Common/SafeImage';
 import { hasValidProductImage } from '../../utils/productUtils';
 import { normalizeText } from '../../utils/catalogFilters';
 import { inventoryLinkForProduct } from '../../utils/adminLists';
+import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 
 const STATUS_LABEL = { todos: 'Todos', active: 'Publicado', draft: 'Borrador', archived: 'Archivado', agotado: 'Agotado' };
 // Ejecución 79: estado y búsqueda viven en la URL (?estado=, ?q=) como en pedidos e inventario.
@@ -38,13 +39,18 @@ export const AdminProductsPage = () => {
   }, []);
   useEffect(() => { reload(); }, [reload]);
   const resetProductsToDefault = reload;
-  const setStatus = async (prod, status) => {
+  // Ejecución 148 (D126): publicar/despublicar/archivar con un filtro de estado saca la fila de la lista (y «Archivar»
+  // desaparece al archivar): el foco caía en <body>. Vuelve al mismo botón, a «Editar» o a la fila que ocupó su lugar.
+  const { containerRef, remember, settle } = useRowFocusRestore();
+  const setStatus = async (prod, status, actionName = 'status') => {
+    remember(prod.id, actionName);
     setActionMsg(null);
     try {
       await adminService.setProductStatus(prod.id, status);
       setActionMsg({ ok: true, text: `"${prod.name}": ${STATUS_LABEL[status].toLowerCase()}.` });
       await reload(); loadStoreProducts(true);
     } catch (e) { setActionMsg({ ok: false, text: e.message }); }
+    finally { settle(); }
   };
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -169,7 +175,7 @@ export const AdminProductsPage = () => {
       {actionMsg && <div role={actionMsg.ok ? 'status' : 'alert'} style={{ color: actionMsg.ok ? '#065F46' : '#B91C1C', fontWeight: 600 }}>{actionMsg.text}</div>}
 
       {/* PRODUCTS TABLE */}
-      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflowX: 'auto' }}>
+      <div ref={containerRef} style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
           <thead>
             <tr style={{ backgroundColor: '#FAFAFA', borderBottom: '1px solid #E4E4E7', textAlign: 'left' }}>
@@ -186,12 +192,12 @@ export const AdminProductsPage = () => {
             {filteredProducts.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: '#71717A' }}>
-                  No hay productos registrados en esta categoría o filtro.
+                  <span data-row-empty tabIndex={-1}>No hay productos registrados en esta categoría o filtro.</span>
                 </td>
               </tr>
             ) : (
               filteredProducts.map((prod) => (
-                <tr key={prod.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
+                <tr key={prod.id} data-row-key={prod.id} tabIndex={-1} aria-label={`Producto ${prod.name}`} style={{ borderBottom: '1px solid #F4F4F5' }}>
                   {/* Product Meta */}
                   <td style={tdProduct}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -260,22 +266,23 @@ export const AdminProductsPage = () => {
                           <Boxes size={16} />
                         </Link>
                       )}
-                      <button onClick={() => navigate(`/admin/productos/nuevo?editId=${prod.id}`)} style={actionIconBtn} title="Editar prenda">
+                      <button data-row-fallback onClick={() => navigate(`/admin/productos/nuevo?editId=${prod.id}`)} style={actionIconBtn} title="Editar prenda">
                         <Edit size={16} />
                       </button>
                       {prod.status !== 'active' ? (
-                        <button onClick={() => setStatus(prod, 'active')} style={{ ...actionIconBtn, width: 'auto', padding: '0 0.6rem', fontSize: '0.72rem', fontWeight: 800 }} title="Publicar en la tienda">
+                        <button data-row-action="status" onClick={() => setStatus(prod, 'active')} style={{ ...actionIconBtn, width: 'auto', padding: '0 0.6rem', fontSize: '0.72rem', fontWeight: 800 }} title="Publicar en la tienda">
                           PUBLICAR
                         </button>
                       ) : (
-                        <button onClick={() => setStatus(prod, 'draft')} style={{ ...actionIconBtn, width: 'auto', padding: '0 0.6rem', fontSize: '0.72rem', fontWeight: 800 }} title="Retirar de la tienda (borrador)">
+                        <button data-row-action="status" onClick={() => setStatus(prod, 'draft')} style={{ ...actionIconBtn, width: 'auto', padding: '0 0.6rem', fontSize: '0.72rem', fontWeight: 800 }} title="Retirar de la tienda (borrador)">
                           DESPUBLICAR
                         </button>
                       )}
                       {prod.status !== 'archived' && (
                         <button
+                          data-row-action="archive"
                           onClick={() => {
-                            if (window.confirm(`¿Archivar "${prod.name}"? Deja de mostrarse en la tienda; su historial de pedidos se conserva.`)) setStatus(prod, 'archived');
+                            if (window.confirm(`¿Archivar "${prod.name}"? Deja de mostrarse en la tienda; su historial de pedidos se conserva.`)) setStatus(prod, 'archived', 'archive');
                           }}
                           style={{ ...actionIconBtn, color: '#E11D48' }}
                           title="Archivar (no borra datos)"

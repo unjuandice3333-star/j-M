@@ -14,6 +14,7 @@ import { Plus, Search, X } from '../../components/Common/icons';
 import { formatCOP } from '../../utils/currency';
 import { DialogPanel } from '../../components/Common/DialogPanel';
 import FieldError from '../../components/Common/FieldError';
+import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 import { fieldA11y, focusFirstError } from '../../utils/formErrors';
 import couponsAdminService, {
   COUPON_STATUS_FILTERS, couponState, couponStatusFromParam, couponUseCount, emptyCouponForm, filterCoupons, toCouponForm, PERCENT_MAX,
@@ -44,6 +45,9 @@ export const AdminDiscountsPage = () => {
   };
   const filtered = useMemo(() => filterCoupons(coupons, query, status), [coupons, query, status]);
 
+  // Ejecución 148 (D126): «Desactivar» con el filtro «Activos» (o «Activar» en «Inactivos») saca el cupón de la tabla:
+  // el foco caía en <body>. Vuelve al mismo botón (ahora con la acción contraria) o a la fila que ocupó su lugar.
+  const { containerRef, remember, settle } = useRowFocusRestore();
   const load = async () => {
     try { setCoupons(await couponsAdminService.list()); setLoadError(null); }
     catch (e) { setLoadError(e.message || 'No se pudieron cargar los cupones.'); }
@@ -86,11 +90,13 @@ export const AdminDiscountsPage = () => {
       + (pending ? ` (${pending} con pago pendiente; esos pedidos conservan su descuento)` : '')
       + '. Dejará de aceptarse en nuevas compras.',
     )) return;
+    remember(c.id, 'toggle');
     try {
       await couponsAdminService.setActive(c.id, !c.is_active);
       setNotice(`Cupón ${c.code} ${c.is_active ? 'desactivado' : 'activado'}.`);
-      load();
+      await load();
     } catch (err) { setNotice(err.message); }
+    finally { settle(); }
   };
 
   return (
@@ -119,7 +125,7 @@ export const AdminDiscountsPage = () => {
         <span style={{ fontSize: '0.8rem', color: '#71717A' }}>{filtered.length} de {coupons.length}</span>
       </div>
 
-      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflowX: 'auto' }}>
+      <div ref={containerRef} style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
           <thead>
             <tr style={{ backgroundColor: '#FAFAFA', borderBottom: '1px solid #E4E4E7', textAlign: 'left' }}>
@@ -128,11 +134,11 @@ export const AdminDiscountsPage = () => {
           </thead>
           <tbody>
             {coupons.length === 0 && <tr><td colSpan={7} style={{ ...tdDisc, color: '#71717A' }}>No hay cupones.</td></tr>}
-            {coupons.length > 0 && filtered.length === 0 && <tr><td colSpan={7} style={{ ...tdDisc, color: '#71717A' }}>No hay cupones con este filtro.</td></tr>}
+            {coupons.length > 0 && filtered.length === 0 && <tr><td colSpan={7} data-row-empty tabIndex={-1} style={{ ...tdDisc, color: '#71717A' }}>No hay cupones con este filtro.</td></tr>}
             {filtered.map((c) => {
               const stt = couponState(c);
               return (
-                <tr key={c.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
+                <tr key={c.id} data-row-key={c.id} tabIndex={-1} aria-label={`Cupón ${c.code}`} style={{ borderBottom: '1px solid #F4F4F5' }}>
                   <td style={{ ...tdDisc, fontWeight: 900 }}>{c.code}<div style={{ fontSize: '0.72rem', color: '#71717A', fontWeight: 500 }}>{c.description}</div></td>
                   <td style={tdDisc}>{c.discount_type === 'percent' ? `${c.discount_value}%` : c.discount_type === 'fixed' ? formatCOP(Number(c.discount_value)) : 'Envío gratis'}</td>
                   <td style={tdDisc}>{Number(c.min_subtotal) > 0 ? formatCOP(Number(c.min_subtotal)) : '—'}</td>
@@ -152,8 +158,8 @@ export const AdminDiscountsPage = () => {
                   </td>
                   <td style={{ ...tdDisc, fontWeight: 800, color: stt.color }}>{stt.label}</td>
                   <td style={{ ...tdDisc, whiteSpace: 'nowrap' }}>
-                    <button onClick={() => edit(c)} style={linkBtn}>Editar</button>
-                    <button onClick={() => toggleActive(c)} style={linkBtn}>{c.is_active ? 'Desactivar' : 'Activar'}</button>
+                    <button data-row-fallback onClick={() => edit(c)} style={linkBtn}>Editar</button>
+                    <button data-row-action="toggle" onClick={() => toggleActive(c)} style={linkBtn}>{c.is_active ? 'Desactivar' : 'Activar'}</button>
                   </td>
                 </tr>
               );
