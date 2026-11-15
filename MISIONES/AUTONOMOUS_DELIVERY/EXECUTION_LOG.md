@@ -1425,3 +1425,15 @@
 - Commits: `ebbb271` (arreglo + pruebas) y el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(cq) (mismo criterio en `/admin/colecciones`, `/admin/configuracion` e `/admin/imagenes`).
+
+## Ejecución 149 — 2026-11-15 ~05:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-01vo43` (= main, sin `MISIONES/AUTONOMOUS_DELIVERY`); se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `85a3b30`, árbol limpio. `pnpm install --frozen-lockfile` OK. CI nº 187: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 165 ✔.
+- Tarea: punto 0(cq) — criterio D125 en `/admin/colecciones`, `/admin/imagenes` y `/admin/configuracion` (D127).
+- Defecto real: eliminar colección y restaurar imagen dejaban el foco en `<body>`. Configuración: sin defecto (filas estables, el diálogo devuelve el foco).
+- Archivos: `AdminCollectionsPage.jsx`, `AdminEditorialImagesPage.jsx`, `apps/web/src/__tests__/adminCollectionsEditorialFocus.test.jsx` (nuevo, 3), `apps/web/e2e/synthetic/backend.cjs` (`DELETE collections`, `/__synthetic-collection`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 78).
+- Pruebas (ejecutadas aquí): 2 unitarias fallan sin el cambio de `src` y pasan con él; recorrido 78 con 2 fallos sin el cambio y pasa con él; `pnpm test:unit` 711/711; ESLint 0; build OK; `pnpm test:e2e-synthetic` **78/78**; `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `cf087c4` (arreglo + pruebas) y el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(cr): el criterio D125/D127 ya cubre todas las páginas del admin con acciones por fila; revisar la tienda (eliminar línea del carrito lateral y de `/carrito`, quitar favorito en `/cuenta/favoritos`, eliminar dirección) con el mismo recorrido de teclado.

@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 148: foco tras acciones por fila en pedidos, productos y cupones del admin (D126); recorrido 77 nuevo)
+Última actualización: 2026-11-15 (ejecución 149: foco tras eliminar colección y restaurar imagen de la portada (D127); recorrido 78 nuevo)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -12,11 +12,11 @@ Rama autorizada: `mission/m26-dev-qa-environments`
 |---|---|
 | `pnpm build` | OK |
 | ESLint (`apps packages scripts`, sin dist*) | 0 errores, 0 avisos |
-| `pnpm test:unit` (vitest, jsdom) | **708/708** (77 archivos, ejecución 148; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
+| `pnpm test:unit` (vitest, jsdom) | **711/711** (78 archivos, ejecución 149; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
 | `pnpm test:env` (node:test) | **142/142** (fallo de entorno corregido: ahora la CLI usa un envDir hermético) |
 | `test-checkout-invariants.mjs` | 10/10 (nota: es un simulador; las pruebas reales son las de vitest) |
 | BD local PostgreSQL 16 (`supabase/tests/run_local.sh`) | pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (ejecución 126; 408/408 en la 124; 393/393 en la 122; 382/382 en la 74; 357/357 en la 71; antes 278/278 en la ejecución 3) |
-| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **77/77 recorridos** (ejecución 148; 10/10 en la primera versión) |
+| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **78/78 recorridos** (ejecución 149; 10/10 en la primera versión) |
 
 Recorridos E2E: 1 catálogo/filtro · 2 producto, color, talla agotada · 3 carrito (límite de stock, persistencia, eliminar) · 4 cupón y envío · 5 checkout (validación, pedido, reserva de stock, carrito conservado sin pago) · 6 pedido pagado (webhook SINTÉTICO) · 7 sin stock al confirmar · 8 registro/logout/login/historial · 9 credenciales erróneas y rutas protegidas (cliente no entra al admin) · 10 admin: panel, ajuste de inventario, pedido pagado→procesando→enviado con guía.
 
@@ -66,6 +66,13 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 149 — Foco tras eliminar colección y restaurar imagen (punto 0(cq))
+- **CI del push anterior** (run `ci` nº 187, `85a3b30`): governance, quality, db-local, db-supabase y `e2e-synthetic` (77) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 165 ✔.
+- **Defecto real (D127):** en `/admin/colecciones` «Eliminar» quitaba la tarjeta y el foco caía en `<body>`; en `/admin/imagenes` tras confirmar «Restaurar» el botón desaparece (la imagen deja de ser personalizada) y el diálogo no podía devolverle el foco. Ambas usan ahora `useRowFocusRestore`: tarjeta siguiente / aviso «Aún no hay colecciones» y «Cambiar» de la misma tarjeta. `/admin/configuracion`: las filas no se desmontan y el diálogo ya devuelve el foco a «Editar» → sin cambio.
+- **Backend sintético:** `DELETE collections` (solo admin) y fixture `/__synthetic-collection`.
+- **Pruebas nuevas:** `adminCollectionsEditorialFocus.test.jsx` (3; 2 fallan sin el cambio de `src`, la de «cancelar» pasa en ambos por diseño) y **recorrido 78** (Chromium real, teclado: 2 fallos sin el cambio con foco en `<body>`, pasa con él).
+- **Verificado aquí:** `pnpm test:unit` **711/711** (78 archivos); ESLint 0; build OK; `pnpm test:e2e-synthetic` **78/78** (suite completa, primera pasada). Sin migración: pgTAP no re-ejecutado.
 
 ## Ejecución 148 — Foco tras acciones por fila en pedidos, productos y cupones (punto 0(cp))
 - **CI del push anterior** (run `ci` nº 185, `442ae02`): governance, quality, db-local, db-supabase y `e2e-synthetic` (76) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 163 ✔.
