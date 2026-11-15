@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { safeInternalPath } from '../../utils/safeRedirect.js';
 import { useAuthStore } from '../../store/authStore.js';
 import { focusIfLost } from '../../utils/focusIfLost';
 import { Lock, ShieldCheck, Mail, ArrowRight, AlertCircle, LogOut } from '../../components/Common/icons';
@@ -52,7 +53,8 @@ export const AdminLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const fromPath = location.state?.from?.pathname || '/admin/dashboard';
+  // D139: solo rutas internas (sin `//`, `\\` ni caracteres de control).
+  const fromPath = safeInternalPath(location.state?.from?.pathname, '/admin/dashboard');
 
   // 1. Capturar mensajes de error enviados desde redirecciones (ej. AuthGuard)
   useEffect(() => {

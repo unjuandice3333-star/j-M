@@ -3,3 +3,6 @@ packages:
   - 'packages/*'
 allowBuilds:
   esbuild: true
+overrides:
+  # D139: ws <8.21.0 tiene GHSA de DoS/memoria (transitiva de @supabase/realtime-js).
+  ws@>=8.0.0 <8.21.0: '>=8.21.0'

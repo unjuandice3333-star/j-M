@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { safeInternalPath } from '../utils/safeRedirect.js';
 import { useRowFocusRestore } from '../hooks/useRowFocusRestore';
 import {
   Package,
@@ -50,7 +51,7 @@ export const AccountPage = () => {
   // M28: volver a la página de origen (p. ej. el checkout tras una sesión vencida). Solo rutas internas.
   const location = useLocation();
   const returnTo = location.state?.from;
-  const safeReturn = typeof returnTo === 'string' && /^\/(?!\/)/.test(returnTo) ? returnTo : null;
+  const safeReturn = typeof returnTo === 'string' ? safeInternalPath(returnTo, null) : null;
   const { isLoggedIn, user, profile, login, signUp, logout, isLoading, error } = useAuthStore();
   useAccountSectionFocus(location.pathname, Boolean(isLoggedIn && user));
 
