@@ -3882,6 +3882,85 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('79. Tienda con teclado: quitar líneas del carrito, cambiar su talla o quitar un favorito no deja el foco en <body> (D128)', async (p) => {
+      // Ejecución 150 (D128): la línea (o la tarjeta) se desmontaba con el botón pulsado y el foco caía en <body>; al
+      // cambiar la talla la línea cambia de id y el selector se remontaba sin foco.
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, key: a?.getAttribute('data-row-key') || a?.closest('[data-row-key]')?.getAttribute('data-row-key') || null,
+          action: a?.getAttribute('data-row-action') || null, label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '' };
+      });
+      const pressOn = async (loc) => { await loc.focus(); await p.keyboard.press('Enter'); };
+      const settle = () => p.waitForTimeout(200);
+      const line = (name) => p.locator('.cart-line', { hasText: name });
+
+      // /carrito
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/carrito`);
+      await line('Polo Clásico').waitFor({ timeout: 10000 });
+      const size = p.getByLabel('Talla de Camiseta Básica');
+      await p.waitForFunction(() => { const el = document.querySelector('select[aria-label="Talla de Camiseta Básica"]'); return el && !el.disabled && el.options.length > 1; }, null, { timeout: 10000 }).catch(() => {});
+      const other = await size.evaluate((el) => [...el.options].find((o) => !o.disabled && o.value !== el.value)?.value ?? null);
+      if (!other) failures.push('carrito: la Camiseta no ofrece otra talla con stock');
+      else {
+        await size.focus();
+        await size.selectOption(other);
+        await p.waitForFunction((v) => document.querySelector('select[aria-label="Talla de Camiseta Básica"]')?.value === v, other, { timeout: 10000 });
+        await settle();
+        const f = await focusInfo();
+        if (f.label !== 'Talla de Camiseta Básica') failures.push(`carrito: tras cambiar la talla, foco en ${JSON.stringify(f)} (se esperaba el selector de talla)`);
+      }
+      await pressOn(line('Camiseta Básica').getByRole('button', { name: 'Eliminar', exact: true }));
+      await line('Camiseta Básica').waitFor({ state: 'detached', timeout: 10000 });
+      await settle();
+      let f = await focusInfo();
+      if (!(await line('Polo Clásico').evaluate((el) => el === document.activeElement))) failures.push(`carrito: tras eliminar, foco en ${JSON.stringify(f)} (se esperaba la línea del Polo)`);
+      await p.keyboard.press('Tab');
+      f = await focusInfo();
+      if (/Ir al contenido/i.test(f.label)) failures.push('carrito: el siguiente Tab volvió a «Ir al contenido»');
+      await pressOn(line('Polo Clásico').getByRole('button', { name: 'Guardar para después' }));
+      await p.getByText('Tu carrito está actualmente vacío').waitFor({ timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (!/actualmente vac/.test(f.label)) failures.push(`carrito: con el carrito vacío, foco en ${JSON.stringify(f)}`);
+
+      // carrito lateral (se abre al agregar)
+      await addToCart(p, 'camiseta-basica', 'M', 'Negro');
+      await addToCart(p, 'polo-clasico', 'M');
+      const drawer = p.getByRole('dialog').filter({ has: p.locator('.drawer-line') });
+      await drawer.locator('.drawer-line', { hasText: 'Polo Clásico' }).waitFor({ timeout: 10000 });
+      await pressOn(drawer.getByRole('button', { name: 'Eliminar Camiseta Básica del carrito' }));
+      await drawer.locator('.drawer-line', { hasText: 'Camiseta Básica' }).waitFor({ state: 'detached', timeout: 10000 });
+      await settle();
+      if (!(await drawer.locator('.drawer-line', { hasText: 'Polo Clásico' }).evaluate((el) => el.contains(document.activeElement)))) failures.push(`carrito lateral: tras eliminar, foco en ${JSON.stringify(await focusInfo())}`);
+      await pressOn(drawer.getByRole('button', { name: 'Eliminar Polo Clásico del carrito' }));
+      await p.getByText('Tu carrito está vacío', { exact: true }).waitFor({ timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (f.label !== 'Tu carrito está vacío') failures.push(`carrito lateral: vacío, foco en ${JSON.stringify(f)}`);
+      await p.keyboard.press('Escape');
+
+      // /cuenta/favoritos (el Polo quedó guardado con «Guardar para después»)
+      await p.goto(`${BASE}/ropa`);
+      await p.getByRole('button', { name: 'Guardar en favoritos: Camiseta Básica' }).first().click();
+      await p.goto(`${BASE}/cuenta/favoritos`);
+      const card = (name) => p.getByTestId('wishlist-item').filter({ hasText: name });
+      await card('Polo Clásico').waitFor({ timeout: 10000 });
+      await pressOn(p.getByRole('button', { name: 'Quitar de favoritos: Camiseta Básica' }));
+      await card('Camiseta Básica').waitFor({ state: 'detached', timeout: 10000 });
+      await settle();
+      const onPolo = await card('Polo Clásico').evaluate((el) => document.activeElement === el);
+      if (!onPolo) failures.push(`favoritos: tras quitar, foco en ${JSON.stringify(await focusInfo())} (se esperaba la tarjeta del Polo, no su corazón)`);
+      await pressOn(p.getByRole('button', { name: 'Quitar de favoritos: Polo Clásico' }));
+      await p.getByText('No tienes productos guardados en favoritos').waitFor({ timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (!/No tienes productos guardados/.test(f.label)) failures.push(`favoritos: vacía, foco en ${JSON.stringify(f)}`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

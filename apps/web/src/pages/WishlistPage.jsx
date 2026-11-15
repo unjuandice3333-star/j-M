@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ShoppingBag, ArrowRight } from '../components/Common/icons';
 import { useECommerceStore } from '../store/eCommerceStore';
@@ -7,6 +7,7 @@ import { AccountSectionNav } from '../components/Account/AccountSectionNav';
 import { useAuthStore } from '../store/authStore';
 import { VariantPicker } from '../components/Product/VariantPicker';
 import { defaultLookSelection } from '../utils/lookSelection';
+import { useRowFocusRestore } from '../hooks/useRowFocusRestore';
 
 export const WishlistPage = () => {
   const { wishlist, products, moveWishlistToCart, wishlistError } = useECommerceStore();
@@ -14,6 +15,23 @@ export const WishlistPage = () => {
   const [moveResult, setMoveResult] = useState(null);
   const [selections, setSelections] = useState({}); // productId → { color, size }
   const wishlistProducts = products.filter((p) => wishlist.includes(p.id));
+  // Ejecución 150 (D128): quitar un favorito con el corazón desmontaba la tarjeta y el foco caía en <body>. El clic se
+  // detecta en fase de captura (el botón vive en ProductCard y detiene la propagación) y, cuando la lista cambia, el
+  // foco va a la tarjeta que ocupó su lugar o al aviso de lista vacía (no a otro corazón: un segundo Enter no debe
+  // quitar otro favorito sin querer).
+  const { containerRef: listRef, remember, settle } = useRowFocusRestore();
+  const awaiting = useRef(false);
+  const onCardClickCapture = (productId) => (e) => {
+    if (!e.target.closest?.('button[aria-pressed="true"][aria-label^="Quitar de favoritos"]')) return;
+    remember(productId, null);
+    awaiting.current = true;
+  };
+  const listKey = wishlistProducts.map((p) => p.id).join(',');
+  useEffect(() => {
+    if (!awaiting.current) return;
+    awaiting.current = false;
+    settle();
+  }, [listKey, settle]);
   const selectionOf = (p) => selections[p.id] ?? defaultLookSelection(p);
   const setSelection = (p, next) => { setSelections((st) => ({ ...st, [p.id]: next })); setMoveResult(null); };
   // Cada favorito se agrega con la talla y el color elegidos (antes: la primera variante con stock, sin preguntar).
@@ -83,10 +101,11 @@ export const WishlistPage = () => {
         )}
         {wishlistError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600, marginBottom: '1rem' }}>{wishlistError}</div>}
         {moveResult && <div data-testid="wishlist-notice" role={moveResult.ok ? 'status' : 'alert'} style={{ color: moveResult.ok ? '#065F46' : '#B91C1C', fontWeight: 600, marginBottom: '1rem' }}>{moveResult.text}</div>}
+        <div ref={listRef}>
         {wishlistProducts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 1rem', border: '1px dashed #D4D4D8', borderRadius: '12px' }}>
             <Heart size={52} color="#A1A1AA" style={{ margin: '0 auto 1rem auto' }} />
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#09090B', marginBottom: '0.5rem' }}>
+            <h2 data-row-empty style={{ fontSize: '1.3rem', fontWeight: 800, color: '#09090B', marginBottom: '0.5rem' }}>
               No tienes productos guardados en favoritos
             </h2>
             <p style={{ fontSize: '0.9rem', color: '#71717A', marginBottom: '2rem' }}>
@@ -118,13 +137,14 @@ export const WishlistPage = () => {
             gap: '1.5rem'
           }}>
             {wishlistProducts.map((product) => (
-              <div key={product.id} data-testid="wishlist-item">
+              <div key={product.id} data-testid="wishlist-item" data-row-key={product.id} onClickCapture={onCardClickCapture(product.id)}>
                 <ProductCard product={product} />
                 <VariantPicker product={product} selection={selectionOf(product)} onChange={(next) => setSelection(product, next)} />
               </div>
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

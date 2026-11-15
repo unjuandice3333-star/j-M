@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Trash2, Bookmark, ArrowRight, Truck, Sparkles, Plus, Minus, Tag, Check, X } from '../components/Common/icons';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { formatCOP } from '../utils/currency';
+import { useRowFocusRestore } from '../hooks/useRowFocusRestore';
 
 export const CartPage = () => {
   const navigate = useNavigate();
@@ -23,15 +24,26 @@ export const CartPage = () => {
     changeVariant,
     fitCartToStock
   } = useECommerceStore();
+  // Ejecución 150 (D128): eliminar, guardar para después, ajustar al stock o cambiar talla/color (la fila se remonta
+  // con otra clave) dejaban el foco en <body>. Mismo criterio que D125 en el admin: vuelve a la misma fila, a la que
+  // ocupó su lugar o al aviso de carrito vacío.
+  const { containerRef: linesRef, remember, settle } = useRowFocusRestore();
+  const act = (key, action, fn) => { remember(key, action); const r = fn(); settle(); return r; };
   const [stockMsg, setStockMsg] = useState(null);
-  const onFitStock = (variantId = null) => {
+  const onFitStock = (variantId = null, key = null) => {
+    remember(key ?? '__summary__', key ? 'fit' : null);
     const r = fitCartToStock(variantId);
+    settle();
     setQtyError(null);
     if (r.changes.length) setStockMsg(r.changes.join(' '));
   };
   const [variantMsg, setVariantMsg] = useState(null); // { itemId, ok, text }
-  const onChangeVariant = (item, size, color) => {
+  const onChangeVariant = (item, size, color, action) => {
     const r = changeVariant(item.id, size, color);
+    // La línea cambia de id (= variante) o se une a otra: el foco sigue en el mismo selector de la línea resultante.
+    const now = useECommerceStore.getState().items.find((i) => i.productId === item.productId && i.size === size && i.color === color);
+    remember(r.ok && now ? now.id : item.id, action);
+    settle();
     setVariantMsg(r.ok ? { itemId: r.merged ? null : item.id, ok: true, text: r.merged ? 'Unimos las dos líneas de la misma talla y color.' : null } : { itemId: item.id, ok: false, text: r.message });
   };
   const [qtyError, setQtyError] = useState(null);
@@ -105,10 +117,11 @@ export const CartPage = () => {
           CARRITO DE COMPRAS ({items.reduce((s, i) => s + i.quantity, 0)})
         </h1>
 
+        <div ref={linesRef}>
         {items.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem 1rem', border: '1px dashed #D4D4D8', borderRadius: '12px' }}>
             <ShoppingBag size={56} color="#A1A1AA" style={{ margin: '0 auto 1rem auto' }} />
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#09090B', marginBottom: '0.5rem' }}>
+            <h2 data-row-empty style={{ fontSize: '1.3rem', fontWeight: 800, color: '#09090B', marginBottom: '0.5rem' }}>
               Tu carrito está actualmente vacío
             </h2>
             <p style={{ fontSize: '0.9rem', color: '#71717A', marginBottom: '2rem' }}>
@@ -169,6 +182,7 @@ export const CartPage = () => {
                 {items.map((item) => (
                   <div
                     key={item.id}
+                    data-row-key={item.id}
                     className="cart-line"
                     data-stock-short={shortByVariant.has(item.variantId) ? 'true' : undefined}
                     style={{
@@ -205,19 +219,19 @@ export const CartPage = () => {
                         return (
                           <div style={{ fontSize: '0.82rem', color: '#71717A', marginBottom: '0.8rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
                             <label>Talla{' '}
-                              <select aria-label={`Talla de ${item.name}`} value={item.size} disabled={!prod} className="jm-tap" style={sel}
-                                onChange={(e) => onChangeVariant(item, e.target.value, item.color)}>
+                              <select data-row-action="size" aria-label={`Talla de ${item.name}`} value={item.size} disabled={!prod} className="jm-tap" style={sel}
+                                onChange={(e) => onChangeVariant(item, e.target.value, item.color, 'size')}>
                                 {sizes.map((v) => <option key={v.id} value={v.size} disabled={v.id !== item.variantId && v.available <= 0}>{v.size}{v.available <= 0 ? ' (agotada)' : ''}</option>)}
                                 {!sizes.some((v) => v.size === item.size) && <option value={item.size}>{item.size}</option>}
                               </select>
                             </label>
                             <label>Color{' '}
-                              <select aria-label={`Color de ${item.name}`} value={item.color} disabled={!prod || colors.length < 2} className="jm-tap" style={sel}
+                              <select data-row-action="color" aria-label={`Color de ${item.name}`} value={item.color} disabled={!prod || colors.length < 2} className="jm-tap" style={sel}
                                 onChange={(e) => {
                                   const c = e.target.value;
                                   const same = vs.find((v) => v.color === c && v.size === item.size && v.available > 0);
                                   const any = vs.find((v) => v.color === c && v.available > 0);
-                                  onChangeVariant(item, (same ?? any ?? { size: item.size }).size, c);
+                                  onChangeVariant(item, (same ?? any ?? { size: item.size }).size, c, 'color');
                                 }}>
                                 {colors.map((c) => <option key={c} value={c}>{c}</option>)}
                               </select>
@@ -232,7 +246,7 @@ export const CartPage = () => {
                         return (
                           <div role="alert" className="cart-line-stock" style={{ color: '#B91C1C', fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.8rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                             <span>{avail <= 0 ? 'Agotado: ya no quedan unidades de esta talla y color.' : `Solo quedan ${avail}; tienes ${item.quantity} en el carrito.`}</span>
-                            <button type="button" className="jm-tap" onClick={() => onFitStock(item.variantId)}
+                            <button type="button" className="jm-tap" data-row-action="fit" onClick={() => onFitStock(item.variantId, item.id)}
                               style={{ textDecoration: 'underline', color: '#B91C1C', fontWeight: 800 }}>
                               {avail <= 0 ? 'Quitar del carrito' : `Ajustar a ${avail}`}
                             </button>
@@ -244,7 +258,8 @@ export const CartPage = () => {
                         {/* Quantity Counter */}
                         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E4E4E7', borderRadius: '4px' }}>
                           <button
-                            onClick={() => { updateQuantity(item.id, item.quantity - 1); setQtyError(null); }}
+                            data-row-action="qty-dec"
+                            onClick={() => { act(item.id, 'qty-dec', () => updateQuantity(item.id, item.quantity - 1)); setQtyError(null); }}
                             aria-label={`Disminuir cantidad de ${item.name}`}
                             className="cart-qty-btn"
                             style={{ padding: '0.35rem 0.6rem', color: '#09090B' }}
@@ -264,7 +279,8 @@ export const CartPage = () => {
 
                         {/* Save for later */}
                         <button
-                          onClick={() => saveForLater(item.id)}
+                          data-row-action="save"
+                          onClick={() => act(item.id, 'save', () => saveForLater(item.id))}
                           style={{ fontSize: '0.78rem', color: '#71717A', display: 'flex', alignItems: 'center', gap: '0.2rem', fontWeight: 600 }}
                         >
                           <Bookmark size={14} /> Guardar para después
@@ -272,7 +288,8 @@ export const CartPage = () => {
 
                         {/* Remove */}
                         <button
-                          onClick={() => removeItem(item.id)}
+                          data-row-action="remove"
+                          onClick={() => act(item.id, 'remove', () => removeItem(item.id))}
                           style={{ fontSize: '0.78rem', color: '#E11D48', display: 'flex', alignItems: 'center', gap: '0.2rem', fontWeight: 600 }}
                         >
                           <Trash2 size={14} /> Eliminar
@@ -441,6 +458,7 @@ export const CartPage = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       <style>{`

@@ -24,6 +24,7 @@ import { useStorefrontTaxonomy } from '../../hooks/useStorefrontTaxonomy';
 import { buildNavTaxonomy, navCurrent } from '../../utils/navTaxonomy';
 import useAuthStore from '../../store/authStore';
 import { DialogPanel } from '../Common/DialogPanel';
+import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 
 export const Header = () => {
   const navigate = useNavigate();
@@ -78,9 +79,14 @@ export const Header = () => {
   const inCart = new Set((items || []).map((i) => i.variantId));
   const drawerShort = new Map((totals.isEstimate ? [] : (totals.lines || []).filter((l) => !l.in_stock && inCart.has(l.variant_id)))
     .map((l) => [l.variant_id, Math.max(0, Number(l.available) || 0)]));
-  const onDrawerFitStock = (variantId = null) => {
+  // Ejecución 150 (D128): quitar una línea del carrito lateral dejaba el foco en <body> (el siguiente Tab saltaba
+  // al primer control del panel). Vuelve a la línea que ocupó su lugar o al aviso de carrito vacío.
+  const { containerRef: drawerLinesRef, remember: rememberLine, settle: settleLine } = useRowFocusRestore();
+  const onDrawerFitStock = (variantId = null, key = null) => {
     if (typeof fitCartToStock !== 'function') return;
+    rememberLine(key ?? '__summary__', key ? 'fit' : null);
     const r = fitCartToStock(variantId);
+    settleLine();
     setDrawerQtyError(null);
     if (r.changes.length) setDrawerStockMsg(r.changes.join(' '));
   };
@@ -541,11 +547,11 @@ export const Header = () => {
             </div>
 
             {/* Cart Items List */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+            <div ref={drawerLinesRef} style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
               {items.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#71717A' }}>
                   <ShoppingBag size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                  <p style={{ fontWeight: 600, fontSize: '1.05rem', color: '#09090B', marginBottom: '0.5rem' }}>Tu carrito está vacío</p>
+                  <p data-row-empty style={{ fontWeight: 600, fontSize: '1.05rem', color: '#09090B', marginBottom: '0.5rem' }}>Tu carrito está vacío</p>
                   <p style={{ fontSize: '0.88rem', marginBottom: '1.5rem' }}>Descubre nuestras colecciones masculinas y viste con estilo.</p>
                   <button
                     onClick={() => { setCartOpen(false); navigate('/ropa'); }}
@@ -580,6 +586,7 @@ export const Header = () => {
                   {items.map((item) => (
                     <div
                       key={item.id}
+                      data-row-key={item.id}
                       className="drawer-line"
                       data-stock-short={drawerShort.has(item.variantId) ? 'true' : undefined}
                       style={{
@@ -599,7 +606,8 @@ export const Header = () => {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#09090B', lineHeight: 1.3 }}>{item.name}</span>
                             <button
-                              onClick={() => { removeItem(item.id); setDrawerQtyError(null); }}
+                              data-row-action="remove"
+                              onClick={() => { rememberLine(item.id, 'remove'); removeItem(item.id); setDrawerQtyError(null); settleLine(); }}
                               aria-label={`Eliminar ${item.name} del carrito`}
                               className="jm-tap"
                               style={{ color: '#71717A', minWidth: '32px', minHeight: '32px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
@@ -615,7 +623,8 @@ export const Header = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div className="jm-tap-area" style={{ display: 'flex', alignItems: 'center', border: '1px solid #E4E4E7', borderRadius: '4px' }}>
                             <button
-                              onClick={() => { updateQuantity(item.id, item.quantity - 1); setDrawerQtyError(null); }}
+                              data-row-action="qty-dec"
+                              onClick={() => { rememberLine(item.id, 'qty-dec'); updateQuantity(item.id, item.quantity - 1); setDrawerQtyError(null); settleLine(); }}
                               aria-label={`Disminuir cantidad de ${item.name}`}
                               style={{ padding: '0.25rem 0.5rem', color: '#09090B', minWidth: '32px' }}
                             >
@@ -639,7 +648,7 @@ export const Header = () => {
                           return (
                             <div role="alert" className="drawer-line-stock" style={{ color: '#B91C1C', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.35rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                               <span>{avail <= 0 ? 'Agotado: ya no quedan unidades de esta talla y color.' : `Solo quedan ${avail}; tienes ${item.quantity} en el carrito.`}</span>
-                              <button type="button" className="jm-tap" onClick={() => onDrawerFitStock(item.variantId)}
+                              <button type="button" className="jm-tap" data-row-action="fit" onClick={() => onDrawerFitStock(item.variantId, item.id)}
                                 style={{ textDecoration: 'underline', color: '#B91C1C', fontWeight: 800, minHeight: '32px' }}>
                                 {avail <= 0 ? 'Quitar del carrito' : `Ajustar a ${avail}`}
                               </button>
