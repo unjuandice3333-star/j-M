@@ -16,7 +16,7 @@ Rama autorizada: `mission/m26-dev-qa-environments`
 | `pnpm test:env` (node:test) | **142/142** (fallo de entorno corregido: ahora la CLI usa un envDir hermético) |
 | `test-checkout-invariants.mjs` | 10/10 (nota: es un simulador; las pruebas reales son las de vitest) |
 | BD local PostgreSQL 16 (`supabase/tests/run_local.sh`) | pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (ejecución 126; 408/408 en la 124; 393/393 en la 122; 382/382 en la 74; 357/357 en la 71; antes 278/278 en la ejecución 3) |
-| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **87 recorridos** (ejecución 158: **87/87 (suite completa, primera pasada)**; 10/10 en la primera versión) |
+| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **87 recorridos** (ejecución 159: **87/87 (suite completa)**; 10/10 en la primera versión) |
 
 Recorridos E2E: 1 catálogo/filtro · 2 producto, color, talla agotada · 3 carrito (límite de stock, persistencia, eliminar) · 4 cupón y envío · 5 checkout (validación, pedido, reserva de stock, carrito conservado sin pago) · 6 pedido pagado (webhook SINTÉTICO) · 7 sin stock al confirmar · 8 registro/logout/login/historial · 9 credenciales erróneas y rutas protegidas (cliente no entra al admin) · 10 admin: panel, ajuste de inventario, pedido pagado→procesando→enviado con guía.
 
@@ -71,7 +71,7 @@ Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que
 - **CI del push anterior** (run `ci` nº 203, `de7d68f`): governance, quality, db-local, db-supabase y `e2e-synthetic` (87) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 181 ✔.
 - **Cambio (D137):** el número de WhatsApp estaba repetido en 4 sitios (pie, botón flotante, `/contacto`, posventa) y escrito a mano en el texto de la política/FAQ. Ahora sale de `src/config/storeContact.js` (`VITE_STORE_WHATSAPP`, opcional; marcador si falta o es inválida).
 - **Pruebas nuevas:** `storeContact.test.jsx` (5: normalización, marcador, formato, y render real de pie + botón + `/contacto` + política + enlace de posventa con la variable definida).
-- **Verificado aquí:** `pnpm test:unit` **766/766** (87 archivos); ESLint 0; build OK; `check_commits.sh` OK; `pnpm test:e2e-synthetic`: ver EXECUTION_LOG (ejecución 159). Sin migración: pgTAP no re-ejecutado.
+- **Verificado aquí:** `pnpm test:unit` **766/766** (87 archivos); ESLint 0; build OK; `check_commits.sh` OK; `pnpm test:e2e-synthetic` **87/87** (suite completa). Sin migración: pgTAP no re-ejecutado.
 - **Entregable:** `FINAL_ACCEPTANCE.md` (funcionalidad verificada, pruebas, 5 bloqueos del propietario, pasos de aceptación, limitaciones). `OWNER_STEPS.md` §B.5 documenta `VITE_STORE_WHATSAPP`.
 - **Siguiente (0(db)):** comprobar el CI del push; mantener `FINAL_ACCEPTANCE.md` al día. El código no bloqueado está completo: el trabajo restante depende del propietario (Supabase QA baseline M24, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks). Mientras tanto, solo regresiones/defectos reales que aparezcan en CI.
 

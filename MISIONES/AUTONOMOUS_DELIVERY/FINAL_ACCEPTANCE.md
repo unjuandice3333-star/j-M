@@ -25,7 +25,7 @@ Vercel Preview (sin acceso del agente). Esos tres pasos son del propietario (ver
 | Suite | Resultado | Dónde |
 |---|---|---|
 | `pnpm test:unit` | 766/766 (87 archivos) | este contenedor, ejecución 159 |
-| `pnpm test:e2e-synthetic` | ver EXECUTION_LOG (ejecución 159) | este contenedor + job `e2e-synthetic` del CI |
+| `pnpm test:e2e-synthetic` | 87/87 recorridos | este contenedor + job `e2e-synthetic` del CI |
 | pgTAP + concurrencia | 435/435, 12/12 | ejecución 126 + job `db-local` del CI (verde en cada push) |
 | Supabase local (`db-supabase`, `e2e-supabase`) | verde | GitHub Actions en cada push (run `ci` nº 203, `e2e-supabase` nº 181) |
 | ESLint / build | 0 problemas / OK | este contenedor |

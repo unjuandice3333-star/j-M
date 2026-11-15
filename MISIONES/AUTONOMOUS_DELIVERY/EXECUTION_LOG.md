@@ -1550,8 +1550,9 @@
 - Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-z1nvxv`; se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `de7d68f`, árbol limpio. CI nº 203: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 181 ✔.
 - Tarea: punto 0(da) — número de WhatsApp en una sola constante configurable (D137) e informe `FINAL_ACCEPTANCE.md`.
 - Archivos: `apps/web/src/config/storeContact.js` (nuevo), `apps/web/src/utils/orderAftercare.js`, `apps/web/src/components/Common/WhatsAppButton.jsx`, `apps/web/src/components/Footer/Footer.jsx`, `apps/web/src/pages/InfoPage.jsx`, `apps/web/src/__tests__/storeContact.test.jsx` (nuevo, 5), `FINAL_ACCEPTANCE.md` (nuevo), `OWNER_STEPS.md`, documentación.
-- Pruebas (ejecutadas aquí): `pnpm test:unit` 766/766 (87 archivos); ESLint 0; build OK; `check_commits.sh` OK. `pnpm test:e2e-synthetic`: en curso al publicar este registro (un primer intento lo cortó mi propio `timeout 590`, no un fallo); resultado en la siguiente entrada.
+- Pruebas (ejecutadas aquí): `pnpm test:unit` 766/766 (87 archivos); ESLint 0; build OK; `check_commits.sh` OK. `pnpm test:e2e-synthetic` **87/87** (suite completa; un primer intento lo cortó mi propio `timeout 590` en el recorrido 70, no un fallo de la tienda; la segunda pasada sin ese límite dio 87/87).
 - Errores pendientes: ninguno conocido.
 - Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, número real de WhatsApp, decisión gitleaks, `e2e-supabase` en `ci-gate`.
-- Commits: `2be6797` (funcionalidad + pruebas) y este de documentación; publicados en la rama autorizada.
+- Commits: `2be6797` (funcionalidad + pruebas), `8a6a96b` y este de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push (`e2e-synthetic` 87/87); luego 0(db).
