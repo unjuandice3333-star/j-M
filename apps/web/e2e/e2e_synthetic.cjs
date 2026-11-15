@@ -4416,6 +4416,51 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser, /\[catálogo\] no se pudo cargar/);
 
+    await journey('87. «Mis pedidos»: guía de envío en la tarjeta y «Solicitar cambio» por WhatsApp en pedidos entregados, también con teclado y a 320 px (D136)', async (p) => {
+      // Ejecución 158: posventa. La política publicada da 30 días desde la entrega y la solicitud va por WhatsApp.
+      const tag = crypto.randomBytes(3).toString('hex'); const email = `posventa.${tag}@jm.test`;
+      const su = await (await fetch(`${API_URL}/auth/v1/signup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: 'Clave-Segura-1', data: { full_name: `Camilo Posventa ${tag}` } }) })).json();
+      const mk = (status, extra = {}) => fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ user_id: su.user.id, customer_email: email, customer_name: `Camilo ${tag}`, status, items: [{ product_name: 'Polo Clásico', size_code: 'L', color_name: 'Azul' }], ...extra }) }).then(j);
+      const shipped = await mk('shipped', { carrier: 'Servientrega', tracking_number: `SV-${tag}`, tracking_url: `https://rastreo.example/SV-${tag}` });
+      const delivered = await mk('delivered', { carrier: 'Coordinadora', tracking_number: `CO-${tag}` });
+      const failures = [];
+      await login(p, '/login', email, 'Clave-Segura-1', 'Iniciar Sesión');
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      const card = (num) => p.locator('[data-order-id]').filter({ hasText: num });
+      await card(shipped.order_number).waitFor({ timeout: 15000 });
+      // Enviado: guía con enlace de rastreo, sin cambio todavía
+      const st = card(shipped.order_number).getByTestId('order-tracking');
+      if (!(await st.count())) failures.push('pedido enviado sin guía en la tarjeta');
+      else {
+        if (!(await st.innerText()).includes(`SV-${tag}`)) failures.push('la guía del enviado no muestra el número');
+        const href = await st.getByRole('link', { name: /Rastrear envío/ }).getAttribute('href');
+        if (href !== `https://rastreo.example/SV-${tag}`) failures.push(`enlace de rastreo: ${href}`);
+      }
+      if (await card(shipped.order_number).getByTestId('order-exchange').count()) failures.push('pedido enviado ofrece cambio antes de la entrega');
+      // Entregado: guía (sin enlace) y «Solicitar cambio» con el número del pedido
+      const dc = card(delivered.order_number);
+      if (!(await dc.getByTestId('order-tracking').count())) failures.push('pedido entregado sin guía');
+      const link = dc.getByTestId('order-exchange-link');
+      if (!(await link.count())) failures.push('pedido entregado sin «Solicitar cambio»');
+      else {
+        const href = await link.getAttribute('href');
+        if (!href.startsWith('https://wa.me/') || !decodeURIComponent(href).includes(delivered.order_number)) failures.push(`enlace de cambio: ${href}`);
+        // Teclado: se llega con Tab y tiene nombre accesible que identifica el pedido
+        await dc.getByRole('button', { name: /Ver Detalle/ }).focus();
+        let reached = false;
+        for (let i = 0; i < 6 && !reached; i += 1) { await p.keyboard.press('Tab'); reached = await link.evaluate((el) => el === document.activeElement); }
+        if (!reached) failures.push('«Solicitar cambio» no se alcanza con Tab desde «Ver Detalle»');
+        const name = await link.evaluate((el) => el.textContent);
+        if (!name.includes(`del pedido ${delivered.order_number}`)) failures.push(`nombre accesible sin pedido: «${name}»`);
+      }
+      // Móvil 320 px: sin desbordamiento horizontal
+      await p.setViewportSize({ width: 320, height: 640 });
+      await measureMobileScreens(p, [['/cuenta/pedidos', null, null, delivered.order_number]], failures, { links: true });
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

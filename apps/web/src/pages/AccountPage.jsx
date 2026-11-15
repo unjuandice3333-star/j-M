@@ -24,6 +24,7 @@ import { AccountDetails } from '../components/Account/AccountDetails';
 import { AccountSectionNav, useAccountSectionFocus } from '../components/Account/AccountSectionNav';
 import { ReviewInvitations } from '../components/Account/ReviewInvitations';
 import { wompiService } from '../services/wompi';
+import { exchangeWindow, exchangeRequestUrl, trackingInfo, EXCHANGE_WINDOW_DAYS } from '../utils/orderAftercare';
 import { analyticsService } from '../services/analytics';
 import { validateAuthForm, validateEmailField, serverErrorField } from '../utils/authForm.js';
 
@@ -694,6 +695,33 @@ export const AccountPage = () => {
                           Productos reservados. Paga antes del {new Date(ord.payment_expires_at).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.
                         </p>
                       )}
+                      {trackingInfo(ord) && (() => {
+                        const t = trackingInfo(ord);
+                        return (
+                          <p data-testid="order-tracking" style={{ fontSize: '0.82rem', color: '#1E40AF', margin: '0.75rem 0 0 0' }}>
+                            <strong>Guía de envío:</strong> {t.carrier ? `${t.carrier} · ` : ''}{t.number}
+                            {t.url && <> · <a href={t.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>Rastrear envío<span className="jm-sr-only"> (abre en otra pestaña)</span></a></>}
+                          </p>
+                        );
+                      })()}
+                      {exchangeWindow(ord) && (() => {
+                        const w = exchangeWindow(ord);
+                        const until = w.until.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+                        return w.state === 'open' ? (
+                          <p data-testid="order-exchange" style={{ fontSize: '0.82rem', color: '#3F3F46', margin: '0.75rem 0 0 0' }}>
+                            ¿Necesitas otra talla o prenda? Puedes solicitar un cambio hasta el {until}.{' '}
+                            <a data-testid="order-exchange-link" href={exchangeRequestUrl(ord)} target="_blank" rel="noopener noreferrer"
+                              style={{ fontWeight: 800, color: '#09090B', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', minHeight: '32px' }}>
+                              Solicitar cambio por WhatsApp<span className="jm-sr-only"> del pedido {ord.order_number} (abre en otra pestaña)</span>
+                            </a>{' '}
+                            · <Link to="/cambios-y-devoluciones" style={{ textDecoration: 'underline', color: 'inherit' }}>Política de cambios</Link>
+                          </p>
+                        ) : (
+                          <p data-testid="order-exchange-closed" style={{ fontSize: '0.82rem', color: '#71717A', margin: '0.75rem 0 0 0' }}>
+                            El plazo de cambio ({EXCHANGE_WINDOW_DAYS} días desde la entrega) terminó el {until}.
+                          </p>
+                        );
+                      })()}
                       {windowState === 'closed' && (
                         <p data-testid="order-window-closed" role="status" style={{ fontSize: '0.78rem', color: '#3F3F46', margin: '0.75rem 0 0 0' }}>
                           La ventana de pago terminó: este pedido ya no puede pagarse y se cancelará automáticamente. Puedes volver a comprar desde la tienda.
