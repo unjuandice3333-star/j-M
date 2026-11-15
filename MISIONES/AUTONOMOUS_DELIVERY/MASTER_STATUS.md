@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 155: foco tras error al guardar en el detalle de pedido del admin (D133); recorrido 84 nuevo)
+Última actualización: 2026-11-15 (ejecución 156: foco tras error en «Confirmar y pagar», boletín y /admin/login (D134); recorrido 85 nuevo)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -12,11 +12,11 @@ Rama autorizada: `mission/m26-dev-qa-environments`
 |---|---|
 | `pnpm build` | OK |
 | ESLint (`apps packages scripts`, sin dist*) | 0 errores, 0 avisos |
-| `pnpm test:unit` (vitest, jsdom) | **744/744** (83 archivos, ejecución 155; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
+| `pnpm test:unit` (vitest, jsdom) | **751/751** (84 archivos, ejecución 156; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
 | `pnpm test:env` (node:test) | **142/142** (fallo de entorno corregido: ahora la CLI usa un envDir hermético) |
 | `test-checkout-invariants.mjs` | 10/10 (nota: es un simulador; las pruebas reales son las de vitest) |
 | BD local PostgreSQL 16 (`supabase/tests/run_local.sh`) | pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (ejecución 126; 408/408 en la 124; 393/393 en la 122; 382/382 en la 74; 357/357 en la 71; antes 278/278 en la ejecución 3) |
-| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **84 recorridos** (ejecución 155: **84/84** (suite completa, primera pasada); 10/10 en la primera versión) |
+| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **85 recorridos** (ejecución 156: **85/85** (suite completa, primera pasada); 10/10 en la primera versión) |
 
 Recorridos E2E: 1 catálogo/filtro · 2 producto, color, talla agotada · 3 carrito (límite de stock, persistencia, eliminar) · 4 cupón y envío · 5 checkout (validación, pedido, reserva de stock, carrito conservado sin pago) · 6 pedido pagado (webhook SINTÉTICO) · 7 sin stock al confirmar · 8 registro/logout/login/historial · 9 credenciales erróneas y rutas protegidas (cliente no entra al admin) · 10 admin: panel, ajuste de inventario, pedido pagado→procesando→enviado con guía.
 
@@ -67,12 +67,20 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
 
+## Ejecución 156 — Foco tras error en «Confirmar y pagar», boletín y /admin/login (punto 0(cx))
+- **CI del push anterior** (run `ci` nº 199, `05f7d7c`): governance, quality, db-local, db-supabase y `e2e-synthetic` (84) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 177 ✔.
+- **Defecto real (D134):** en Chromium el foco caía en `<body>` en: «CONFIRMAR Y PAGAR» del checkout con error (red/servicio, stock agotado por otra compra o sesión vencida) y «Continuar como invitado» (desaparece al pulsarse); el boletín de la portada al suscribirse (el formulario se sustituye por el aviso); `/admin/login` con fallo de Google, con una cuenta sin rol administrativo y al pulsar «Cambiar cuenta». Ahora: el botón de envío; «Ajustar el carrito al stock disponible» si falta stock; «Iniciar sesión» si la sesión venció; el aviso «¡Listo!…» del boletín; el botón de Google o el campo del correo del admin.
+- **Pruebas nuevas:** `failedSubmitFocus.test.jsx` (7; las 7 fallan sin el cambio de `src`) y **recorrido 85** (Chromium real, teclado: 4 fallos sin el cambio con foco en `<body>`, pasa con él; además crea el pedido con la red de vuelta).
+- **Verificado aquí:** `pnpm test:unit` **751/751** (84 archivos); ESLint 0; build OK; **85/85** (suite completa, primera pasada); `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- **Criterio de foco: cerrado.** Barrido de `disabled={` sin `focusIfLost`/`useRowFocusRestore`/`DialogPanel`: solo queda «Reintentar» del aviso de catálogo no disponible en `PublicLayout` (raro: solo con la BD caída); `ProductCard`/`VariantPicker` son deshabilitados estáticos (sin acción) y `PendingOrderNotice` ya cumple (D129).
+- **Siguiente (0(cy)):** «Reintentar» de `PublicLayout` (D134) en pocos minutos y luego volver a funcionalidad no bloqueada por credenciales; los bloqueos reales siguen siendo Wompi Sandbox, Vercel Preview y baseline M24 en Supabase QA (propietario).
+
 ## Ejecución 155 — Foco tras error al guardar en el detalle de pedido del admin (punto 0(cw))
 - **CI del push anterior** (run `ci` nº 197, `324487f`): governance, quality, db-local, db-supabase y `e2e-synthetic` (83) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 175 ✔.
 - **Defecto real (D133):** con la red caída, «GUARDAR CAMBIOS» (estado/guía), «MARCAR COMO REVISADO» y «REEMBOLSAR Y CERRAR» del detalle de pedido dejaban el foco en `<body>` en Chromium (el siguiente Tab salía del modal). Ahora vuelve al botón pulsado (respaldo: selector de estado). **Ajuste de inventario: ya cumplía** (con error la fila no se desmonta y `useRowFocusRestore` devuelve el foco a «Ajustar», D125) → sin cambio. «MARCAR COMO DEVUELTA» ya enfocaba el campo del id de Wompi → sin cambio.
 - **Pruebas nuevas:** `adminOrderSaveFocus.test.jsx` (4; 3 fallan sin el cambio de `src`, la de «el admin ya movió el foco» pasa en ambos por diseño) y **recorrido 84** (Chromium real, teclado: 2 fallos sin el cambio con foco en `<body>`, pasa con él; además guarda con la red de vuelta).
 - **Verificado aquí:** `pnpm test:unit` **744/744** (83 archivos); ESLint 0; build OK; `pnpm test:e2e-synthetic` **84/84** (suite completa, primera pasada). Sin migración: pgTAP no re-ejecutado.
-- **Siguiente (0(cx)):** últimos botones que se deshabilitan sin control de foco (barrido con grep de `disabled={` sin `focusIfLost`/`useRowFocusRestore`): «Confirmar pedido» de `CheckoutPage` con error de red (flujo principal), `NewsletterSignup` del inicio y `AdminLogin`. Después el criterio de foco queda cerrado; el resto depende de credenciales (Wompi Sandbox / Vercel Preview / baseline QA).
+- ~~**Siguiente (0(cx))**~~ hecho en la ejecución 156 (D134). Era: últimos botones que se deshabilitan sin control de foco (barrido con grep de `disabled={` sin `focusIfLost`/`useRowFocusRestore`): «Confirmar pedido» de `CheckoutPage` con error de red (flujo principal), `NewsletterSignup` del inicio y `AdminLogin`. Después el criterio de foco queda cerrado; el resto depende de credenciales (Wompi Sandbox / Vercel Preview / baseline QA).
 
 ## Ejecución 154 — Foco en botones de guardar del admin (punto 0(cv))
 - **CI del push anterior** (run `ci` nº 196, `50eed90`): governance, quality, db-local, db-supabase y `e2e-synthetic` (82) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 174 ✔.

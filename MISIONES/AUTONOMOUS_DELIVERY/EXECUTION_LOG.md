@@ -1509,3 +1509,15 @@
 - Commits: `b3aa569` (arreglo + pruebas unitarias), `a6d5073` (recorrido 84) y este de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push (`e2e-synthetic` debe dar 84/84); luego punto 0(cx) — «Confirmar pedido» de `CheckoutPage` con error de red, `NewsletterSignup` y `AdminLogin` (últimos botones con `disabled={` sin control de foco).
+
+## Ejecución 156 — 2026-11-15 ~12:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-7evww0`; se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `05f7d7c`, árbol limpio. `pnpm install --frozen-lockfile` OK. CI nº 199: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 177 ✔.
+- Tarea: punto 0(cx) — foco tras error en «CONFIRMAR Y PAGAR», boletín de la portada y `/admin/login` (D134).
+- Defecto real: el foco caía en `<body>` en Chromium tras un error al confirmar el pedido (red, stock, sesión vencida), al pulsar «Continuar como invitado», al suscribirse al boletín y en `/admin/login` (Google falla, cuenta sin rol administrativo, «Cambiar cuenta»).
+- Archivos: `apps/web/src/pages/CheckoutPage.jsx`, `apps/web/src/components/Home/NewsletterSignup.jsx`, `apps/web/src/pages/admin/AdminLogin.jsx`, `apps/web/src/__tests__/failedSubmitFocus.test.jsx` (nuevo, 7), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 85), documentación.
+- Pruebas (ejecutadas aquí): 7 unitarias fallan sin el cambio de `src` y pasan con él; recorrido 85 con 4 fallos sin el cambio y pasa con él; `pnpm test:unit` 751/751 (84 archivos); ESLint 0; build OK; `pnpm test:e2e-synthetic` **85/85** (suite completa, primera pasada); `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `585a787` (arreglo + pruebas unitarias + recorrido 85) y este de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push (`e2e-synthetic` debe dar 85/85); luego punto 0(cy) — «Reintentar» del aviso de catálogo no disponible en `PublicLayout` y volver a funcionalidad no bloqueada por credenciales.
