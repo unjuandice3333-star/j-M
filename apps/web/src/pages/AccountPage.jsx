@@ -15,7 +15,7 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { formatCOP } from '../utils/currency';
 import supabase from '../config/supabase';
-import { orderService } from '../services/orderService';
+import { orderService, MY_ORDERS_PAGE_SIZE } from '../services/orderService';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
 import { orderReviewKind, orderReviewMessage, orderRefundMessage, orderPaidCancellationMessage } from '../utils/orderReview';
@@ -79,6 +79,13 @@ export const AccountPage = () => {
   const [userOrders, setUserOrders] = useState([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [ordersError, setOrdersError] = useState(null);
+  // Paginación (ejecución 145): cuántos pedidos se muestran; las relecturas tras pagar/cancelar conservan lo ya cargado.
+  const ordersLimitRef = useRef(MY_ORDERS_PAGE_SIZE);
+  const [ordersTotal, setOrdersTotal] = useState(null);
+  const [ordersHasMore, setOrdersHasMore] = useState(false);
+  const [isLoadingMoreOrders, setIsLoadingMoreOrders] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(null);
+  const focusOrderIdRef = useRef(null);
   const rememberOrder = useECommerceStore((st) => st.rememberOrder);
   const shippingMethods = useECommerceStore((st) => st.shippingMethods);
   const browserOrders = useECommerceStore((st) => st.orders);
@@ -102,8 +109,10 @@ export const AccountPage = () => {
   const fetchUserOrders = useCallback(async ({ keepOnError = false } = {}) => {
     if (!keepOnError) { setIsLoadingOrders(true); setOrdersError(null); }
     try {
-      const data = await orderService.getMyOrders();
-      setUserOrders(data || []);
+      const { orders: data, total, hasMore } = await orderService.getMyOrders({ limit: ordersLimitRef.current });
+      setUserOrders(data);
+      setOrdersTotal(total);
+      setOrdersHasMore(hasMore);
       // Ejecución 115 (D87): si el pedido del checkout en curso ya está pagado (p. ej. el cliente volvió a «Mis pedidos»
       // en lugar de a la confirmación), el carrito se vacía igual que en la confirmación; si no, conservaba lo ya comprado.
       const { finalizePaidOrder } = useECommerceStore.getState();
@@ -126,8 +135,39 @@ export const AccountPage = () => {
   const userId = user?.id;
   useEffect(() => {
     if (!isLoggedIn || !userId) return;
+    ordersLimitRef.current = MY_ORDERS_PAGE_SIZE; // otro cliente empieza por la primera página
+    setLoadMoreError(null);
     fetchUserOrders();
   }, [isLoggedIn, userId, fetchUserOrders]);
+
+  // «Ver más pedidos»: amplía el límite y relee desde el principio (sin huecos ni duplicados si entra un pedido nuevo).
+  // Si falla, la lista ya cargada se conserva y el error queda junto al botón.
+  const loadMoreOrders = async () => {
+    const previous = ordersLimitRef.current;
+    const firstNewIndex = userOrders.length;
+    ordersLimitRef.current = previous + MY_ORDERS_PAGE_SIZE;
+    setIsLoadingMoreOrders(true); setLoadMoreError(null);
+    try {
+      const { orders: data, total, hasMore } = await orderService.getMyOrders({ limit: ordersLimitRef.current });
+      setUserOrders(data);
+      setOrdersTotal(total);
+      setOrdersHasMore(hasMore);
+      // El foco pasa al primer pedido nuevo (el botón puede desaparecer y el foco caería en <body>).
+      focusOrderIdRef.current = data[firstNewIndex]?.id ?? null;
+    } catch (e) {
+      ordersLimitRef.current = previous;
+      setLoadMoreError(e.message || 'No pudimos cargar más pedidos. Inténtalo de nuevo.');
+    } finally {
+      setIsLoadingMoreOrders(false);
+    }
+  };
+  useEffect(() => {
+    const id = focusOrderIdRef.current;
+    if (!id) return;
+    focusOrderIdRef.current = null;
+    const el = [...document.querySelectorAll('[data-order-id]')].find((n) => n.getAttribute('data-order-id') === id);
+    if (el) { el.focus({ preventScroll: true }); el.scrollIntoView?.({ block: 'start' }); }
+  }, [userOrders]);
 
   // Acciones por pedido desde la lista (antes había que abrir el detalle para pagar o cancelar).
   const [orderBusy, setOrderBusy] = useState(null); // id del pedido en curso
@@ -359,7 +399,7 @@ export const AccountPage = () => {
                   padding: '2px 8px',
                   borderRadius: '999px'
                 }}>
-                  {userOrders.length}
+                  {ordersTotal ?? userOrders.length}
                 </span>
               </div>
 
@@ -445,6 +485,9 @@ export const AccountPage = () => {
                   return (
                     <div
                       key={ord.id}
+                      data-order-id={ord.id}
+                      tabIndex={-1}
+                      aria-label={`Pedido ${ord.order_number || ord.id}`}
                       style={{
                         backgroundColor: '#FFFFFF',
                         border: '1px solid #E4E4E7',
@@ -656,6 +699,27 @@ export const AccountPage = () => {
                     </div>
                   );
                 })}
+                {(ordersHasMore || loadMoreError) && (
+                  <div data-testid="orders-load-more" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <p style={{ fontSize: '0.82rem', color: '#52525B', margin: 0 }}>
+                      {ordersTotal != null
+                        ? `Mostrando ${userOrders.length} de ${ordersTotal} pedidos`
+                        : `Mostrando ${userOrders.length} pedidos`}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={loadMoreOrders}
+                      disabled={isLoadingMoreOrders}
+                      aria-describedby={loadMoreError ? 'orders-load-more-error' : undefined}
+                      style={{ minHeight: '44px', padding: '0.7rem 1.4rem', borderRadius: '6px', border: '1px solid #09090B', backgroundColor: '#FFFFFF', color: '#09090B', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.04em', cursor: isLoadingMoreOrders ? 'wait' : 'pointer', maxWidth: '100%' }}
+                    >
+                      {isLoadingMoreOrders ? 'Cargando…' : 'Ver más pedidos'}
+                    </button>
+                    {loadMoreError && (
+                      <p id="orders-load-more-error" role="alert" style={{ fontSize: '0.8rem', color: '#991B1B', fontWeight: 600, margin: 0 }}>{loadMoreError}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

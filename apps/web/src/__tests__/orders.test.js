@@ -16,7 +16,7 @@ describe('pedidos del cliente', () => {
   it('historial: devuelve los pedidos con sus líneas tal como los entrega la BD (RLS filtra por usuario)', async () => {
     const rows = [{ id: 'o2', order_number: 'JM-000002', status: 'paid', online_order_items: [{ product_name: 'Camisa', quantity: 2 }] }, { id: 'o1', status: 'cancelled', online_order_items: [] }];
     supa.state.tables.online_orders = rows;
-    expect(await orderService.getMyOrders()).toEqual(rows);
+    expect(await orderService.getMyOrders()).toEqual({ orders: rows, total: null, hasMore: false });
     expect(supa.from).toHaveBeenCalledWith('online_orders');
   });
   it('seguimiento público exige número y token; un token incorrecto devuelve null (no filtra datos)', async () => {

@@ -3538,6 +3538,55 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser, null, MOBILE);
 
+    await journey('74. Móvil 320: «Mis pedidos» con 45 pedidos se pagina de 20 en 20 (contador con el total, «Ver más pedidos», foco en el primer pedido nuevo)', async (p) => {
+      // Ejecución 145: antes se pedían TODOS los pedidos con sus líneas, sin límite (PostgREST corta en max_rows sin avisar).
+      const tag = crypto.randomBytes(3).toString('hex'); const email = `paginas.${tag}@jm.test`;
+      const su = await (await fetch(`${API_URL}/auth/v1/signup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: 'Clave-Segura-1', data: { full_name: `Paginas ${tag}` } }) })).json();
+      const made = []; // del más antiguo al más reciente
+      for (let i = 0; i < 45; i += 1) {
+        made.push(await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ user_id: su.user.id, customer_email: email, customer_name: `Paginas ${tag}`, status: i % 3 ? 'delivered' : 'paid' }) }).then(j));
+      }
+      const newest = [...made].reverse();
+      const limits = [];
+      p.on('request', (r) => { const u = new URL(r.url()); if (r.method() === 'GET' && u.pathname.endsWith('/rest/v1/online_orders')) limits.push(u.searchParams.get('limit')); });
+      await p.setViewportSize({ width: 320, height: 640 });
+      await login(p, '/login', email, 'Clave-Segura-1', 'Iniciar Sesión');
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      const failures = [];
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      await p.getByText(newest[0].order_number, { exact: false }).first().waitFor({ timeout: 15000 });
+      const shownNumbers = () => p.evaluate(() => [...document.querySelectorAll('[data-order-id]')].map((c) => (c.innerText.match(/JM-\d{6}/) || [''])[0]));
+      let shown = await shownNumbers();
+      if (shown.length !== 20) failures.push(`primera página: ${shown.length} pedidos (se esperaban 20)`);
+      if (shown.join() !== newest.slice(0, 20).map((o) => o.order_number).join()) failures.push('la primera página no son los 20 más recientes en orden');
+      if (!limits.length || limits.some((l) => !l || Number(l) > 21)) failures.push(`consulta sin límite acotado (limit=${limits.join('/') || 'ninguno'})`);
+      const more = p.getByTestId('orders-load-more');
+      if (!(await more.innerText()).includes('Mostrando 20 de 45 pedidos')) failures.push(`texto del pie: «${await more.innerText()}»`);
+      await measureMobileScreens(p, [['/cuenta/pedidos', null, null, newest[0].order_number]], failures, { links: true });
+      await p.setViewportSize({ width: 320, height: 640 });
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      await more.waitFor({ timeout: 15000 });
+      const btn = more.getByRole('button', { name: 'Ver más pedidos' });
+      const box = await btn.boundingBox();
+      if (!box || box.height < 44 || box.x < 0 || box.x + box.width > 320) failures.push(`botón «Ver más pedidos» fuera de medida: ${JSON.stringify(box)}`);
+      await btn.focus(); await p.keyboard.press('Enter');
+      await p.waitForFunction(() => document.querySelectorAll('[data-order-id]').length === 40, null, { timeout: 10000 }).catch(() => {});
+      shown = await shownNumbers();
+      if (shown.length !== 40) failures.push(`tras «Ver más»: ${shown.length} pedidos (se esperaban 40)`);
+      const focusedNumber = () => p.evaluate(() => ((document.activeElement?.closest('[data-order-id]')?.innerText || '').match(/JM-\d{6}/) || [document.activeElement?.tagName || ''])[0]);
+      if ((await focusedNumber()) !== newest[20].order_number) failures.push(`tras «Ver más» el foco quedó en «${await focusedNumber()}» (se esperaba ${newest[20].order_number})`);
+      await more.getByRole('button', { name: 'Ver más pedidos' }).click();
+      await p.waitForFunction(() => document.querySelectorAll('[data-order-id]').length === 45, null, { timeout: 10000 }).catch(() => {});
+      shown = await shownNumbers();
+      if (shown.join() !== newest.map((o) => o.order_number).join()) failures.push(`lista final: ${shown.length} pedidos, ${new Set(shown).size} distintos (se esperaban los 45 en orden)`);
+      if (await p.getByTestId('orders-load-more').count()) failures.push('«Ver más pedidos» sigue visible con todos cargados');
+      if ((await focusedNumber()) !== newest[40].order_number) failures.push(`tras cargar el resto el foco quedó en «${await focusedNumber()}»`);
+      const badge = await p.evaluate(() => [...document.querySelectorAll('main span')].map((s) => s.innerText.trim()).find((t) => /^\d+$/.test(t)));
+      if (badge !== '45') failures.push(`contador de pedidos: «${badge}» (se esperaba 45)`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
+    }, browser, null, MOBILE);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

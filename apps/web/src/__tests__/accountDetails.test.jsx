@@ -195,7 +195,7 @@ describe('«Mi cuenta»: datos y direcciones', () => {
     supa.db.profiles.push({ ...profile });
     useAuthStore.setState({ isLoggedIn: true, isLoading: false, user: { id: ME, email: 'ana@correo.com' }, profile });
     const { AccountPage } = await import('../pages/AccountPage.jsx');
-    vi.spyOn(await import('../services/orderService.js').then((m) => m.orderService), 'getMyOrders').mockResolvedValue([]);
+    vi.spyOn(await import('../services/orderService.js').then((m) => m.orderService), 'getMyOrders').mockResolvedValue({ orders: [], total: 0, hasMore: false });
     await act(async () => root.render(<AccountPage />));
     await flush();
   };

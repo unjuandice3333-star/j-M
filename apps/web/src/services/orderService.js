@@ -57,6 +57,9 @@ export function toOrderError(error, fallback = 'No se pudo completar la operaci�
   return new OrderError(fallback, { hint, cause: error });
 }
 
+/** Pedidos por página en «Mis pedidos». */
+export const MY_ORDERS_PAGE_SIZE = 20;
+
 const toItems = (items) => items.map((i) => ({ variant_id: i.variantId, quantity: i.quantity }));
 
 export const orderService = {
@@ -99,13 +102,22 @@ export const orderService = {
     return data;
   },
 
-  /** Pedidos del usuario autenticado (RLS: solo los suyos). */
-  async getMyOrders() {
-    const { data, error } = await supabase.from('online_orders')
-      .select('id, order_number, public_token, status, needs_attention, total, subtotal, discount_total, shipping_cost, shipping_method_code, coupon_code, created_at, payment_expires_at, paid_at, shipped_at, delivered_at, carrier, tracking_number, tracking_url, shipping_city, shipping_department, shipping_address, online_order_items ( product_name, size_code, color_name, quantity, unit_price, line_total, image_url )')
-      .order('created_at', { ascending: false });
+  /**
+   * Pedidos del usuario autenticado (RLS: solo los suyos), los más recientes primero.
+   * Paginado: sin límite, PostgREST corta en `max_rows` (1000) sin avisar y la página cargaba todas las líneas.
+   * Pide `limit + 1` filas para saber si hay más aunque el servidor no devuelva el total.
+   * @returns {{ orders: object[], total: number|null, hasMore: boolean }}
+   */
+  async getMyOrders({ limit = MY_ORDERS_PAGE_SIZE } = {}) {
+    const size = Math.max(1, Math.floor(Number(limit) || MY_ORDERS_PAGE_SIZE));
+    const { data, error, count } = await supabase.from('online_orders')
+      .select('id, order_number, public_token, status, needs_attention, total, subtotal, discount_total, shipping_cost, shipping_method_code, coupon_code, created_at, payment_expires_at, paid_at, shipped_at, delivered_at, carrier, tracking_number, tracking_url, shipping_city, shipping_department, shipping_address, online_order_items ( product_name, size_code, color_name, quantity, unit_price, line_total, image_url )', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }) // desempate estable entre páginas
+      .range(0, size);
     if (error) throw toOrderError(error, 'No se pudieron cargar tus pedidos.');
-    return data;
+    const rows = data || [];
+    return { orders: rows.slice(0, size), total: Number.isInteger(count) ? count : null, hasMore: rows.length > size };
   },
 
   async getStatusCatalog() {
