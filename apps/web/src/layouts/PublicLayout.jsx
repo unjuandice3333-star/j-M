@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from '../components/Header/Header';
 import Footer from '../components/Footer/Footer';
@@ -10,6 +10,7 @@ import MobileBottomBar from '../components/Navigation/MobileBottomBar';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { useAuthStore } from '../store/authStore';
 import { SkipToContent, useRouteFocus, MAIN_ID } from '../components/Common/RouteFocus';
+import { focusIfLost } from '../utils/focusIfLost';
 
 export const PublicLayout = () => {
   const { loadProducts, productsError, isLoadingProducts, loadSiteContent } = useECommerceStore();
@@ -35,6 +36,19 @@ export const PublicLayout = () => {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [userId, authLoading, syncWishlist, syncSession]);
   useRouteFocus();
+
+  // Ejecución 157 (D135): al pulsar «Reintentar» el store limpia el error, así que el aviso (y el botón) se desmonta
+  // mientras carga y el foco caía en <body>. Al terminar: si sigue fallando, el foco va al «Reintentar» nuevo; si
+  // funcionó, al contenido principal. Solo si el foco se perdió (criterio D130–D134).
+  const retryRef = useRef(null);
+  const retryPending = useRef(false);
+  useEffect(() => {
+    if (isLoadingProducts || !retryPending.current) return;
+    retryPending.current = false;
+    focusIfLost([productsError ? retryRef.current : null, document.getElementById(MAIN_ID)]);
+  }, [isLoadingProducts, productsError]);
+  const retry = () => { retryPending.current = true; loadProducts(true); };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#FFFFFF', paddingBottom: '40px' }}>
       <SkipToContent />
@@ -43,7 +57,7 @@ export const PublicLayout = () => {
         {productsError && (
           <div role="alert" style={{ backgroundColor: '#FEF2F2', color: '#991B1B', padding: '0.85rem 1rem', textAlign: 'center', fontWeight: 600, fontSize: '0.9rem' }}>
             {productsError}{' '}
-            <button onClick={() => loadProducts(true)} disabled={isLoadingProducts} style={{ textDecoration: 'underline', fontWeight: 800, color: '#991B1B' }}>
+            <button ref={retryRef} onClick={retry} disabled={isLoadingProducts} style={{ textDecoration: 'underline', fontWeight: 800, color: '#991B1B' }}>
               {isLoadingProducts ? 'Reintentando…' : 'Reintentar'}
             </button>
           </div>

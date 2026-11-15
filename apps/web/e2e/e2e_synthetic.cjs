@@ -4381,6 +4381,41 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('86. Teclado: «Reintentar» del aviso de catálogo no disponible no deja el foco en <body> (D135)', async (p) => {
+      // Ejecución 157 (D135): al reintentar, el aviso se desmonta mientras carga; el foco debe volver al «Reintentar»
+      // nuevo si sigue fallando y al contenido principal si funciona.
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, id: a?.id || '', label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '' };
+      });
+      const products = '**/rest/v1/products*';
+      await p.route(products, (route) => (route.request().method() === 'GET' ? route.abort() : route.continue()));
+      await p.goto(`${BASE}/`);
+      const alert = p.locator('main [role=alert]').filter({ hasText: 'No pudimos cargar el catálogo' });
+      await alert.waitFor({ timeout: 15000 });
+      // 1) sigue fallando → foco en el «Reintentar» nuevo
+      await alert.getByRole('button', { name: 'Reintentar' }).focus();
+      await p.keyboard.press('Enter');
+      await p.waitForTimeout(400);
+      await alert.getByRole('button', { name: 'Reintentar' }).waitFor({ timeout: 15000 });
+      await p.waitForTimeout(250);
+      let f = await focusInfo();
+      if (f.label !== 'Reintentar') failures.push(`sigue fallando: foco en ${JSON.stringify(f)} (se esperaba «Reintentar»)`);
+      // 2) con la red de vuelta → el aviso desaparece y el foco va a <main>
+      await p.unroute(products);
+      await alert.getByRole('button', { name: 'Reintentar' }).focus();
+      await p.keyboard.press('Enter');
+      await alert.waitFor({ state: 'detached', timeout: 15000 });
+      await p.waitForTimeout(250);
+      f = await focusInfo();
+      if (f.id !== 'contenido') failures.push(`funcionó: foco en ${JSON.stringify(f)} (se esperaba <main id=contenido>)`);
+      await p.keyboard.press('Tab');
+      const n = await focusInfo();
+      if (n.tag === 'BODY' || /Ir al contenido/i.test(n.label)) failures.push(`funcionó: el siguiente Tab fue a ${JSON.stringify(n)}`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser, /\[catálogo\] no se pudo cargar/);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);
