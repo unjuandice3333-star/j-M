@@ -1497,3 +1497,15 @@
 - Commits: `532171c` (arreglo + pruebas unitarias), `30ff5af` (recorrido 83) y este de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push (`e2e-synthetic` debe dar 83/83); luego punto 0(cw) — detalle de pedido del admin y ajuste de inventario con error de red (criterio D132).
+
+## Ejecución 155 — 2026-11-15 ~11:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-wgmq6o` (ancestro de la rama de misión); se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `324487f`, árbol limpio. `pnpm install --frozen-lockfile` OK. CI nº 197: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 175 ✔.
+- Tarea: punto 0(cw) — detalle de pedido del admin y ajuste de inventario con error de red (D133).
+- Defecto real: «GUARDAR CAMBIOS», «MARCAR COMO REVISADO» y «REEMBOLSAR Y CERRAR» dejaban el foco en `<body>` en Chromium tras un error general. Ajuste de inventario y «MARCAR COMO DEVUELTA» ya cumplían (sin cambio).
+- Archivos: `apps/web/src/pages/admin/AdminOrdersPage.jsx`, `apps/web/src/__tests__/adminOrderSaveFocus.test.jsx` (nuevo, 4), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 84), documentación.
+- Pruebas (ejecutadas aquí): 3 de 4 unitarias fallan sin el cambio de `src` y pasan con él (la 4.ª pasa en ambos por diseño); recorrido 84 con 2 fallos sin el cambio y pasa con él; `pnpm test:unit` 744/744; ESLint 0; build OK; `pnpm test:e2e-synthetic` **84/84** (pasada completa; un primer intento lo cortó mi propio límite de 10 min en el recorrido 76 por cierre del navegador, no por fallo). Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `b3aa569` (arreglo + pruebas unitarias), `a6d5073` (recorrido 84) y este de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push (`e2e-synthetic` debe dar 84/84); luego punto 0(cx) — «Confirmar pedido» de `CheckoutPage` con error de red, `NewsletterSignup` y `AdminLogin` (últimos botones con `disabled={` sin control de foco).
