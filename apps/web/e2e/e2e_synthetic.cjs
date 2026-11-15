@@ -1553,6 +1553,12 @@ async function main() {
     await journey('7. Checkout: sin stock al confirmar → error claro y carrito intacto', async (p) => {
       await addToCart(p, 'camiseta-basica', 'L', 'Negro'); // 1 unidad
       await p.goto(`${BASE}/checkout`); await fillCheckout(p);
+      // Ejecución 160: el correo escrito dispara una cotización (quote_cart). Si llegaba al backend DESPUÉS del pedido del
+      // otro cliente, la cotización ya decía «sin stock», el botón quedaba deshabilitado y el clic agotaba los 30 s
+      // (CI nº 204). Se espera a que esa cotización termine: este recorrido prueba el rechazo del SERVIDOR al confirmar;
+      // el aviso previo por cotización lo cubre el recorrido 55.
+      await p.waitForLoadState('networkidle');
+      if (await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).isDisabled()) throw new Error('botón deshabilitado antes de la compra del otro cliente');
       await fetch(`${API_URL}/rest/v1/rpc/create_order`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ p_customer: { name: 'Otro', email: 'o@c.co', phone: '3000000000' }, p_shipping: { department: 'A', city: 'B', address: 'C 123' }, p_items: [{ variant_id: 'va-l-neg', quantity: 1 }], p_shipping_method: 'standard', p_idempotency_key: 'otro-cliente' }) });
       await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
       await expectText(p, 'stock', 10000);
