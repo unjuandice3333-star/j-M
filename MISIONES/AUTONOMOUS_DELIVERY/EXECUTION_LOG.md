@@ -1461,3 +1461,15 @@
 - Commits: `6884640` (arreglo + pruebas) y el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(ct) (botones que cambian de estado en la ficha de producto y baja/alta del boletín en «Mi cuenta»).
+
+## Ejecución 152 — 2026-11-15 ~08:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-poymry` (ancestro de la rama de misión); se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `2510299`, árbol limpio. `pnpm install --frozen-lockfile` OK. CI nº 190: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 168 ✔.
+- Tarea: punto 0(ct) — foco en botones que cambian de estado en la ficha de producto y «Mis datos»/boletín (D130).
+- Defecto real: «Aumentar cantidad» al tope, «Ver más opiniones» con error, «Enviar opinión» y «Guardar datos» dejaban el foco en `<body>` en Chromium.
+- Archivos: `apps/web/src/utils/focusIfLost.js` (nuevo), `apps/web/src/pages/ProductDetailPage.jsx`, `apps/web/src/components/Product/ProductReviewForm.jsx`, `apps/web/src/components/Account/AccountDetails.jsx`, `apps/web/src/__tests__/focusIfLost.test.js` (nuevo, 4), `apps/web/src/__tests__/productReviewsPagination.test.jsx` (+2), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 81).
+- Pruebas (ejecutadas aquí): 2 unitarias de la ficha fallan sin el cambio de `src` y pasan con él; recorrido 81 con 4 fallos sin el cambio y pasa con él; `pnpm test:unit` 728/728; ESLint 0; build OK; `pnpm test:e2e-synthetic` primera pasada 80/81 (recorrido 39: regresión propia, el foco de ruta iba a «Disminuir cantidad» porque «+» nace deshabilitado sin talla) → corregido → segunda pasada **81/81**; `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `e4ac9f6`, `74c341d` (arreglos + pruebas), `b79fc17` y este de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(cu) — mismo criterio D130 en los demás botones que se deshabilitan al guardar: «Guardar dirección» y «Cambiar contraseña»/«Enviar código» de «Mi cuenta», `ResetPasswordPage`, «Reintentar pago» de la confirmación, y en el admin `AdminSettingsPage`, `AdminDiscountsPage`, `AdminCollectionsPage`, `AdminProductFormPage`.
