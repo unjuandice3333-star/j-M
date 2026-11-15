@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 164: vitest 2 → 3.2.7 + override de tinypool; avisos críticos de desarrollo 3 → 0 (D142))
+Última actualización: 2026-11-15 (ejecución 165: CI nº 211 confirma vitest 3 en GitHub; reconstrucción desde contenedor nuevo verificada)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -12,7 +12,7 @@ Rama autorizada: `mission/m26-dev-qa-environments`
 |---|---|
 | `pnpm build` | OK |
 | ESLint (`apps packages scripts`, sin dist*) | 0 errores, 0 avisos |
-| `pnpm test:unit` (vitest 3.2.7, jsdom) | **790/790** (88 archivos, ejecución 164; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
+| `pnpm test:unit` (vitest 3.2.7, jsdom) | **790/790** (88 archivos, ejecuciones 164 y 165 + CI nº 211; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
 | `pnpm test:env` (node:test) | **142/142** (fallo de entorno corregido: ahora la CLI usa un envDir hermético) |
 | `test-checkout-invariants.mjs` | 10/10 (nota: es un simulador; las pruebas reales son las de vitest) |
 | BD local PostgreSQL 16 (`supabase/tests/run_local.sh`) | pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (ejecución 126; 408/408 en la 124; 393/393 en la 122; 382/382 en la 74; 357/357 en la 71; antes 278/278 en la ejecución 3) |
@@ -66,6 +66,12 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 165 — CI de vitest 3 y reconstrucción reproducible (punto 0(dg))
+- **CI del push anterior** (run `ci` nº 211, `36edc02`): governance, **quality (vitest 3.2.7 + tinypool 2.2.0)**, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial, decisión del propietario; `20_migrations_policy` PASS); `e2e-supabase` nº 189 ✔. D142 queda confirmada en GitHub; el override de `tinypool` no se revierte.
+- **Reconstrucción desde contenedor nuevo** (prioridad 1): `pnpm install --frozen-lockfile` OK; `pnpm build` OK; `pnpm lint` 0; `pnpm test:unit` **790/790**; `pnpm test:env` **146/146**; `pnpm audit --prod` 0; `pnpm audit` 12 (0 críticos, sin cambio).
+- **Cambio:** solo documentación (`FINAL_ACCEPTANCE.md` §3 con cifras vigentes). Sin cambios en `src`, migraciones ni dependencias: E2E sintético y pgTAP no re-ejecutados aquí (cubiertos por los jobs `e2e-synthetic`, `db-local` y `db-supabase` del CI nº 211 sobre el mismo código).
+- **Siguiente (0(dh)):** comprobar el CI del push. El código no bloqueado está completo; solo regresiones/intermitencias reales. Bloqueos del propietario sin cambio: baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks; opcional Vite 5 → 6.
 
 ## Ejecución 164 — Vitest 3.2.7 y avisos críticos del toolchain (punto 0(df))
 - **CI del push anterior** (run `ci` nº 210, `c19eeaf`): governance, quality, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial, decisión del propietario); `e2e-supabase` nº 188 ✔.

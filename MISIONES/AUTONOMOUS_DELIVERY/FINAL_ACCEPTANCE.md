@@ -1,6 +1,6 @@
 # Informe de aceptación — J&M FASHION STORE
 
-Preparado en la ejecución 159 (2026-11-15). Rama: `mission/m26-dev-qa-environments`. Nada se desplegó a Production.
+Preparado en la ejecución 159 (2026-11-15); cifras actualizadas en la 165. Rama: `mission/m26-dev-qa-environments`. Nada se desplegó a Production.
 Este informe distingue lo **ejecutado y verificado** de lo **pendiente del propietario**. No contiene secretos.
 
 ## 1. Estado en una línea
@@ -24,12 +24,12 @@ Vercel Preview (sin acceso del agente). Esos tres pasos son del propietario (ver
 ## 3. Pruebas (última ejecución real)
 | Suite | Resultado | Dónde |
 |---|---|---|
-| `pnpm test:unit` | 790/790 (88 archivos) | este contenedor, ejecución 162 |
+| `pnpm test:unit` | 790/790 (88 archivos, vitest 3.2.7) | contenedor nuevo, ejecución 165 + job `quality` del CI nº 211 |
 | `pnpm test:e2e-synthetic` | 87/87 recorridos (ejecución 162, con React Router 7.18.5) | este contenedor + job `e2e-synthetic` del CI |
 | pgTAP + concurrencia | 435/435, 12/12 | ejecución 126 + job `db-local` del CI (verde en cada push) |
-| Supabase local (`db-supabase`, `e2e-supabase`) | verde | GitHub Actions en cada push (run `ci` nº 203, `e2e-supabase` nº 181) |
+| Supabase local (`db-supabase`, `e2e-supabase`) | verde | GitHub Actions en cada push (run `ci` nº 211, `e2e-supabase` nº 189) |
 | ESLint / build | 0 problemas / OK | este contenedor |
-| `pnpm audit --prod` | 0 avisos (React Router 7.18.5 + override de `ws`, D139–D140) | este contenedor, ejecución 162 |
+| `pnpm audit --prod` | 0 avisos (React Router 7.18.5 + override de `ws`, D139–D140); `pnpm audit` completo: 12 de desarrollo, 0 críticos (D141–D142) | contenedor nuevo, ejecución 165 |
 | `security` (gitleaks del historial) | ✘ por dos cadenas de prueba con forma de JWT en `e142ab2` | decisión del propietario (`gitleaks-allowlist-e142ab2.patch`) |
 
 ## 4. Bloqueos del propietario (en orden)
