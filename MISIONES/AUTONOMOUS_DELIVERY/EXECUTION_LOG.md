@@ -1437,3 +1437,15 @@
 - Commits: `cf087c4` (arreglo + pruebas) y el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(cr): el criterio D125/D127 ya cubre todas las páginas del admin con acciones por fila; revisar la tienda (eliminar línea del carrito lateral y de `/carrito`, quitar favorito en `/cuenta/favoritos`, eliminar dirección) con el mismo recorrido de teclado.
+
+## Ejecución 150 — 2026-11-15 ~06:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-pppadi` (= main, sin `MISIONES/AUTONOMOUS_DELIVERY`); se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `932d6a2`, árbol limpio. `pnpm install --frozen-lockfile` OK. CI nº 188: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 166 ✔.
+- Tarea: punto 0(cr) — criterio D125 en la tienda (D128).
+- Defecto real: en `/carrito` (eliminar, guardar para después, quitar por stock y cambiar talla/color, que remonta la línea), en el carrito lateral y al quitar un favorito el foco caía en `<body>`. Direcciones: ya cumplían (D121).
+- Archivos: `apps/web/src/pages/CartPage.jsx`, `apps/web/src/components/Header/Header.jsx`, `apps/web/src/pages/WishlistPage.jsx`, `apps/web/src/__tests__/storefrontRowFocus.test.jsx` (nuevo, 5), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 79).
+- Pruebas (ejecutadas aquí): las 5 unitarias fallan sin el cambio de `src` y pasan con él; recorrido 79 con 7 fallos sin el cambio y pasa con él; `pnpm test:unit` 716/716; ESLint 0; build OK; `pnpm test:e2e-synthetic` **79/79**; `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `419f0ac` (arreglo + pruebas) y el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(cs) (foco tras quitar el cupón en `/carrito` y `/checkout` y tras «Cancelar pedido» en «Mis pedidos» y la confirmación).
