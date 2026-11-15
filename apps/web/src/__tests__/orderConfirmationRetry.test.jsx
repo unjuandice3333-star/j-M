@@ -147,3 +147,29 @@ describe('Consulta periódica', () => {
     expect(container.textContent).toContain('Pedido registrado');
   });
 });
+
+// Ejecución 151 (D129): tras cancelar, los botones desaparecen → el foco va al título (anuncia el estado nuevo);
+// si la cancelación falla, vuelve a «Cancelar pedido».
+describe('Foco tras «Cancelar pedido» en la confirmación', () => {
+  const press = async (label) => { button(label).focus(); await click(label); };
+  it('cancelado → foco en el <h1>', async () => {
+    let status = 'payment_pending';
+    supa.state.rpc.get_order_public = () => pending({ status, status_label: status === 'cancelled' ? 'Cancelado' : 'Pendiente de pago' });
+    supa.state.rpc.cancel_my_order = () => { status = 'cancelled'; return { status }; };
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await renderAt();
+    await press('Cancelar pedido');
+    expect(button('Cancelar pedido')).toBeUndefined();
+    expect(document.activeElement).toBe(container.querySelector('h1'));
+    expect(document.activeElement.textContent).toMatch(/Pedido cerrado · JM-7/);
+  });
+  it('si falla → foco de nuevo en «Cancelar pedido»', async () => {
+    supa.state.rpc.get_order_public = pending();
+    supa.state.rpc.cancel_my_order = () => { throw { message: 'Transición no permitida', code: 'P0001' }; };
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await renderAt();
+    await press('Cancelar pedido');
+    expect(container.querySelector('[role=alert]')).not.toBeNull();
+    expect(document.activeElement).toBe(button('Cancelar pedido'));
+  });
+});

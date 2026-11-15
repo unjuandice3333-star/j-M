@@ -71,6 +71,16 @@ export const CartPage = () => {
   const [couponInput, setCouponInput] = useState('');
   const [couponFeedback, setCouponFeedback] = useState(null);
   const couponInputRef = useRef(null);
+  // Ejecución 151 (D129): «Quitar cupón» desaparece al pulsarlo (se muestra el formulario) y el foco caía en <body>:
+  // ahora pasa al campo del código, que es lo que ocupa su lugar.
+  const focusCouponAfterRemove = useRef(false);
+  const handleRemoveCoupon = () => { focusCouponAfterRemove.current = true; removeCoupon(); };
+  useEffect(() => {
+    if (!focusCouponAfterRemove.current || appliedCoupon) return;
+    focusCouponAfterRemove.current = false;
+    const a = document.activeElement;
+    if (!a || a === document.body || !a.isConnected) couponInputRef.current?.focus();
+  }, [appliedCoupon]);
 
   const totals = getTotals();
   // Solo cuenta la cotización del carrito ACTUAL (una vieja podría señalar líneas que ya se ajustaron).
@@ -335,7 +345,7 @@ export const CartPage = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <Tag size={16} /> CUPÓN: {appliedCoupon.code}{appliedCoupon.freeShipping ? ' (envío gratis)' : ''}
                       </div>
-                      <button onClick={removeCoupon} style={{ color: '#0369A1' }} aria-label="Quitar cupón"><X size={16} /></button>
+                      <button type="button" onClick={handleRemoveCoupon} style={{ color: '#0369A1' }} aria-label="Quitar cupón"><X size={16} /></button>
                     </div>
                   ) : (
                     <form onSubmit={handleApplyCoupon} noValidate style={{ display: 'flex', gap: '0.5rem' }}>

@@ -3961,6 +3961,88 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('80. Teclado: quitar el cupón y «Cancelar pedido» (checkout, confirmación, «Mis pedidos») no dejan el foco en <body> (D129)', async (p) => {
+      // Ejecución 151 (D129): los cuatro botones desaparecen (o quedan deshabilitados) al usarse y el foco caía en <body>.
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, testid: a?.getAttribute('data-testid'), order: a?.getAttribute('data-order-id'), label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '' };
+      });
+      const pressOn = async (loc) => { await loc.focus(); await p.keyboard.press('Enter'); };
+      const settle = () => p.waitForTimeout(250);
+      const nextTabNotSkip = async (where) => {
+        await p.keyboard.press('Tab');
+        const f = await focusInfo();
+        if (f.tag === 'BODY' || /Ir al contenido/i.test(f.label)) failures.push(`${where}: el siguiente Tab fue a ${JSON.stringify(f)}`);
+      };
+      p.on('dialog', (d) => d.accept().catch(() => {}));
+
+      // /carrito: quitar el cupón → campo del código
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/carrito`);
+      const cup = p.getByLabel('Código del cupón');
+      await cup.waitFor({ timeout: 10000 });
+      await cup.fill('JM10'); await cup.press('Enter');
+      const quitar = p.getByRole('button', { name: 'Quitar cupón' });
+      await quitar.waitFor({ timeout: 10000 });
+      await pressOn(quitar);
+      await cup.waitFor({ timeout: 10000 });
+      await settle();
+      if (!(await cup.evaluate((el) => el === document.activeElement))) failures.push(`cupón: tras quitarlo, foco en ${JSON.stringify(await focusInfo())} (se esperaba el campo del código)`);
+
+      // cuenta + pedido pendiente
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Lía Mora');
+      await p.locator('input[type=email]').fill('lia.mora@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      const placeOrder = async () => {
+        await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'lia.mora@correo.co' });
+        await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+        await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 20000 });
+        await expectText(p, 'Pedido registrado');
+      };
+
+      // checkout: «Cancelar ese pedido» del aviso → confirmación «Pedido … cancelado»
+      await placeOrder();
+      await p.goto(`${BASE}/checkout`);
+      const pcancel = p.getByTestId('pending-order-cancel');
+      await pcancel.waitFor({ timeout: 10000 });
+      await pressOn(pcancel);
+      await p.getByTestId('pending-order-cancelled').waitFor({ timeout: 10000 });
+      await settle();
+      let f = await focusInfo();
+      if (f.testid !== 'pending-order-cancelled') failures.push(`checkout: tras cancelar el pedido anterior, foco en ${JSON.stringify(f)}`);
+      else await nextTabNotSkip('checkout');
+
+      // confirmación: «Cancelar pedido» → título
+      await placeOrder();
+      await pressOn(p.getByRole('button', { name: 'Cancelar pedido', exact: true }));
+      await expectText(p, 'Este pedido fue cancelado.', 10000);
+      await settle();
+      f = await focusInfo();
+      if (f.tag !== 'H1') failures.push(`confirmación: tras cancelar, foco en ${JSON.stringify(f)} (se esperaba el título)`);
+      else await nextTabNotSkip('confirmación');
+
+      // «Mis pedidos»: «Cancelar pedido» → tarjeta del pedido
+      await placeOrder();
+      const mine = (await state()).orders.find((o) => o.customer_email === 'lia.mora@correo.co' && o.status === 'payment_pending');
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      const card = p.locator(`[data-order-id="${mine.id}"]`);
+      await card.getByTestId('order-cancel').waitFor({ timeout: 10000 });
+      await pressOn(card.getByTestId('order-cancel'));
+      await card.getByTestId('order-cancel').waitFor({ state: 'detached', timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (f.order !== mine.id) failures.push(`«Mis pedidos»: tras cancelar, foco en ${JSON.stringify(f)} (se esperaba la tarjeta del pedido)`);
+      else await nextTabNotSkip('«Mis pedidos»');
+      const st = await state();
+      const notCancelled = st.orders.filter((o) => o.customer_email === 'lia.mora@correo.co' && o.status !== 'cancelled');
+      if (notCancelled.length) failures.push(`pedidos sin cancelar: ${notCancelled.map((o) => `${o.order_number}/${o.status}`).join(', ')}`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

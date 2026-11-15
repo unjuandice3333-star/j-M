@@ -6,7 +6,7 @@
 // ofrece pagarlo o cancelarlo (cancel_my_order libera la reserva). Si ya está pagado se descuentan sus líneas del
 // carrito (finalizePaidOrder); si está cancelado o vencido deja de ser el pedido activo.
 // =============================================================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { orderService } from '../../services/orderService';
@@ -68,6 +68,19 @@ export const PendingOrderNotice = () => {
     return () => { alive = false; };
   }, [activeId, orderNumber, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Ejecución 151 (D129): al cancelar, el aviso se reemplaza por la confirmación (el botón desaparece) y el foco caía
+  // en <body>; ahora va a la confirmación «Pedido … cancelado». Si falla, vuelve a «Cancelar ese pedido».
+  const cancelBtnRef = useRef(null);
+  const cancelledRef = useRef(null);
+  const [focusTick, setFocusTick] = useState(0);
+  useEffect(() => {
+    if (!focusTick) return;
+    const a = document.activeElement;
+    if (a && a !== document.body && a.isConnected && !a.disabled) return;
+    const btn = cancelBtnRef.current;
+    (cancelledRef.current || (btn && btn.isConnected && !btn.disabled ? btn : null))?.focus();
+  }, [focusTick]);
+
   const cancel = async () => {
     if (!window.confirm(`¿Cancelar el pedido ${orderNumber}? Se liberarán los productos reservados.`)) return;
     setBusy(true); setError(null);
@@ -78,12 +91,12 @@ export const PendingOrderNotice = () => {
       setPending(null);
     } catch (e) {
       setError(e.message || 'No se pudo cancelar el pedido.');
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setFocusTick((t) => t + 1); }
   };
 
   if (cancelled) {
     return (
-      <div role="status" data-testid="pending-order-cancelled" style={{ ...boxStyle, backgroundColor: '#ECFDF5', borderColor: '#6EE7B7', color: '#065F46' }}>
+      <div ref={cancelledRef} tabIndex={-1} role="status" data-testid="pending-order-cancelled" style={{ ...boxStyle, backgroundColor: '#ECFDF5', borderColor: '#6EE7B7', color: '#065F46' }}>
         Pedido {cancelled} cancelado. Al confirmar se creará un pedido nuevo con tu carrito actual.
       </div>
     );
@@ -108,7 +121,7 @@ export const PendingOrderNotice = () => {
         <Link to={link} data-testid="pending-order-pay" style={{ ...btnStyle, backgroundColor: '#09090B', color: '#FFFFFF' }}>
           Pagar ese pedido
         </Link>
-        <button type="button" onClick={cancel} disabled={busy} data-testid="pending-order-cancel" style={{ ...btnStyle, backgroundColor: '#FFFFFF', color: '#92400E', border: '1px solid #92400E' }}>
+        <button ref={cancelBtnRef} type="button" onClick={cancel} disabled={busy} data-testid="pending-order-cancel" style={{ ...btnStyle, backgroundColor: '#FFFFFF', color: '#92400E', border: '1px solid #92400E' }}>
           {busy ? 'Cancelando…' : 'Cancelar ese pedido'}
         </button>
       </div>

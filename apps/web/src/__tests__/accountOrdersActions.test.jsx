@@ -178,6 +178,30 @@ describe('«Mis pedidos»: acciones desde la lista', () => {
   });
 });
 
+// Ejecución 151 (D129): «Cancelar pedido» desaparece tras cancelar → el foco va a la tarjeta del pedido, no a <body>;
+// si la cancelación falla, vuelve al mismo botón.
+describe('«Mis pedidos»: foco tras «Cancelar pedido»', () => {
+  const press = async (el) => { el.focus(); await click(el); };
+  it('cancelado → foco en la tarjeta del pedido', async () => {
+    supa.state.orders = [order()];
+    supa.state.rpc.cancel_my_order = () => { supa.state.orders = [order({ status: 'cancelled' })]; return { status: 'cancelled' }; };
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await mount();
+    await press(q('order-cancel'));
+    expect(q('order-cancel')).toBeNull();
+    expect(document.activeElement).toBe(container.querySelector(`[data-order-id="${ORDER_ID}"]`));
+  });
+  it('si falla → foco de nuevo en «Cancelar pedido»', async () => {
+    supa.state.orders = [order()];
+    supa.state.rpc.cancel_my_order = () => { throw { message: 'Transición no permitida', code: 'P0001', hint: 'JM_INVALID_TRANSITION' }; };
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await mount();
+    await press(q('order-cancel'));
+    expect(q('order-action-error')).not.toBeNull();
+    expect(document.activeElement).toBe(q('order-cancel'));
+  });
+});
+
 // Ejecución 115 (D87): el pedido del checkout en curso aparece pagado en «Mis pedidos» → el carrito se vacía;
 // un pedido pagado que NO es el del checkout en curso no toca el carrito.
 describe('«Mis pedidos» vacía el carrito del pedido ya pagado', () => {

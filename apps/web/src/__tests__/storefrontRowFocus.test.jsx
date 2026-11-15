@@ -105,3 +105,16 @@ describe('/cuenta/favoritos', () => {
     expect(document.activeElement.textContent).toMatch(/No tienes productos guardados/);
   });
 });
+
+// Ejecución 151 (D129): «Quitar cupón» desaparece al pulsarlo → el foco pasa al campo del código.
+describe('/carrito: quitar el cupón', () => {
+  it('el foco va al campo «Código del cupón» que ocupa su lugar', async () => {
+    useECommerceStore.setState({ appliedCoupon: { code: 'BIENVENIDA', freeShipping: false } });
+    await act(async () => { root.render(<MemoryRouter><CartPage /></MemoryRouter>); });
+    await flush();
+    await press(host.querySelector('button[aria-label="Quitar cupón"]'));
+    expect(useECommerceStore.getState().appliedCoupon).toBeNull();
+    expect(host.querySelector('button[aria-label="Quitar cupón"]')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('input[aria-label="Código del cupón"]'));
+  });
+});

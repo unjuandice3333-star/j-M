@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useRowFocusRestore } from '../hooks/useRowFocusRestore';
 import {
   Package,
   Clock,
@@ -188,8 +189,12 @@ export const AccountPage = () => {
     } finally { setOrderBusy(null); }
   };
 
+  // Ejecución 151 (D129): al cancelar, «Cancelar pedido» desaparece (o queda deshabilitado mientras se guarda) y el foco
+  // caía en <body>. Vuelve al mismo botón si sigue (p. ej. si la cancelación falló) o a la tarjeta del pedido.
+  const { containerRef: ordersListRef, remember: rememberOrderFocus, settle: settleOrderFocus } = useRowFocusRestore();
   const cancelOrder = async (ord) => {
     if (!window.confirm(`¿Cancelar el pedido ${ord.order_number}? Se liberarán los productos reservados.`)) return;
+    rememberOrderFocus(ord.id, 'cancel');
     setOrderBusy(ord.id); setOrderError(ord.id, null);
     try {
       await orderService.cancelOrder(ord.id, ord.public_token, 'Cancelado por el cliente desde Mis pedidos');
@@ -198,6 +203,7 @@ export const AccountPage = () => {
     } finally {
       await fetchUserOrders({ keepOnError: true });
       setOrderBusy(null);
+      settleOrderFocus();
     }
   };
 
@@ -465,7 +471,7 @@ export const AccountPage = () => {
                 </Link>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div ref={ordersListRef} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {userOrders.map((ord) => {
                   const windowState = paymentWindow(ord);
                   // Ventana vencida aunque el job de expiración aún no haya cambiado el estado: mostrarlo como vencido.
@@ -486,6 +492,7 @@ export const AccountPage = () => {
                     <div
                       key={ord.id}
                       data-order-id={ord.id}
+                      data-row-key={ord.id}
                       tabIndex={-1}
                       aria-label={`Pedido ${ord.order_number || ord.id}`}
                       style={{
@@ -641,6 +648,7 @@ export const AccountPage = () => {
                             <button
                               type="button"
                               data-testid="order-cancel"
+                              data-row-action="cancel"
                               disabled={orderBusy === ord.id}
                               onClick={() => cancelOrder(ord)}
                               style={{

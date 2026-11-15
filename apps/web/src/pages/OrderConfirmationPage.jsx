@@ -5,7 +5,7 @@
 // Ejecución 58: el enlace (número + token) basta para pagar o cancelar desde cualquier navegador; get_order_public
 // devuelve el id y las RPC siguen exigiendo el token. Si la BD rechaza el pago (vencido, ya no pagable), se relee.
 // =============================================================================
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, Clock, XCircle, Truck, Package, CreditCard, AlertTriangle, RotateCcw } from '../components/Common/icons';
 import { useECommerceStore } from '../store/eCommerceStore';
@@ -137,13 +137,25 @@ export const OrderConfirmationPage = () => {
     } finally { setBusy(false); }
   };
 
+  // Ejecución 151 (D129): tras «Cancelar pedido» los botones desaparecen (el pedido deja de estar pendiente) y el foco
+  // caía en <body>. Vuelve al mismo botón si sigue (la cancelación falló) o al título, que anuncia el nuevo estado.
+  const cancelBtnRef = useRef(null);
+  const titleRef = useRef(null);
+  const [cancelFocusTick, setCancelFocusTick] = useState(0);
+  useEffect(() => {
+    if (!cancelFocusTick) return;
+    const a = document.activeElement;
+    if (a && a !== document.body && a.isConnected && !a.disabled) return;
+    const btn = cancelBtnRef.current;
+    (btn && btn.isConnected && !btn.disabled ? btn : titleRef.current)?.focus();
+  }, [cancelFocusTick]);
   const cancelOrder = async () => {
     if (!payable) return;
     if (!window.confirm('¿Cancelar este pedido? Se liberarán los productos reservados.')) return;
     setBusy(true); setActionError(null);
     try { await orderService.cancelOrder(payable.id, payable.public_token, 'Cancelado por el cliente desde la confirmación'); await fetchOrder(); }
     catch (e) { setActionError(e.message); await fetchOrder({ keepOnError: true }); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setCancelFocusTick((t) => t + 1); }
   };
 
   if (state === 'loading') {
@@ -208,7 +220,7 @@ export const OrderConfirmationPage = () => {
             color: isPaidFlow ? '#10B981' : isPending ? '#D97706' : isRefunded ? '#52525B' : '#E11D48' }}>
             {order.status_label || (isRefunded ? 'Reembolsado' : '')}
           </span>
-          <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0' }}>
+          <h1 ref={titleRef} tabIndex={-1} style={{ fontSize: '2rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase', margin: '0.4rem 0' }}>
             {isPaidFlow ? '¡Gracias por tu compra!' : isPending ? 'Pedido registrado' : isRefunded ? 'Pedido reembolsado' : paidCancelMessage ? 'Pedido cancelado' : 'Pedido cerrado'} · {order.order_number}
           </h1>
           <p style={{ fontSize: '0.95rem', color: '#71717A' }}>
@@ -243,7 +255,7 @@ export const OrderConfirmationPage = () => {
             </button>
             )}
             {payable && (
-              <button onClick={cancelOrder} disabled={busy} style={{ border: '1px solid #D4D4D8', padding: '0.85rem 1.4rem', borderRadius: '6px', fontWeight: 700 }}>
+              <button ref={cancelBtnRef} type="button" data-testid="confirmation-cancel" onClick={cancelOrder} disabled={busy} style={{ border: '1px solid #D4D4D8', padding: '0.85rem 1.4rem', borderRadius: '6px', fontWeight: 700 }}>
                 Cancelar pedido
               </button>
             )}

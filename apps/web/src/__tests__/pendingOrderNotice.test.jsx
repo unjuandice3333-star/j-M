@@ -117,6 +117,19 @@ describe('Checkout: pedido anterior pendiente de pago', () => {
     expect(useECommerceStore.getState().activeCheckoutOrderId).toBe('ord-1');
   });
 
+  // Ejecución 151 (D129): el botón desaparece al cancelar → el foco va a la confirmación, no a <body>.
+  it('tras cancelar, el foco pasa a «Pedido … cancelado»', async () => {
+    setup([{ variantId: 'v-l-neg', quantity: 1 }]);
+    supa.state.rpc.get_order_public = { data: publicOrder(), error: null };
+    supa.state.rpc.cancel_my_order = vi.fn(() => ({ data: { status: 'cancelled' }, error: null }));
+    vi.stubGlobal('confirm', () => true);
+    await mount();
+    const btn = host.querySelector('[data-testid="pending-order-cancel"]');
+    btn.focus();
+    await act(async () => { btn.click(); });
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="pending-order-cancelled"]'));
+  });
+
   it('vencido en la BD: no avisa y deja de ser el pedido activo', async () => {
     setup();
     supa.state.rpc.get_order_public = { data: publicOrder({ payment_expires_at: new Date(Date.now() - 60_000).toISOString() }), error: null };
