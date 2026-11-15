@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 157: foco al reintentar la carga del catálogo en `PublicLayout` (D135); recorrido 86 nuevo)
+Última actualización: 2026-11-15 (ejecución 158: posventa en «Mis pedidos» — guía de envío y «Solicitar cambio» (D136); recorrido 87 nuevo)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -12,11 +12,11 @@ Rama autorizada: `mission/m26-dev-qa-environments`
 |---|---|
 | `pnpm build` | OK |
 | ESLint (`apps packages scripts`, sin dist*) | 0 errores, 0 avisos |
-| `pnpm test:unit` (vitest, jsdom) | **754/754** (85 archivos, ejecución 157; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
+| `pnpm test:unit` (vitest, jsdom) | **761/761** (86 archivos, ejecución 158; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
 | `pnpm test:env` (node:test) | **142/142** (fallo de entorno corregido: ahora la CLI usa un envDir hermético) |
 | `test-checkout-invariants.mjs` | 10/10 (nota: es un simulador; las pruebas reales son las de vitest) |
 | BD local PostgreSQL 16 (`supabase/tests/run_local.sh`) | pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (ejecución 126; 408/408 en la 124; 393/393 en la 122; 382/382 en la 74; 357/357 en la 71; antes 278/278 en la ejecución 3) |
-| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **86 recorridos** (ejecución 157: **86/86 (suite completa, primera pasada)**; 10/10 en la primera versión) |
+| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **87 recorridos** (ejecución 158: **87/87 (suite completa, primera pasada)**; 10/10 en la primera versión) |
 
 Recorridos E2E: 1 catálogo/filtro · 2 producto, color, talla agotada · 3 carrito (límite de stock, persistencia, eliminar) · 4 cupón y envío · 5 checkout (validación, pedido, reserva de stock, carrito conservado sin pago) · 6 pedido pagado (webhook SINTÉTICO) · 7 sin stock al confirmar · 8 registro/logout/login/historial · 9 credenciales erróneas y rutas protegidas (cliente no entra al admin) · 10 admin: panel, ajuste de inventario, pedido pagado→procesando→enviado con guía.
 
@@ -67,13 +67,21 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
 
+## Ejecución 158 — Posventa en «Mis pedidos»: guía de envío y solicitud de cambio (punto 0(cz))
+- **CI del push anterior** (run `ci` nº 201, `d016233`): governance, quality, db-local, db-supabase y `e2e-synthetic` (86) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 179 ✔.
+- **Hueco funcional real (D136):** la tarjeta del pedido en «Mis pedidos» no mostraba la guía (solo «Ver detalle») y un pedido entregado no ofrecía ninguna vía para el cambio que promete la política publicada (30 días, por WhatsApp). Ahora: guía (transportadora · número · «Rastrear envío», solo https) en pedidos enviados/entregados; en entregados, «Solicitar cambio por WhatsApp» con el número del pedido y las prendas ya redactados y la fecha límite; pasado el plazo, aviso sin enlace. Utilidad nueva `src/utils/orderAftercare.js`.
+- **Pruebas nuevas:** `orderAftercare.test.jsx` (7; las 3 de la página fallan sin el cambio de `src`) y **recorrido 87** (Chromium real: guía, enlace, Tab desde «Ver Detalle», nombre accesible y 320 px sin desbordamiento; 3 fallos sin el cambio, pasa con él).
+- **Verificado aquí:** `pnpm test:unit` **761/761** (86 archivos); ESLint 0; build OK; `pnpm test:e2e-synthetic` **87/87** (suite completa, primera pasada); `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- **Limitación honesta:** el número de WhatsApp sigue siendo el marcador `573000000000` que ya usaban el pie de página, el botón flotante y `/contacto`: el propietario debe dar el número real (ahora centralizado en `STORE_WHATSAPP` para la tarjeta; los otros 3 sitios aún lo repiten).
+- **Siguiente (0(da)):** centralizar el número de WhatsApp (pie, botón flotante, `/contacto`, política) en una sola constante configurable por entorno (`VITE_STORE_WHATSAPP`); después preparar `FINAL_ACCEPTANCE.md` con lo verificado y los 3 bloqueos del propietario (Wompi Sandbox, Vercel Preview, baseline M24 en Supabase QA).
+
 ## Ejecución 157 — Foco al reintentar la carga del catálogo (punto 0(cy))
 - **CI del push anterior** (run `ci` nº 200, `14b5d74`): governance, quality, db-local, db-supabase y `e2e-synthetic` (85) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 178 ✔.
 - **Defecto real (D135):** con el catálogo caído, «Reintentar» del aviso de `PublicLayout` dejaba el foco en `<body>` en Chromium: al pulsarlo el store limpia el error y el aviso entero (con el botón) se desmonta mientras carga. Ahora, al terminar: si sigue fallando → el «Reintentar» nuevo; si funcionó → `<main id=contenido>`. Solo si el foco se perdió.
 - **Pruebas nuevas:** `catalogRetryFocus.test.jsx` (3; 2 fallan sin el cambio de `src`, la de «el cliente ya se movió» pasa en ambos por diseño) y **recorrido 86** (Chromium real, teclado, `products` abortado y luego restaurado: 2 fallos sin el cambio con foco en `<body>`, pasa con él).
 - **Verificado aquí:** `pnpm test:unit` **754/754** (85 archivos); ESLint 0; build OK; `pnpm test:e2e-synthetic` **86/86 (suite completa, primera pasada)**. Sin migración: pgTAP no re-ejecutado.
 - **Criterio de foco (D130–D135): cerrado del todo.** No quedan `disabled={` con acción sin control de foco.
-- **Siguiente (0(cz)):** volver a funcionalidad no bloqueada por credenciales. Propuesta concreta: revisar con el E2E sintético el flujo de devolución/cambio desde «Mis pedidos» y el correo/aviso de pedido enviado; si no hay huecos, preparar el informe final de aceptación (`FINAL_ACCEPTANCE.md`) con lo verificado y los 3 bloqueos del propietario (Wompi Sandbox, Vercel Preview, baseline M24 en Supabase QA).
+- ~~**Siguiente (0(cz))**~~ hecho en la ejecución 158 (D136). Era: volver a funcionalidad no bloqueada por credenciales. Propuesta concreta: revisar con el E2E sintético el flujo de devolución/cambio desde «Mis pedidos» y el correo/aviso de pedido enviado; si no hay huecos, preparar el informe final de aceptación (`FINAL_ACCEPTANCE.md`) con lo verificado y los 3 bloqueos del propietario (Wompi Sandbox, Vercel Preview, baseline M24 en Supabase QA).
 
 ## Ejecución 156 — Foco tras error en «Confirmar y pagar», boletín y /admin/login (punto 0(cx))
 - **CI del push anterior** (run `ci` nº 199, `05f7d7c`): governance, quality, db-local, db-supabase y `e2e-synthetic` (84) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 177 ✔.

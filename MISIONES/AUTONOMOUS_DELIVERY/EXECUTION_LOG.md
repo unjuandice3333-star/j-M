@@ -1533,3 +1533,15 @@
 - Commits: arreglo + pruebas y este de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push (`e2e-synthetic` debe dar 86/86); luego punto 0(cz) — funcionalidad no bloqueada por credenciales (devoluciones/cambios desde «Mis pedidos», aviso de pedido enviado) o, si no hay huecos, informe final de aceptación `FINAL_ACCEPTANCE.md`.
+
+## Ejecución 158 — 2026-11-15 ~14:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-sbtvv1`; se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `d016233`, árbol limpio. `pnpm install --frozen-lockfile` OK. CI nº 201: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 179 ✔.
+- Tarea: punto 0(cz) — posventa en «Mis pedidos» (D136).
+- Hueco real: la tarjeta del pedido no mostraba la guía de envío y los pedidos entregados no ofrecían la solicitud de cambio que promete la política publicada.
+- Archivos: `apps/web/src/utils/orderAftercare.js` (nuevo), `apps/web/src/pages/AccountPage.jsx`, `apps/web/src/__tests__/orderAftercare.test.jsx` (nuevo, 7), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 87), documentación.
+- Pruebas (ejecutadas aquí): 3 unitarias fallan sin el cambio de `src` y pasan con él; recorrido 87 con 3 fallos sin el cambio y pasa con él; `pnpm test:unit` 761/761 (86 archivos); ESLint 0; build OK; `pnpm test:e2e-synthetic` **87/87** (suite completa, primera pasada); `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno. Limitación: número de WhatsApp de marcador (`573000000000`), pendiente del propietario.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `9d6702c` (funcionalidad + pruebas) y este de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push (`e2e-synthetic` debe dar 87/87); luego punto 0(da) — número de WhatsApp en una sola constante configurable (`VITE_STORE_WHATSAPP`) y `FINAL_ACCEPTANCE.md`.
