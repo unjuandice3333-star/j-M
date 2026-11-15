@@ -10,6 +10,7 @@ import { shippingMethodLabel } from '../../utils/shippingPolicy';
 import { ADMIN_ORDERS_PAGE_SIZE, couponLink, productLinkForSku, customerLinkForOrder, countByStatus, fetchAllRows, couponFromParam, customerFromParam, customerOrdersFilter, combineOrFilters, orderSearchFilter, shippingMethodOptions } from '../../utils/adminLists';
 import { DialogPanel } from '../../components/Common/DialogPanel';
 import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
+import { focusIfLost } from '../../utils/focusIfLost';
 import { attentionReasons, sortedEvents, eventText, validateResolveNote, canRefundFromAttention, RESOLVE_NOTE_MAX } from '../../utils/orderAttention';
 import { refundRecords, refundHeading, hasPendingRefund, refundStockText, validateProviderRefundId, PROVIDER_REFUND_ID_MAX, pendingRefundFromParam, PENDING_REFUND_PARAM } from '../../utils/orderRefunds';
 
@@ -195,6 +196,20 @@ export const AdminOrdersPage = () => {
   // desmonta); si el pedido salió del filtro (p. ej. «Pagado» → «Procesando» en la pestaña «Pagado») el botón que abrió
   // el modal ya no existe y el foco caía en <body>. Vuelve a «Ver detalle» del mismo pedido o al que ocupó su lugar.
   const { containerRef: ordersListRef, remember: rememberOrderRow, settle: settleOrderRow } = useRowFocusRestore();
+  // Ejecución 155 (D133): «GUARDAR CAMBIOS», «MARCAR COMO REVISADO» y «REEMBOLSAR Y CERRAR» se deshabilitan mientras
+  // guardan; con un error general (red/servicio) el detalle sigue abierto y Chromium dejaba el foco en <body> (el
+  // siguiente Tab salía del modal). Vuelve al botón pulsado (solo si el foco se perdió); el aviso `alert` anuncia el error.
+  const saveBtnRef = useRef(null);
+  const resolveBtnRef = useRef(null);
+  const refundAttnBtnRef = useRef(null);
+  const [failFocus, setFailFocus] = useState(null);
+  useEffect(() => {
+    if (!failFocus) return;
+    const ref = { save: saveBtnRef, resolve: resolveBtnRef, refund: refundAttnBtnRef }[failFocus.target];
+    focusIfLost([ref?.current, document.getElementById(ORDER_FIELD_ID.status)]);
+  }, [failFocus]);
+  const failFocusOn = (target) => setFailFocus({ target });
+
   const closeAndRefresh = async () => {
     if (selectedOrder) rememberOrderRow(selectedOrder.id, 'open');
     setSelectedOrder(null);
@@ -283,6 +298,7 @@ export const AdminOrdersPage = () => {
       await closeAndRefresh();
     } catch (err) {
       setResolveError(err.message || 'No se pudo cerrar la revisión.');
+      failFocusOn('resolve');
       // Otro admin ya la cerró: se recarga la lista para que deje de mostrarse como pendiente.
       if (err.hint === 'JM_ATTENTION_NOT_REQUIRED') refreshAll();
     } finally {
@@ -307,6 +323,7 @@ export const AdminOrdersPage = () => {
       await closeAndRefresh();
     } catch (err) {
       setResolveError(err.message || 'No se pudo registrar el reembolso.');
+      failFocusOn('refund');
       if (err.hint === 'JM_ATTENTION_NOT_REQUIRED' || err.hint === 'JM_INVALID_TRANSITION') refreshAll();
     } finally {
       setIsResolving(false);
@@ -345,6 +362,7 @@ export const AdminOrdersPage = () => {
       await closeAndRefresh();
     } catch (err) {
       setModalError(err.message || 'No se pudo cambiar el estado.'); setModalErrorFields([]);
+      failFocusOn('save');
     } finally {
       setIsSaving(false);
     }
@@ -608,12 +626,12 @@ export const AdminOrdersPage = () => {
                     placeholder="Ej.: repuse 1 unidad y despaché / reembolsado en Wompi"
                     aria-invalid={Boolean(resolveError)} aria-describedby={resolveError ? 'order-resolve-error' : undefined}
                     style={{ ...orderInput, flex: '1 1 240px' }} />
-                  <button type="button" data-testid="order-resolve-attention" onClick={handleResolveAttention} disabled={isResolving}
+                  <button ref={resolveBtnRef} type="button" data-testid="order-resolve-attention" onClick={handleResolveAttention} disabled={isResolving}
                     style={{ backgroundColor: '#7F1D1D', color: '#FFFFFF', padding: '0.65rem 1rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.8rem', minHeight: '40px', opacity: isResolving ? 0.7 : 1 }}>
                     {isResolving ? 'GUARDANDO…' : 'MARCAR COMO REVISADO'}
                   </button>
                   {canRefundFromAttention(selectedOrder, transitions) && (
-                    <button type="button" data-testid="order-refund-attention" onClick={handleRefundAttention} disabled={isResolving}
+                    <button ref={refundAttnBtnRef} type="button" data-testid="order-refund-attention" onClick={handleRefundAttention} disabled={isResolving}
                       style={{ backgroundColor: '#FFFFFF', color: '#7F1D1D', border: '1px solid #7F1D1D', padding: '0.65rem 1rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.8rem', minHeight: '40px', opacity: isResolving ? 0.7 : 1 }}>
                       REEMBOLSAR Y CERRAR
                     </button>
@@ -748,6 +766,7 @@ export const AdminOrdersPage = () => {
               </button>
 
               <button
+                ref={saveBtnRef}
                 onClick={handleSaveChanges}
                 disabled={isSaving || !modalStatus}
                 style={{ backgroundColor: '#09090B', color: '#FFFFFF', padding: '0.75rem 1.5rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.85rem', opacity: isSaving ? 0.7 : 1 }}
