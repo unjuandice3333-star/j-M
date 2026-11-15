@@ -3587,6 +3587,58 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser, null, MOBILE);
 
+    await journey('75. Móvil 320: la ficha con 30 opiniones aprobadas las pagina de 12 en 12 (total real, «Ver más opiniones» con teclado, foco en la primera nueva, sin pendientes)', async (p) => {
+      // Ejecución 146 (D123): antes la ficha leía solo las 12 más recientes, decía «(N opiniones)» y no había forma de ver el resto.
+      const tag = crypto.randomBytes(3).toString('hex'); const base = Date.parse('2030-01-01T00:00:00Z');
+      const made = []; // del más antiguo al más reciente; fechas futuras para que sean las más recientes del producto
+      for (let i = 0; i < 30; i += 1) {
+        made.push(await fetch(`${API_URL}/__synthetic-review`, { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ slug: 'camiseta-basica', author_name: `Opina ${tag} ${String(i + 1).padStart(2, '0')}`, title: `Opinión ${i + 1}`, comment: `Comentario de prueba número ${i + 1}.`, created_at: new Date(base + i * 60e3).toISOString() }) }).then(j));
+      }
+      await fetch(`${API_URL}/__synthetic-review`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug: 'camiseta-basica', author_name: `Pendiente ${tag}`, status: 'pending', created_at: new Date(base + 99 * 60e3).toISOString() }) });
+      const st = await state(); const productId = st.reviews.find((r) => r.id === made[0].id)?.product_id;
+      const approved = st.reviews.filter((r) => r.status === 'approved' && r.product_id === productId);
+      const total = approved.length; // 30 nuevas + las aprobadas que dejaron recorridos anteriores
+      const expectedIds = [...approved].sort((a, b) => (b.created_at > a.created_at ? 1 : b.created_at < a.created_at ? -1 : (b.id > a.id ? 1 : -1))).map((r) => r.id);
+      const ranges = [];
+      p.on('request', (r) => { const u = new URL(r.url()); if (r.method() === 'GET' && u.pathname.endsWith('/rest/v1/product_reviews')) ranges.push([u.searchParams.get('offset'), u.searchParams.get('limit'), u.searchParams.get('status')]); });
+      const failures = [];
+      await p.setViewportSize({ width: 320, height: 640 });
+      await p.goto(`${BASE}/producto/camiseta-basica`);
+      const shown = () => p.evaluate(() => [...document.querySelectorAll('#opiniones [data-review-id]')].map((c) => c.getAttribute('data-review-id')));
+      await p.waitForFunction(() => document.querySelectorAll('#opiniones [data-review-id]').length > 0, null, { timeout: 15000 }).catch(() => {});
+      let ids = await shown();
+      if (ids.length !== 12) failures.push(`primera página: ${ids.length} opiniones (se esperaban 12)`);
+      if (ids.join() !== expectedIds.slice(0, 12).join()) failures.push('la primera página no son las 12 más recientes en orden');
+      if (!ranges.length || ranges.some(([, l, s]) => !l || Number(l) > 13 || s !== 'eq.approved')) failures.push(`consulta sin límite acotado o sin filtro de aprobadas: ${JSON.stringify(ranges)}`);
+      if (await p.getByText(`Pendiente ${tag}`).count()) failures.push('se ve una reseña pendiente');
+      const more = p.getByTestId('reviews-load-more');
+      if (!(await more.innerText().catch(() => '')).includes(`Mostrando 12 de ${total} opiniones`)) failures.push(`texto del pie: «${await more.innerText().catch(() => '(sin pie)')}»`);
+      await measureMobileScreens(p, [['/producto/camiseta-basica', null, null, `Opina ${tag} 30`]], failures, { links: true });
+      await p.setViewportSize({ width: 320, height: 640 });
+      await p.goto(`${BASE}/producto/camiseta-basica`);
+      await more.waitFor({ timeout: 15000 });
+      const btn = more.getByRole('button', { name: 'Ver más opiniones' });
+      await btn.scrollIntoViewIfNeeded();
+      const box = await btn.boundingBox();
+      if (!box || box.height < 44 || box.x < 0 || box.x + box.width > 320) failures.push(`botón «Ver más opiniones» fuera de medida: ${JSON.stringify(box)}`);
+      const focused = () => p.evaluate(() => document.activeElement?.getAttribute('data-review-id') || document.activeElement?.tagName || '');
+      let loaded = 12;
+      while (loaded < total) {
+        await more.getByRole('button', { name: 'Ver más opiniones' }).focus(); await p.keyboard.press('Enter');
+        const want = Math.min(total, loaded + 12);
+        await p.waitForFunction((n) => document.querySelectorAll('#opiniones [data-review-id]').length === n, want, { timeout: 10000 }).catch(() => {});
+        ids = await shown();
+        if (ids.length !== want) { failures.push(`tras «Ver más»: ${ids.length} opiniones (se esperaban ${want})`); break; }
+        if ((await focused()) !== expectedIds[loaded]) failures.push(`tras «Ver más» el foco quedó en «${await focused()}» (se esperaba la opinión ${loaded + 1})`);
+        loaded = want;
+      }
+      if (ids.join() !== expectedIds.join()) failures.push(`lista final: ${ids.length} opiniones, ${new Set(ids).size} distintas (se esperaban ${total} en orden)`);
+      if (await p.getByTestId('reviews-load-more').count()) failures.push('«Ver más opiniones» sigue visible con todas cargadas');
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
+    }, browser, null, MOBILE);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

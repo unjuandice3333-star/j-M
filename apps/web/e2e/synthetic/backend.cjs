@@ -426,7 +426,7 @@ function start(port = 54321) {
           const pr = S.products.find((x) => x.slug === body.slug); if (!pr) return send(res, 404, {});
           const row = { id: crypto.randomUUID(), product_id: pr.id, order_item_id: null, user_id: null, author_name: body.author_name || 'Cliente J&M', city: body.city || null,
             rating: body.rating || 5, title: body.title || 'Muy buena', comment: body.comment || 'Buena tela y buen ajuste.', is_verified_buyer: true, status: body.status === 'pending' ? 'pending' : 'approved', // Ejecución 105: también pendiente
-            admin_reply: body.admin_reply || null, created_at: new Date().toISOString() };
+            admin_reply: body.admin_reply || null, created_at: body.created_at || new Date().toISOString() }; // Ejecución 146: fecha opcional
           S.tables.product_reviews.push(row); return send(res, 200, { id: row.id });
         }
         // Ejecución 101: FIXTURE sintético — imagen PROPIA de la portada (fila de site_content con URL externa) para poder abrir «Restaurar» en /admin/imagenes.
@@ -508,6 +508,8 @@ function start(port = 54321) {
           if (req.method === 'GET' || req.method === 'HEAD') {
             let data = rows(table, q, ctx);
             if (table === 'online_orders' || table === 'inventories') data = [...data];
+            // Ejecución 146: la ficha pagina las reseñas con order=created_at.desc,id.desc (como PostgREST, en una copia).
+            if (table === 'product_reviews' && /^created_at\.desc/.test(q.order || '')) data = [...data].sort((a, b) => (b.created_at > a.created_at ? 1 : b.created_at < a.created_at ? -1 : (b.id > a.id ? 1 : b.id < a.id ? -1 : 0)));
             // Ejecución 73: embebido products ( name, slug ) de /admin/reviews (FK product_id), en copias para no tocar el estado.
             if (table === 'product_reviews' && /products\s*\(/.test(q.select || '')) data = data.map((r) => { const pr = S.products.find((x) => x.id === r.product_id); return { ...r, products: pr ? { name: pr.name, slug: pr.slug } : null }; });
             const total = data.length; const offset = Number(q.offset || 0);

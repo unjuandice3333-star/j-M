@@ -96,3 +96,23 @@ export async function fetchReviewInvitations() {
     color: r.color_name,
   }));
 }
+
+// Ejecución 146 (D123): la ficha leía solo las 12 reseñas más recientes y mostraba «(N opiniones)» sin forma
+// de ver el resto; un fallo de la lectura dejaba la sección vacía sin aviso. Ahora se pagina como «Mis pedidos»
+// (D122): límite creciente desde el principio, total real (`count: 'exact'`) y desempate estable por id.
+export const PRODUCT_REVIEWS_PAGE_SIZE = 12;
+const PUBLIC_REVIEW_COLS = 'id, author_name, city, rating, title, comment, created_at, is_verified_buyer, admin_reply';
+
+/** Reseñas aprobadas de un producto (RLS: el público solo ve status = approved). → { reviews, total, hasMore } */
+export async function fetchApprovedReviews(productId, { limit = PRODUCT_REVIEWS_PAGE_SIZE } = {}) {
+  const size = Math.max(1, Math.floor(Number(limit) || PRODUCT_REVIEWS_PAGE_SIZE));
+  const { data, error, count } = await supabase.from('product_reviews')
+    .select(PUBLIC_REVIEW_COLS, { count: 'exact' })
+    .eq('product_id', productId).eq('status', 'approved')
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(0, size);
+  if (error) throw Object.assign(new Error('No pudimos cargar las opiniones. Revisa tu conexión e intenta de nuevo.'), { cause: error });
+  const rows = data || [];
+  return { reviews: rows.slice(0, size), total: Number.isInteger(count) ? count : null, hasMore: rows.length > size };
+}

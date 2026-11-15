@@ -18,7 +18,6 @@ import {
   X
 } from '../components/Common/icons';
 import { formatCOP } from '../utils/currency';
-import supabase from '../config/supabase';
 import { useECommerceStore } from '../store/eCommerceStore';
 import { useShippingPolicy } from '../hooks/useShippingPolicy';
 import ProductCard from '../components/Product/ProductCard';
@@ -28,6 +27,7 @@ import SafeProductImage from '../components/Common/SafeImage';
 import { analyticsService } from '../services/analytics';
 import { isOneSize, sizeHelpFor } from '../utils/sizeAdvice';
 import { DialogPanel } from '../components/Common/DialogPanel';
+import { fetchApprovedReviews, PRODUCT_REVIEWS_PAGE_SIZE } from '../services/reviewsService.js';
 
 // Un catálogo cargado hace más de esto se vuelve a consultar al abrir la ficha.
 const STOCK_STALE_MS = 30_000;
@@ -85,15 +85,57 @@ export const ProductDetailPage = () => {
     .filter((v, i, a) => a.indexOf(v) === i);
   const galleryProduct = product ? { ...product, images: colorImages.length ? colorImages : product.images } : null;
 
-  // Reseñas aprobadas (RLS: solo status = approved para el público)
+  // Reseñas aprobadas (RLS: solo status = approved para el público). D123: paginadas con total real y aviso de error.
+  const [reviewsTotal, setReviewsTotal] = useState(null);
+  const [reviewsHasMore, setReviewsHasMore] = useState(false);
+  const [reviewsError, setReviewsError] = useState(null);
+  const [isLoadingMoreReviews, setIsLoadingMoreReviews] = useState(false);
+  const reviewsLimitRef = useRef(PRODUCT_REVIEWS_PAGE_SIZE);
+  const focusReviewIdRef = useRef(null);
+  const reviewsProductRef = useRef(null);
+  const loadReviews = async (productId, limit) => {
+    const res = await fetchApprovedReviews(productId, { limit });
+    if (reviewsProductRef.current !== productId) return; // cambió de producto mientras se leía
+    setReviews(res.reviews); setReviewsTotal(res.total); setReviewsHasMore(res.hasMore);
+    return res;
+  };
   useEffect(() => {
     if (!product?.id) return undefined;
-    let alive = true;
-    supabase.from('product_reviews').select('id, author_name, city, rating, title, comment, created_at, is_verified_buyer, admin_reply')
-      .eq('product_id', product.id).eq('status', 'approved').order('created_at', { ascending: false }).limit(12)
-      .then(({ data }) => { if (alive) setReviews(data ?? []); });
-    return () => { alive = false; };
+    const id = product.id;
+    reviewsProductRef.current = id;
+    reviewsLimitRef.current = PRODUCT_REVIEWS_PAGE_SIZE;
+    setReviews([]); setReviewsTotal(null); setReviewsHasMore(false); setReviewsError(null);
+    loadReviews(id, PRODUCT_REVIEWS_PAGE_SIZE).catch((e) => {
+      if (reviewsProductRef.current === id) setReviewsError(e.message);
+    });
+    return () => { if (reviewsProductRef.current === id) reviewsProductRef.current = null; };
   }, [product?.id]);
+
+  // «Ver más opiniones» (o «Reintentar» si la primera lectura falló): amplía el límite y relee desde el principio.
+  const loadMoreReviews = async () => {
+    const id = product?.id;
+    if (!id) return;
+    const previous = reviewsLimitRef.current;
+    const firstNewIndex = reviews.length;
+    if (!reviewsError || reviews.length > 0) reviewsLimitRef.current = previous + PRODUCT_REVIEWS_PAGE_SIZE;
+    reviewsProductRef.current = id;
+    setIsLoadingMoreReviews(true); setReviewsError(null);
+    try {
+      const res = await loadReviews(id, reviewsLimitRef.current);
+      if (res && firstNewIndex > 0) focusReviewIdRef.current = res.reviews[firstNewIndex]?.id ?? null;
+    } catch (e) {
+      reviewsLimitRef.current = previous;
+      setReviewsError(e.message);
+    } finally {
+      setIsLoadingMoreReviews(false);
+    }
+  };
+  useEffect(() => {
+    const id = focusReviewIdRef.current;
+    if (!id) return;
+    focusReviewIdRef.current = null;
+    document.querySelector(`[data-review-id="${id}"]`)?.focus();
+  }, [reviews]);
 
   // Accordion open states
   const [openAccordions, setOpenAccordions] = useState({
@@ -742,7 +784,7 @@ export const ProductDetailPage = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '1.5rem' }}>
             {reviews.map((rev) => (
               // D120: una palabra o URL larga en la reseña ensanchaba la tarjeta (ítem de grid con min-width: auto) y la ficha desbordaba a 320 px
-              <div key={rev.id} style={{ border: '1px solid #E4E4E7', padding: 'clamp(1rem, 4vw, 1.5rem)', borderRadius: '8px', backgroundColor: '#FAFAFA', minWidth: 0, overflowWrap: 'anywhere' }}>
+              <article key={rev.id} data-review-id={rev.id} tabIndex={-1} aria-label={`Opinión de ${rev.author_name}`} style={{ border: '1px solid #E4E4E7', padding: 'clamp(1rem, 4vw, 1.5rem)', borderRadius: '8px', backgroundColor: '#FAFAFA', minWidth: 0, overflowWrap: 'anywhere' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.25rem 0.75rem', marginBottom: '0.5rem' }}>
                   <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{rev.author_name}{rev.city ? ` (${rev.city})` : ''}</div>
                   <span style={{ fontSize: '0.75rem', color: '#71717A' }}>{new Date(rev.created_at).toLocaleDateString('es-CO')}</span>
@@ -759,9 +801,30 @@ export const ProductDetailPage = () => {
                     <p style={{ fontSize: '0.8rem', color: '#3F3F46', lineHeight: 1.5, margin: 0 }}>{String(rev.admin_reply).trim()}</p>
                   </div>
                 )}
-              </div>
+              </article>
             ))}
           </div>
+          {(reviewsHasMore || reviewsError) && (
+            <div data-testid="reviews-load-more" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
+              {reviews.length > 0 && (
+                <p style={{ fontSize: '0.82rem', color: '#52525B', margin: 0 }}>
+                  {reviewsTotal != null ? `Mostrando ${reviews.length} de ${reviewsTotal} opiniones` : `Mostrando ${reviews.length} opiniones`}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={loadMoreReviews}
+                disabled={isLoadingMoreReviews}
+                aria-describedby={reviewsError ? 'reviews-load-error' : undefined}
+                style={{ minHeight: '44px', padding: '0.7rem 1.4rem', borderRadius: '6px', border: '1px solid #09090B', backgroundColor: '#FFFFFF', color: '#09090B', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.04em', cursor: isLoadingMoreReviews ? 'wait' : 'pointer', maxWidth: '100%' }}
+              >
+                {isLoadingMoreReviews ? 'Cargando…' : (reviewsError && reviews.length === 0 ? 'Reintentar' : 'Ver más opiniones')}
+              </button>
+              {reviewsError && (
+                <p id="reviews-load-error" role="alert" style={{ fontSize: '0.8rem', color: '#991B1B', fontWeight: 600, margin: 0 }}>{reviewsError}</p>
+              )}
+            </div>
+          )}
         </section>
 
         {/* RELATED PRODUCTS */}
