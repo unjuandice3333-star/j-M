@@ -152,8 +152,11 @@ export const ProductDetailPage = () => {
   // «Disminuir cantidad» para que el teclado siga en el selector.
   const decQtyRef = useRef(null);
   const incQtyRef = useRef(null);
+  const incPressedRef = useRef(false); // solo tras pulsar «+»: al abrir la ficha (sin talla) también está deshabilitado
   useEffect(() => {
     const inc = incQtyRef.current;
+    if (!incPressedRef.current) return;
+    incPressedRef.current = false;
     if (!inc?.disabled) return;
     focusIfLost(decQtyRef.current, { from: inc });
   }, [quantity, maxQty, selectedVariant]);
@@ -621,7 +624,7 @@ export const ProductDetailPage = () => {
                   <span style={{ fontWeight: 800, fontSize: '0.95rem', padding: '0 0.5rem' }}>{quantity}</span>
                   <button
                     ref={incQtyRef}
-                    onClick={() => setQuantity(Math.min(Math.max(1, maxQty), quantity + 1))}
+                    onClick={() => { incPressedRef.current = true; setQuantity(Math.min(Math.max(1, maxQty), quantity + 1)); }}
                     disabled={!selectedVariant || quantity >= maxQty}
                     aria-label="Aumentar cantidad"
                     style={{ padding: '0.8rem 1rem', color: '#09090B', cursor: 'pointer' }}
