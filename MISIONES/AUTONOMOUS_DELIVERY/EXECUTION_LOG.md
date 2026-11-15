@@ -1377,3 +1377,15 @@
 - Commits: `aaa2790` (arreglo + recorrido 73) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(co) de Pendiente (foco al cerrar otros formularios en línea; «Mis pedidos» con más de 50 pedidos / tope de PostgREST).
+
+## Ejecución 145 — 2026-11-15 ~01:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-ml1gt9` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `f9e7770`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior: run `ci` nº 179 (`f9e7770`) todo ✔ salvo `security` (gitleaks, conocido); `e2e-supabase` nº 157 ✔.
+- Tarea: punto 0(co)(1) — «Mis pedidos» paginado (D122): la consulta no tenía límite (todas las líneas de todos los pedidos; PostgREST corta en `max_rows` = 1000 sin avisar).
+- Archivos: `apps/web/src/services/orderService.js` (`getMyOrders({ limit })` → `{ orders, total, hasMore }`, `MY_ORDERS_PAGE_SIZE` = 20), `apps/web/src/pages/AccountPage.jsx` (contador con total, «Ver más pedidos», error conservando la lista, foco al primer pedido nuevo), `apps/web/src/__tests__/accountOrdersPagination.test.jsx` (nuevo, 4), `helpers.js`/`orders.test.js`/`accountDetails.test.jsx` (nuevo contrato), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 74).
+- Pruebas (ejecutadas aquí): vitest nuevas 4/4 fallan sin el cambio de `src` y pasan con él; recorrido 74 falla sin el cambio y pasa con él; `pnpm test:unit` 694/694; ESLint 0; build OK; `pnpm test:e2e-synthetic` **74/74**; `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: recorrido 30 intermitente (sin datos nuevos; pasó en esta suite).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `537fdbd` (arreglo + recorrido 74) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(co)(2) (foco al cerrar los demás formularios en línea; otras lecturas sin límite frente a `max_rows`).
