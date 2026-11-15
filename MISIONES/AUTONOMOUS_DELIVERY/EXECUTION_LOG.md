@@ -1401,3 +1401,15 @@
 - Commits: `f221a49` (arreglo + pruebas), el del helper E2E y los de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(co)(2)(b) (foco al cerrar los demás formularios en línea: perfil/contraseña de «Mi cuenta», respuesta a reseña y formularios en línea del admin).
+
+## Ejecución 147 — 2026-11-15 ~03:00 UTC (rutina programada)
+- Estado inicial: rama `mission/m26-dev-qa-environments` en `d91e577`, árbol limpio. CI nº 183: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 161 ✔.
+- Tarea: punto 0(co)(2)(b) — foco tras cerrar/actuar en formularios en línea (D125).
+- Defecto real: en `/admin/reviews`, `/admin/boletin` y `/admin/inventario` la fila (o la tabla al recargar) desaparecía y el foco caía en `<body>`. Perfil/contraseña de «Mi cuenta» no se desmontan: sin cambio.
+- Archivos: `apps/web/src/hooks/useRowFocusRestore.js` (nuevo), `AdminReviewsPage.jsx`, `AdminNewsletterPage.jsx`, `AdminInventoryPage.jsx`, `apps/web/src/__tests__/adminRowFocus.test.jsx` (nuevo, 7), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 76).
+- Pruebas (ejecutadas aquí): las 2 de página fallan sin el cambio y pasan con él; recorrido 76 con 6 fallos sin el cambio y pasa con él; `pnpm test:unit` 706/706; ESLint 0; build OK; `pnpm test:e2e-synthetic` **76/76**; `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `f843186` (arreglo + pruebas) y el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(cp) (mismo criterio D125 en `/admin/pedidos`, `/admin/productos` y `/admin/descuentos` cuando la acción saca la fila del filtro).
