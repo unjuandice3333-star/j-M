@@ -4115,6 +4115,74 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('82. Teclado: «Guardar dirección» con fallo de red, «Cambiar contraseña» y «Pagar ahora» con error no dejan el foco en <body> (D131)', async (p) => {
+      // Ejecución 153 (D131): botones que se deshabilitan mientras guardan/pagan; Chromium les quita el foco.
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, name: a?.getAttribute('name'), label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '' };
+      });
+      const settle = () => p.waitForTimeout(250);
+      const nextTabNotSkip = async (where) => {
+        await p.keyboard.press('Tab');
+        const f = await focusInfo();
+        if (f.tag === 'BODY' || /Ir al contenido/i.test(f.label)) failures.push(`${where}: el siguiente Tab fue a ${JSON.stringify(f)}`);
+      };
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Olga Ruiz');
+      await p.locator('input[type=email]').fill('olga.ruiz@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await p.goto(`${BASE}/cuenta`);
+
+      // «Guardar dirección» con la red caída: el aviso aparece y el foco vuelve al botón
+      const libreta = p.getByTestId('address-book');
+      await libreta.getByRole('button', { name: 'Agregar dirección' }).click();
+      const form = libreta.getByTestId('address-form');
+      await form.locator('input[name=phone]').fill('3001234567');
+      await form.locator('select[name=department]').selectOption({ label: 'Antioquia' });
+      await form.locator('input[name=city]').fill('Medellín'); await form.locator('input[name=address_line]').fill('Calle 10 # 20-30');
+      await p.route('**/rest/v1/customer_addresses*', (route) => (route.request().method() === 'POST' ? route.abort() : route.continue()));
+      const save = form.getByRole('button', { name: 'Guardar dirección' });
+      await save.focus(); await p.keyboard.press('Enter');
+      await form.getByRole('alert').waitFor({ timeout: 10000 });
+      await settle();
+      let f = await focusInfo();
+      if (f.label !== 'Guardar dirección') failures.push(`dirección: tras el fallo, foco en ${JSON.stringify(f)}`);
+      else await nextTabNotSkip('dirección');
+      await p.unroute('**/rest/v1/customer_addresses*');
+      await form.getByRole('button', { name: 'Cancelar' }).click();
+
+      // «Cambiar contraseña»: al terminar el foco vuelve al botón
+      const sec = p.getByTestId('account-password');
+      await sec.locator('input[name=password]').fill('Clave-Nueva-22'); await sec.locator('input[name=confirm]').fill('Clave-Nueva-22');
+      const cambiar = sec.getByRole('button', { name: 'Cambiar contraseña' });
+      await cambiar.focus(); await p.keyboard.press('Enter');
+      await sec.getByText('Contraseña actualizada').waitFor({ timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (f.label !== 'Cambiar contraseña') failures.push(`contraseña: tras guardar, foco en ${JSON.stringify(f)}`);
+      else await nextTabNotSkip('contraseña');
+
+      // confirmación: «Pagar ahora» con la firma caída → el aviso aparece y el foco vuelve al botón
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.route('**/api/wompi/signature', (route) => route.abort());
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'olga.ruiz@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click(); await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 20000 });
+      const pay = p.getByRole('button', { name: 'Pagar ahora' });
+      await pay.waitFor({ timeout: 10000 });
+      await p.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Pagar ahora' && !b.disabled), null, { timeout: 10000 });
+      await pay.focus(); await p.keyboard.press('Enter');
+      await p.locator('main [role=alert]').first().waitFor({ timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (f.label !== 'Pagar ahora') failures.push(`pagar ahora: tras el error, foco en ${JSON.stringify(f)}`);
+      else await nextTabNotSkip('pagar ahora');
+      await p.unroute('**/api/wompi/signature');
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);
