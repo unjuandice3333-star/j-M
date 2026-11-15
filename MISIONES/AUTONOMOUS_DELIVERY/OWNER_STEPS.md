@@ -11,6 +11,7 @@ Nada de esto se pega en el chat ni en Git: los valores se cargan en los paneles 
 2. Configurar la URL de eventos del panel sandbox → `https://<preview>/api/wompi/webhook`.
 3. Variables de servidor (Vercel, entorno **Preview**): `WOMPI_ENV=sandbox`, `WOMPI_PUBLIC_KEY`, `WOMPI_INTEGRITY_SECRET`, `WOMPI_EVENTS_SECRET`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 4. Variables del navegador (Vercel, **Preview**): `VITE_APP_ENV=qa`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_WOMPI_PUBLIC_KEY`, `VITE_WOMPI_ENV=sandbox`. El host de Supabase debe estar en `config/environments.json` (`qa.supabase.allowed_hosts`) o la guarda de build lo rechaza.
+5. Opcional pero necesario para producción comercial: `VITE_STORE_WHATSAPP` (número real de la tienda con indicativo, p. ej. `+57 3xx xxx xxxx`; se aceptan espacios y guiones). Sin ella se muestra el marcador `573000000000`.
 
 ## C. Vercel Preview
 1. Autenticar Vercel (el agente no puede: `vercel` está denegado). La integración Git ya crea Previews por rama; la rama `mission/m26-dev-qa-environments` genera uno automáticamente al hacer push.

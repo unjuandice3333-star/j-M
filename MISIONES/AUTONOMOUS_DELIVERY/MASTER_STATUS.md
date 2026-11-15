@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 158: posventa en «Mis pedidos» — guía de envío y «Solicitar cambio» (D136); recorrido 87 nuevo)
+Última actualización: 2026-11-15 (ejecución 159: WhatsApp en una sola constante `VITE_STORE_WHATSAPP` (D137) e informe `FINAL_ACCEPTANCE.md`)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -12,7 +12,7 @@ Rama autorizada: `mission/m26-dev-qa-environments`
 |---|---|
 | `pnpm build` | OK |
 | ESLint (`apps packages scripts`, sin dist*) | 0 errores, 0 avisos |
-| `pnpm test:unit` (vitest, jsdom) | **761/761** (86 archivos, ejecución 158; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
+| `pnpm test:unit` (vitest, jsdom) | **766/766** (87 archivos, ejecución 159; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
 | `pnpm test:env` (node:test) | **142/142** (fallo de entorno corregido: ahora la CLI usa un envDir hermético) |
 | `test-checkout-invariants.mjs` | 10/10 (nota: es un simulador; las pruebas reales son las de vitest) |
 | BD local PostgreSQL 16 (`supabase/tests/run_local.sh`) | pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (ejecución 126; 408/408 en la 124; 393/393 en la 122; 382/382 en la 74; 357/357 en la 71; antes 278/278 en la ejecución 3) |
@@ -67,13 +67,21 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
 
+## Ejecución 159 — WhatsApp configurable e informe final de aceptación (punto 0(da))
+- **CI del push anterior** (run `ci` nº 203, `de7d68f`): governance, quality, db-local, db-supabase y `e2e-synthetic` (87) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 181 ✔.
+- **Cambio (D137):** el número de WhatsApp estaba repetido en 4 sitios (pie, botón flotante, `/contacto`, posventa) y escrito a mano en el texto de la política/FAQ. Ahora sale de `src/config/storeContact.js` (`VITE_STORE_WHATSAPP`, opcional; marcador si falta o es inválida).
+- **Pruebas nuevas:** `storeContact.test.jsx` (5: normalización, marcador, formato, y render real de pie + botón + `/contacto` + política + enlace de posventa con la variable definida).
+- **Verificado aquí:** `pnpm test:unit` **766/766** (87 archivos); ESLint 0; build OK; `check_commits.sh` OK; `pnpm test:e2e-synthetic`: ver EXECUTION_LOG (ejecución 159). Sin migración: pgTAP no re-ejecutado.
+- **Entregable:** `FINAL_ACCEPTANCE.md` (funcionalidad verificada, pruebas, 5 bloqueos del propietario, pasos de aceptación, limitaciones). `OWNER_STEPS.md` §B.5 documenta `VITE_STORE_WHATSAPP`.
+- **Siguiente (0(db)):** comprobar el CI del push; mantener `FINAL_ACCEPTANCE.md` al día. El código no bloqueado está completo: el trabajo restante depende del propietario (Supabase QA baseline M24, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks). Mientras tanto, solo regresiones/defectos reales que aparezcan en CI.
+
 ## Ejecución 158 — Posventa en «Mis pedidos»: guía de envío y solicitud de cambio (punto 0(cz))
 - **CI del push anterior** (run `ci` nº 201, `d016233`): governance, quality, db-local, db-supabase y `e2e-synthetic` (86) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 179 ✔.
 - **Hueco funcional real (D136):** la tarjeta del pedido en «Mis pedidos» no mostraba la guía (solo «Ver detalle») y un pedido entregado no ofrecía ninguna vía para el cambio que promete la política publicada (30 días, por WhatsApp). Ahora: guía (transportadora · número · «Rastrear envío», solo https) en pedidos enviados/entregados; en entregados, «Solicitar cambio por WhatsApp» con el número del pedido y las prendas ya redactados y la fecha límite; pasado el plazo, aviso sin enlace. Utilidad nueva `src/utils/orderAftercare.js`.
 - **Pruebas nuevas:** `orderAftercare.test.jsx` (7; las 3 de la página fallan sin el cambio de `src`) y **recorrido 87** (Chromium real: guía, enlace, Tab desde «Ver Detalle», nombre accesible y 320 px sin desbordamiento; 3 fallos sin el cambio, pasa con él).
 - **Verificado aquí:** `pnpm test:unit` **761/761** (86 archivos); ESLint 0; build OK; `pnpm test:e2e-synthetic` **87/87** (suite completa, primera pasada); `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
 - **Limitación honesta:** el número de WhatsApp sigue siendo el marcador `573000000000` que ya usaban el pie de página, el botón flotante y `/contacto`: el propietario debe dar el número real (ahora centralizado en `STORE_WHATSAPP` para la tarjeta; los otros 3 sitios aún lo repiten).
-- **Siguiente (0(da)):** centralizar el número de WhatsApp (pie, botón flotante, `/contacto`, política) en una sola constante configurable por entorno (`VITE_STORE_WHATSAPP`); después preparar `FINAL_ACCEPTANCE.md` con lo verificado y los 3 bloqueos del propietario (Wompi Sandbox, Vercel Preview, baseline M24 en Supabase QA).
+- ~~**Siguiente (0(da))**~~ hecho en la ejecución 159 (D137). Era: centralizar el número de WhatsApp (pie, botón flotante, `/contacto`, política) en una sola constante configurable por entorno (`VITE_STORE_WHATSAPP`); después preparar `FINAL_ACCEPTANCE.md` con lo verificado y los 3 bloqueos del propietario (Wompi Sandbox, Vercel Preview, baseline M24 en Supabase QA).
 
 ## Ejecución 157 — Foco al reintentar la carga del catálogo (punto 0(cy))
 - **CI del push anterior** (run `ci` nº 200, `14b5d74`): governance, quality, db-local, db-supabase y `e2e-synthetic` (85) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 178 ✔.
