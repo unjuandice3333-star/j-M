@@ -1449,3 +1449,15 @@
 - Commits: `419f0ac` (arreglo + pruebas) y el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(cs) (foco tras quitar el cupón en `/carrito` y `/checkout` y tras «Cancelar pedido» en «Mis pedidos» y la confirmación).
+
+## Ejecución 151 — 2026-11-15 ~07:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-b7oqdj` (ancestro de la rama de misión, sin `MISIONES/AUTONOMOUS_DELIVERY`); se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `6158810`, árbol limpio. `pnpm install --frozen-lockfile` OK. CI nº 189: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 167 ✔.
+- Tarea: punto 0(cs) — foco tras quitar el cupón y tras «Cancelar pedido» (D129).
+- Defecto real: los cuatro botones (cupón en `/carrito`, aviso de pedido pendiente en `/checkout`, confirmación y «Mis pedidos») dejaban el foco en `<body>`. `/checkout` no tiene «Quitar cupón».
+- Archivos: `apps/web/src/pages/CartPage.jsx`, `apps/web/src/pages/AccountPage.jsx`, `apps/web/src/pages/OrderConfirmationPage.jsx`, `apps/web/src/components/Checkout/PendingOrderNotice.jsx`, 4 archivos de `apps/web/src/__tests__/` (6 pruebas nuevas), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 80).
+- Pruebas (ejecutadas aquí): 4 unitarias fallan sin el cambio de `src` y pasan con él (2 de «falla» pasan en ambos: jsdom); recorrido 80 con 4 fallos sin el cambio y pasa con él; `pnpm test:unit` 722/722; ESLint 0; build OK; `pnpm test:e2e-synthetic` **80/80**; `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo (recorrido 73 marcado una vez en una pasada que corté por tiempo; pasó aislado y en la suite completa: vigilar en CI).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `6884640` (arreglo + pruebas) y el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(ct) (botones que cambian de estado en la ficha de producto y baja/alta del boletín en «Mi cuenta»).
