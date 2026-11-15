@@ -38,11 +38,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 (node24)
         with:
           fetch-depth: 0
       # M26-R1 (MAJ-5): Node para 03_production_readiness (solo módulos integrados de Node; sin instalar dependencias)
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0 (node24)
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Base de comparación
@@ -56,7 +56,7 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           TARGET_BRANCH: ${{ github.base_ref }}
         run: bash scripts/ci/run_all.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0 (node24)
         if: always()
         with:
           name: ci-governance-${{ github.sha }}
@@ -68,11 +68,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 (node24)
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (versión desde packageManager)
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0 (node24; versión desde packageManager)
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0 (node24)
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -83,7 +83,7 @@ jobs:
         env:
           CI_STAGES: quality
         run: bash scripts/ci/run_all.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0 (node24)
         if: always()
         with:
           name: ci-quality-${{ github.sha }}
@@ -95,9 +95,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 22   # 15 de E2E + margen para reintentar la instalación de Chromium (D117)
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (versión desde packageManager)
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 (node24)
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0 (node24; versión desde packageManager)
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0 (node24)
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -112,7 +112,7 @@ jobs:
       - name: Detalle del fallo (log del E2E sintético; sin secretos, backend ficticio)
         if: failure()
         run: tail -n 80 ci-artifacts/logs/40_e2e_synthetic.log || true
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0 (node24)
         if: always()
         with:
           name: ci-e2e-synthetic-${{ github.sha }}
@@ -129,7 +129,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 (node24)
         with:
           fetch-depth: 0
       - name: Base de comparación
@@ -141,7 +141,7 @@ jobs:
         env:
           CI_STAGES: security
         run: bash scripts/ci/run_all.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0 (node24)
         if: always()
         with:
           name: ci-security-${{ github.sha }}
@@ -158,7 +158,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 (node24)
         with:
           fetch-depth: 0
       - name: Política de la base aplicada al PR
@@ -176,7 +176,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 (node24)
       - name: PostgreSQL 16 + pgTAP + pg_cron
         run: |
           sudo apt-get update -qq
@@ -188,7 +188,7 @@ jobs:
           PG_BIN: /usr/lib/postgresql/16/bin
           OUTDIR: ${{ github.workspace }}/ci-artifacts/db_local
         run: bash scripts/ci/run_all.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0 (node24)
         if: always()
         with:
           name: ci-db-local-${{ github.sha }}
@@ -200,11 +200,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 (node24)
       # M30.2: la etapa incluye la prueba de integración de pedido y pago (apps/web/scripts/test-payment-flow.mjs,
       # M27), que importa @supabase/supabase-js: Node y dependencias con la misma estrategia que el job quality.
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (versión desde packageManager)
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0 (node24; versión desde packageManager)
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0 (node24)
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -220,7 +220,7 @@ jobs:
       - name: Detalle del fallo (redactado, sin llaves; stack local efímero)
         if: failure()
         run: bash scripts/ci/db_supabase_failure_detail.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0 (node24)
         if: always()
         with:
           name: ci-db-supabase-${{ github.sha }}
@@ -233,7 +233,7 @@ jobs:
     needs: [governance, quality, e2e-synthetic, security, trusted-policy, db-local, db-supabase]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 (node24)
       - name: Todas las compuertas deben terminar en success
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}

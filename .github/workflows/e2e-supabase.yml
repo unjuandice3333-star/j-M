@@ -30,9 +30,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4 (versión desde packageManager)
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 (node24)
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0 (node24; versión desde packageManager)
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0 (node24)
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -51,7 +51,7 @@ jobs:
         run: echo "0.0.0.0 checkout.wompi.co sandbox.wompi.co production.wompi.co" | sudo tee -a /etc/hosts
       - name: Supabase local + recorridos E2E
         run: bash scripts/ci/e2e_supabase.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0 (node24)
         if: always()
         with:
           name: e2e-supabase-${{ github.sha }}
