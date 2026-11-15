@@ -15,6 +15,7 @@ import { orderService } from '../services/orderService';
 import { wompiService } from '../services/wompi';
 import { shippingMethodLabel } from '../utils/shippingPolicy';
 import { useAuthStore } from '../store/authStore';
+import { focusIfLost } from '../utils/focusIfLost';
 import { orderReviewMessage, orderRefundMessage, orderPaidCancellationMessage } from '../utils/orderReview';
 
 const POLL_MS = 5000;
@@ -124,6 +125,10 @@ export const OrderConfirmationPage = () => {
     }
   }, [order?.status, local, finalizePaidOrder]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // D131: «Pagar ahora» se deshabilita mientras abre el widget; si falla (o el widget se cierra sin dejar el foco en
+  // ningún sitio) quedaba en <body>. Vuelve al botón si sigue, o al título si el pedido cambió de estado.
+  const payBtnRef = useRef(null);
+  const [payFocusTick, setPayFocusTick] = useState(0);
   const retryPayment = async () => {
     if (!payable) { setActionError('Para reintentar el pago desde otro dispositivo, inicia sesión y abre el pedido en tu cuenta.'); return; }
     setBusy(true); setActionError(null);
@@ -134,13 +139,14 @@ export const OrderConfirmationPage = () => {
       setActionError(e.message);
       // La BD decidió que el pedido ya no admite pago (vencido, pagado o cancelado en otra pestaña): mostrar su estado real.
       if (STALE_PAYMENT_CODES.has(e.code)) await fetchOrder({ keepOnError: true });
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setPayFocusTick((t) => t + 1); }
   };
 
   // Ejecución 151 (D129): tras «Cancelar pedido» los botones desaparecen (el pedido deja de estar pendiente) y el foco
   // caía en <body>. Vuelve al mismo botón si sigue (la cancelación falló) o al título, que anuncia el nuevo estado.
   const cancelBtnRef = useRef(null);
   const titleRef = useRef(null);
+  useEffect(() => { if (payFocusTick) focusIfLost([payBtnRef.current, titleRef.current]); }, [payFocusTick]);
   const [cancelFocusTick, setCancelFocusTick] = useState(0);
   useEffect(() => {
     if (!cancelFocusTick) return;
@@ -250,7 +256,7 @@ export const OrderConfirmationPage = () => {
         {isPending && (
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
             {!windowClosed && (
-            <button onClick={retryPayment} disabled={busy} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.85rem 1.4rem', borderRadius: '6px', fontWeight: 800 }}>
+            <button ref={payBtnRef} onClick={retryPayment} disabled={busy} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.85rem 1.4rem', borderRadius: '6px', fontWeight: 800 }}>
               {busy ? 'Procesando…' : 'Pagar ahora'}
             </button>
             )}

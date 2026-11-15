@@ -163,6 +163,11 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const formRef = useRef(null);
+  // D131: si guardar falla sin un campo culpable (red, servicio), «Guardar dirección» se rehabilita y el foco, que
+  // Chromium le quitó al deshabilitarlo, quedaba en <body>. Vuelve al botón (el aviso se anuncia por su role).
+  const submitRef = useRef(null);
+  const [failTick, setFailTick] = useState(0);
+  useEffect(() => { if (failTick) focusIfLost(submitRef.current); }, [failTick]);
   // D120: el formulario aparece DEBAJO de la lista; con varias direcciones en móvil quedaba fuera de la vista y
   // «Editar»/«Agregar dirección» parecían no hacer nada. Al abrirlo se lleva a la vista y el foco va al primer campo.
   useEffect(() => {
@@ -195,6 +200,7 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
       if (err.errors) { setErrors(err.errors); focusFirstError(formEl, ADDRESS_FIELDS, err.errors); }
       setError(err.message);
       setSaving(false);
+      setFailTick((t) => t + 1);
     }
   };
   const field = (name, text, props = {}) => (
@@ -231,7 +237,7 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
       </label>
       {error && <Banner kind="error">{error}</Banner>}
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <button type="submit" disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? 'Guardando…' : 'Guardar dirección'}</button>
+        <button ref={submitRef} type="submit" disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? 'Guardando…' : 'Guardar dirección'}</button>
         <button type="button" onClick={onCancel} style={ghostBtn}>Cancelar</button>
       </div>
     </form>
@@ -338,6 +344,15 @@ function PasswordSection() {
   const [busy, setBusy] = useState(false);
   // campo al que pertenece el error de validación (su mensaje es el aviso del formulario)
   const [badField, setBadField] = useState(null);
+  // D131: «Cambiar contraseña» se deshabilita mientras guarda; al terminar (éxito, error o se pide el código) el foco
+  // quedaba en <body>. Va al campo del código si se acaba de pedir; si no, vuelve al botón.
+  const formRef = useRef(null);
+  const submitRef = useRef(null);
+  const [doneTick, setDoneTick] = useState(0);
+  useEffect(() => {
+    if (!doneTick) return;
+    focusIfLost([formRef.current?.querySelector('[name="nonce"]'), submitRef.current]);
+  }, [doneTick]);
 
   const change = (e) => { const { name, value } = e.target; setPw((f) => ({ ...f, [name]: value })); setMsg(null); setBadField(null); };
   const invalidField = (formEl, name, text) => {
@@ -379,13 +394,14 @@ function PasswordSection() {
       setMsg({ kind: 'error', text: message });
     } finally {
       setBusy(false);
+      setDoneTick((t) => t + 1);
     }
   };
 
   return (
     <section style={card} aria-labelledby="account-password-title" data-testid="account-password">
       <h2 id="account-password-title" style={heading}><KeyRound size={20} /> Contraseña</h2>
-      <form onSubmit={submit} noValidate style={{ marginTop: '1rem' }}>
+      <form ref={formRef} onSubmit={submit} noValidate style={{ marginTop: '1rem' }}>
         <div style={grid}>
           <div>
             <label style={label} htmlFor="acc-new-password">Nueva contraseña</label>
@@ -404,7 +420,7 @@ function PasswordSection() {
         </div>
         {msg && <Banner id="acc-password-msg" kind={msg.kind}>{msg.text}</Banner>}
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-          <button type="submit" disabled={busy} style={primaryBtn}>{busy ? 'Guardando…' : 'Cambiar contraseña'}</button>
+          <button ref={submitRef} type="submit" disabled={busy} style={primaryBtn}>{busy ? 'Guardando…' : 'Cambiar contraseña'}</button>
           {needsCode && <button type="button" disabled={busy} onClick={async () => { setMsg(null); if (await sendCode()) setMsg({ kind: 'ok', text: 'Te enviamos un código nuevo.' }); }} style={ghostBtn}>Reenviar código</button>}
         </div>
       </form>

@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import supabase from '../config/supabase';
 import { PASSWORD_MAX, validateNewPassword, passwordUpdateError, recoveryLinkError } from '../utils/passwordPolicy';
+import { focusIfLost } from '../utils/focusIfLost';
 
 export const ResetPasswordPage = () => {
   const navigate = useNavigate();
@@ -20,6 +21,12 @@ export const ResetPasswordPage = () => {
   const [busy, setBusy] = useState(false);
   const timer = useRef(null);
   const formRef = useRef(null);
+  // D131: «Guardar contraseña» se deshabilita mientras guarda; con un error general (sin campo) o al terminar (el
+  // formulario se sustituye por el aviso) el foco quedaba en <body>. Va al botón o al aviso de éxito.
+  const submitRef = useRef(null);
+  const doneRef = useRef(null);
+  const [settleTick, setSettleTick] = useState(0);
+  useEffect(() => { if (settleTick) focusIfLost([doneRef.current, submitRef.current]); }, [settleTick, done]);
 
   // Ejecución 112 (D83): el aviso queda enlazado al campo que lo causa y el foco va a ese campo.
   const fail = (message, field) => {
@@ -46,6 +53,7 @@ export const ResetPasswordPage = () => {
     setBusy(true);
     const { error: err } = await supabase.auth.updateUser({ password });
     setBusy(false);
+    setSettleTick((t) => t + 1);
     if (err) {
       const { kind, message } = passwordUpdateError(err);
       if (kind === 'session') { setExpired(true); fail(`${message} Solicita un enlace nuevo.`, null); }
@@ -73,7 +81,7 @@ export const ResetPasswordPage = () => {
           </p>
         )
       ) : done ? (
-        <p role="status" style={{ color: '#065F46', fontWeight: 700 }}>Contraseña actualizada. Te llevamos a tu cuenta…</p>
+        <p ref={doneRef} tabIndex={-1} role="status" style={{ color: '#065F46', fontWeight: 700 }}>Contraseña actualizada. Te llevamos a tu cuenta…</p>
       ) : (
         <form ref={formRef} onSubmit={submit} style={{ display: 'grid', gap: '0.9rem' }} noValidate>
           <label>Nueva contraseña<input name="password" {...a11y('password')} type="password" autoComplete="new-password" maxLength={PASSWORD_MAX} value={password} onChange={(e) => setPassword(e.target.value)} style={input} /></label>
@@ -83,7 +91,7 @@ export const ResetPasswordPage = () => {
               {error}{expired && <> <Link to="/cuenta" style={{ textDecoration: 'underline' }}>Pedir enlace</Link></>}
             </div>
           )}
-          <button type="submit" disabled={busy} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.9rem', borderRadius: '8px', fontWeight: 800 }}>
+          <button ref={submitRef} type="submit" disabled={busy} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.9rem', borderRadius: '8px', fontWeight: 800 }}>
             {busy ? 'Guardando…' : 'Guardar contraseña'}
           </button>
         </form>
