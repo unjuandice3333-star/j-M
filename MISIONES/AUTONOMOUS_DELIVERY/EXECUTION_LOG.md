@@ -1579,3 +1579,14 @@
 - Commits: corrección de seguridad + documentación; publicados en la rama autorizada.
 - Notificación: no enviada (corrección rutinaria; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego 0(dd) (evaluar React Router 7).
+
+## Ejecución 162 — 2026-11-15 ~18:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-gmyz5m` (ancestro de la rama autorizada); se trabajó en `mission/m26-dev-qa-environments` en `415c2ea`, árbol limpio. CI nº 207 ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 185 ✔.
+- Tarea: punto 0(dd) — migración a React Router 7 (D140).
+- Archivos: `apps/web/package.json`, `pnpm-lock.yaml`, `apps/web/src/App.jsx`, documentación.
+- Pruebas (ejecutadas aquí): con v7 por defecto E2E 84/87 (fallan 10, 40, 63; reproducido aislado 0/3); con `useTransitions={false}` aislado 3/3 y suite completa **87/87**; `pnpm test:unit` 790/790; ESLint 0; build OK; `pnpm test:env` 146/146; `check_commits.sh` OK; `pnpm audit --prod` 0 avisos.
+- Errores pendientes: ninguno conocido.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, número real de WhatsApp, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `161f2e9` (código) + este de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (mantenimiento rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego 0(de).

@@ -24,14 +24,13 @@ Vercel Preview (sin acceso del agente). Esos tres pasos son del propietario (ver
 ## 3. Pruebas (última ejecución real)
 | Suite | Resultado | Dónde |
 |---|---|---|
-| `pnpm test:unit` | 790/790 (88 archivos) | este contenedor, ejecución 161 |
-| `pnpm test:e2e-synthetic` | 87/87 recorridos (ejecución 161, con React Router 6.30.6) | este contenedor + job `e2e-synthetic` del CI |
+| `pnpm test:unit` | 790/790 (88 archivos) | este contenedor, ejecución 162 |
+| `pnpm test:e2e-synthetic` | 87/87 recorridos (ejecución 162, con React Router 7.18.5) | este contenedor + job `e2e-synthetic` del CI |
 | pgTAP + concurrencia | 435/435, 12/12 | ejecución 126 + job `db-local` del CI (verde en cada push) |
 | Supabase local (`db-supabase`, `e2e-supabase`) | verde | GitHub Actions en cada push (run `ci` nº 203, `e2e-supabase` nº 181) |
 | ESLint / build | 0 problemas / OK | este contenedor |
+| `pnpm audit --prod` | 0 avisos (React Router 7.18.5 + override de `ws`, D139–D140) | este contenedor, ejecución 162 |
 | `security` (gitleaks del historial) | ✘ por dos cadenas de prueba con forma de JWT en `e142ab2` | decisión del propietario (`gitleaks-allowlist-e142ab2.patch`) |
-
-| `pnpm audit --prod` | 2 moderados (solo corregibles en React Router 7; SSR no aplica, barra invertida mitigada en la app — D139) | este contenedor, ejecución 161 |
 
 ## 4. Bloqueos del propietario (en orden)
 1. **Supabase QA**: aplicar el baseline M24 y las migraciones (`supabase/migrations/`) al proyecto de QA. El agente
