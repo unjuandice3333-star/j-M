@@ -1485,3 +1485,15 @@
 - Commits: `03851d2` (arreglo + pruebas unitarias), commit del recorrido 82 + D131 y este de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push (el job `e2e-synthetic` debe dar 82/82); luego punto 0(cv) — criterio D131 en el admin: `AdminSettingsPage`, `AdminDiscountsPage`, `AdminCollectionsPage`, `AdminProductFormPage`.
+
+## Ejecución 154 — 2026-11-15 ~10:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-4ngya9` (ancestro de la rama de misión); se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `50eed90`, árbol limpio. `pnpm install --frozen-lockfile` OK. CI nº 196: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 174 ✔.
+- Tarea: punto 0(cv) — foco en botones de guardar del admin (D132).
+- Defecto real: con error de red, los botones de guardar de método de envío, colección, cupón y producto dejaban el foco en `<body>` en Chromium; guardar un cupón que sale del filtro también.
+- Archivos: `apps/web/src/pages/admin/AdminSettingsPage.jsx`, `AdminCollectionsPage.jsx`, `AdminDiscountsPage.jsx`, `AdminProductFormPage.jsx`, `apps/web/src/__tests__/adminSaveFocus.test.jsx` (nuevo, 6), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 83), documentación.
+- Pruebas (ejecutadas aquí): 6 unitarias fallan sin el cambio de `src` y pasan con él; recorrido 83 con 4 fallos sin el cambio y pasa con él; `pnpm test:unit` 740/740; ESLint 0; build OK; `pnpm test:e2e-synthetic` 83/83 (primera pasada); `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `532171c` (arreglo + pruebas unitarias), `30ff5af` (recorrido 83) y este de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push (`e2e-synthetic` debe dar 83/83); luego punto 0(cw) — detalle de pedido del admin y ajuste de inventario con error de red (criterio D132).

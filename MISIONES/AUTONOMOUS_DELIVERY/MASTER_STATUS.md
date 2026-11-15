@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 153: foco en botones de envío que se deshabilitan — «Guardar dirección», «Cambiar contraseña», restablecer contraseña y «Pagar ahora» (D131); recorrido 82 nuevo)
+Última actualización: 2026-11-15 (ejecución 154: foco en botones de guardar del admin — método de envío, colección, cupón y producto (D132); recorrido 83 nuevo)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -12,11 +12,11 @@ Rama autorizada: `mission/m26-dev-qa-environments`
 |---|---|
 | `pnpm build` | OK |
 | ESLint (`apps packages scripts`, sin dist*) | 0 errores, 0 avisos |
-| `pnpm test:unit` (vitest, jsdom) | **734/734** (81 archivos, ejecución 153; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
+| `pnpm test:unit` (vitest, jsdom) | **740/740** (82 archivos, ejecución 154; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
 | `pnpm test:env` (node:test) | **142/142** (fallo de entorno corregido: ahora la CLI usa un envDir hermético) |
 | `test-checkout-invariants.mjs` | 10/10 (nota: es un simulador; las pruebas reales son las de vitest) |
 | BD local PostgreSQL 16 (`supabase/tests/run_local.sh`) | pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (ejecución 126; 408/408 en la 124; 393/393 en la 122; 382/382 en la 74; 357/357 en la 71; antes 278/278 en la ejecución 3) |
-| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **82 recorridos** (ejecución 153: pasada completa 81/81 + el 82 nuevo aislado; 10/10 en la primera versión) |
+| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **83 recorridos** (ejecución 154: pasada completa 83/83 a la primera; 10/10 en la primera versión) |
 
 Recorridos E2E: 1 catálogo/filtro · 2 producto, color, talla agotada · 3 carrito (límite de stock, persistencia, eliminar) · 4 cupón y envío · 5 checkout (validación, pedido, reserva de stock, carrito conservado sin pago) · 6 pedido pagado (webhook SINTÉTICO) · 7 sin stock al confirmar · 8 registro/logout/login/historial · 9 credenciales erróneas y rutas protegidas (cliente no entra al admin) · 10 admin: panel, ajuste de inventario, pedido pagado→procesando→enviado con guía.
 
@@ -67,12 +67,19 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
 
+## Ejecución 154 — Foco en botones de guardar del admin (punto 0(cv))
+- **CI del push anterior** (run `ci` nº 196, `50eed90`): governance, quality, db-local, db-supabase y `e2e-synthetic` (82) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 174 ✔.
+- **Defecto real (D132):** con la red caída, «Guardar» de `/admin/configuracion` y `/admin/colecciones`, «Guardar cupón» de `/admin/descuentos` y «Guardar borrador»/«Guardar y publicar» del formulario de producto dejaban el foco en `<body>` en Chromium (en los modales el siguiente Tab salía del lector de pantalla a «Ir al contenido»). También al guardar un cupón que sale del filtro de estado. Ahora: el mismo botón; la fila que ocupó su lugar en descuentos; el botón pulsado tras guardar el producto (éxito o error).
+- **Pruebas nuevas:** `adminSaveFocus.test.jsx` (6; las 6 fallan sin el cambio de `src`) y **recorrido 83** (Chromium real, teclado: 4 fallos sin el cambio con foco en `<body>`, pasa con él).
+- **Verificado aquí:** `pnpm test:unit` **740/740** (82 archivos); ESLint 0; build OK; `pnpm test:e2e-synthetic` **83/83** (suite completa, primera pasada); `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- **Siguiente (0(cw)):** con el criterio de foco ya aplicado a tienda y admin, volver a funcionalidad: revisar que el detalle de pedido del admin («GUARDAR CAMBIOS» de estado/guía) y el ajuste de inventario cumplen D132 con error de red; después, cuando haya credenciales, Wompi Sandbox / Vercel Preview / baseline QA.
+
 ## Ejecución 153 — Foco en botones de envío que se deshabilitan (punto 0(cu))
 - **CI del push anterior** (run `ci` nº 194, `fce37e2`): governance, quality, db-local, db-supabase y `e2e-synthetic` (81) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 172 ✔.
 - **Defecto real (D131):** «Guardar dirección» con fallo de red, «Cambiar contraseña» (éxito, error o al pedir el código), «Guardar contraseña» de `/cuenta/restablecer` (error general o éxito) y «Pagar ahora» de la confirmación con error dejaban el foco en `<body>` en Chromium. Ahora: el mismo botón; el campo del código si se acaba de pedir; el aviso de éxito (`tabIndex=-1`); el `<h1>` si el pedido dejó de admitir pago.
 - **Pruebas nuevas:** `disabledSubmitFocus.test.jsx` (6; las 6 fallan sin el cambio de `src`) y **recorrido 82** (Chromium real, teclado: 3 fallos sin el cambio con foco en `<body>`, pasa con él).
 - **Verificado aquí:** `pnpm test:unit` **734/734** (81 archivos); ESLint 0; build OK; `pnpm test:e2e-synthetic` **81/81** (suite completa con el cambio, antes de añadir el 82) + recorrido 82 aislado ✔. Sin migración: pgTAP no re-ejecutado.
-- **Pendiente del mismo criterio (0(cv)):** admin — `AdminSettingsPage`, `AdminDiscountsPage`, `AdminCollectionsPage`, `AdminProductFormPage` (botones de guardar en modales/formularios).
+- ~~**Pendiente del mismo criterio (0(cv))**~~: hecho en la ejecución 154 (D132).
 
 ## Ejecución 152 — Foco en botones que cambian de estado: ficha de producto y «Mis datos» (punto 0(ct))
 - **CI del push anterior** (run `ci` nº 190, `2510299`): governance, quality, db-local, db-supabase y `e2e-synthetic` (80) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 168 ✔.
