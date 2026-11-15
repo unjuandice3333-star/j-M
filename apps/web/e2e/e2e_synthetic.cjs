@@ -4262,6 +4262,59 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('84. Admin con teclado: guardar con error en el detalle de pedido (estado y revisión) no deja el foco en <body> (D133)', async (p) => {
+      // Ejecución 155 (D133): «GUARDAR CAMBIOS» y «MARCAR COMO REVISADO» se deshabilitan mientras guardan; con la red
+      // caída el detalle sigue abierto y Chromium dejaba el foco en <body> (el siguiente Tab salía del modal).
+      const tag = crypto.randomBytes(3).toString('hex');
+      const r = await fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ customer_name: `Guardar ${tag}`, customer_email: `guardar.${tag}@correo.co`, status: 'paid', needs_attention: true }) });
+      const num = (await r.json()).order_number;
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '' };
+      });
+      const writes = '**/rest/v1/**';
+      const failWrites = () => p.route(writes, (route) => (['GET', 'HEAD'].includes(route.request().method()) ? route.continue() : route.abort()));
+      const expectFocus = async (where, label) => {
+        await p.waitForTimeout(250);
+        const f = await focusInfo();
+        if (f.label !== label) { failures.push(`${where}: tras el error, foco en ${JSON.stringify(f)} (se esperaba «${label}»)`); return; }
+        await p.keyboard.press('Tab');
+        const n = await focusInfo();
+        const inDialog = await p.evaluate(() => Boolean(document.activeElement?.closest('[role=dialog]')));
+        if (n.tag === 'BODY' || /Ir al contenido/i.test(n.label) || !inDialog) failures.push(`${where}: el siguiente Tab fue a ${JSON.stringify(n)}`);
+      };
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+      await p.goto(`${BASE}/admin/pedidos?q=${encodeURIComponent(tag)}`);
+      const row = p.locator('tbody tr', { hasText: num });
+      await row.waitFor({ timeout: 10000 });
+      await row.getByRole('button', { name: 'GESTIONAR' }).click();
+      const dlg = p.getByRole('dialog');
+      await p.locator('#order-next-status').selectOption('processing');
+
+      // «GUARDAR CAMBIOS» con la red caída
+      await failWrites();
+      let btn = dlg.getByRole('button', { name: 'GUARDAR CAMBIOS' });
+      await btn.focus(); await p.keyboard.press('Enter');
+      await p.locator('#order-modal-error').waitFor({ timeout: 10000 });
+      await expectFocus('cambio de estado', 'GUARDAR CAMBIOS');
+
+      // «MARCAR COMO REVISADO» con la red caída
+      await p.locator('#order-resolve-note').fill(`revisado ${tag}`);
+      btn = dlg.getByTestId('order-resolve-attention');
+      await btn.focus(); await p.keyboard.press('Enter');
+      await p.locator('#order-resolve-error').waitFor({ timeout: 10000 });
+      await expectFocus('revisión', 'MARCAR COMO REVISADO');
+      await p.unroute(writes);
+
+      // Con la red de vuelta, el mismo detalle guarda (el error no dejó el modal inutilizable)
+      await dlg.getByRole('button', { name: 'GUARDAR CAMBIOS' }).click();
+      await p.getByRole('status').filter({ hasText: num }).waitFor({ timeout: 10000 });
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);
