@@ -12,6 +12,7 @@ import supabase from '../config/supabase';
 import { DEPARTMENTS } from '../utils/colombia';
 import { accountService, addressToCheckout, addressSummary } from '../services/accountService';
 import { PendingOrderNotice } from '../components/Checkout/PendingOrderNotice';
+import { focusIfLost } from '../utils/focusIfLost';
 
 // M28: borrador del envío en sessionStorage (se borra al cerrar la pestaña y al crear el pedido) para no perder lo
 // escrito si hay que volver a iniciar sesión a mitad del checkout.
@@ -115,6 +116,17 @@ export const CheckoutPage = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  // Ejecución 156 (D134): «Confirmar pedido» se deshabilita mientras crea el pedido; con un error (red, servicio, stock,
+  // sesión vencida) Chromium dejaba el foco en <body>. Tras el render: «Iniciar sesión» si la sesión venció, «Ajustar el
+  // carrito» si falta stock (el botón de envío queda deshabilitado) o el propio botón. «Continuar como invitado»
+  // desaparece al pulsarse: el foco va al botón de envío. Solo si el foco se perdió (focusIfLost).
+  const submitRef = useRef(null);
+  const sessionLoginRef = useRef(null);
+  const [refocus, setRefocus] = useState(0);
+  useEffect(() => {
+    if (!refocus) return;
+    focusIfLost([sessionLoginRef.current, document.getElementById('checkout-stock-fix'), submitRef.current]);
+  }, [refocus]);
 
   // Cotización autoritativa (incluye límites de cupón por correo)
   useEffect(() => {
@@ -173,7 +185,7 @@ export const CheckoutPage = () => {
     if (startedLoggedIn.current && !guestAllowed) {
       // getSession renueva el token si venció; si el refresh token ya no es válido devuelve null.
       const { data } = await supabase.auth.getSession();
-      if (!data?.session) { setSessionExpired(true); setIsProcessing(false); return; }
+      if (!data?.session) { setSessionExpired(true); setIsProcessing(false); setRefocus((n) => n + 1); return; }
     }
     const customer = { name: `${formData.firstName.trim()} ${formData.lastName.trim()}`, email: formData.email.trim().toLowerCase(), phone: formData.phone };
     try {
@@ -199,7 +211,8 @@ export const CheckoutPage = () => {
     } catch (err) {
       setErrorMessage(err.message || 'No pudimos crear tu pedido. Inténtalo de nuevo.');
       // Otra compra se llevó el stock entre la cotización y el pedido: se vuelve a cotizar para señalar las líneas.
-      if (err?.hint === 'JM_OUT_OF_STOCK') requote().catch(() => {});
+      if (err?.hint === 'JM_OUT_OF_STOCK') requote().catch(() => {}).finally(() => setRefocus((n) => n + 1));
+      setRefocus((n) => n + 1);
     } finally {
       setIsProcessing(false);
     }
@@ -248,8 +261,8 @@ export const CheckoutPage = () => {
           <div role="alert" style={{ backgroundColor: '#FFFBEB', color: '#92400E', padding: '1rem 1.5rem', borderRadius: 8, marginBottom: '2rem', border: '1px solid #FCD34D', fontWeight: 600, display: 'grid', gap: '0.6rem' }}>
             <span>Tu sesión expiró. Inicia sesión de nuevo para que este pedido quede en tu cuenta. Tu carrito y los datos de envío se conservan.</span>
             <span style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <Link to="/cuenta" state={{ from: '/checkout' }} style={{ color: '#92400E', textDecoration: 'underline', fontWeight: 800 }}>Iniciar sesión</Link>
-              <button type="button" onClick={() => { setGuestAllowed(true); setSessionExpired(false); }} style={{ color: '#92400E', textDecoration: 'underline', fontWeight: 700 }}>Continuar como invitado</button>
+              <Link to="/cuenta" state={{ from: '/checkout' }} ref={sessionLoginRef} style={{ color: '#92400E', textDecoration: 'underline', fontWeight: 800 }}>Iniciar sesión</Link>
+              <button type="button" onClick={() => { setGuestAllowed(true); setSessionExpired(false); setRefocus((n) => n + 1); }} style={{ color: '#92400E', textDecoration: 'underline', fontWeight: 700 }}>Continuar como invitado</button>
             </span>
           </div>
         )}
@@ -479,6 +492,7 @@ export const CheckoutPage = () => {
 
               <button
                 type="submit"
+                ref={submitRef}
                 disabled={isProcessing || !idempotencyKey || totals.canCheckout === false}
                 style={{
                   width: '100%',

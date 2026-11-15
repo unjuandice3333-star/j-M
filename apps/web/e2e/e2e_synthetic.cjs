@@ -4315,6 +4315,72 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('85. Teclado: «Confirmar y pagar» con error, boletín y /admin/login sin permisos no dejan el foco en <body> (D134)', async (p) => {
+      // Ejecución 156 (D134): últimos botones que se deshabilitan o desaparecen sin control de foco.
+      const tag = crypto.randomBytes(3).toString('hex');
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '' };
+      });
+      const expectFocus = async (where, re) => {
+        await p.waitForTimeout(250);
+        const f = await focusInfo();
+        if (!re.test(f.label)) { failures.push(`${where}: foco en ${JSON.stringify(f)} (se esperaba ${re})`); return; }
+        await p.keyboard.press('Tab');
+        const n = await focusInfo();
+        if (n.tag === 'BODY' || /Ir al contenido/i.test(n.label)) failures.push(`${where}: el siguiente Tab fue a ${JSON.stringify(n)}`);
+      };
+
+      // 1) Checkout: create_order sin red → el foco vuelve a «CONFIRMAR Y PAGAR» y el pedido se crea con la red de vuelta
+      await addToCart(p, 'polo-clasico', 'M'); await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: `foco.${tag}@correo.co` });
+      const rpc = '**/rest/v1/rpc/create_order';
+      await p.route(rpc, (route) => route.abort());
+      let btn = p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' });
+      await btn.focus(); await p.keyboard.press('Enter');
+      await p.locator('main [role=alert]').first().waitFor({ timeout: 10000 });
+      await expectFocus('checkout', /^CONFIRMAR Y PAGAR$/);
+      await p.unroute(rpc);
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click();
+      await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 10000 });
+
+      // 2) Boletín de la portada: al suscribirse el formulario desaparece; el foco va al aviso
+      await p.goto(`${BASE}/`);
+      await p.getByLabel('Correo electrónico para el boletín').fill(`club.${tag}@correo.co`);
+      btn = p.getByRole('button', { name: 'Suscribirme' });
+      await btn.focus(); await p.keyboard.press('Enter');
+      await p.getByRole('status').filter({ hasText: 'quedó registrado' }).waitFor({ timeout: 10000 });
+      await expectFocus('boletín', /quedó registrado/);
+
+      // 3) /admin/login con una cuenta de cliente → aviso y foco en el correo
+      const email = `sinrol.${tag}@correo.co`;
+      await fetch(`${API_URL}/auth/v1/signup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: 'Clave-Segura-1', data: { full_name: `Sin Rol ${tag}` } }) });
+      await p.evaluate(() => localStorage.clear());
+      await p.goto(`${BASE}/admin/login`);
+      await p.locator('input[type=email]').fill(email); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      btn = p.getByRole('button', { name: /INICIAR SESIÓN ADM/ });
+      await btn.focus(); await p.keyboard.press('Enter');
+      await p.getByText('no tiene permisos administrativos').first().waitFor({ timeout: 10000 });
+      await p.waitForTimeout(250);
+      const f = await p.evaluate(() => ({ type: document.activeElement?.getAttribute('type'), tag: document.activeElement?.tagName }));
+      if (f.type !== 'email') failures.push(`admin sin rol: foco en ${JSON.stringify(f)} (se esperaba el correo)`);
+
+      // 4) «Cambiar cuenta»: con la sesión de cliente abierta en la tienda, /admin/login la ofrece; al pulsarla desaparece
+      await p.goto(`${BASE}/login`);
+      await p.locator('input[type=email]').fill(email); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('form button[type=submit]').click();
+      await p.waitForURL((u) => !/\/login$/.test(u.pathname), { timeout: 10000 });
+      await p.goto(`${BASE}/admin/login`);
+      btn = p.getByRole('button', { name: /Cambiar cuenta/ });
+      await btn.waitFor({ timeout: 10000 });
+      await btn.focus(); await p.keyboard.press('Enter');
+      await btn.waitFor({ state: 'detached', timeout: 10000 });
+      await p.waitForTimeout(250);
+      const g = await p.evaluate(() => ({ type: document.activeElement?.getAttribute('type'), tag: document.activeElement?.tagName }));
+      if (g.type !== 'email') failures.push(`cambiar cuenta: foco en ${JSON.stringify(g)} (se esperaba el correo)`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

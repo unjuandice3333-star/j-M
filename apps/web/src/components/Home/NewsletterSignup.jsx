@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { focusIfLost } from '../../utils/focusIfLost';
 import { Mail, Check } from '../Common/icons';
 import { subscribeNewsletter, validateNewsletterEmail } from '../../services/newsletterService';
 
@@ -13,6 +14,9 @@ export const NewsletterSignup = ({ source = 'home' }) => {
   const inputRef = useRef(null);
   // Ejecución 112 (D83): el aviso se enlaza al campo (aria-describedby) y el foco vuelve a él.
   const fail = (message) => { setError(message); requestAnimationFrame(() => inputRef.current?.focus()); };
+  // Ejecución 156 (D134): al suscribirse el formulario se sustituye por el aviso y el foco caía en <body>; va al aviso.
+  const doneRef = useRef(null);
+  useEffect(() => { if (status === 'done') focusIfLost(doneRef.current); }, [status]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -50,7 +54,7 @@ export const NewsletterSignup = ({ source = 'home' }) => {
         </p>
 
         {status === 'done' ? (
-          <div role="status" style={{ backgroundColor: '#D1FAE5', color: '#065F46', padding: '0.9rem 1.2rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: '1px solid #A7F3D0' }}>
+          <div role="status" ref={doneRef} tabIndex={-1} style={{ backgroundColor: '#D1FAE5', color: '#065F46', padding: '0.9rem 1.2rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: '1px solid #A7F3D0' }}>
             <Check size={18} /> ¡Listo! Tu correo quedó registrado en el club J&M.
           </div>
         ) : (

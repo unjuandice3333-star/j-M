@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore.js';
+import { focusIfLost } from '../../utils/focusIfLost';
 import { Lock, ShieldCheck, Mail, ArrowRight, AlertCircle, LogOut } from '../../components/Common/icons';
 
 // Ejecución 110 (D81): el aviso de error se enlaza a los campos que lo causan (aria-invalid + aria-describedby) y el
@@ -37,6 +38,15 @@ export const AdminLogin = () => {
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  // Ejecución 156 (D134): tras un fallo de Google, un rol sin permisos o «Cambiar cuenta» el botón pulsado se deshabilita o
+  // desaparece y el foco caía en <body>. Tras el render se lleva al control que corresponde (solo si se perdió).
+  const googleRef = useRef(null);
+  const [refocus, setRefocus] = useState(null); // { target: 'google' | 'email', n }
+  useEffect(() => {
+    if (!refocus) return;
+    focusIfLost(refocus.target === 'google' ? [googleRef.current, emailRef.current] : [emailRef.current]);
+  }, [refocus]);
+  const refocusTo = (target) => setRefocus((prev) => ({ target, n: (prev?.n || 0) + 1 }));
 
   const { login, loginWithGoogle, logout, isLoading, isLoggedIn, user, profile } = useAuthStore();
   const navigate = useNavigate();
@@ -77,6 +87,7 @@ export const AdminLogin = () => {
       console.error('[AdminLogin Google OAuth Exception]:', err);
       setErrorMessage(err.message || 'Error al conectar con el servicio de autenticación de Google.');
       setIsGoogleLoading(false);
+      refocusTo('google');
     }
   };
 
@@ -107,6 +118,7 @@ export const AdminLogin = () => {
         // Si no cuenta con rol administrativo en PostgreSQL profiles, denegar acceso inmediato
         await logout();
         setErrorMessage('Tu cuenta no tiene permisos administrativos.');
+        refocusTo('email');
       }
     } catch (err) {
       console.error('[AdminLogin Password Exception]:', err);
@@ -121,6 +133,7 @@ export const AdminLogin = () => {
     await logout();
     setErrorMessage(null);
     setErrorFields([]);
+    refocusTo('email');
   };
 
   const fieldA11y = (key) => (errorMessage && errorFields.includes(key)
@@ -236,6 +249,7 @@ export const AdminLogin = () => {
         <div style={{ marginBottom: '1.5rem' }}>
           <button
             type="button"
+            ref={googleRef}
             onClick={handleGoogleLogin}
             disabled={isGoogleLoading || isLoading}
             style={{
