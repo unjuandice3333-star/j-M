@@ -4043,6 +4043,78 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('81. Teclado: «Aumentar cantidad» al tope, «Guardar datos» (boletín) y «Enviar opinión» no dejan el foco en <body> (D130)', async (p) => {
+      // Ejecución 152 (D130): botones que se deshabilitan (al llegar al stock o mientras guardan) o desaparecen al
+      // terminar: Chromium les quita el foco y el siguiente Tab iba a «Ir al contenido».
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, testid: a?.getAttribute('data-testid'), label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '' };
+      });
+      const settle = () => p.waitForTimeout(250);
+      const nextTabNotSkip = async (where) => {
+        await p.keyboard.press('Tab');
+        const f = await focusInfo();
+        if (f.tag === 'BODY' || /Ir al contenido/i.test(f.label)) failures.push(`${where}: el siguiente Tab fue a ${JSON.stringify(f)}`);
+      };
+
+      // ficha: «Aumentar cantidad» con Enter hasta el stock disponible → el foco pasa a «Disminuir cantidad»
+      await p.goto(`${BASE}/producto/camiseta-basica`);
+      await p.getByRole('button', { name: 'Talla M', exact: true }).click(); // negro M: 5 en stock
+      const inc = p.getByRole('button', { name: 'Aumentar cantidad', exact: true });
+      if (await inc.isDisabled()) failures.push('cantidad: «Aumentar» deshabilitado desde el inicio (fixture sin stock)');
+      await inc.focus();
+      for (let i = 0; i < 12 && !(await inc.isDisabled()); i += 1) { await p.keyboard.press('Enter'); await p.waitForTimeout(60); }
+      if (!(await inc.isDisabled())) failures.push('cantidad: «Aumentar» nunca llegó al tope');
+      await settle();
+      let f = await focusInfo();
+      if (f.label !== 'Disminuir cantidad') failures.push(`cantidad: al llegar al tope, foco en ${JSON.stringify(f)} (se esperaba «Disminuir cantidad»)`);
+      else await nextTabNotSkip('cantidad');
+
+      // cuenta: alta y baja del boletín con «Guardar datos» → el foco vuelve al botón
+      await p.goto(`${BASE}/login`);
+      await p.getByRole('button', { name: 'Crear cuenta' }).click();
+      await p.getByPlaceholder(/Juan/i).first().fill('Nora Paz');
+      await p.locator('input[type=email]').fill('nora.paz@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
+      await p.locator('button[type=submit]').click();
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      await p.goto(`${BASE}/cuenta`);
+      const perfil = p.getByTestId('profile-section');
+      const box = perfil.locator('input[name=marketing_opt_in]');
+      await box.waitFor({ timeout: 10000 });
+      await p.waitForFunction(() => !document.querySelector('[data-testid="profile-section"] input[name=marketing_opt_in]')?.disabled, null, { timeout: 10000 });
+      const guardar = perfil.getByRole('button', { name: 'Guardar datos' });
+      for (const [want, text] of [[true, 'Quedaste suscrito'], [false, 'Te diste de baja']]) {
+        if ((await box.isChecked()) !== want) { await box.focus(); await p.keyboard.press('Space'); }
+        await guardar.focus(); await p.keyboard.press('Enter');
+        await perfil.getByText(text).waitFor({ timeout: 10000 });
+        await settle();
+        f = await focusInfo();
+        if (f.label !== 'Guardar datos') failures.push(`boletín (${want ? 'alta' : 'baja'}): tras guardar, foco en ${JSON.stringify(f)}`);
+        else await nextTabNotSkip(`boletín (${want ? 'alta' : 'baja'})`);
+      }
+
+      // ficha: «Enviar opinión» de la única compra → el formulario desaparece y el foco va al aviso «¡Gracias!…»
+      await addToCart(p, 'polo-clasico', 'M');
+      await p.goto(`${BASE}/checkout`); await fillCheckout(p, { email: 'nora.paz@correo.co' });
+      await p.getByRole('button', { name: 'CONFIRMAR Y PAGAR' }).click(); await p.waitForURL(/\/checkout\/confirmacion/, { timeout: 20000 });
+      const mine = (await state()).orders.find((o) => o.customer_email === 'nora.paz@correo.co');
+      await fetch(`${API_URL}/__synthetic-mark-paid/${mine.order_number}`);
+      await p.goto(`${BASE}/producto/polo-clasico`);
+      const caja = p.getByTestId('review-form'); await caja.getByText(mine.order_number).waitFor({ timeout: 10000 });
+      await caja.getByRole('button', { name: '5 de 5 estrellas' }).click();
+      await caja.getByLabel('Título').fill('Muy buena');
+      await caja.getByLabel('Comentario').fill('La tela es suave y la talla es la esperada.');
+      const send = caja.getByRole('button', { name: 'Enviar opinión' });
+      await send.focus(); await p.keyboard.press('Enter');
+      await caja.getByText('¡Gracias! Recibimos tu opinión').waitFor({ timeout: 10000 });
+      await settle();
+      f = await focusInfo();
+      if (!/¡Gracias! Recibimos tu opinión/.test(f.label)) failures.push(`opinión: tras enviarla, foco en ${JSON.stringify(f)} (se esperaba el aviso)`);
+      else await nextTabNotSkip('opinión');
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

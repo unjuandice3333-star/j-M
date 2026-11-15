@@ -130,4 +130,26 @@ describe('ficha de producto: opiniones paginadas', () => {
     expect(cards()).toHaveLength(12);
     expect(db.reads.at(-1)).toEqual([0, 12]);
   });
+  // D130: Chromium quita el foco al botón deshabilitado mientras carga; jsdom no, así que se simula con blur().
+  it('si falla «Ver más» y el foco se perdió mientras cargaba, vuelve al botón (D130)', async () => {
+    await mount(30);
+    db.failNext = 1;
+    const btn = button();
+    btn.focus();
+    await act(async () => { btn.click(); btn.blur(); });
+    await flush();
+    expect(box().querySelector('[role="alert"]')).not.toBeNull();
+    expect(document.activeElement).toBe(button());
+  });
+
+  it('«Aumentar cantidad» al llegar al stock pasa el foco a «Disminuir cantidad» (D130)', async () => {
+    await mount(0);
+    await click(host.querySelector('button[aria-label="Talla M"]') ?? [...host.querySelectorAll('button')].find((b) => /^M$/.test(b.textContent.trim())));
+    const inc = host.querySelector('button[aria-label="Aumentar cantidad"]');
+    const dec = host.querySelector('button[aria-label="Disminuir cantidad"]');
+    inc.focus();
+    await click(inc); await click(inc);
+    expect(inc.disabled).toBe(true);
+    expect(document.activeElement).toBe(dec);
+  });
 });

@@ -6,6 +6,7 @@ import { Star } from '../Common/icons';
 import { useAuthStore } from '../../store/authStore.js';
 import FieldError from '../Common/FieldError';
 import { fieldA11y, groupA11y, focusFirstError } from '../../utils/formErrors';
+import { focusIfLost } from '../../utils/focusIfLost';
 import { fetchMyReviewables, submitReview, validateReview, REVIEW_LIMITS } from '../../services/reviewsService.js';
 
 const STATUS_TEXT = {
@@ -39,6 +40,17 @@ export const ProductReviewForm = ({ productId }) => {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState(null);
   const formRef = useRef(null);
+  // D130: «Enviar opinión» se deshabilita mientras envía y, si era la última compra pendiente, el formulario
+  // desaparece: el foco caía en <body>. Al terminar: éxito → al aviso «¡Gracias!…»; error → al botón (o al aviso).
+  const noticeRef = useRef(null);
+  const submitRef = useRef(null);
+  const [focusAfterSend, setFocusAfterSend] = useState(null);
+  useEffect(() => {
+    if (!focusAfterSend || sending) return;
+    setFocusAfterSend(null);
+    const list = focusAfterSend === 'ok' ? [noticeRef.current] : [submitRef.current, noticeRef.current];
+    focusIfLost(list.concat(formRef.current?.closest('[data-testid="review-form"]') ?? []));
+  }, [focusAfterSend, sending]);
 
   const load = async () => {
     try {
@@ -90,9 +102,11 @@ export const ProductReviewForm = ({ productId }) => {
       setRating(0); setTitle(''); setComment(''); setCity('');
       setNotice({ ok: true, text: '¡Gracias! Recibimos tu opinión; la publicaremos cuando la revisemos.' });
       await load();
+      setFocusAfterSend('ok');
     } catch (err) {
       setNotice({ ok: false, text: err.message });
       await load();
+      setFocusAfterSend('error');
     } finally {
       setSending(false);
     }
@@ -102,7 +116,7 @@ export const ProductReviewForm = ({ productId }) => {
     <div style={box} data-testid="review-form">
       <h3 style={{ fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', margin: '0 0 0.75rem' }}>Tu opinión</h3>
       {loadError && <div role="alert" style={errText}>{loadError}</div>}
-      {notice && <div role={notice.ok ? 'status' : 'alert'} style={{ ...(notice.ok ? { color: '#065F46', fontWeight: 600 } : errText), marginBottom: '0.75rem' }}>{notice.text}</div>}
+      {notice && <div ref={noticeRef} tabIndex={-1} role={notice.ok ? 'status' : 'alert'} style={{ ...(notice.ok ? { color: '#065F46', fontWeight: 600 } : errText), marginBottom: '0.75rem' }}>{notice.text}</div>}
 
       {reviewed.map((r) => (
         <div key={r.orderItemId} data-testid="my-review" style={{ fontSize: '0.85rem', color: '#3F3F46', marginBottom: '0.6rem', overflowWrap: 'anywhere' }}>
@@ -164,7 +178,7 @@ export const ProductReviewForm = ({ productId }) => {
           <p style={{ fontSize: '0.75rem', color: '#71717A', margin: 0 }}>
             Se publicará con tu nombre y la inicial de tu apellido después de que la revisemos.
           </p>
-          <button type="submit" disabled={sending}
+          <button ref={submitRef} type="submit" disabled={sending}
             style={{ justifySelf: 'start', padding: '0.7rem 1.4rem', backgroundColor: '#09090B', color: '#FFF', border: 0, borderRadius: 6, fontWeight: 800, cursor: 'pointer' }}>
             {sending ? 'Enviando…' : 'Enviar opinión'}
           </button>

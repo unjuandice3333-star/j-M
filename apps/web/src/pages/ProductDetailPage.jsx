@@ -28,6 +28,7 @@ import { analyticsService } from '../services/analytics';
 import { isOneSize, sizeHelpFor } from '../utils/sizeAdvice';
 import { DialogPanel } from '../components/Common/DialogPanel';
 import { fetchApprovedReviews, PRODUCT_REVIEWS_PAGE_SIZE } from '../services/reviewsService.js';
+import { focusIfLost } from '../utils/focusIfLost';
 
 // Un catálogo cargado hace más de esto se vuelve a consultar al abrir la ficha.
 const STOCK_STALE_MS = 30_000;
@@ -120,6 +121,7 @@ export const ProductDetailPage = () => {
     if (!reviewsError || reviews.length > 0) reviewsLimitRef.current = previous + PRODUCT_REVIEWS_PAGE_SIZE;
     reviewsProductRef.current = id;
     setIsLoadingMoreReviews(true); setReviewsError(null);
+    loadMoreSettledRef.current = true;
     try {
       const res = await loadReviews(id, reviewsLimitRef.current);
       if (res && firstNewIndex > 0) focusReviewIdRef.current = res.reviews[firstNewIndex]?.id ?? null;
@@ -136,6 +138,25 @@ export const ProductDetailPage = () => {
     focusReviewIdRef.current = null;
     document.querySelector(`[data-review-id="${id}"]`)?.focus();
   }, [reviews]);
+  // D130: «Ver más opiniones» se deshabilita mientras carga; si falla, el foco había caído en <body>. Vuelve al botón
+  // (ahora «Ver más» o «Reintentar»); si ya no está, al primer comentario o al título de la sección.
+  const loadMoreBtnRef = useRef(null);
+  const reviewsHeadingRef = useRef(null);
+  const loadMoreSettledRef = useRef(false);
+  useEffect(() => {
+    if (isLoadingMoreReviews || !loadMoreSettledRef.current) return;
+    loadMoreSettledRef.current = false;
+    focusIfLost([loadMoreBtnRef.current, document.querySelector('[data-review-id]'), reviewsHeadingRef.current]);
+  }, [isLoadingMoreReviews, reviews, reviewsError]);
+  // D130: «Aumentar cantidad» se deshabilita al llegar al stock disponible y Chromium le quita el foco: pasa a
+  // «Disminuir cantidad» para que el teclado siga en el selector.
+  const decQtyRef = useRef(null);
+  const incQtyRef = useRef(null);
+  useEffect(() => {
+    const inc = incQtyRef.current;
+    if (!inc?.disabled) return;
+    focusIfLost(decQtyRef.current, { from: inc });
+  }, [quantity, maxQty, selectedVariant]);
 
   // Accordion open states
   const [openAccordions, setOpenAccordions] = useState({
@@ -590,6 +611,7 @@ export const ProductDetailPage = () => {
                 {/* Quantity Counter */}
                 <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #E4E4E7', borderRadius: '6px', backgroundColor: '#FAFAFA' }}>
                   <button
+                    ref={decQtyRef}
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     aria-label="Disminuir cantidad"
                     style={{ padding: '0.8rem 1rem', color: '#09090B', cursor: 'pointer' }}
@@ -598,6 +620,7 @@ export const ProductDetailPage = () => {
                   </button>
                   <span style={{ fontWeight: 800, fontSize: '0.95rem', padding: '0 0.5rem' }}>{quantity}</span>
                   <button
+                    ref={incQtyRef}
                     onClick={() => setQuantity(Math.min(Math.max(1, maxQty), quantity + 1))}
                     disabled={!selectedVariant || quantity >= maxQty}
                     aria-label="Aumentar cantidad"
@@ -770,7 +793,7 @@ export const ProductDetailPage = () => {
 
         {/* REVIEWS SECTION — reseñas aprobadas de la BD */}
         <section id="opiniones" style={{ margin: '4rem 0', padding: '2.5rem 0', borderTop: '1px solid #E4E4E7', scrollMarginTop: '5rem' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 900, textTransform: 'uppercase', marginBottom: '0.4rem' }}>OPINIONES DE CLIENTES</h2>
+          <h2 ref={reviewsHeadingRef} style={{ fontSize: '1.5rem', fontWeight: 900, textTransform: 'uppercase', marginBottom: '0.4rem' }}>OPINIONES DE CLIENTES</h2>
           {product.rating ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
               <Star size={16} fill="#D4AF37" color="#D4AF37" />
@@ -812,6 +835,7 @@ export const ProductDetailPage = () => {
                 </p>
               )}
               <button
+                ref={loadMoreBtnRef}
                 type="button"
                 onClick={loadMoreReviews}
                 disabled={isLoadingMoreReviews}

@@ -10,6 +10,7 @@ import {
 import { DEPARTMENTS } from '../../utils/colombia';
 import { PASSWORD_MAX, validateNewPassword, passwordUpdateError } from '../../utils/passwordPolicy';
 import { getMyNewsletterStatus, setMyNewsletterSubscription } from '../../services/newsletterService';
+import { focusIfLost } from '../../utils/focusIfLost';
 
 const card = { backgroundColor: '#FFFFFF', border: '1px solid #E4E4E7', borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem' };
 const label = { display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#09090B', marginBottom: '0.35rem' };
@@ -54,6 +55,15 @@ function ProfileSection({ user, profile }) {
   // El perfil llega de forma asíncrona y se vuelve a leer en cada renovación del token: solo se copia al formulario si
   // el cliente no tiene cambios sin guardar (antes, una relectura borraba lo que estaba escribiendo).
   const synced = useRef(toProfileForm(profile));
+  // D130: «Guardar datos» (también la alta/baja del boletín) se deshabilita mientras guarda y Chromium le quita el
+  // foco: al terminar quedaba en <body>. Vuelve al botón; el aviso se anuncia por su role (status/alert).
+  const submitRef = useRef(null);
+  const savedOnce = useRef(false);
+  useEffect(() => {
+    if (saving || !savedOnce.current) return;
+    savedOnce.current = false;
+    focusIfLost(submitRef.current);
+  }, [saving]);
   useEffect(() => {
     const next = formFor(profile, nl);
     const prev = synced.current; // capturado: el actualizador de setForm se ejecuta después de reasignar synced
@@ -83,7 +93,7 @@ function ProfileSection({ user, profile }) {
     const { errors: errs } = validateProfile(form);
     setErrors(errs);
     if (Object.keys(errs).length) { setMsg({ kind: 'error', text: 'Revisa los campos marcados.' }); focusFirstError(formEl, PROFILE_FIELDS, errs); return; }
-    setSaving(true); setMsg(null);
+    setSaving(true); setMsg(null); savedOnce.current = true;
     try {
       const saved = await accountService.updateProfile(user.id, form);
       const next = { ...(profile || {}), ...saved };
@@ -141,7 +151,7 @@ function ProfileSection({ user, profile }) {
           {nl.status === 'ready' && (nl.subscribed && nl.onList ? 'Estás suscrito. Desmarca la casilla y guarda para darte de baja.' : 'Puedes darte de baja cuando quieras desde aquí.')}
         </div>
         {msg && <Banner kind={msg.kind}>{msg.text}</Banner>}
-        <button type="submit" disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? 'Guardando…' : 'Guardar datos'}</button>
+        <button ref={submitRef} type="submit" disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? 'Guardando…' : 'Guardar datos'}</button>
       </form>
     </section>
   );
