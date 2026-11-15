@@ -53,7 +53,16 @@ async function addToCart(page, slug, size, color) {
 }
 async function fillCheckout(page, over = {}) {
   const f = { firstName: 'Juan', lastName: 'Pérez', email: 'juan@correo.co', phone: '3001234567', city: 'Medellín', address: 'Calle 10 # 5-20', ...over };
-  for (const k of ['firstName', 'lastName', 'email', 'phone', 'city', 'address']) { await page.locator(`input[name=${k}]`).fill(f[k]); }
+  // Ejecución 146: causa del recorrido 30 intermitente. Con sesión, el checkout completa nombre/correo/teléfono VACÍOS
+  // cuando llegan el usuario y su perfil (asíncrono). Si eso cae entre el «seleccionar todo» y el «insertar texto» de
+  // fill(), el texto se añade al valor completado («sara@correo.cosara@correo.co»). Se comprueba y se repite.
+  for (const k of ['firstName', 'lastName', 'email', 'phone', 'city', 'address']) {
+    const input = page.locator(`input[name=${k}]`);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await input.fill(f[k]);
+      if ((await input.inputValue()) === f[k]) break;
+    }
+  }
   await page.locator('select[name=department]').selectOption({ label: 'Antioquia' });
 }
 const login = async (page, url, email, password, submit) => {
