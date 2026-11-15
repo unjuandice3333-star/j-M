@@ -1413,3 +1413,15 @@
 - Commits: `f843186` (arreglo + pruebas) y el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(cp) (mismo criterio D125 en `/admin/pedidos`, `/admin/productos` y `/admin/descuentos` cuando la acción saca la fila del filtro).
+
+## Ejecución 148 — 2026-11-15 ~04:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-ijlgxa` (sin `MISIONES/AUTONOMOUS_DELIVERY`); se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `442ae02`, árbol limpio. CI nº 185: todo ✔ salvo `security` (gitleaks, decisión del propietario); `e2e-supabase` nº 163 ✔.
+- Tarea: punto 0(cp) — criterio D125 en `/admin/pedidos`, `/admin/productos` y `/admin/descuentos` (D126).
+- Defecto real: en pedidos el foco caía en `<body>` tras CUALQUIER cambio de estado guardado (el modal se cierra y la tabla se desmonta al recargar); en productos y cupones, cuando la fila salía del filtro de estado.
+- Archivos: `AdminOrdersPage.jsx`, `AdminProductsPage.jsx`, `AdminDiscountsPage.jsx`, `apps/web/src/__tests__/adminDiscountsFocus.test.jsx` (nuevo, 2), `apps/web/e2e/synthetic/backend.cjs` (`admin_set_product_status`, `PATCH coupons`), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 77).
+- Pruebas (ejecutadas aquí): las 2 unitarias fallan sin el cambio de `src` y pasan con él; recorrido 77 con 8 fallos sin el cambio y pasa con él; `pnpm test:unit` 708/708; ESLint 0; build OK; `pnpm test:e2e-synthetic` **77/77**; `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `ebbb271` (arreglo + pruebas) y el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(cq) (mismo criterio en `/admin/colecciones`, `/admin/configuracion` e `/admin/imagenes`).
