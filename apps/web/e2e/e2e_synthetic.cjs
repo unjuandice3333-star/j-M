@@ -3648,6 +3648,87 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser, null, MOBILE);
 
+    await journey('76. Admin con teclado: moderar reseñas, dar de baja en el boletín y ajustar stock no dejan el foco en <body> (D125)', async (p) => {
+      // Ejecución 147 (D125): antes, la fila que salía del filtro (o la tabla que se recargaba) se llevaba el foco y el
+      // siguiente Tab volvía a «Ir al contenido».
+      const tag = crypto.randomBytes(3).toString('hex');
+      for (const i of [1, 2, 3]) {
+        await fetch(`${API_URL}/__synthetic-review`, { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ slug: 'camiseta-basica', author_name: `Foco ${tag} ${i}`, title: `Pendiente ${i}`, status: 'pending', created_at: new Date(Date.parse('2031-01-01T00:00:00Z') - i * 60e3).toISOString() }) });
+      }
+      const env = ciEnv();
+      for (const e of [`foco1.${tag}@example.co`, `foco2.${tag}@example.co`]) {
+        const r = await fetch(`${API_URL}/rest/v1/rpc/subscribe_newsletter`, { method: 'POST', headers: { 'content-type': 'application/json', apikey: env.VITE_SUPABASE_ANON_KEY || 'anon', authorization: `Bearer ${env.VITE_SUPABASE_ANON_KEY || 'anon'}` }, body: JSON.stringify({ p_email: e, p_source: 'home' }) });
+        if (!r.ok) throw new Error(`no se pudo sembrar el boletín: ${r.status}`);
+      }
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, key: a?.getAttribute('data-row-key') || a?.closest('[data-row-key]')?.getAttribute('data-row-key') || null,
+          label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '', action: a?.getAttribute('data-row-action') || null };
+      });
+      const pressOn = async (loc) => { await loc.focus(); await p.keyboard.press('Enter'); };
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+
+      // Reseñas en «Pendiente» filtradas por este recorrido: aprobar la primera → foco en la que ocupó su lugar.
+      await p.goto(`${BASE}/admin/reviews?q=${encodeURIComponent(`Foco ${tag}`)}`);
+      const art = (i) => p.locator('article', { hasText: `Foco ${tag} ${i}` });
+      await art(1).waitFor({ timeout: 10000 });
+      await pressOn(art(1).getByRole('button', { name: 'Aprobar' }));
+      await p.getByRole('status').filter({ hasText: `Foco ${tag} 1` }).waitFor();
+      await art(1).waitFor({ state: 'detached' });
+      await p.waitForTimeout(150);
+      let f = await focusInfo();
+      if (!(f.label || '').includes(`Foco ${tag} 2`)) failures.push(`reseñas: tras aprobar, foco en ${JSON.stringify(f)} (se esperaba la reseña 2)`);
+      await p.keyboard.press('Tab');
+      f = await focusInfo();
+      if (/Ir al contenido/i.test(f.label)) failures.push('reseñas: el siguiente Tab volvió a «Ir al contenido»');
+      // escribir respuesta y guardar: el botón desaparece → foco en la respuesta de esa reseña
+      const ta = art(2).getByRole('textbox', { name: 'Respuesta de la tienda' });
+      await ta.fill('Gracias por tu opinión');
+      await pressOn(art(2).getByRole('button', { name: 'Guardar respuesta' }));
+      await p.getByRole('status').filter({ hasText: 'Respuesta guardada' }).waitFor();
+      await p.waitForTimeout(150);
+      if (!(await ta.evaluate((el) => el === document.activeElement))) failures.push(`reseñas: tras guardar respuesta, foco en ${JSON.stringify(await focusInfo())}`);
+      // rechazar las dos que quedan → lista vacía → foco en el aviso de vacío
+      await pressOn(art(3).getByRole('button', { name: 'Rechazar' }));
+      await art(3).waitFor({ state: 'detached' });
+      await pressOn(art(2).getByRole('button', { name: 'Rechazar' }));
+      await art(2).waitFor({ state: 'detached' });
+      await p.waitForTimeout(150);
+      f = await focusInfo();
+      if (!/No hay reseñas/.test(f.label)) failures.push(`reseñas: con la lista vacía, foco en ${JSON.stringify(f)}`);
+
+      // Boletín en «Activos»: dar de baja (confirmación aceptada) → la fila sale → foco en la que ocupó su lugar.
+      await p.goto(`${BASE}/admin/boletin?q=${encodeURIComponent(`.${tag}@`)}`);
+      const row1 = p.locator('tbody tr', { hasText: `foco1.${tag}@example.co` });
+      await row1.waitFor({ timeout: 10000 });
+      await pressOn(row1.getByRole('button', { name: `Dar de baja foco1.${tag}@example.co` }));
+      await p.getByRole('status').filter({ hasText: 'dado de baja' }).waitFor();
+      await row1.waitFor({ state: 'detached' });
+      await p.waitForTimeout(150);
+      f = await focusInfo();
+      if (f.label !== `foco2.${tag}@example.co`) failures.push(`boletín: tras la baja, foco en ${JSON.stringify(f)} (se esperaba la fila de foco2)`);
+      await p.keyboard.press('Tab');
+      f = await focusInfo();
+      if (f.action !== 'toggle') failures.push(`boletín: el Tab siguiente fue a ${JSON.stringify(f)} (se esperaba «Dar de baja» de esa fila)`);
+
+      // Inventario: ajustar con teclado → la tabla se recarga → foco de vuelta en «Ajustar» de la misma variante.
+      await p.goto(`${BASE}/admin/inventario`);
+      const inv = p.locator('tbody tr', { hasText: 'POL-M-NEG' });
+      await inv.waitFor({ timeout: 10000 });
+      await inv.getByLabel('Cantidad a ajustar POL-M-NEG').fill('2');
+      await inv.getByLabel('Motivo del ajuste POL-M-NEG').fill(`foco ${tag}`);
+      await pressOn(inv.getByRole('button', { name: 'Ajustar' }));
+      await p.getByRole('status').filter({ hasText: 'POL-M-NEG: stock' }).waitFor({ timeout: 10000 });
+      await p.waitForTimeout(150);
+      f = await focusInfo();
+      if (f.action !== 'adjust' || f.key == null) failures.push(`inventario: tras ajustar, foco en ${JSON.stringify(f)}`);
+      else if (!(await inv.getByRole('button', { name: 'Ajustar' }).evaluate((el) => el === document.activeElement))) failures.push('inventario: el foco volvió a «Ajustar» de otra variante');
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

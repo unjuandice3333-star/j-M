@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Boxes, AlertTriangle, CheckCircle, Search, RefreshCw, MapPin } from '../../components/Common/icons';
 import supabase from '../../config/supabase';
 import { adminService } from '../../services/adminService';
+import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 import { fetchAllRows, productLinkForSku } from '../../utils/adminLists';
 import { normalizeText } from '../../utils/catalogFilters';
 
@@ -42,6 +43,9 @@ export const AdminInventoryPage = () => {
   const [inventoryItems, setInventoryItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [adjustingId, setAdjustingId] = useState(null);
+  // D125: tras ajustar, la tabla se recarga (se desmonta mientras carga) y el foco caía en <body>; vuelve a «Ajustar»
+  // de esa variante o, si salió del filtro `?stock=`, a la fila que ocupó su lugar.
+  const { containerRef, remember, settle } = useRowFocusRestore();
   const [adjustmentValue, setAdjustmentValue] = useState({});
 
   // Cargar inventario real desde Supabase PostgreSQL (inventories JOIN variants JOIN products)
@@ -99,6 +103,7 @@ export const AdminInventoryPage = () => {
     setNotice(null);
     if (!Number.isInteger(changeVal) || changeVal === 0) { failOn(item, 'qty', 'Escribe una cantidad entera distinta de 0 (ej. 5 o -2).'); return; }
     if (!reason) { failOn(item, 'reason', 'Escribe el motivo del ajuste.'); return; }
+    remember(item.id, 'adjust');
     setAdjustingId(item.id);
     try {
       const r = await adminService.adjustInventory(item.variantId, changeVal, changeVal > 0 ? 'restock' : 'adjustment', reason);
@@ -109,6 +114,7 @@ export const AdminInventoryPage = () => {
       setNotice({ ok: false, text: err.message });
     } finally {
       setAdjustingId(null);
+      settle();
     }
   };
 
@@ -176,7 +182,7 @@ export const AdminInventoryPage = () => {
       </div>
 
       {/* INVENTORY TABLE */}
-      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
+      <div ref={containerRef} style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflow: 'hidden' }}>
         {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600, padding: '1rem' }}>{loadError}</div>}
         {notice && !notice.rowId && <div id={NOTICE_ID} role={notice.ok ? 'status' : 'alert'} style={{ color: notice.ok ? '#065F46' : '#B91C1C', fontWeight: 600, padding: '0.75rem 1rem' }}>{notice.text}</div>}
         {isLoading ? (
@@ -184,7 +190,7 @@ export const AdminInventoryPage = () => {
             Cargando inventario real desde Supabase PostgreSQL...
           </div>
         ) : filteredItems.length === 0 ? (
-          <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
+          <div data-row-empty tabIndex={-1} style={{ padding: '4rem 2rem', textAlign: 'center', color: '#71717A', fontWeight: 600 }}>
             {inventoryItems.length > 0 ? 'Ninguna variante coincide con el filtro.' : 'No hay registros ni movimientos de inventario.'}
           </div>
         ) : (
@@ -200,7 +206,7 @@ export const AdminInventoryPage = () => {
             </thead>
             <tbody>
               {filteredItems.map((item) => (
-                <tr key={item.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
+                <tr key={item.id} data-row-key={item.id} tabIndex={-1} aria-label={item.sku} style={{ borderBottom: '1px solid #F4F4F5' }}>
                   <td style={tdInv}>
                     <div style={{ fontWeight: 800, color: '#09090B' }}>{item.name}</div>
                     <div style={{ fontSize: '0.75rem', color: '#71717A' }}>SKU: {item.sku !== '—' && productLinkForSku(item.sku)
@@ -253,6 +259,7 @@ export const AdminInventoryPage = () => {
                         style={{ width: '150px', minHeight: '36px', padding: '0.3rem', border: '1px solid #D4D4D8', borderRadius: '4px' }}
                       />
                       <button
+                        data-row-action="adjust"
                         onClick={() => handleStockAdjustment(item)}
                         disabled={adjustingId === item.id}
                         style={{ backgroundColor: '#09090B', color: '#FFFFFF', minHeight: '36px', padding: '0.35rem 0.75rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, opacity: adjustingId === item.id ? 0.7 : 1 }}

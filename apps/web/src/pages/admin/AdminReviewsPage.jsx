@@ -9,6 +9,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Star } from '../../components/Common/icons';
 import { useAuthStore } from '../../store/authStore';
+import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 import { fetchAdminReviews, moderateReview, saveReviewReply } from '../../services/reviewsAdminService';
 import { productLinkForReview, storefrontLinkForProduct } from '../../utils/adminLists';
 import { REVIEW_STATUS, REVIEW_REPLY_MAX, countReviewsByStatus, filterReviews, reviewProducts } from '../../utils/reviewsAdmin';
@@ -55,6 +56,9 @@ export const AdminReviewsPage = () => {
   const [replies, setReplies] = useState({});
   const [busy, setBusy] = useState(null);
   const seq = useRef(0);
+  // D125: al aprobar/rechazar en «Pendiente» la reseña sale de la lista (y «Guardar respuesta» desaparece al guardar):
+  // el foco caía en <body>. Vuelve al mismo botón, a la respuesta, o a la reseña que ocupó su lugar.
+  const { containerRef, remember, settle } = useRowFocusRestore();
 
   const load = async () => {
     const mine = ++seq.current; // descarta respuestas viejas si se recarga dos veces seguidas
@@ -82,7 +86,8 @@ export const AdminReviewsPage = () => {
   const visible = useMemo(() => filterReviews(scoped, { status: filter }), [scoped, filter]);
 
   const replyOf = (r) => replies[r.id] ?? r.admin_reply ?? '';
-  const run = async (r, action, okText) => {
+  const run = async (r, actionName, action, okText) => {
+    remember(r.id, actionName);
     setBusy(r.id); setNotice(null);
     try {
       await action();
@@ -91,10 +96,10 @@ export const AdminReviewsPage = () => {
       await load();
     } catch (e) {
       setNotice({ ok: false, text: e.message || 'No se pudo guardar la reseña.' });
-    } finally { setBusy(null); }
+    } finally { setBusy(null); settle(); }
   };
-  const moderate = (r, status) => run(r, () => moderateReview(r.id, status, replyOf(r), userId), `Reseña de ${r.author_name}: ${REVIEW_STATUS[status].toLowerCase()}.`);
-  const saveReply = (r) => run(r, () => saveReviewReply(r.id, replyOf(r)), `Respuesta guardada en la reseña de ${r.author_name}.`);
+  const moderate = (r, status) => run(r, status, () => moderateReview(r.id, status, replyOf(r), userId), `Reseña de ${r.author_name}: ${REVIEW_STATUS[status].toLowerCase()}.`);
+  const saveReply = (r) => run(r, 'reply', () => saveReviewReply(r.id, replyOf(r)), `Respuesta guardada en la reseña de ${r.author_name}.`);
 
   const emptyText = loading ? 'Cargando reseñas…'
     : reviews.length === 0 ? 'Todavía no hay reseñas.'
@@ -130,13 +135,14 @@ export const AdminReviewsPage = () => {
         ))}
       </div>
       {notice && <div role={notice.ok ? 'status' : 'alert'} style={{ color: notice.ok ? '#065F46' : '#B91C1C', fontWeight: 600 }}>{notice.text}</div>}
-      {visible.length === 0 && <div style={{ color: '#71717A' }}>{emptyText}</div>}
+      <div ref={containerRef} style={{ display: 'contents' }}>
+      {visible.length === 0 && <div data-row-empty tabIndex={-1} style={{ color: '#71717A' }}>{emptyText}</div>}
       {visible.map((r) => {
         const reply = replyOf(r);
         const replyChanged = reply.trim() !== (r.admin_reply ?? '').trim();
         const tooLong = reply.trim().length > REVIEW_REPLY_MAX;
         return (
-          <article key={r.id} aria-label={`Reseña de ${r.author_name}: ${r.title}`} style={{ backgroundColor: '#FFF', border: '1px solid #E4E4E7', borderRadius: 10, padding: '1.25rem', display: 'grid', gap: '0.5rem' }}>
+          <article key={r.id} data-row-key={r.id} tabIndex={-1} aria-label={`Reseña de ${r.author_name}: ${r.title}`} style={{ backgroundColor: '#FFF', border: '1px solid #E4E4E7', borderRadius: 10, padding: '1.25rem', display: 'grid', gap: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
               <div><strong>{r.author_name}</strong>{r.city ? ` (${r.city})` : ''} · <ReviewProduct product={r.products} /> · {new Date(r.created_at).toLocaleDateString('es-CO')}{r.is_verified_buyer ? ' · compra verificada' : ''}</div>
               <span style={{ fontWeight: 800 }}>{REVIEW_STATUS[r.status]}</span>
@@ -144,17 +150,18 @@ export const AdminReviewsPage = () => {
             <div style={{ display: 'flex', gap: 2 }} role="img" aria-label={`${r.rating} de 5`}>{[...Array(r.rating)].map((_, i) => <Star key={i} size={14} fill="#D4AF37" color="#D4AF37" />)}</div>
             <div style={{ fontWeight: 700 }}>{r.title}</div>
             <p style={{ color: '#52525B', fontSize: '0.88rem' }}>{r.comment}</p>
-            <textarea aria-label="Respuesta de la tienda" placeholder="Respuesta pública de la tienda (opcional)" value={reply} rows={2}
+            <textarea data-row-fallback aria-label="Respuesta de la tienda" placeholder="Respuesta pública de la tienda (opcional)" value={reply} rows={2}
               onChange={(e) => setReplies((x) => ({ ...x, [r.id]: e.target.value }))} style={{ padding: '0.55rem', border: `1px solid ${tooLong ? '#B91C1C' : '#D4D4D8'}`, borderRadius: 6, resize: 'vertical', font: 'inherit' }} />
             {tooLong && <div style={{ color: '#B91C1C', fontSize: '0.78rem' }}>Máximo {REVIEW_REPLY_MAX} caracteres ({reply.trim().length}).</div>}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {r.status !== 'approved' && <button disabled={busy === r.id || tooLong} onClick={() => moderate(r, 'approved')} style={{ ...btn, backgroundColor: '#09090B', color: '#FFF', border: 'none', fontWeight: 800 }}>Aprobar</button>}
-              {r.status !== 'rejected' && <button disabled={busy === r.id || tooLong} onClick={() => moderate(r, 'rejected')} style={btn}>Rechazar</button>}
-              {replyChanged && <button disabled={busy === r.id || tooLong} onClick={() => saveReply(r)} style={btn}>Guardar respuesta</button>}
+              {r.status !== 'approved' && <button disabled={busy === r.id || tooLong} data-row-action="approved" onClick={() => moderate(r, 'approved')} style={{ ...btn, backgroundColor: '#09090B', color: '#FFF', border: 'none', fontWeight: 800 }}>Aprobar</button>}
+              {r.status !== 'rejected' && <button disabled={busy === r.id || tooLong} data-row-action="rejected" onClick={() => moderate(r, 'rejected')} style={btn}>Rechazar</button>}
+              {replyChanged && <button disabled={busy === r.id || tooLong} data-row-action="reply" onClick={() => saveReply(r)} style={btn}>Guardar respuesta</button>}
             </div>
           </article>
         );
       })}
+      </div>
     </div>
   );
 };

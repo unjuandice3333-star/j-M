@@ -6,6 +6,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Download, Search } from '../../components/Common/icons';
+import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 import { fetchNewsletterSubscribers, setNewsletterSubscriberActive } from '../../services/newsletterService';
 import { downloadCsv, filterSubscribers, isActiveSubscriber, subscriberStatusFromParam, subscribersToCsv, summarizeSubscribers } from '../../utils/newsletterAdmin';
 
@@ -28,6 +29,8 @@ export const AdminNewsletterPage = () => {
   const setQuery = (value) => setParam('q', value, '');
   const setStatus = (value) => setParam('estado', value, 'activos');
   const [busyId, setBusyId] = useState(null);
+  // D125: dar de baja en «Activos» saca la fila de la lista y el foco caía en <body>.
+  const { containerRef, remember, settle } = useRowFocusRestore();
 
   useEffect(() => {
     (async () => {
@@ -48,6 +51,7 @@ export const AdminNewsletterPage = () => {
   const toggle = async (s) => {
     const activate = !isActiveSubscriber(s);
     if (!activate && !window.confirm(`¿Dar de baja a ${s.email}? No recibirá más correos del boletín.`)) return;
+    remember(s.id, 'toggle');
     setBusyId(s.id); setNotice(null);
     try {
       const updated = await setNewsletterSubscriberActive(s.id, activate);
@@ -57,6 +61,7 @@ export const AdminNewsletterPage = () => {
       setNotice({ ok: false, text: e.message });
     }
     setBusyId(null);
+    settle();
   };
 
   const exportCsv = () => {
@@ -91,7 +96,7 @@ export const AdminNewsletterPage = () => {
       {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{loadError}</div>}
       {notice && <div role={notice.ok ? 'status' : 'alert'} style={{ color: notice.ok ? '#15803D' : '#B91C1C', fontWeight: 600 }}>{notice.text}</div>}
 
-      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflowX: 'auto' }}>
+      <div ref={containerRef} style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #E4E4E7', overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
           <thead>
             <tr style={{ backgroundColor: '#FAFAFA', borderBottom: '1px solid #E4E4E7', textAlign: 'left' }}>
@@ -100,18 +105,18 @@ export const AdminNewsletterPage = () => {
           </thead>
           <tbody>
             {isLoading && <tr><td colSpan={6} style={td}>Cargando…</td></tr>}
-            {!isLoading && filtered.length === 0 && <tr><td colSpan={6} style={{ ...td, color: '#71717A' }}>No hay suscriptores con este filtro.</td></tr>}
+            {!isLoading && filtered.length === 0 && <tr><td colSpan={6} data-row-empty tabIndex={-1} style={{ ...td, color: '#71717A' }}>No hay suscriptores con este filtro.</td></tr>}
             {filtered.map((s) => {
               const active = isActiveSubscriber(s);
               return (
-                <tr key={s.id} style={{ borderBottom: '1px solid #F4F4F5' }}>
+                <tr key={s.id} data-row-key={s.id} tabIndex={-1} aria-label={s.email} style={{ borderBottom: '1px solid #F4F4F5' }}>
                   <td style={{ ...td, fontWeight: 700 }}>{s.email}{s.user_id && <div style={{ fontSize: '0.72rem', color: '#71717A' }}>con cuenta</div>}</td>
                   <td style={td}><span style={{ fontWeight: 800, color: active ? '#15803D' : '#71717A' }}>{active ? 'Activo' : 'Baja'}</span></td>
                   <td style={td}>{s.source}</td>
                   <td style={td}>{fmtDate(s.subscribed_at)}</td>
                   <td style={td}>{fmtDate(s.unsubscribed_at)}</td>
                   <td style={td}>
-                    <button type="button" onClick={() => toggle(s)} disabled={busyId === s.id}
+                    <button type="button" data-row-action="toggle" onClick={() => toggle(s)} disabled={busyId === s.id}
                       aria-label={`${active ? 'Dar de baja' : 'Reactivar'} ${s.email}`} style={{ textDecoration: 'underline', fontWeight: 700 }}>
                       {active ? 'Dar de baja' : 'Reactivar'}
                     </button>
