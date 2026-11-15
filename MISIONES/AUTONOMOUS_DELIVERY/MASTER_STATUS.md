@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 151: foco al quitar el cupón y al cancelar un pedido desde checkout, confirmación y «Mis pedidos» (D129); recorrido 80 nuevo)
+Última actualización: 2026-11-15 (ejecución 152: foco en botones que cambian de estado — «Aumentar cantidad» al tope, «Ver más opiniones» con error, «Enviar opinión» y «Guardar datos»/boletín (D130); recorrido 81 nuevo)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -12,11 +12,11 @@ Rama autorizada: `mission/m26-dev-qa-environments`
 |---|---|
 | `pnpm build` | OK |
 | ESLint (`apps packages scripts`, sin dist*) | 0 errores, 0 avisos |
-| `pnpm test:unit` (vitest, jsdom) | **722/722** (79 archivos, ejecución 151; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
+| `pnpm test:unit` (vitest, jsdom) | **728/728** (80 archivos, ejecución 152; histórico: 92/92 en 5 archivos: carrito 18, checkout 28, auth+rutas protegidas 23, pedidos/admin 17, utils 6 |
 | `pnpm test:env` (node:test) | **142/142** (fallo de entorno corregido: ahora la CLI usa un envDir hermético) |
 | `test-checkout-invariants.mjs` | 10/10 (nota: es un simulador; las pruebas reales son las de vitest) |
 | BD local PostgreSQL 16 (`supabase/tests/run_local.sh`) | pgTAP 435/435 (19 archivos), concurrencia 12/12, determinismo OK (ejecución 126; 408/408 en la 124; 393/393 en la 122; 382/382 en la 74; 357/357 en la 71; antes 278/278 en la ejecución 3) |
-| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **80/80 recorridos** (ejecución 151; 10/10 en la primera versión) |
+| **`pnpm test:e2e-synthetic`** (Chromium + Vite real + backend sintético) | **81/81 recorridos** (ejecución 152; 10/10 en la primera versión) |
 
 Recorridos E2E: 1 catálogo/filtro · 2 producto, color, talla agotada · 3 carrito (límite de stock, persistencia, eliminar) · 4 cupón y envío · 5 checkout (validación, pedido, reserva de stock, carrito conservado sin pago) · 6 pedido pagado (webhook SINTÉTICO) · 7 sin stock al confirmar · 8 registro/logout/login/historial · 9 credenciales erróneas y rutas protegidas (cliente no entra al admin) · 10 admin: panel, ajuste de inventario, pedido pagado→procesando→enviado con guía.
 
@@ -66,6 +66,12 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 152 — Foco en botones que cambian de estado: ficha de producto y «Mis datos» (punto 0(ct))
+- **CI del push anterior** (run `ci` nº 190, `2510299`): governance, quality, db-local, db-supabase y `e2e-synthetic` (80) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 168 ✔.
+- **Defecto real (D130):** en Chromium un botón deshabilitado pierde el foco. «Aumentar cantidad» de la ficha al llegar al stock, «Ver más opiniones» cuando la carga falla, «Enviar opinión» (se deshabilita y, si era la última compra pendiente, el formulario desaparece) y «Guardar datos» en «Mi cuenta» (alta/baja del boletín) dejaban el foco en `<body>` (siguiente Tab → «Ir al contenido»). Ahora: «Disminuir cantidad»; el propio botón («Ver más»/«Reintentar»); aviso «¡Gracias!…» (`tabIndex=-1`) o el botón si hubo error; el botón «Guardar datos». Helper nuevo `src/utils/focusIfLost.js` (solo mueve el foco si se perdió).
+- **Pruebas nuevas:** `focusIfLost.test.js` (4), 2 en `productReviewsPagination.test.jsx` (las 2 fallan sin el cambio de `src`) y **recorrido 81** (Chromium real, teclado: 4 fallos sin el cambio, pasa con él).
+- **Verificado aquí:** `pnpm test:unit` **728/728** (80 archivos); ESLint 0; build OK; `pnpm test:e2e-synthetic` ver EXECUTION_LOG. Sin migración: pgTAP no re-ejecutado.
 
 ## Ejecución 151 — Foco al quitar el cupón y al cancelar un pedido (punto 0(cs))
 - **CI del push anterior** (run `ci` nº 189, `6158810`): governance, quality, db-local, db-supabase y `e2e-synthetic` (79) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 167 ✔.
