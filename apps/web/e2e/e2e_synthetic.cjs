@@ -4183,6 +4183,85 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
     }, browser);
 
+    await journey('83. Admin con teclado: guardar con error en método de envío, colección, cupón y producto no deja el foco en <body> (D132)', async (p) => {
+      // Ejecución 154 (D132): los botones de guardar del admin se deshabilitan mientras guardan; Chromium les quita el foco.
+      const tag = crypto.randomBytes(3).toString('hex');
+      await fetch(`${API_URL}/__synthetic-collection`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug: `guardar-${tag}`, name: `Guardar ${tag}`, sort_order: 95 }) });
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '' };
+      });
+      const settle = () => p.waitForTimeout(250);
+      // Toda escritura a la API de datos falla (red caída); las lecturas siguen.
+      const writes = '**/rest/v1/**';
+      const failWrites = () => p.route(writes, (route) => (['GET', 'HEAD'].includes(route.request().method()) ? route.continue() : route.abort()));
+      const expectFocus = async (where, label, dialog) => {
+        await settle();
+        const f = await focusInfo();
+        if (f.label !== label) { failures.push(`${where}: tras el error, foco en ${JSON.stringify(f)} (se esperaba «${label}»)`); return; }
+        await p.keyboard.press('Tab');
+        const n = await focusInfo();
+        const inDialog = dialog ? await p.evaluate(() => Boolean(document.activeElement?.closest('[role=dialog]'))) : true;
+        if (n.tag === 'BODY' || /Ir al contenido/i.test(n.label) || !inDialog) failures.push(`${where}: el siguiente Tab fue a ${JSON.stringify(n)}`);
+      };
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+
+      // /admin/configuracion: editar «Estándar» y guardar con la red caída
+      await p.goto(`${BASE}/admin/configuracion`);
+      await p.getByRole('button', { name: /^Editar / }).first().click();
+      let dlg = p.getByRole('dialog');
+      await failWrites();
+      let btn = dlg.getByRole('button', { name: 'Guardar', exact: true });
+      await btn.focus(); await p.keyboard.press('Enter');
+      await dlg.getByRole('alert').first().waitFor({ timeout: 10000 });
+      await expectFocus('método de envío', 'Guardar', true);
+      await p.unroute(writes);
+      await p.keyboard.press('Escape');
+
+      // /admin/colecciones: editar la colección del fixture
+      await p.goto(`${BASE}/admin/colecciones`);
+      await p.getByRole('button', { name: `Eliminar Guardar ${tag}`, exact: true }).locator('..').getByRole('button', { name: 'Editar' }).click();
+      dlg = p.getByRole('dialog');
+      await failWrites();
+      btn = dlg.getByRole('button', { name: 'Guardar', exact: true });
+      await btn.focus(); await p.keyboard.press('Enter');
+      await dlg.getByRole('alert').first().waitFor({ timeout: 10000 });
+      await expectFocus('colección', 'Guardar', true);
+      await p.unroute(writes);
+      await p.keyboard.press('Escape');
+
+      // /admin/descuentos: cupón nuevo
+      await p.goto(`${BASE}/admin/descuentos`);
+      await p.getByRole('button', { name: /NUEVO CUPÓN|CREAR/i }).first().click();
+      dlg = p.getByRole('dialog');
+      await dlg.getByLabel('Código').fill(`FOCO${tag.toUpperCase()}`);
+      await dlg.getByLabel(/^Porcentaje \(/).fill('15');
+      await failWrites();
+      btn = dlg.getByRole('button', { name: 'Guardar cupón' });
+      await btn.focus(); await p.keyboard.press('Enter');
+      await dlg.getByRole('alert').first().waitFor({ timeout: 10000 });
+      await expectFocus('cupón', 'Guardar cupón', true);
+      await p.unroute(writes);
+      await p.keyboard.press('Escape');
+
+      // /admin/productos: editar el Polo y «Guardar borrador» con la red caída
+      await p.goto(`${BASE}/admin/productos?q=POL-001`);
+      await p.locator('tr', { hasText: 'Polo Clásico' }).getByTitle('Editar prenda').click();
+      await p.waitForURL(/\/admin\/productos\/nuevo\?editId=/, { timeout: 8000 });
+      btn = p.getByRole('button', { name: /Guardar borrador/ });
+      await btn.waitFor({ timeout: 10000 });
+      await p.waitForLoadState('networkidle');
+      await failWrites();
+      await btn.focus(); await p.keyboard.press('Enter');
+      await p.locator('main [role=alert]').first().waitFor({ timeout: 10000 });
+      await expectFocus('producto', 'Guardar borrador', false);
+      await p.unroute(writes);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);
