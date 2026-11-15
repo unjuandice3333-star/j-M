@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 162: React Router 7.18.5, `pnpm audit --prod` sin avisos (D140))
+Última actualización: 2026-11-15 (ejecución 163: avisos del toolchain de desarrollo 34 → 15 sin cambiar de versión mayor (D141))
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -66,6 +66,14 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 163 — Avisos de seguridad del toolchain de desarrollo (punto 0(de))
+- **CI del push anterior** (run `ci` nº 208, `33d54d2`): governance, quality, db-local, db-supabase y `e2e-synthetic` (87, React Router 7) ✔; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial, decisión del propietario); `e2e-supabase` nº 186 ✔. La migración a React Router 7 queda confirmada en GitHub.
+- **Hallazgo:** `pnpm audit --prod` 0, pero `pnpm audit` (incluye desarrollo/build) → 34 avisos (3 críticos, 15 altos), todos transitivos de `vitest`, `eslint` y `@vitejs/plugin-react` (`brace-expansion`, `js-yaml`, `nanoid`, `postcss`, `source-map-js`, `browserslist`, `@babel/core`, `tinypool`, `vite`).
+- **Cambio (D141):** solo `pnpm-lock.yaml`, actualizando transitivas dentro de sus rangos semver (sin tocar `package.json`): postcss 8.5.33, nanoid 3.3.20, browserslist 4.29.5, js-yaml 4.3.2, brace-expansion 1.1.22, source-map-js 1.2.2, @babel/core. Resultado: **34 → 15** (altos 15 → 1).
+- **Quedan 15 (decisión documentada, no corregidos):** exigen cambios de versión mayor: `vitest` 2 → ≥3.2.6/4.1.12 (críticos: UI server de Vitest y `tinypool`, que no se usan: no hay `--ui` y la suite corre solo en local/CI) y `vite` 5 → ≥6.4.4 (afectan al servidor de desarrollo, no al bundle publicado). Vite 5 es el stack fijado de la misión; subirlo es un cambio aparte.
+- **Verificado aquí:** `pnpm install --frozen-lockfile` OK; build OK; ESLint 0; `pnpm test:unit` **790/790**; `pnpm test:env` 146/146; `pnpm test:e2e-synthetic`: primera pasada 70/70 hasta que MI límite de 10 min la cortó en el recorrido 71 (no un fallo de la tienda); suite completa en reejecución (resultado en EXECUTION_LOG).
+- **Siguiente (0(df)):** comprobar el CI del push. Opcional: migrar `vitest` 2 → 3.2.x (compatible con Vite 5) en una ejecución propia para cerrar los 3 críticos. Bloqueos del propietario sin cambio: baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks.
 
 ## Ejecución 162 — Migración a React Router 7 (punto 0(dd))
 - **CI del push anterior** (run `ci` nº 207, `415c2ea`): governance, quality, db-local, db-supabase y `e2e-synthetic` (87) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 185 ✔.

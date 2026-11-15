@@ -1590,3 +1590,14 @@
 - Commits: `161f2e9` (código) + este de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (mantenimiento rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego 0(de).
+
+## Ejecución 163 — 2026-11-15 ~19:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-grb0bu` (ancestro de la rama autorizada); se trabajó en `mission/m26-dev-qa-environments` en `33d54d2`, árbol limpio. CI nº 208 ✔ salvo `security` (solo `21_secrets_scan`, gitleaks, decisión del propietario); `e2e-supabase` nº 186 ✔.
+- Tarea: punto 0(de) — CI verificado; `pnpm audit` (con desarrollo) reveló 34 avisos del toolchain → D141 (lockfile, transitivas dentro de rango): 34 → 15.
+- Archivos: `pnpm-lock.yaml`, documentación.
+- Pruebas (ejecutadas aquí): `pnpm install --frozen-lockfile` OK; build OK; ESLint 0; `pnpm test:unit` 790/790; `pnpm test:env` 146/146; `check_commits.sh` OK; `pnpm audit --prod` 0; E2E sintético: 70/70 en la primera pasada (cortada por mi límite de tiempo en el 71); reejecución completa: ver línea siguiente.
+- Errores pendientes: 15 avisos de desarrollo que exigen `vitest` ≥3.2.6 o `vite` ≥6.4.4 (D141).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, número real de WhatsApp, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `59fca03` (lockfile) + documentación; publicados en la rama autorizada.
+- Notificación: no enviada (mantenimiento rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego 0(df) (opcional: `vitest` 2 → 3.2.x).
