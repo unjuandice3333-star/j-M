@@ -1365,3 +1365,15 @@
 - Commits: `339bb83` (arreglo + recorrido 72) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(cn) de Pendiente («Mis pedidos» con muchos pedidos a 320 px; teclado del formulario de dirección).
+
+## Ejecución 144 — 2026-11-15 ~00:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-a1zdak` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `20182db`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior: run `ci` nº 177 (`20182db`) todo ✔ salvo `security` (gitleaks, conocido); `e2e-supabase` nº 155 ✔.
+- Tarea: punto 0(cn) — «Mis pedidos» con muchos pedidos y estados mixtos a 320 px; teclado del formulario de dirección (D121).
+- Archivos: `apps/web/src/components/Account/AccountDetails.jsx` (Escape cierra; foco vuelve al botón que abrió el formulario tras Cancelar/Escape/Guardar), `apps/web/src/__tests__/accountDetails.test.jsx` (1 prueba nueva, 1 ajustada), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 73), `apps/web/e2e/synthetic/backend.cjs` (fixture `/__synthetic-order` con líneas, guía y `needs_attention`).
+- Pruebas (ejecutadas aquí): recorrido 73 falla sin el cambio (4 fallos: Escape no cierra; foco en INPUT / «Ir al contenido») y pasa con él; vitest nueva falla sin el cambio; `pnpm test:unit` 690/690; ESLint 0; build OK; `pnpm test:e2e-synthetic` **73/73**; `check_commits.sh` OK. «Mis pedidos» con 10 pedidos a 375/320: sin defectos.
+- Errores pendientes: recorrido 30 intermitente (sin datos nuevos).
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `aaa2790` (arreglo + recorrido 73) + el de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(co) de Pendiente (foco al cerrar otros formularios en línea; «Mis pedidos» con más de 50 pedidos / tope de PostgREST).
