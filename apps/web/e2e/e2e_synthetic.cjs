@@ -3483,6 +3483,61 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser, null, MOBILE);
 
+    await journey('73. Móvil 320: «Mis pedidos» con muchos pedidos en estados mixtos dentro de la pantalla, y teclado del formulario de dirección (Escape/Cancelar/Guardar devuelven el foco)', async (p) => {
+      // Ejecución 144: una cuenta con 10 pedidos (pendiente con ventana abierta y vencida, vencido, pagado, en revisión,
+      // en preparación, enviado con guía larga, entregado con nombres largos, cancelado y reembolsado).
+      const tag = crypto.randomBytes(3).toString('hex'); const email = `muchos.${tag}@jm.test`;
+      const su = await (await fetch(`${API_URL}/auth/v1/signup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: 'Clave-Segura-1', data: { full_name: `Valentina Restrepo ${tag}` } }) })).json();
+      const largo = [{ product_name: 'Chaqueta Impermeable Técnica Ultraligera Edición Montaña', size_code: 'XXL', color_name: 'Azul petróleo jaspeado', quantity: 2 },
+        { product_name: 'Pantalón Cargo Relajado de Algodón Orgánico', size_code: '34', color_name: 'Verde oliva', quantity: 1 }];
+      const mk = (status, extra = {}) => fetch(`${API_URL}/__synthetic-order`, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ user_id: su.user.id, customer_email: email, customer_name: `Valentina ${tag}`, status, items: largo, ...extra }) }).then(j);
+      const soon = new Date(Date.now() + 30 * 60e3).toISOString(); const past = new Date(Date.now() - 5 * 60e3).toISOString();
+      const made = [];
+      for (const [st, extra] of [['refunded', {}], ['cancelled', {}], ['delivered', { tracking_number: 'SRV-0000000000000123456789-COL' }],
+        ['shipped', { carrier: 'Coordinadora Mercantil', tracking_number: 'CO-99887766554433221100-XYZ', tracking_url: 'https://ejemplo.co/rastreo/CO-99887766554433221100-XYZ' }],
+        ['processing', {}], ['paid', { needs_attention: true }], ['paid', {}], ['expired', {}], ['payment_pending', { payment_expires_at: past }], ['payment_pending', { payment_expires_at: soon }]]) made.push(await mk(st, extra));
+      await p.setViewportSize({ width: 320, height: 640 });
+      await login(p, '/login', email, 'Clave-Segura-1', 'Iniciar Sesión');
+      await p.waitForFunction(() => Object.keys(localStorage).some((k) => k.includes('auth-token')), null, { timeout: 10000 });
+      const failures = [];
+      await p.goto(`${BASE}/cuenta/pedidos`);
+      await p.getByText(made[0].order_number, { exact: false }).first().waitFor({ timeout: 15000 });
+      const shown = await p.evaluate(() => [...document.querySelectorAll('main')].map((m) => m.innerText).join(' ').match(/JM-\d{6}/g) || []);
+      for (const o of made) if (!shown.includes(o.order_number)) failures.push(`no aparece ${o.order_number}`);
+      if ((await p.getByTestId('order-pay').count()) !== 1) failures.push(`«Pagar ahora» en ${await p.getByTestId('order-pay').count()} pedidos (se esperaba 1: el de ventana abierta)`);
+      await measureMobileScreens(p, [['/cuenta/pedidos', null, null, made[0].order_number]], failures, { links: true });
+      // Teclado en la libreta: Escape cierra el formulario y el foco vuelve al botón que lo abrió.
+      await p.setViewportSize({ width: 320, height: 640 });
+      await p.goto(`${BASE}/cuenta/direcciones`);
+      const libreta = p.getByTestId('address-book'); await libreta.waitFor({ timeout: 10000 });
+      const focused = () => p.evaluate(() => (document.activeElement?.getAttribute('aria-label') || document.activeElement?.innerText || document.activeElement?.tagName || '').trim());
+      await libreta.getByRole('button', { name: 'Agregar dirección' }).click();
+      let f = libreta.getByTestId('address-form'); await f.waitFor({ timeout: 5000 });
+      await f.locator('input[name=city]').fill('Pereira');
+      await p.keyboard.press('Escape');
+      if (await libreta.getByTestId('address-form').count()) failures.push('Escape no cerró «Nueva dirección»');
+      if ((await focused()) !== 'Agregar dirección') failures.push(`tras Escape el foco quedó en «${await focused()}»`);
+      // Guardar con Enter: el foco vuelve a «Agregar dirección»
+      await p.keyboard.press('Enter');
+      f = libreta.getByTestId('address-form'); await f.waitFor({ timeout: 5000 });
+      await f.locator('input[name=phone]').fill('3004445566'); await f.locator('select[name=department]').selectOption({ label: 'Risaralda' });
+      await f.locator('input[name=city]').fill('Pereira'); await f.locator('input[name=address_line]').fill('Calle 19 # 8-34');
+      await f.locator('input[name=address_line]').press('Enter');
+      await libreta.getByText('Dirección guardada.').waitFor({ timeout: 8000 });
+      await p.waitForTimeout(300);
+      if ((await focused()) !== 'Agregar dirección') failures.push(`tras guardar el foco quedó en «${await focused()}»`);
+      // Editar → Cancelar con teclado: el foco vuelve a «Editar» de esa dirección
+      const edit = libreta.getByRole('button', { name: 'Editar dirección Calle 19 # 8-34' });
+      await edit.focus(); await p.keyboard.press('Enter');
+      f = libreta.getByTestId('address-form'); await f.waitFor({ timeout: 5000 });
+      await f.getByRole('button', { name: 'Cancelar' }).focus(); await p.keyboard.press('Enter');
+      await p.waitForTimeout(300);
+      if (await libreta.getByTestId('address-form').count()) failures.push('Cancelar no cerró «Editar dirección»');
+      if ((await focused()) !== 'Editar dirección Calle 19 # 8-34') failures.push(`tras Cancelar el foco quedó en «${await focused()}»`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
+    }, browser, null, MOBILE);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

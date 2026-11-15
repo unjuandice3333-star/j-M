@@ -414,6 +414,11 @@ function start(port = 54321) {
           // Ejecución 90: opcionalmente con cupón (descuento fijo) y una línea con un SKU real del catálogo sintético.
           if (body.coupon_code) { o.coupon_code = String(body.coupon_code).toUpperCase(); o.discount_total = 5000; o.total = 57000; }
           if (body.sku) o.online_order_items = [{ id: `oi-${n}`, product_name: 'Fixture', sku: body.sku, size_code: 'M', color_name: 'Negro', unit_price: 50000, quantity: 1, line_total: 50000, image_url: null }];
+          // Ejecución 144: líneas con nombres/variantes propias, guía de envío y «Requiere revisión» (para «Mis pedidos» a 320 px).
+          if (Array.isArray(body.items)) o.online_order_items = body.items.map((it, i) => ({ id: `oi-${n}-${i}`, product_name: it.product_name || 'Fixture', sku: it.sku || `FX-${n}-${i}`, size_code: it.size_code || 'M', color_name: it.color_name || 'Negro', unit_price: 50000, quantity: it.quantity || 1, line_total: 50000 * (it.quantity || 1), image_url: null }));
+          if (body.tracking_number) Object.assign(o, { carrier: body.carrier || 'Servientrega', tracking_number: body.tracking_number, tracking_url: body.tracking_url || null, shipped_at: now });
+          if (body.status === 'delivered') o.delivered_at = now;
+          if (body.needs_attention) o.needs_attention = true;
           S.tables.online_orders.unshift(o); return send(res, 200, { order_number: o.order_number, public_token: o.public_token });
         }
         // Ejecución 98: FIXTURE sintético — reseña YA aprobada (con respuesta de la tienda) de un producto del catálogo, para ver la ficha con reseñas publicadas.

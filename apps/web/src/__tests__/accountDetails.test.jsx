@@ -354,8 +354,44 @@ describe('«Mi cuenta»: datos y direcciones', () => {
       const nueva = book.querySelector('[data-testid="address-form"]');
       expect(nueva.getAttribute('aria-label')).toBe('Nueva dirección');
       expect(document.activeElement).toBe(nueva.querySelector('[name="recipient_name"]'));
-      expect(scrolled).toHaveLength(2);
+      expect(scrolled.filter(([id]) => id === 'address-form')).toHaveLength(2);
     } finally { window.HTMLElement.prototype.scrollIntoView = orig; }
+  });
+
+  it('Escape/Cancelar/Guardar cierran el formulario y devuelven el foco al botón que lo abrió (D121)', async () => {
+    supa.db.customer_addresses.push(
+      { id: 'd1', user_id: ME, created_at: '2026-11-01T00:00:00Z', ...addr({ is_default: true }) },
+      { id: 'd2', user_id: ME, created_at: '2026-11-02T00:00:00Z', ...addr({ address_line: 'Carrera 7 # 1-2' }) },
+    );
+    await mountAccount();
+    const book = host.querySelector('[data-testid="address-book"]');
+    const editBtn = () => book.querySelector('[aria-label="Editar dirección Carrera 7 # 1-2"]');
+    const escape = async (el) => { await act(async () => { el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); }); await flush(); };
+    // Editar → Escape desde un campo: se cierra sin guardar y el foco vuelve a «Editar» de esa dirección.
+    await click(editBtn());
+    await flush();
+    let form = book.querySelector('[data-testid="address-form"]');
+    setValue(form.querySelector('[name="city"]'), 'Cali');
+    await escape(form.querySelector('[name="city"]'));
+    expect(book.querySelector('[data-testid="address-form"]')).toBeNull();
+    expect(document.activeElement).toBe(editBtn());
+    expect(supa.db.customer_addresses.find((r) => r.id === 'd2').city).not.toBe('Cali');
+    // Agregar → Cancelar: el foco vuelve a «Agregar dirección» (que estaba oculto mientras el formulario estaba abierto).
+    await click(button('Agregar dirección', book));
+    await flush();
+    await click(button('Cancelar', book.querySelector('[data-testid="address-form"]')));
+    await flush();
+    expect(document.activeElement).toBe(button('Agregar dirección', book));
+    // Editar → Guardar: tras recargar la lista el foco vuelve a «Editar» de la misma dirección.
+    await click(editBtn());
+    await flush();
+    form = book.querySelector('[data-testid="address-form"]');
+    setValue(form.querySelector('[name="city"]'), 'Cali');
+    await submitForm(form);
+    await flush();
+    expect(book.textContent).toMatch(/Dirección actualizada/);
+    expect(supa.db.customer_addresses.find((r) => r.id === 'd2').city).toBe('Cali');
+    expect(document.activeElement).toBe(editBtn());
   });
 });
 

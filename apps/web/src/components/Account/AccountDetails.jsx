@@ -160,6 +160,12 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
     if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start' });
     el.querySelector('[name="recipient_name"]')?.focus({ preventScroll: true });
   }, []);
+  // D121: Escape cierra el formulario igual que «Cancelar» (salvo mientras guarda); el foco lo devuelve AddressBook.
+  const onKeyDown = (e) => {
+    if (e.key !== 'Escape' || saving || e.defaultPrevented) return;
+    e.preventDefault();
+    onCancel();
+  };
   const change = (e) => {
     const { name, type, checked, value } = e.target;
     setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
@@ -189,7 +195,7 @@ function AddressForm({ initial, onCancel, onSaved, userId }) {
     </div>
   );
   return (
-    <form ref={formRef} onSubmit={submit} noValidate data-testid="address-form" aria-label={initial.id ? 'Editar dirección' : 'Nueva dirección'} style={{ border: '1px dashed #D4D4D8', borderRadius: '10px', padding: '1rem', marginTop: '1rem', scrollMarginTop: '96px' }}>
+    <form ref={formRef} onSubmit={submit} onKeyDown={onKeyDown} noValidate data-testid="address-form" aria-label={initial.id ? 'Editar dirección' : 'Nueva dirección'} style={{ border: '1px dashed #D4D4D8', borderRadius: '10px', padding: '1rem', marginTop: '1rem', scrollMarginTop: '96px' }}>
       <div style={grid}>
         {field('recipient_name', 'Quien recibe', { maxLength: 150, autoComplete: 'name' })}
         {field('phone', 'Teléfono', { type: 'tel', maxLength: 30, autoComplete: 'tel' })}
@@ -229,6 +235,23 @@ function AddressBook({ user, profile }) {
   const [msg, setMsg] = useState(null);
   const [editing, setEditing] = useState(null); // null | formulario (nuevo o existente)
   const [busyId, setBusyId] = useState(null);
+  // D121: al cerrar el formulario (Cancelar, Escape o guardar) el foco quedaba en <body> porque el formulario se
+  // desmonta y «Agregar dirección» estaba oculto. Se recuerda qué botón lo abrió y se le devuelve el foco.
+  const sectionRef = useRef(null);
+  const openedFrom = useRef(null); // 'new' | id de la dirección que se edita
+  const returnFocus = useRef(null); // destino pendiente tras cerrar
+  useEffect(() => {
+    if (editing || loading || returnFocus.current == null) return;
+    const target = returnFocus.current === 'new'
+      ? sectionRef.current?.querySelector('[data-address-add]')
+      : sectionRef.current?.querySelector(`[data-address-edit="${returnFocus.current}"]`);
+    if (!target) return;
+    returnFocus.current = null;
+    target.focus({ preventScroll: true });
+    if (typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'nearest' });
+  }, [editing, loading, addresses]);
+  const openForm = (formValue, origin) => { setMsg(null); returnFocus.current = null; openedFrom.current = origin; setEditing(formValue); };
+  const closeForm = () => { returnFocus.current = openedFrom.current; openedFrom.current = null; setEditing(null); };
 
   const reload = async () => {
     setLoadError(null);
@@ -239,11 +262,10 @@ function AddressBook({ user, profile }) {
   useEffect(() => { reload(); }, [user.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startNew = () => {
-    setMsg(null);
     // La primera dirección es la principal por defecto.
-    setEditing(emptyAddressForm({ recipient_name: profile?.full_name ?? '', phone: profile?.phone ?? '', is_default: addresses.length === 0 }));
+    openForm(emptyAddressForm({ recipient_name: profile?.full_name ?? '', phone: profile?.phone ?? '', is_default: addresses.length === 0 }), 'new');
   };
-  const onSaved = async (text) => { setEditing(null); setMsg({ kind: 'ok', text }); await reload(); };
+  const onSaved = async (text) => { closeForm(); setMsg({ kind: 'ok', text }); await reload(); };
 
   const makeDefault = async (a) => {
     setBusyId(a.id); setMsg(null);
@@ -260,10 +282,10 @@ function AddressBook({ user, profile }) {
   };
 
   return (
-    <section style={card} aria-labelledby="direcciones-titulo" data-testid="address-book">
+    <section ref={sectionRef} style={card} aria-labelledby="direcciones-titulo" data-testid="address-book">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <h2 id="direcciones-titulo" style={heading}><MapPin size={20} /> Mis direcciones</h2>
-        {!editing && !loading && !loadError && <button type="button" onClick={startNew} style={ghostBtn}><Plus size={14} /> Agregar dirección</button>}
+        {!editing && !loading && !loadError && <button type="button" data-address-add onClick={startNew} style={ghostBtn}><Plus size={14} /> Agregar dirección</button>}
       </div>
       {msg && <Banner kind={msg.kind}>{msg.text}</Banner>}
       {loading ? (
@@ -284,14 +306,14 @@ function AddressBook({ user, profile }) {
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 {!a.is_default && <button type="button" disabled={busyId === a.id} onClick={() => makeDefault(a)} style={ghostBtn}><Star size={14} /> Hacer principal</button>}
-                <button type="button" disabled={busyId === a.id} onClick={() => { setMsg(null); setEditing(toAddressForm(a)); }} style={ghostBtn} aria-label={`Editar dirección ${a.address_line}`}><Pencil size={14} /> Editar</button>
+                <button type="button" disabled={busyId === a.id} data-address-edit={a.id} onClick={() => openForm(toAddressForm(a), a.id)} style={ghostBtn} aria-label={`Editar dirección ${a.address_line}`}><Pencil size={14} /> Editar</button>
                 <button type="button" disabled={busyId === a.id} onClick={() => remove(a)} style={{ ...ghostBtn, color: '#B91C1C' }} aria-label={`Eliminar dirección ${a.address_line}`}><Trash2 size={14} /> Eliminar</button>
               </div>
             </li>
           ))}
         </ul>
       )}
-      {editing && <AddressForm key={editing.id ?? 'nueva'} initial={editing} userId={user.id} onCancel={() => setEditing(null)} onSaved={onSaved} />}
+      {editing && <AddressForm key={editing.id ?? 'nueva'} initial={editing} userId={user.id} onCancel={closeForm} onSaved={onSaved} />}
     </section>
   );
 }
