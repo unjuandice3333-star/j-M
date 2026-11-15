@@ -1556,3 +1556,15 @@
 - Commits: `2be6797` (funcionalidad + pruebas), `8a6a96b` y este de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push (`e2e-synthetic` 87/87); luego 0(db).
+
+## Ejecución 160 — 2026-11-15 ~16:00 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-jvzzbq`; se trabajó en la rama autorizada `mission/m26-dev-qa-environments` en `10c814a`, árbol limpio. CI nº 205 ✔ salvo `security`; CI nº 204 con `e2e-synthetic` 86/87 (recorrido 7).
+- Tarea: punto 0(db) — investigar la intermitencia del recorrido 7 (D138).
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs`, documentación.
+- Pruebas (ejecutadas aquí): reproducción determinista (anterior ✘ con el error del CI, corregida ✔); recorrido 7 aislado 3/3; `pnpm test:unit` 766/766; ESLint 0; `pnpm test:e2e-synthetic` 87/87.
+- Errores pendientes: ninguno conocido.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, número real de WhatsApp, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: corrección de la prueba + este de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (corrección rutinaria de una prueba; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego 0(dc).
+

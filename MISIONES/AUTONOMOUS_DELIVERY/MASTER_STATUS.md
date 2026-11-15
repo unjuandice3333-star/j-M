@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 159: WhatsApp en una sola constante `VITE_STORE_WHATSAPP` (D137) e informe `FINAL_ACCEPTANCE.md`)
+Última actualización: 2026-11-15 (ejecución 160: recorrido E2E 7 intermitente en CI nº 204 — carrera de la prueba reproducida y corregida (D138))
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -66,6 +66,13 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 160 — Recorrido 7 intermitente en CI (punto 0(db))
+- **CI:** run `ci` nº 205 (`10c814a`): governance, quality, db-local, db-supabase y `e2e-synthetic` (87) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 183 ✔. **Pero el run nº 204 (`8a6a96b`, mismo código) falló `e2e-synthetic` 86/87:** recorrido 7 («sin stock al confirmar») → `locator.click: Timeout 30000ms exceeded`.
+- **Causa (D138), reproducida:** carrera de la PRUEBA, no defecto de la tienda. Al escribir el correo el checkout pide una cotización; si el backend la procesaba después del pedido del «otro cliente», la tienda deshabilitaba correctamente «CONFIRMAR Y PAGAR» y el clic esperaba 30 s. Reproducido de forma determinista (cotización retrasada 800 ms + clic 1,5 s después): la versión anterior falla con el mismo error que el CI; la corregida pasa.
+- **Cambio:** `apps/web/e2e/e2e_synthetic.cjs` (recorrido 7: espera `networkidle` y comprueba que el botón esté habilitado antes del pedido competidor). Único recorrido con ese patrón.
+- **Verificado aquí:** recorrido 7 aislado 3/3; `pnpm test:unit` **766/766**; ESLint 0; `pnpm test:e2e-synthetic` **87/87** (suite completa; un primer intento lo cortó mi propio límite de 10 min en el recorrido 72, no la tienda). Sin cambios en `src` ni migraciones.
+- **Siguiente (0(dc)):** comprobar que el CI del push queda verde (salvo `security`); el código no bloqueado está completo. Solo regresiones/intermitencias reales del CI mientras el propietario resuelve: baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks.
 
 ## Ejecución 159 — WhatsApp configurable e informe final de aceptación (punto 0(da))
 - **CI del push anterior** (run `ci` nº 203, `de7d68f`): governance, quality, db-local, db-supabase y `e2e-synthetic` (87) ✔; `security` ✘ (gitleaks, decisión del propietario); `e2e-supabase` nº 181 ✔.
