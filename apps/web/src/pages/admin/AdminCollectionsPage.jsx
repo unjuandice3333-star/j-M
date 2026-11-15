@@ -7,6 +7,7 @@ import { Plus, Edit, Trash2, X, ArrowUp, ArrowDown } from '../../components/Comm
 import { slugify } from '../../services/adminService';
 import collectionsAdminService, { COLLECTION_KINDS, emptyCollection, toCollectionForm, validateCollection } from '../../services/collectionsAdminService';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 import FieldError from '../../components/Common/FieldError';
 import { fieldA11y, focusFirstError } from '../../utils/formErrors';
 
@@ -28,6 +29,8 @@ export const AdminCollectionsPage = () => {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [pick, setPick] = useState('');
+  // Ejecución 149 (D127): al eliminar, la tarjeta desaparece y el foco caía en <body>.
+  const { containerRef, remember, settle } = useRowFocusRestore();
 
   const load = async () => {
     try {
@@ -66,14 +69,16 @@ export const AdminCollectionsPage = () => {
 
   const remove = async (c) => {
     if (!window.confirm(`¿Eliminar «${c.name}»? Los productos no se borran.`)) return;
+    remember(c.id, 'delete');
     try { await collectionsAdminService.remove(c.id); setNotice({ ok: true, text: `«${c.name}» eliminada.` }); await load(); }
     catch (ex) { setNotice({ ok: false, text: ex.message }); }
+    finally { settle(); }
   };
 
   const available = products.filter((p) => !form?.productIds.includes(p.id));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#09090B', textTransform: 'uppercase' }}>COLECCIONES Y LOOKS ({collections.length})</h1>
@@ -84,11 +89,11 @@ export const AdminCollectionsPage = () => {
 
       {notice && <div role={notice.ok ? 'status' : 'alert'} style={{ color: notice.ok ? '#065F46' : '#B91C1C', fontWeight: 600 }}>{notice.text}</div>}
       {loadError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600 }}>{loadError}</div>}
-      {!loadError && collections.length === 0 && <div style={{ color: '#71717A' }}>Aún no hay colecciones. Crea la primera con «Nueva colección».</div>}
+      {!loadError && collections.length === 0 && <div data-row-empty tabIndex={-1} style={{ color: '#71717A' }}>Aún no hay colecciones. Crea la primera con «Nueva colección».</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
         {collections.map((c) => (
-          <div key={c.id} data-testid="collection-card" style={{ backgroundColor: '#FFFFFF', borderRadius: 10, border: '1px solid #E4E4E7', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div key={c.id} data-testid="collection-card" data-row-key={c.id} tabIndex={-1} aria-label={`Colección ${c.name}`} style={{ backgroundColor: '#FFFFFF', borderRadius: 10, border: '1px solid #E4E4E7', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {c.image_url && <img src={c.image_url} alt={c.name} style={{ width: '100%', height: 140, objectFit: 'cover' }} />}
             <div style={{ padding: '1rem', display: 'grid', gap: '0.4rem', flex: 1 }}>
               <strong style={{ textTransform: 'uppercase' }}>{c.name}</strong>
@@ -98,8 +103,8 @@ export const AdminCollectionsPage = () => {
               <div style={{ marginTop: 'auto', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F4F4F5' }}>
                 <span style={{ fontSize: '0.72rem', fontWeight: 800, color: c.is_active ? '#065F46' : '#52525B' }}>{c.is_active ? 'ACTIVA' : 'INACTIVA'}</span>
                 <div style={{ display: 'flex', gap: '0.4rem' }}>
-                  <button type="button" onClick={() => open(toCollectionForm(c))} style={btnLight}><Edit size={14} /> Editar</button>
-                  <button type="button" aria-label={`Eliminar ${c.name}`} onClick={() => remove(c)} style={btnLight}><Trash2 size={14} /></button>
+                  <button type="button" data-row-fallback onClick={() => open(toCollectionForm(c))} style={btnLight}><Edit size={14} /> Editar</button>
+                  <button type="button" data-row-action="delete" aria-label={`Eliminar ${c.name}`} onClick={() => remove(c)} style={btnLight}><Trash2 size={14} /></button>
                 </div>
               </div>
             </div>

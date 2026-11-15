@@ -436,6 +436,13 @@ function start(port = 54321) {
             admin_reply: body.admin_reply || null, created_at: body.created_at || new Date().toISOString() }; // Ejecución 146: fecha opcional
           S.tables.product_reviews.push(row); return send(res, 200, { id: row.id });
         }
+        // Ejecución 149: FIXTURE sintético — colección extra (para eliminarla en /admin/colecciones sin tocar «Look Oficina»).
+        if (p === '/__synthetic-collection') {
+          const row = { id: `col-${crypto.randomBytes(4).toString('hex')}`, slug: String(body.slug || ''), name: String(body.name || ''), subtitle: null, image_url: null,
+            kind: 'collection', is_active: true, sort_order: Number(body.sort_order ?? 9), collection_products: [] };
+          if (!row.slug || !row.name) return send(res, 400, {});
+          S.tables.collections.push(row); return send(res, 200, row);
+        }
         // Ejecución 101: FIXTURE sintético — imagen PROPIA de la portada (fila de site_content con URL externa) para poder abrir «Restaurar» en /admin/imagenes.
         if (p === '/__synthetic-site-content') {
           const key = String(body.key || ''); if (!key) return send(res, 400, {});
@@ -574,6 +581,11 @@ function start(port = 54321) {
           if (table === 'site_content' && req.method === 'DELETE') {
             const hit = ctx.role === 'admin' ? rows(table, q, ctx) : [];
             S.tables.site_content = S.tables.site_content.filter((r) => !hit.includes(r)); return reply(hit);
+          }
+          // Ejecución 149: «Eliminar» de /admin/colecciones (RLS collections_admin: sin admin no borra; collection_products en cascada).
+          if (table === 'collections' && req.method === 'DELETE') {
+            const hit = ctx.role === 'admin' ? rows(table, q, ctx) : [];
+            S.tables.collections = S.tables.collections.filter((r) => !hit.includes(r)); return reply(hit);
           }
           // Ejecución 148: «Activar/Desactivar» de /admin/descuentos (RLS coupons: solo admin).
           if (table === 'coupons' && req.method === 'PATCH') {

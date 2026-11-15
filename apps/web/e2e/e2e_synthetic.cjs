@@ -3831,6 +3831,57 @@ async function main() {
       if (failures.length) throw new Error(`${failures.length} fallos: ${failures.slice(0, 6).join(' · ')}`);
     }, browser);
 
+    await journey('78. Admin con teclado: eliminar una colección o restaurar una imagen de la portada no deja el foco en <body> (D127)', async (p) => {
+      // Ejecución 149 (D127): la tarjeta eliminada (o el botón «Restaurar», que desaparece) se llevaba el foco.
+      const tag = crypto.randomBytes(3).toString('hex');
+      for (const i of [1, 2]) {
+        await fetch(`${API_URL}/__synthetic-collection`, { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ slug: `foco-${tag}-${i}`, name: `Foco ${tag} ${i}`, sort_order: 90 + i }) });
+      }
+      await fetch(`${API_URL}/__synthetic-site-content`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: 'hero_main', alt_text: 'Hero foco' }) });
+      const failures = [];
+      const focusInfo = () => p.evaluate(() => {
+        const a = document.activeElement;
+        return { tag: a?.tagName, key: a?.getAttribute('data-row-key') || a?.closest('[data-row-key]')?.getAttribute('data-row-key') || null,
+          label: a?.getAttribute('aria-label') || a?.textContent?.trim().slice(0, 60) || '' };
+      });
+      const pressOn = async (loc) => { await loc.focus(); await p.keyboard.press('Enter'); };
+      await login(p, '/admin/login', 'admin@jm.test', 'Admin-Sintetico-1', 'INICIAR SESIÓN ADM');
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 10000 });
+
+      await p.goto(`${BASE}/admin/colecciones`);
+      const del = (i) => p.getByRole('button', { name: `Eliminar Foco ${tag} ${i}`, exact: true });
+      await del(2).waitFor({ timeout: 10000 });
+      await pressOn(del(1)); // el arnés acepta las confirmaciones nativas
+      await del(1).waitFor({ state: 'detached', timeout: 10000 });
+      await p.waitForTimeout(200);
+      let f = await focusInfo();
+      if (f.tag === 'BODY' || !/^Colección /.test(f.label)) failures.push(`colecciones: tras eliminar, foco en ${JSON.stringify(f)} (se esperaba la tarjeta que ocupó su lugar)`);
+      await p.keyboard.press('Tab');
+      f = await focusInfo();
+      if (/Ir al contenido/i.test(f.label)) failures.push('colecciones: el siguiente Tab volvió a «Ir al contenido»');
+      p.removeAllListeners('dialog');
+      p.once('dialog', (d) => d.dismiss().catch(() => {}));
+      await pressOn(del(2));
+      await p.waitForTimeout(300);
+      p.on('dialog', (d) => d.accept().catch(() => {}));
+      f = await focusInfo();
+      if (f.label !== `Eliminar Foco ${tag} 2`) failures.push(`colecciones: al cancelar, foco en ${JSON.stringify(f)}`);
+      await pressOn(del(2));
+      await del(2).waitFor({ state: 'detached', timeout: 10000 });
+
+      await p.goto(`${BASE}/admin/imagenes`); await expectText(p, 'IMÁGENES'); await p.waitForLoadState('networkidle');
+      const restore = p.getByRole('button', { name: 'Restaurar imagen Banner principal (Hero)' });
+      await pressOn(restore);
+      const dlg = p.getByRole('dialog', { name: 'Confirmar restauración' });
+      await pressOn(dlg.getByRole('button', { name: 'Restaurar', exact: true }));
+      await restore.waitFor({ state: 'detached', timeout: 10000 });
+      await p.waitForTimeout(200);
+      f = await focusInfo();
+      if (f.label !== 'Cambiar imagen Banner principal (Hero)') failures.push(`imágenes: tras restaurar, foco en ${JSON.stringify(f)} (se esperaba «Cambiar» del Hero)`);
+      if (failures.length) throw new Error(`${failures.length} fallos: ${failures.join(' · ')}`);
+    }, browser);
+
     await browser.close();
   } finally { await stop(); }
   const failed = results.filter((r) => !r.ok);

@@ -12,6 +12,7 @@ import siteContentService, { validateImageFile, publicUrl } from '../../services
 import productService from '../../services/productService';
 import { buildEditorialItems } from '../../utils/homeTaxonomy';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 
 const EDIT_ERROR_ID = 'editorial-edit-error';
 const EDIT_URL_ID = 'editorial-edit-url';
@@ -34,6 +35,9 @@ export const AdminEditorialImagesPage = () => {
   const [editing, setEditing] = useState(null);         // { item, storagePath, externalUrl, preview, alt }
   const [saving, setSaving] = useState(false);
   const [confirmReset, setConfirmReset] = useState(null);
+  // Ejecución 149 (D127): tras «Restaurar», ese botón desaparece (la imagen ya no es personalizada) y el diálogo no
+  // podía devolverle el foco: caía en <body>. Ahora vuelve a «Cambiar» de la misma tarjeta.
+  const { containerRef, remember, settle } = useRowFocusRestore();
 
   const loadLibrary = async () => {
     try { setLibrary(await siteContentService.listLibrary()); setLibraryError(null); }
@@ -101,9 +105,11 @@ export const AdminEditorialImagesPage = () => {
   };
 
   const reset = async (item) => {
+    remember(item.key, 'reset');
     try { await siteContentService.reset(item.key); await loadSiteContent(); flash(true, `«${item.title}» volvió a la imagen original.`); }
     catch (e) { flash(false, e.message); }
     setConfirmReset(null);
+    settle();
   };
 
   const items = ITEMS.filter((i) => tab === 'todos' || i.section === tab);
@@ -154,12 +160,12 @@ export const AdminEditorialImagesPage = () => {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+        <div ref={containerRef} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
           {items.map((item) => {
             const cur = siteContent[item.key];
             const url = cur?.url ?? DEFAULT_EDITORIAL_IMAGES[item.key];
             return (
-              <div key={item.key} data-key={item.key} style={{ backgroundColor: '#FFF', borderRadius: 10, border: '1px solid #E4E4E7', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div key={item.key} data-key={item.key} data-row-key={item.key} tabIndex={-1} aria-label={`Imagen ${item.title}`} style={{ backgroundColor: '#FFF', borderRadius: 10, border: '1px solid #E4E4E7', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ position: 'relative', height: 160, backgroundColor: '#18181B' }}>
                   <img src={url} alt={cur?.alt ?? item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   <span style={{ position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(9,9,11,.85)', color: '#D4AF37', fontSize: '0.65rem', fontWeight: 800, padding: '3px 8px', borderRadius: 4 }}>{SECTION[item.section]}</span>
@@ -170,8 +176,8 @@ export const AdminEditorialImagesPage = () => {
                   <div style={{ fontWeight: 800 }}>{item.title}</div>
                   {cur?.updatedAt && <div style={{ fontSize: '0.72rem', color: '#71717A' }}>Actualizada {new Date(cur.updatedAt).toLocaleString('es-CO')}</div>}
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button style={btnDark} onClick={() => openEdit(item)} aria-label={`Cambiar imagen ${item.title}`}>Cambiar</button>
-                    {cur && <button style={btnLight} onClick={() => setConfirmReset(item)} aria-label={`Restaurar imagen ${item.title}`}><RotateCcw size={14} /> Restaurar</button>}
+                    <button style={btnDark} data-row-fallback onClick={() => openEdit(item)} aria-label={`Cambiar imagen ${item.title}`}>Cambiar</button>
+                    {cur && <button style={btnLight} data-row-action="reset" onClick={() => setConfirmReset(item)} aria-label={`Restaurar imagen ${item.title}`}><RotateCcw size={14} /> Restaurar</button>}
                   </div>
                 </div>
               </div>
