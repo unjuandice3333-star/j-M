@@ -1389,3 +1389,15 @@
 - Commits: `537fdbd` (arreglo + recorrido 74) + el de documentación; publicados en la rama autorizada.
 - Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
 - Siguiente: comprobar el run `ci` del push; luego punto 0(co)(2) (foco al cerrar los demás formularios en línea; otras lecturas sin límite frente a `max_rows`).
+
+## Ejecución 146 — 2026-11-15 ~02:00 UTC (rutina programada)
+- Estado inicial: sesión en `claude/gracious-pasteur-87xnic` (= main, `2661f2a`); se trabajó sobre la rama autorizada = remoto `701b941`, árbol limpio. `pnpm install --frozen-lockfile` OK.
+- CI del push anterior: run `ci` nº 180 (`701b941`) todo ✔ salvo `security` (gitleaks, conocido); `e2e-supabase` nº 158 ✔.
+- Tarea: punto 0(co)(2)(a) — lecturas sin límite de la tienda. Defecto real (D123): la ficha mostraba solo 12 opiniones sin «ver más» y fallaba en silencio → paginada. Además, causa del recorrido 30 intermitente (D124): autocompletado del checkout con sesión cruzado con `fill()` → helper corregido.
+- Archivos: `apps/web/src/services/reviewsService.js` (`fetchApprovedReviews`, `PRODUCT_REVIEWS_PAGE_SIZE`), `apps/web/src/pages/ProductDetailPage.jsx`, `apps/web/src/__tests__/productReviewsPagination.test.jsx` (nuevo, 5), `apps/web/e2e/synthetic/backend.cjs` (orden de reseñas, `created_at` en fixture), `apps/web/e2e/e2e_synthetic.cjs` (recorrido 75, `fillCheckout`).
+- Pruebas (ejecutadas aquí): vitest nuevas 5/5 fallan sin el cambio de `src` y pasan con él; recorrido 75 falla sin el cambio y pasa con él; `pnpm test:unit` 699/699; ESLint 0; build OK; `pnpm test:e2e-synthetic` 74/75 (30 con correo duplicado) → tras D124 recorridos 30+33 3/3 y suite completa **75/75**; `check_commits.sh` OK. Sin migración: pgTAP no re-ejecutado.
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 + migraciones en Supabase QA, credenciales Wompi Sandbox, acceso/URL de Vercel Preview, decisión gitleaks, `e2e-supabase` en `ci-gate`.
+- Commits: `f221a49` (arreglo + pruebas), el del helper E2E y los de documentación; publicados en la rama autorizada.
+- Notificación: no enviada (progreso rutinario; bloqueos ya notificados).
+- Siguiente: comprobar el run `ci` del push; luego punto 0(co)(2)(b) (foco al cerrar los demás formularios en línea: perfil/contraseña de «Mi cuenta», respuesta a reseña y formularios en línea del admin).
