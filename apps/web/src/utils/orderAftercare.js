@@ -8,8 +8,10 @@
 // registra el admin (D99/D102).
 // =============================================================================
 
+import { STORE_WHATSAPP, whatsappUrl } from '../config/storeContact.js';
+
+export { STORE_WHATSAPP };
 export const EXCHANGE_WINDOW_DAYS = 30;
-export const STORE_WHATSAPP = '573000000000';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -32,7 +34,7 @@ export function exchangeRequestUrl(order) {
     .join('; ');
   const text = `Hola J&M Fashion Store, quiero solicitar un cambio del pedido ${order?.order_number ?? ''}.`
     + (items ? ` Prendas: ${items}.` : '');
-  return `https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent(text)}`;
+  return whatsappUrl(text);
 }
 
 /** Datos de guía para mostrar; el enlace solo si es https (la BD ya lo exige; aquí se repite por defensa). */

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Instagram, Facebook, MapPin, Phone, Mail, ShieldCheck, Truck, RefreshCw, CreditCard } from '../Common/icons';
 import { useShippingPolicy } from '../../hooks/useShippingPolicy';
+import { whatsappUrl } from '../../config/storeContact.js';
 
 export const Footer = () => {
   const { thresholdLabel } = useShippingPolicy();
@@ -96,7 +97,7 @@ export const Footer = () => {
               <li><Link to="/nosotros" style={linkStyle}>Sobre nosotros</Link></li>
               <li><Link to="/tiendas" style={linkStyle}>Tiendas</Link></li>
               <li><a href="https://instagram.com" target="_blank" rel="noreferrer" style={linkStyle}>Instagram</a></li>
-              <li><a href="https://wa.me/573000000000" target="_blank" rel="noreferrer" style={linkStyle}>WhatsApp</a></li>
+              <li><a href={whatsappUrl()} target="_blank" rel="noreferrer" style={linkStyle}>WhatsApp</a></li>
             </ul>
           </div>
 

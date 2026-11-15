@@ -21,6 +21,7 @@ import {
 } from '../components/Common/icons';
 import { SIZE_CHART, SIZE_CHART_TABS } from '../data/sizeGuide';
 import { useShippingPolicy } from '../hooks/useShippingPolicy';
+import { whatsappUrl, STORE_WHATSAPP_DISPLAY } from '../config/storeContact.js';
 
 export const InfoPage = () => {
   const location = useLocation();
@@ -58,7 +59,7 @@ export const InfoPage = () => {
     },
     {
       q: '¿Cómo solicito un cambio de talla o prenda?',
-      a: 'Cuentas con hasta 30 días calendario tras recibir tu pedido para solicitar cualquier cambio por talla o prenda. La prenda debe encontrarse en estado nuevo, sin uso y con sus etiquetas originales. Puedes iniciar la solicitud contactando directamente a nuestro canal de soporte en WhatsApp (+57 300 000 0000).'
+      a: 'Cuentas con hasta 30 días calendario tras recibir tu pedido para solicitar cualquier cambio por talla o prenda. La prenda debe encontrarse en estado nuevo, sin uso y con sus etiquetas originales. Puedes iniciar la solicitud contactando directamente a nuestro canal de soporte en WhatsApp (' + STORE_WHATSAPP_DISPLAY + ').'
     },
     {
       q: '¿Cuáles son los medios de pago disponibles?',
@@ -328,7 +329,7 @@ export const InfoPage = () => {
                   2. PASOS PARA PROCESAR EL CAMBIO
                 </h3>
                 <ol style={{ paddingLeft: '1.2rem' }}>
-                  <li>Comunícate con nuestra línea oficial de atención en WhatsApp (+57 300 000 0000).</li>
+                  <li>Comunícate con nuestra línea oficial de atención en WhatsApp ({STORE_WHATSAPP_DISPLAY}).</li>
                   <li>Indica tu número de orden y la talla o prenda por la que deseas realizar el cambio.</li>
                   <li>Coordina el envío o recogida del producto de manera ágil sin trámites confusos.</li>
                 </ol>
@@ -428,7 +429,7 @@ export const InfoPage = () => {
                   Recibe atención personalizada para recomendación de tallas, estado de órdenes o consultas generales.
                 </p>
                 <a
-                  href="https://wa.me/573000000000"
+                  href={whatsappUrl()}
                   target="_blank"
                   rel="noreferrer"
                   style={{

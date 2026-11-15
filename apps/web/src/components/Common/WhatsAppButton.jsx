@@ -1,9 +1,9 @@
 import React from 'react';
 import { MessageCircle } from './icons';
+import { whatsappUrl as buildWhatsappUrl } from '../../config/storeContact.js';
 
 export const WhatsAppButton = ({ message = 'Hola J&M Fashion Store, me gustaría recibir asesoría sobre prendas masculinas.' }) => {
-  const phoneNumber = '573000000000'; // Phone number placeholder for Colombia
-  const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+  const whatsappUrl = buildWhatsappUrl(message);
 
   return (
     <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 99, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
