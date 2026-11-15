@@ -2,11 +2,12 @@
 // Colecciones y looks — CRUD real sobre public.collections + collection_products (RLS: solo admin escribe).
 // Los looks activos alimentan «Completa el look» en la ficha de producto. Antes: ocasiones simuladas sin acciones.
 // =============================================================================
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Edit, Trash2, X, ArrowUp, ArrowDown } from '../../components/Common/icons';
 import { slugify } from '../../services/adminService';
 import collectionsAdminService, { COLLECTION_KINDS, emptyCollection, toCollectionForm, validateCollection } from '../../services/collectionsAdminService';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import { focusIfLost } from '../../utils/focusIfLost';
 import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 import FieldError from '../../components/Common/FieldError';
 import { fieldA11y, focusFirstError } from '../../utils/formErrors';
@@ -28,6 +29,10 @@ export const AdminCollectionsPage = () => {
   const [form, setForm] = useState(null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  // Ejecución 154 (D132): error general al guardar → el foco vuelve a «Guardar» (Chromium lo sacó al deshabilitarlo).
+  const submitRef = useRef(null);
+  const [failTick, setFailTick] = useState(0);
+  useEffect(() => { if (failTick) focusIfLost(submitRef.current); }, [failTick]);
   const [pick, setPick] = useState('');
   // Ejecución 149 (D127): al eliminar, la tarjeta desaparece y el foco caía en <body>.
   const { containerRef, remember, settle } = useRowFocusRestore();
@@ -64,6 +69,7 @@ export const AdminCollectionsPage = () => {
     } catch (ex) {
       setErrors(ex.errors ?? { form: ex.message });
       if (ex.errors) focusFirstError(formEl, COLLECTION_FIELDS, ex.errors);
+      else setFailTick((t) => t + 1);
     } finally { setSaving(false); }
   };
 
@@ -156,7 +162,7 @@ export const AdminCollectionsPage = () => {
             {errors.form && <div role="alert" style={err}>{errors.form}</div>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button type="button" onClick={() => setForm(null)} style={btnLight}>Cancelar</button>
-              <button type="submit" disabled={saving} style={btnDark}>{saving ? 'Guardando…' : 'Guardar'}</button>
+              <button ref={submitRef} type="submit" disabled={saving} style={btnDark}>{saving ? 'Guardando…' : 'Guardar'}</button>
             </div>
           </form>
         </DialogPanel>

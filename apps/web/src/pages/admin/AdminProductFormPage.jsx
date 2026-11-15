@@ -12,6 +12,7 @@ import { productService, imageUrl } from '../../services/productService';
 import { adminService, slugify, toReference } from '../../services/adminService';
 import { useECommerceStore } from '../../store/eCommerceStore';
 import { errorId, fieldA11y, focusFirstError, groupA11y } from '../../utils/formErrors';
+import { focusIfLost } from '../../utils/focusIfLost';
 
 // Orden visual del formulario: al guardar con errores el foco va al primero (D80).
 const PRODUCT_FIELDS = ['name', 'reference', 'slug', 'category', 'price', 'compareAt', 'cost', 'colors', 'images', 'sizes', 'stock'];
@@ -43,6 +44,14 @@ export const AdminProductFormPage = () => {
   const formRef = useRef(null);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Ejecución 154 (D132): «Guardar borrador» y «Guardar y publicar» se deshabilitan mientras guardan; Chromium les quita
+  // el foco y, al terminar (con éxito o error), quedaba en <body>. Vuelve al botón pulsado; el resultado lo anuncia el
+  // aviso status/alert. Solo si el foco se perdió.
+  const draftRef = useRef(null);
+  const publishRef = useRef(null);
+  const pressedRef = useRef(null);
+  const [doneTick, setDoneTick] = useState(0);
+  useEffect(() => { if (doneTick) focusIfLost([pressedRef.current, draftRef.current]); }, [doneTick]);
   const [uploading, setUploading] = useState(null);
   const [urlInput, setUrlInput] = useState({});
 
@@ -146,6 +155,7 @@ export const AdminProductFormPage = () => {
     setErrors(e);
     if (Object.keys(e).length) { setMessage({ ok: false, text: 'Revisa los campos marcados.' }); focusFirstError(formRef.current, PRODUCT_FIELDS, e); return; }
     setBusy(true); setMessage(null);
+    pressedRef.current = publish ? publishRef.current : draftRef.current;
     const payload = {
       id: form.id, reference: form.reference, slug: form.slug, name: form.name.trim(), description: form.description.trim() || null,
       details: form.detailsText.split('\n').map((d) => d.trim()).filter(Boolean), fit: form.fit, fit_description: form.fitDescription.trim() || null,
@@ -169,7 +179,7 @@ export const AdminProductFormPage = () => {
       else set({ status: publish ? 'active' : form.status });
     } catch (err) {
       setMessage({ ok: false, text: err.message });
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setDoneTick((t) => t + 1); }
   };
 
   // Ejecución 104: también mientras carga (o si falla la carga) la página tiene su <h1> (foco al cambiar de ruta, D74).
@@ -201,10 +211,10 @@ export const AdminProductFormPage = () => {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.6rem' }}>
-          <button type="submit" disabled={busy} style={{ border: '1px solid #09090B', padding: '0.75rem 1.1rem', borderRadius: '6px', fontWeight: 800, display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          <button ref={draftRef} type="submit" disabled={busy} style={{ border: '1px solid #09090B', padding: '0.75rem 1.1rem', borderRadius: '6px', fontWeight: 800, display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
             <Save size={16} /> {busy ? 'Guardando…' : 'Guardar borrador'}
           </button>
-          <button type="button" disabled={busy} onClick={() => save(true)} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.75rem 1.1rem', borderRadius: '6px', fontWeight: 800 }}>
+          <button ref={publishRef} type="button" disabled={busy} onClick={() => save(true)} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.75rem 1.1rem', borderRadius: '6px', fontWeight: 800 }}>
             {form.status === 'active' ? 'Guardar cambios' : 'Guardar y publicar'}
           </button>
         </div>

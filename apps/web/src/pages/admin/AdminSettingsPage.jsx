@@ -3,11 +3,12 @@
 // La BD calcula el costo de envío de cada cotización y pedido con estos valores. Antes /admin/configuracion
 // redirigía al dashboard.
 // =============================================================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Edit, X } from '../../components/Common/icons';
 import { formatCOP } from '../../utils/currency';
 import shippingAdminService, { CHECKOUT_METHOD, emptyShippingMethod, toShippingForm, validateShippingMethod } from '../../services/shippingAdminService';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import { focusIfLost } from '../../utils/focusIfLost';
 import FieldError from '../../components/Common/FieldError';
 import { fieldA11y, focusFirstError } from '../../utils/formErrors';
 
@@ -29,6 +30,11 @@ export const AdminSettingsPage = () => {
   const [form, setForm] = useState(null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  // Ejecución 154 (D132): con un error general (red/servicio) el modal sigue abierto y «Guardar» se deshabilitó mientras
+  // guardaba: Chromium le quitó el foco y quedaba en <body>. Vuelve al botón (si el foco se perdió).
+  const submitRef = useRef(null);
+  const [failTick, setFailTick] = useState(0);
+  useEffect(() => { if (failTick) focusIfLost(submitRef.current); }, [failTick]);
 
   const load = async () => {
     try { setMethods(await shippingAdminService.list()); setLoadError(null); } catch (e) { setLoadError(e.message); }
@@ -53,6 +59,7 @@ export const AdminSettingsPage = () => {
     } catch (ex) {
       setErrors(ex.errors ?? { form: ex.message });
       if (ex.errors) focusFirstError(formEl, SHIPPING_FIELDS, ex.errors);
+      else setFailTick((t) => t + 1);
     } finally { setSaving(false); }
   };
 
@@ -116,7 +123,7 @@ export const AdminSettingsPage = () => {
             {errors.form && <div role="alert" style={err}>{errors.form}</div>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button type="button" onClick={() => setForm(null)} style={btnLight}>Cancelar</button>
-              <button type="submit" disabled={saving} style={btnDark}>{saving ? 'Guardando…' : 'Guardar'}</button>
+              <button ref={submitRef} type="submit" disabled={saving} style={btnDark}>{saving ? 'Guardando…' : 'Guardar'}</button>
             </div>
           </form>
         </DialogPanel>

@@ -8,11 +8,12 @@
 // Ejecución 87: «Ver pedidos» en USOS enlaza a /admin/pedidos?cupon=CODIGO.
 // Ejecución 85: búsqueda sin tildes por código/descripción (`?q=`) y filtro de estado (`?estado=`) en la URL.
 // =============================================================================
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, X } from '../../components/Common/icons';
 import { formatCOP } from '../../utils/currency';
 import { DialogPanel } from '../../components/Common/DialogPanel';
+import { focusIfLost } from '../../utils/focusIfLost';
 import FieldError from '../../components/Common/FieldError';
 import { useRowFocusRestore } from '../../hooks/useRowFocusRestore';
 import { fieldA11y, focusFirstError } from '../../utils/formErrors';
@@ -35,6 +36,12 @@ export const AdminDiscountsPage = () => {
   const [formError, setFormError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  // Ejecución 154 (D132): error general al guardar → el foco vuelve a «Guardar cupón» (Chromium lo sacó al
+  // deshabilitarlo). Si se guarda y el cupón sale del filtro (p. ej. desmarcar «Activo» en «Activos»), «Editar»
+  // desaparece: mismo criterio que D126 (fila que ocupó su lugar o aviso de vacío).
+  const submitRef = useRef(null);
+  const [failTick, setFailTick] = useState(0);
+  useEffect(() => { if (failTick) focusIfLost(submitRef.current); }, [failTick]);
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') ?? '';
   const status = couponStatusFromParam(searchParams.get('estado'));
@@ -69,15 +76,17 @@ export const AdminDiscountsPage = () => {
     try {
       const row = await couponsAdminService.save(form);
       setNotice(`Cupón ${row.code} ${form.id ? 'actualizado' : 'creado'}.`);
+      remember(row.id ?? form.id, 'edit');
       setForm(null);
-      load();
+      await load();
+      settle();
     } catch (err) {
       // Validación local: cada mensaje junto a su campo y foco al primero (D80); el resto, aviso general.
       if (err.errors && Object.keys(err.errors).length) {
         setFieldErrors(err.errors);
         setFormError('Revisa los campos marcados.');
         focusFirstError(formEl, COUPON_FIELDS, err.errors);
-      } else setFormError(err.message || 'No se pudo guardar el cupón.');
+      } else { setFormError(err.message || 'No se pudo guardar el cupón.'); setFailTick((t) => t + 1); }
     }
     finally { setSaving(false); }
   };
@@ -158,7 +167,7 @@ export const AdminDiscountsPage = () => {
                   </td>
                   <td style={{ ...tdDisc, fontWeight: 800, color: stt.color }}>{stt.label}</td>
                   <td style={{ ...tdDisc, whiteSpace: 'nowrap' }}>
-                    <button data-row-fallback onClick={() => edit(c)} style={linkBtn}>Editar</button>
+                    <button data-row-fallback data-row-action="edit" onClick={() => edit(c)} style={linkBtn}>Editar</button>
                     <button data-row-action="toggle" onClick={() => toggleActive(c)} style={linkBtn}>{c.is_active ? 'Desactivar' : 'Activar'}</button>
                   </td>
                 </tr>
@@ -201,7 +210,7 @@ export const AdminDiscountsPage = () => {
               </div>
               <label style={{ fontSize: '0.85rem' }}><input type="checkbox" checked={form.is_active} onChange={(e) => set({ is_active: e.target.checked })} /> Activo</label>
               {formError && <div role="alert" style={{ color: '#B91C1C', fontWeight: 600, fontSize: '0.85rem' }}>{formError}</div>}
-              <button type="submit" disabled={saving} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.85rem', borderRadius: '6px', fontWeight: 800 }}>
+              <button ref={submitRef} type="submit" disabled={saving} style={{ backgroundColor: '#09090B', color: '#FFF', padding: '0.85rem', borderRadius: '6px', fontWeight: 800 }}>
                 {saving ? 'Guardando…' : 'Guardar cupón'}
               </button>
             </form>
