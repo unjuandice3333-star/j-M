@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-16 (ejecución 172: CI nº 219 verde salvo `security`; reconstrucción limpia verde)
+Última actualización: 2026-11-16 (ejecución 173: CI nº 220 verde salvo `security`; reconstrucción limpia verde)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -66,6 +66,12 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 173 — Comprobación del CI y reconstrucción reproducible (punto 0(do))
+- **CI del push anterior** (run `ci` nº 220, `46720ba`): governance, quality, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por la compuerta de secretos (gitleaks del historial, decisión del propietario); `ci-gate` ✘ solo por `security`; `e2e-supabase` nº 198 ✔.
+- **Reconstrucción desde contenedor nuevo:** `pnpm install --frozen-lockfile` OK; `pnpm build` OK; `pnpm lint` 0; `pnpm test:unit` **790/790** (88 archivos); `pnpm test:env` **146/146**; `pnpm audit --prod` 0.
+- **Cambio:** solo documentación. Sin regresiones ni intermitencias nuevas.
+- **Siguiente (0(dp)):** comprobar el CI del push; solo regresiones reales. Bloqueos del propietario sin cambio: baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`; opcional Vite 5 → 6.
 
 ## Ejecución 172 — Comprobación del CI y reconstrucción reproducible (punto 0(dn))
 - **CI del push anterior** (run `ci` nº 219, `d9af06d`): governance, quality, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por la compuerta de secretos (gitleaks del historial, decisión del propietario); `ci-gate` ✘ solo por `security`; `e2e-supabase` nº 197 ✔.
