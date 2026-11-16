@@ -1724,3 +1724,13 @@
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`, (opcional) Vite 5 → 6.
 - Commit: `docs(mission): record run 174 ci check`, publicado en la rama autorizada.
 - Siguiente (0(dq)): comprobar el CI del push; solo regresiones reales.
+
+## Ejecución 175 — 2026-11-16 09:10 UTC (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-g4kmgw`; se trabajó en `mission/m26-dev-qa-environments` en `66497ab` = remoto, árbol limpio.
+- Tarea (0(dq)): comprobar CI y reconstrucción local; buscar trabajo de código desbloqueado (ninguno: `FINAL_ACCEPTANCE.md` §4).
+- CI nº 222 (`66497ab`): todo ✔ salvo `security` (gitleaks del historial) y `ci-gate` por él; `e2e-supabase` nº 200 ✔.
+- Archivos: `MASTER_STATUS.md`, `DECISIONS.md` (D145), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790; test:env 146/146.
+- Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
+- Commit: `docs(mission): record run 175 ci check`.
+- Siguiente (0(dr)): comprobar el CI; solo regresiones reales o desbloqueos.
