@@ -1824,3 +1824,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 184 ci check`.
 - Siguiente (0(ea)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 185 — 2026-11-16 19:09 UTC (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-ezy9oj` (sin la carpeta de la misión); se trabajó en `mission/m26-dev-qa-environments` en `f4f9121` = remoto, árbol limpio.
+- Tarea (0(ea)): comprobar CI y reconstrucción local; sin trabajo de código desbloqueado (`FINAL_ACCEPTANCE.md` §4).
+- CI nº 232 (`f4f9121`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo en «Compuertas de seguridad» (gitleaks del historial); `ci-gate` ✘ por él; `e2e-supabase` nº 210 ✔.
+- Archivos: `MASTER_STATUS.md` (línea de estado), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790 (88 archivos); test:env 146/146.
+- Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
+- Commit: `docs(mission): record run 185 ci check`.
+- Siguiente (0(eb)): comprobar el CI; solo regresiones reales o desbloqueos.
