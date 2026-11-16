@@ -1669,3 +1669,14 @@
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`, (opcional) Vite 5 → 6.
 - Commit: `docs(mission): record run 169 ci check`, publicado en la rama autorizada.
 - Siguiente (0(dl)): comprobar el CI del push; solo regresiones reales.
+
+## Ejecución 170 — 2026-11-16 (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-fu7xhh` (rama de la sesión); se trabajó en `mission/m26-dev-qa-environments` en `73d4cc6` = remoto, árbol limpio.
+- Tarea (0(dl)): comprobar el CI del push anterior y la reconstrucción local.
+- CI nº 217 (`73d4cc6`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo por gitleaks del historial (decisión del propietario); `e2e-supabase` nº 195 ✔.
+- Archivos: `MASTER_STATUS.md`, `EXECUTION_LOG.md`.
+- Pruebas (ejecutadas aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790; test:env 146/146; audit --prod 0. E2E sintético y pgTAP no re-ejecutados (sin cambios de código; cubiertos por el CI nº 217).
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`, (opcional) Vite 5 → 6.
+- Commit: `docs(mission): record run 170 ci check`, publicado en la rama autorizada.
+- Siguiente (0(dm)): comprobar el CI del push; solo regresiones reales.
