@@ -1734,3 +1734,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 175 ci check`.
 - Siguiente (0(dr)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 176 — 2026-11-16 10:08 UTC (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-mlumhj`; se trabajó en `mission/m26-dev-qa-environments` en `19a06b8` = remoto, árbol limpio.
+- Tarea (0(dr)): comprobar CI y reconstrucción local; sin trabajo de código desbloqueado (`FINAL_ACCEPTANCE.md` §4).
+- CI nº 223 (`19a06b8`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo por gitleaks del historial; `ci-gate` ✘ por él; `e2e-supabase` nº 201 ✔.
+- Archivos: `MASTER_STATUS.md` (línea de estado), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790 (88 archivos); test:env 146/146.
+- Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
+- Commit: `docs(mission): record run 176 ci check`.
+- Siguiente (0(ds)): comprobar el CI; solo regresiones reales o desbloqueos.
