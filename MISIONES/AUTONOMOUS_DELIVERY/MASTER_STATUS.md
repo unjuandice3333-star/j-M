@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-15 (ejecución 166: acciones de GitHub refijadas a runtime Node 24, D143)
+Última actualización: 2026-11-16 (ejecución 167: D143 confirmada en CI nº 214; reconstrucción limpia verde)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -66,6 +66,12 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 167 — Confirmación de D143 y reconstrucción reproducible (punto 0(di))
+- **CI del push anterior** (run `ci` nº 214, `8f41cd3`): **governance ✔** (corrección `package-manager-cache: false` confirmada), quality, db-local, db-supabase y `e2e-synthetic` ✔ con las acciones Node 24; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial, decisión del propietario; `20_migrations_policy` PASS); `e2e-supabase` nº 192 ✔. D143 queda confirmada en GitHub. No verificado: la ausencia del aviso «Node.js 20 is deprecated» (las anotaciones del run no son legibles con las herramientas de esta sesión).
+- **Reconstrucción desde contenedor nuevo** (prioridad 1): `pnpm install --frozen-lockfile` OK; `pnpm build` OK; `pnpm lint` 0; `pnpm test:unit` **790/790** (88 archivos); `pnpm test:env` **146/146**; `pnpm audit --prod` 0.
+- **Cambio:** solo documentación. Sin cambios en `src`, migraciones, workflows ni dependencias.
+- **Siguiente (0(dj)):** comprobar el CI del push. El código no bloqueado está completo; solo regresiones/intermitencias reales. Bloqueos del propietario sin cambio: baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`; opcional Vite 5 → 6.
 
 ## Ejecución 166 — Acciones de CI en Node 24 (punto 0(dh))
 - **CI del push anterior** (run `ci` nº 212, `5fb4c79`): governance, quality, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial, decisión del propietario); `e2e-supabase` nº 190 ✔.

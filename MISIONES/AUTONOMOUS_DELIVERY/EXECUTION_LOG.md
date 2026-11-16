@@ -1636,3 +1636,14 @@
 - Commit: `ci: pin workflow actions to node24 releases` + este de documentación; publicados en la rama autorizada.
 - CI del primer push (nº 213, `5767964`): quality, db-local, db-supabase, e2e-synthetic ✔ con las acciones nuevas; `e2e-supabase` nº 191 ✔; **`governance` ✘ por mi cambio**: `setup-node` v5 intenta la caché de pnpm (por `packageManager`) en un job sin pnpm. Corregido con `package-manager-cache: false` en ese job (input verificado en el `action.yml` del SHA) y publicado en un tercer commit.
 - Siguiente (0(di)): comprobar el CI del push de la corrección: todos los jobs deben seguir verdes (salvo `security`) y sin el aviso de Node 20; si alguno falla por el cambio, revertir solo esa acción.
+
+## Ejecución 167 — 2026-11-16 (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-fj5ez2` (rama de la sesión); se trabajó en `mission/m26-dev-qa-environments` en `8f41cd3` = remoto, árbol limpio.
+- Tarea (0(di)): verificar en CI la corrección de D143 y la reconstrucción local.
+- CI nº 214 (`8f41cd3`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo `21_secrets_scan` (gitleaks, decisión del propietario); `e2e-supabase` nº 192 ✔. D143 confirmada.
+- Archivos: `MASTER_STATUS.md`, `EXECUTION_LOG.md`.
+- Pruebas (ejecutadas aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790; test:env 146/146; audit --prod 0. E2E sintético y pgTAP no re-ejecutados (sin cambios de código; cubiertos por el CI nº 214 sobre el mismo código).
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`, (opcional) Vite 5 → 6.
+- Commit: `docs(mission): record run 167 ci confirmation`, publicado en la rama autorizada.
+- Siguiente (0(dj)): comprobar el CI del push; solo regresiones reales.
