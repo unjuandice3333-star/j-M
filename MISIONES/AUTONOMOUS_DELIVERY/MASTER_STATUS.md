@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-16 (ejecución 173: CI nº 220 verde salvo `security`; reconstrucción limpia verde)
+Última actualización: 2026-11-16 (ejecución 174: CI nº 221 verde salvo `security`; reconstrucción limpia verde; aviso al propietario por bloqueo prolongado)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
@@ -66,6 +66,12 @@ Flakiness conocida y mitigada (M35; confirmada en GitHub con `db8a434`): el job 
 ## Wompi Sandbox y Vercel Preview
 Revisión de Wompi: `WOMPI_REVIEW.md` (13/13 pruebas del webhook hoy). Lista de comprobaciones del propietario: `OWNER_CHECKLIST.md`. Vercel `jym-web` (root `apps/web`): sin acceso a Vercel desde el agente (`vercel` denegado); configuración y guardas descritas en `MISION_26/08_T8_GUIA_QA.md` y `OWNER_STEPS.md`; el host de QA ya está en la lista de permitidos. No se desplegó nada.
 Pasos exactos y variables (sin valores) en `OWNER_STEPS.md`. Bloqueado hasta que el propietario cargue credenciales QA/Sandbox.
+
+## Ejecución 174 — Comprobación del CI, reconstrucción y aviso de bloqueo (punto 0(dp))
+- **CI del push anterior** (run `ci` nº 221, `3d0d9fc`): governance, quality, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por la compuerta de secretos (gitleaks del historial); `ci-gate` ✘ solo por `security`; `e2e-supabase` nº 199 ✔.
+- **Reconstrucción desde contenedor nuevo:** install --frozen-lockfile OK; build OK; lint 0; unit **790/790** (88 archivos); test:env **146/146**; audit --prod 0.
+- **D144:** 8 ejecuciones seguidas (167–174) sin trabajo de código desbloqueado; se envió una notificación al propietario con los 6 bloqueos. Siguientes ejecuciones sin cambios no vuelven a notificar.
+- **Siguiente (0(dq)):** comprobar el CI del push; solo regresiones reales o avance si el propietario desbloquea algo.
 
 ## Ejecución 173 — Comprobación del CI y reconstrucción reproducible (punto 0(do))
 - **CI del push anterior** (run `ci` nº 220, `46720ba`): governance, quality, db-local, db-supabase y `e2e-synthetic` ✔; `security` ✘ solo por la compuerta de secretos (gitleaks del historial, decisión del propietario); `ci-gate` ✘ solo por `security`; `e2e-supabase` nº 198 ✔.

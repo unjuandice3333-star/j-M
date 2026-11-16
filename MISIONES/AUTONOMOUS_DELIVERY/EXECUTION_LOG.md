@@ -1713,3 +1713,14 @@
 - Bloqueos reales (sin cambio): baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`, (opcional) Vite 5 → 6.
 - Commit: `docs(mission): record run 173 ci check`, publicado en la rama autorizada.
 - Siguiente (0(dp)): comprobar el CI del push; solo regresiones reales.
+
+## Ejecución 174 — 2026-11-16 07:10 UTC (rutina programada)
+- Estado inicial: el contenedor arrancó en `claude/gracious-pasteur-60sr4z`; se trabajó en `mission/m26-dev-qa-environments` en `3d0d9fc` = remoto, árbol limpio.
+- Tarea (0(dp)): comprobar el CI del push anterior y la reconstrucción local; avisar al propietario del bloqueo prolongado (D144).
+- CI nº 221 (`3d0d9fc`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo por gitleaks del historial; `ci-gate` ✘ solo por `security`; `e2e-supabase` nº 199 ✔.
+- Archivos: `MASTER_STATUS.md`, `DECISIONS.md`, `EXECUTION_LOG.md`.
+- Pruebas (ejecutadas aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790 (88 archivos); test:env 146/146; audit --prod 0. E2E sintético y pgTAP no re-ejecutados (sin cambios de código; cubiertos por el CI nº 221).
+- Errores pendientes: ninguno nuevo.
+- Bloqueos reales (sin cambio): baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, número de WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`, (opcional) Vite 5 → 6.
+- Commit: `docs(mission): record run 174 ci check`, publicado en la rama autorizada.
+- Siguiente (0(dq)): comprobar el CI del push; solo regresiones reales.
