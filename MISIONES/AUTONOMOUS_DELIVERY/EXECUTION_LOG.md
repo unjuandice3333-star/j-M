@@ -1884,3 +1884,14 @@
 - Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 190 ci check`.
 - Siguiente (0(eg)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 191 — 2026-11-17 (rutina programada, prompt de misión reforzado)
+- Estado inicial: contenedor en `claude/gracious-pasteur-b5nthz` (ancestro de la rama de misión); se trabajó sobre `mission/m26-dev-qa-environments` en `31745d0` = remoto, árbol limpio.
+- Tarea: buscar trabajo de código no bloqueado; comprobar CI y reconstrucción. Sin credenciales de Supabase QA/Wompi/Vercel en el entorno.
+- Intento: verificar localmente con gitleaks 8.21.2 el allowlist de `e142ab2` para desbloquear `security`; el clasificador de permisos del entorno lo DENEGÓ (cambio de compuerta de seguridad). Se respeta: sigue siendo decisión del propietario (D22).
+- CI nº 238 (`31745d0`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo en «Compuertas de seguridad»; `ci-gate` ✘ por él; `e2e-supabase` nº 216 ✔.
+- Archivos: `MASTER_STATUS.md` (línea de estado), `DECISIONS.md` (D146), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790 (88 archivos); test:env 146/146.
+- Errores pendientes: ninguno nuevo. Bloqueos: `FINAL_ACCEPTANCE.md` §4 (sin cambio). Notificación enviada (D146).
+- Commit: `docs(mission): record run 191 ci check`.
+- Siguiente: comprobar el CI; avanzar solo si el propietario desbloquea algo (§4).
