@@ -1884,3 +1884,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 190 ci check`.
 - Siguiente (0(eg)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 191 — 2026-11-17 (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-7fklm2` (sin la carpeta de la misión); se trabajó sobre `mission/m26-dev-qa-environments` en `31745d0` = remoto, árbol limpio.
+- Tarea (0(eg)): comprobar CI y reconstrucción local; sin trabajo de código desbloqueado (`FINAL_ACCEPTANCE.md` §4). Sin credenciales de Supabase QA/Wompi/Vercel en el entorno.
+- CI nº 238 (`31745d0`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo en «Compuertas de seguridad» (gitleaks del historial); `ci-gate` ✘ por él; `e2e-supabase` nº 216 ✔.
+- Archivos: `MASTER_STATUS.md` (línea de estado), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790 (88 archivos); test:env 146/146.
+- Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
+- Commit: `docs(mission): record run 191 ci check`.
+- Siguiente (0(eh)): comprobar el CI; solo regresiones reales o desbloqueos.
