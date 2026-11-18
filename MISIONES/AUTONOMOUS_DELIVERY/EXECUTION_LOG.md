@@ -2186,3 +2186,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 220 ci check`.
 - Siguiente (0(fk)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 221 — 2026-11-18 13:11 UTC (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-scrmje` (= main, sin la carpeta de la misión); se trabajó sobre `mission/m26-dev-qa-environments` en `8eddbe6` = remoto, árbol limpio. `main` sin commits nuevos (`2661f2a`). Sin credenciales de Supabase QA/Wompi/Vercel; sin Docker.
+- Tarea (0(fk)): comprobar CI y reconstrucción local; sin trabajo de código desbloqueado (`FINAL_ACCEPTANCE.md` §4).
+- CI nº 269 (`8eddbe6`): governance, quality, db-local, db-supabase, e2e-synthetic ✔ («Chromium de Playwright» 8 s); `security` ✘ solo en «Compuertas de seguridad» (gitleaks del historial); `ci-gate` ✘ por él; `e2e-supabase` nº 247 ✔.
+- Archivos: `MASTER_STATUS.md` (línea de estado), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; unit 790/790 (88 archivos); test:env 151/151.
+- Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
+- Commit: `docs(mission): record run 221 ci check`.
+- Siguiente (0(fl)): comprobar el CI; solo regresiones reales o desbloqueos.
