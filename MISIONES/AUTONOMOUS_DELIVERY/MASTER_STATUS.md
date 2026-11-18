@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-18 (ejecución 226: CI nº 274 sin regresiones — governance, quality, db-local, db-supabase, e2e-synthetic ✔, «Chromium de Playwright» 11 s; `security`/`ci-gate` ✘ solo por gitleaks del historial; e2e-supabase nº 252 ✔; test:env 151/151, unit 790/790; sin cambios de código)
+Última actualización: 2026-11-18 (ejecución 227: CI nº 275 sin regresiones — governance, quality, db-local, db-supabase, e2e-synthetic ✔, «Chromium de Playwright» 15 s; `security`/`ci-gate` ✘ solo por gitleaks del historial; e2e-supabase nº 253 ✔; test:env 151/151, unit 790/790; sin cambios de código)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
