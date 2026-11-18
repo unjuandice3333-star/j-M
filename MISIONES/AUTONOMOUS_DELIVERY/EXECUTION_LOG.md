@@ -2156,3 +2156,13 @@
 - Errores pendientes: confirmar en el CI del push que el camino rápido se usa y que los 87 recorridos siguen verdes sin las fuentes extra. Bloqueos sin cambio (D144).
 - Commit: `ci(chromium): skip apt when runner libs suffice`.
 - Siguiente (0(fh)): leer el CI de este push (duración del paso y resultado de `e2e-synthetic` y `e2e-supabase`); si falla por renderizado, `CHROMIUM_FAST_PATH=0`.
+
+## Ejecución 218 — 2026-11-18 (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-f4tyjz` (= main, sin la carpeta de la misión); se trabajó sobre `mission/m26-dev-qa-environments` en `094989e` = remoto, árbol limpio. `main` sin commits nuevos (`2661f2a`). Sin credenciales de Supabase QA/Wompi/Vercel; sin Docker.
+- Tarea (0(fh)): verificar D147 en el CI del push anterior.
+- CI nº 266 (`094989e`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; «Chromium de Playwright» **7 s** (antes 136–156 s) y los recorridos E2E sintéticos verdes sin las fuentes extra; `e2e-supabase` nº 244 ✔; `security` ✘ solo por `21_secrets_scan` (gitleaks del historial; `20_migrations_policy` PASS); `ci-gate` ✘ por él. D147 confirmada; no hace falta `CHROMIUM_FAST_PATH=0`.
+- Archivos: `MASTER_STATUS.md` (línea de estado), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; unit 790/790 (88 archivos); test:env 151/151.
+- Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
+- Commit: `docs(mission): record run 218 ci check`.
+- Siguiente (0(fi)): comprobar el CI; solo regresiones reales o desbloqueos.
