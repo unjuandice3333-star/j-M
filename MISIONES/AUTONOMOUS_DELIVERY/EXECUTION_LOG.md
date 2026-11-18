@@ -2082,7 +2082,7 @@
 - Tarea: corrección D146 en `scripts/ci/install_chromium.sh` (espera del candado + espera acotada a apt/dpkg huérfanos) y 2 pruebas nuevas.
 - Archivos: `scripts/ci/install_chromium.sh`, `scripts/ci/install_chromium.test.mjs`, `MASTER_STATUS.md`, `DECISIONS.md`, `EXECUTION_LOG.md`.
 - Pruebas (aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790 (88 archivos); test:env **148/148** (antes 146; +2 de D146); control negativo con `APT_IDLE_WAIT=0` reproduce el fallo del CI (código 100); `pgrep -x 'apt-get|apt|dpkg'` detecta un proceso real llamado `apt-get`.
-- No verificado aquí: comportamiento en el runner real de GitHub (lo dirá el CI del push).
+- **Verificado en GitHub** (CI nº 258 y `e2e-supabase` nº 236 sobre `47cae3a`): governance, quality, db-local, db-supabase, **e2e-synthetic ✔** (PASS) y **e2e-supabase ✔**; `security` ✘ solo por gitleaks del historial. En `e2e-synthetic` se repitió el mismo escenario (espejo a 111 kB/s, intento 1 venció): la espera de D146 actuó (120 s + `DPkg::Lock::Timeout`) y el intento 2 instaló Chromium en vez de fallar al instante.
 - Bloqueos sin cambio (D144): baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`.
 - Commit: `fix(ci): wait for orphaned apt lock before chromium retry`.
-- Siguiente (0(fa)): comprobar que `e2e-synthetic` y `e2e-supabase` vuelven a verde en el CI del push; si la instalación vuelve a fallar con espejo lento, valorar subir el límite por intento junto con `timeout-minutes`.
+- Siguiente (0(fa)): comprobar el CI; solo regresiones reales o desbloqueos. Observación: la instalación de Chromium tardó 5,5 min (espejo lento); si llega a agotar el job, valorar cachear las dependencias apt/navegador.
