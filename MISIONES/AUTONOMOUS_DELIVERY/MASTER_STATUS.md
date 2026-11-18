@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-17 (ejecución 209: CI nº 256 verde salvo `security`; reconstrucción limpia verde; sin cambios de código ni desbloqueos — D145)
+Última actualización: 2026-11-18 (ejecución 210: CI nº 257 rojo en `e2e-synthetic` y `e2e-supabase` por la instalación de Chromium → defecto real del reintento corregido (D146); reconstrucción limpia verde)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad

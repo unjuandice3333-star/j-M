@@ -2074,3 +2074,15 @@
 - Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 209 ci check`.
 - Siguiente (0(ez)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 210 — 2026-11-18 (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-z3nfjh` (sin la carpeta de la misión); se trabajó sobre `mission/m26-dev-qa-environments` en `24fb51d` = remoto, árbol limpio. `main` sin commits nuevos (`2661f2a`).
+- CI nº 257 (`24fb51d`, solo docs): governance, quality, db-local, db-supabase ✔; **`e2e-synthetic` ✘ y `e2e-supabase` nº 235 ✘**, ambos en «Chromium de Playwright»; `security` ✘ (gitleaks del historial, sin cambio); `ci-gate` ✘.
+- Diagnóstico (log del job): intento 1 venció con espejo apt lento; su `apt-get` huérfano retuvo el candado de dpkg y los intentos 2–3 fallaron al instante (código 100). Defecto real del script de reintento (D117), no de la tienda.
+- Tarea: corrección D146 en `scripts/ci/install_chromium.sh` (espera del candado + espera acotada a apt/dpkg huérfanos) y 2 pruebas nuevas.
+- Archivos: `scripts/ci/install_chromium.sh`, `scripts/ci/install_chromium.test.mjs`, `MASTER_STATUS.md`, `DECISIONS.md`, `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790 (88 archivos); test:env **148/148** (antes 146; +2 de D146); control negativo con `APT_IDLE_WAIT=0` reproduce el fallo del CI (código 100); `pgrep -x 'apt-get|apt|dpkg'` detecta un proceso real llamado `apt-get`.
+- No verificado aquí: comportamiento en el runner real de GitHub (lo dirá el CI del push).
+- Bloqueos sin cambio (D144): baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`.
+- Commit: `fix(ci): wait for orphaned apt lock before chromium retry`.
+- Siguiente (0(fa)): comprobar que `e2e-synthetic` y `e2e-supabase` vuelven a verde en el CI del push; si la instalación vuelve a fallar con espejo lento, valorar subir el límite por intento junto con `timeout-minutes`.

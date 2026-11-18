@@ -17,6 +17,7 @@ function run(cmd, extra = {}) {
     CHROMIUM_INSTALL_CMD: cmd.replaceAll('$DIR', dir),
     CHROMIUM_INSTALL_ATTEMPTS: '3',
     CHROMIUM_INSTALL_TIMEOUT: '2',
+    APT_BUSY_CMD: 'false',
     ...extra,
   };
   const r = spawnSync('bash', [SCRIPT], { env, encoding: 'utf8', timeout: 60000 });
@@ -27,7 +28,9 @@ test('instala a la primera y deja timeouts de apt', () => {
   const r = run('true');
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /Chromium instalado \(intento 1\)/);
-  assert.match(readFileSync(join(r.dir, '99-ci-timeouts'), 'utf8'), /Acquire::http::Timeout "30"/);
+  const conf = readFileSync(join(r.dir, '99-ci-timeouts'), 'utf8');
+  assert.match(conf, /Acquire::http::Timeout "30"/);
+  assert.match(conf, /DPkg::Lock::Timeout "120"/);
 });
 
 test('un intento colgado vence y el siguiente instala', () => {
@@ -50,4 +53,26 @@ test('sin directorio de apt no rompe', () => {
   const r = run('true', { APT_CONF_DIR: '/nonexistent-jm' });
   assert.equal(r.status, 0);
   assert.equal(existsSync('/nonexistent-jm/99-ci-timeouts'), false);
+});
+
+test('D146: tras vencer, espera a que el apt huérfano libere el candado antes de reintentar', () => {
+  // El intento 1 deja un «apt» ocupado (marca $DIR/busy) que se libera solo a los 10 s (después del vencimiento a los 2 s y la pausa de 5 s); el 2.º instala
+  // únicamente si el candado ya está libre (como dpkg real), así que sin la espera fallaría. `setsid` imita al
+  // apt-get lanzado con sudo, que escapa del grupo de procesos que mata `timeout`.
+  const r = run(
+    'if [ -f $DIR/m ]; then [ ! -f $DIR/busy ] || exit 100; exit 0; else touch $DIR/m $DIR/busy; setsid bash -c "sleep 10; rm -f $DIR/busy" >/dev/null 2>&1 & sleep 30; fi',
+    { APT_BUSY_CMD: '[ -f "$APT_CONF_DIR/busy" ]', CHROMIUM_INSTALL_ATTEMPTS: '2' },
+  );
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /intento 1 venció/);
+  assert.match(r.stdout, /esperando a que libere el candado/);
+  assert.match(r.stdout, /apt\/dpkg libre tras \d+s/);
+  assert.match(r.stdout, /Chromium instalado \(intento 2\)/);
+});
+
+test('D146: la espera por apt ocupado tiene límite y no bloquea el reintento', () => {
+  const r = run('exit 7', { APT_BUSY_CMD: 'true', APT_IDLE_WAIT: '2', CHROMIUM_INSTALL_ATTEMPTS: '2' });
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /sigue ocupado tras 2s; se reintenta igualmente/);
+  assert.match(r.stdout, /intento 2 falló \(código 7\)/);
 });
