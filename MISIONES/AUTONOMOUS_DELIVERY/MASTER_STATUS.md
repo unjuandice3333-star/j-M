@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-18 (ejecución 216: CI nº 264 y `e2e-supabase` nº 242 sobre `e78b2e4` verdes salvo `security` (gitleaks del historial); Chromium 146 s (vigilar); reconstrucción limpia verde)
+Última actualización: 2026-11-18 (ejecución 217: D147 — instalación de Chromium en CI sin apt cuando la imagen ya trae las librerías (antes 136–156 s, casi todo fuentes opcionales); test:env 151/151, unit 790/790; pendiente confirmar en el CI del push)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad

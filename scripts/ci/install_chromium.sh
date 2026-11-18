@@ -6,9 +6,14 @@
 # (lanzado con sudo, como root) siguió vivo con el candado de dpkg y los intentos 2 y 3 fallaron al instante
 # («Could not get lock /var/lib/dpkg/lock-frontend»). Ahora apt espera el candado y, antes de reintentar, se espera
 # (con límite) a que no quede ningún apt/dpkg del intento anterior.
+# D147: en los runs `ci` nº 262, 264 y 265 el paso tardó 136–156 s, y casi todo era apt descargando ~32 MB de FUENTES
+# opcionales (fonts-freefont-ttf, fonts-wqy-zenhei, …) a ~300 kB/s; la imagen ubuntu-24.04 ya trae todas las librerías
+# que Chromium necesita («is already the newest version») y el navegador baja en ~6 s. Ahora se intenta primero SIN
+# `--with-deps` y se comprueba que Chromium arranca de verdad; solo si falla se usa el camino con apt de siempre.
 # Uso: install_chromium.sh            (en CI)
 # Variables: CHROMIUM_INSTALL_ATTEMPTS (3), CHROMIUM_INSTALL_TIMEOUT (seg. por intento, 180), APT_CONF_DIR (/etc/apt/apt.conf.d),
 #            APT_IDLE_WAIT (seg. máx. esperando a apt/dpkg huérfanos, 120), APT_BUSY_CMD (cómo detectarlos; para pruebas)
+#            CHROMIUM_FAST_PATH (1; 0 = ir directo a --with-deps), CHROMIUM_FAST_CMD / CHROMIUM_CHECK_CMD (para pruebas)
 # Salida: 0 instalado · 1 todos los intentos fallaron o vencieron.
 set -uo pipefail
 ATTEMPTS="${CHROMIUM_INSTALL_ATTEMPTS:-3}"
@@ -17,6 +22,9 @@ APT_CONF_DIR="${APT_CONF_DIR:-/etc/apt/apt.conf.d}"
 INSTALL_CMD="${CHROMIUM_INSTALL_CMD:-npx --no-install playwright install --with-deps chromium}"
 IDLE_WAIT="${APT_IDLE_WAIT:-120}"
 BUSY_CMD="${APT_BUSY_CMD:-pgrep -x 'apt-get|apt|dpkg' >/dev/null}"
+FAST_PATH="${CHROMIUM_FAST_PATH:-1}"
+FAST_CMD="${CHROMIUM_FAST_CMD:-npx --no-install playwright install chromium}"
+CHECK_CMD="${CHROMIUM_CHECK_CMD:-node -e \"require('playwright').chromium.launch().then((b) => b.close())\"}"
 
 # Espera (máx. IDLE_WAIT s) a que termine cualquier apt/dpkg que haya quedado del intento anterior.
 wait_apt_idle() {
@@ -37,6 +45,19 @@ if [[ -d "$APT_CONF_DIR" ]]; then
     printf '%s\n' "$conf" > "$APT_CONF_DIR/99-ci-timeouts"
   elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
     printf '%s\n' "$conf" | sudo tee "$APT_CONF_DIR/99-ci-timeouts" >/dev/null
+  fi
+fi
+
+# Camino rápido (D147): solo el navegador, sin apt; vale si Chromium arranca con las librerías de la imagen.
+if [[ "$FAST_PATH" == "1" ]]; then
+  echo "== Chromium de Playwright: camino rápido sin apt (límite ${LIMIT}s)"
+  if timeout --kill-after=15 "$LIMIT" bash -c "$FAST_CMD"; then
+    if timeout --kill-after=5 60 bash -c "$CHECK_CMD"; then
+      echo "== Chromium instalado y arranca (camino rápido, sin apt)"; exit 0
+    fi
+    echo "AVISO: Chromium no arranca sin dependencias del sistema; se instala con --with-deps"
+  else
+    echo "AVISO: el camino rápido falló o venció; se instala con --with-deps"
   fi
 fi
 

@@ -18,6 +18,7 @@ function run(cmd, extra = {}) {
     CHROMIUM_INSTALL_ATTEMPTS: '3',
     CHROMIUM_INSTALL_TIMEOUT: '2',
     APT_BUSY_CMD: 'false',
+    CHROMIUM_FAST_PATH: '0',
     ...extra,
   };
   const r = spawnSync('bash', [SCRIPT], { env, encoding: 'utf8', timeout: 60000 });
@@ -75,4 +76,25 @@ test('D146: la espera por apt ocupado tiene límite y no bloquea el reintento', 
   assert.equal(r.status, 1);
   assert.match(r.stdout, /sigue ocupado tras 2s; se reintenta igualmente/);
   assert.match(r.stdout, /intento 2 falló \(código 7\)/);
+});
+
+test('D147: camino rápido sin apt cuando Chromium arranca', () => {
+  const r = run('exit 9', { CHROMIUM_FAST_PATH: '1', CHROMIUM_FAST_CMD: 'true', CHROMIUM_CHECK_CMD: 'true' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /camino rápido, sin apt/);
+  assert.doesNotMatch(r.stdout, /intento 1/);
+});
+
+test('D147: si Chromium no arranca sin dependencias, cae a --with-deps', () => {
+  const r = run('true', { CHROMIUM_FAST_PATH: '1', CHROMIUM_FAST_CMD: 'true', CHROMIUM_CHECK_CMD: 'exit 1' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /no arranca sin dependencias/);
+  assert.match(r.stdout, /Chromium instalado \(intento 1\)/);
+});
+
+test('D147: si la descarga rápida falla o vence, cae a --with-deps', () => {
+  const r = run('true', { CHROMIUM_FAST_PATH: '1', CHROMIUM_FAST_CMD: 'sleep 30', CHROMIUM_CHECK_CMD: 'true' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /camino rápido falló o venció/);
+  assert.match(r.stdout, /Chromium instalado \(intento 1\)/);
 });

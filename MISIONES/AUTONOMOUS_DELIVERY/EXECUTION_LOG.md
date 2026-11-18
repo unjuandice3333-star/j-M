@@ -2146,3 +2146,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 216 ci check`.
 - Siguiente (0(fg)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 217 — 2026-11-18 (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-t3vssm` (sin la carpeta de la misión); se trabajó sobre `mission/m26-dev-qa-environments` en `57e0518` = remoto, árbol limpio. `main` sin commits nuevos (`2661f2a`). Sin credenciales de Supabase QA/Wompi/Vercel; sin Docker.
+- CI nº 265 (`57e0518`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo por gitleaks del historial; `ci-gate` ✘ por él; `e2e-supabase` nº 243 ✔. «Chromium de Playwright» 156 s (3 de las últimas 4 > 130 s).
+- Tarea (0(fg)): causa leída en el log del job: apt bajando ~32 MB de fuentes opcionales a ~300 kB/s; navegador en 6 s. Corrección D147: camino rápido sin apt + comprobación de arranque, con retroceso al camino anterior.
+- Archivos: `scripts/ci/install_chromium.sh`, `scripts/ci/install_chromium.test.mjs` (+3 pruebas), `DECISIONS.md` (D147), `MASTER_STATUS.md`, `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; ESLint 0; unit 790/790 (88 archivos); test:env 151/151 (148 + 3 nuevas); comprobación real del camino rápido contra Chromium del contenedor (arranca) y del retroceso con un ejecutable inexistente (cae a `--with-deps`).
+- Errores pendientes: confirmar en el CI del push que el camino rápido se usa y que los 87 recorridos siguen verdes sin las fuentes extra. Bloqueos sin cambio (D144).
+- Commit: `ci(chromium): skip apt when runner libs suffice`.
+- Siguiente (0(fh)): leer el CI de este push (duración del paso y resultado de `e2e-synthetic` y `e2e-supabase`); si falla por renderizado, `CHROMIUM_FAST_PATH=0`.
