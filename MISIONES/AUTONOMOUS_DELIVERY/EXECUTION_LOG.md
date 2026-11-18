@@ -2086,3 +2086,13 @@
 - Bloqueos sin cambio (D144): baseline M24 en Supabase QA, Wompi Sandbox, Vercel Preview, WhatsApp, gitleaks, `e2e-supabase` en `ci-gate`.
 - Commit: `fix(ci): wait for orphaned apt lock before chromium retry`.
 - Siguiente (0(fa)): comprobar el CI; solo regresiones reales o desbloqueos. Observación: la instalación de Chromium tardó 5,5 min (espejo lento); si llega a agotar el job, valorar cachear las dependencias apt/navegador.
+
+## Ejecución 211 — 2026-11-18 (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-eghlbr` (sin la carpeta de la misión); se trabajó sobre `mission/m26-dev-qa-environments` en `c237d36` = remoto, árbol limpio. `main` sin commits nuevos (`2661f2a`).
+- Tarea (0(fa)): comprobar CI y reconstrucción local; sin trabajo de código desbloqueado (`FINAL_ACCEPTANCE.md` §4). Sin credenciales de Supabase QA/Wompi/Vercel en el entorno; sin demonio Docker.
+- CI nº 259 (`c237d36`): governance, quality, db-local, db-supabase, e2e-synthetic ✔ (Chromium instalado en 24 s); `security` ✘ solo en «Compuertas de seguridad» (gitleaks del historial); `ci-gate` ✘ por él; `e2e-supabase` nº 237 ✔. Segunda ejecución verde tras D146.
+- Archivos: `MASTER_STATUS.md` (línea de estado), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; unit 790/790 (88 archivos); test:env 148/148.
+- Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
+- Commit: `docs(mission): record run 211 ci check`.
+- Siguiente (0(fb)): comprobar el CI; solo regresiones reales o desbloqueos.
