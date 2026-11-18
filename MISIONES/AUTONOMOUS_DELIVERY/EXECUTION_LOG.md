@@ -2116,3 +2116,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 213 ci check`.
 - Siguiente (0(fd)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 214 — 2026-11-18 (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-xchn2i` (sin la carpeta de la misión); se trabajó sobre `mission/m26-dev-qa-environments` en `4a8ae81` = remoto, árbol limpio. `main` sin commits nuevos (`2661f2a`).
+- Tarea (0(fd)): comprobar CI y reconstrucción local; sin trabajo de código desbloqueado (`FINAL_ACCEPTANCE.md` §4). Sin credenciales de Supabase QA/Wompi/Vercel en el entorno; sin demonio Docker.
+- CI nº 262 (`4a8ae81`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo en «Compuertas de seguridad» (gitleaks del historial); `ci-gate` ✘ por él; `e2e-supabase` nº 240 ✔. Quinta ejecución verde tras D146. Observación: el paso «Chromium de Playwright» tardó 136 s (antes 18–23 s), probablemente la espera del lock de apt de 47cae3a; terminó en success. Vigilar; no es regresión.
+- Archivos: `MASTER_STATUS.md` (línea de estado), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; unit 790/790 (88 archivos); test:env 148/148.
+- Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
+- Commit: `docs(mission): record run 214 ci check`.
+- Siguiente (0(fe)): comprobar el CI; solo regresiones reales o desbloqueos.

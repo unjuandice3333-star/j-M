@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-18 (ejecución 213: CI nº 261 y `e2e-supabase` nº 239 sobre `8ce8fb2` verdes salvo `security` (gitleaks del historial); Chromium en 23 s; reconstrucción limpia verde)
+Última actualización: 2026-11-18 (ejecución 214: CI nº 262 y `e2e-supabase` nº 240 sobre `4a8ae81` verdes salvo `security` (gitleaks del historial); Chromium en 136 s (vigilar); reconstrucción limpia verde)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
