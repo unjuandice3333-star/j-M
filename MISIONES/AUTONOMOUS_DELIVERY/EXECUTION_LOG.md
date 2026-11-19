@@ -2366,3 +2366,12 @@
 - Errores pendientes: ninguno nuevo. Bloqueos del propietario sin cambio (D144).
 - Commit: `test(e2e): poll synthetic db for saved wishlist item`.
 - Siguiente (0(gc)): comprobar que el CI del push deja `e2e-synthetic` en verde; solo regresiones reales o desbloqueos.
+
+## Ejecución 239 — 2026-11-19 (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-bzbx7y` (= main); se partió de `mission/m26-dev-qa-environments` en `8c5d20b` = remoto, árbol limpio. Sin credenciales de Supabase QA/Wompi/Vercel; sin demonio Docker.
+- Tarea (0(gc)): comprobar que el CI deja `e2e-synthetic` en verde tras D148 y reconstruir en local.
+- CI nº 287 (`8c5d20b`): governance, quality, db-local, db-supabase ✔; **`e2e-synthetic` ✔** → D148 confirmada en GitHub; `security` ✘ solo en «Compuertas de seguridad» (gitleaks del historial); `ci-gate` ✘ por él; `e2e-supabase` nº 265 ✔.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790 (88 archivos); test:env 151/151.
+- Bloqueo nuevo: el permiso de esta sesión denegó el push a `mission/m26-dev-qa-environments`; este registro se publicó solo en `claude/gracious-pasteur-bzbx7y`. La próxima ejecución con permiso puede llevarlo a la rama de la misión (fast-forward desde `8c5d20b`).
+- Errores pendientes: ninguno nuevo. Bloqueos del propietario sin cambio (D144).
+- Siguiente (0(gd)): comprobar el CI; solo regresiones reales o desbloqueos.
