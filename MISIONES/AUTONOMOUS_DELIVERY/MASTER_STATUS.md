@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-19 (ejecución 243: CI nº 291 sobre `6f169fb` → governance, quality, db-supabase, `e2e-synthetic` ✔; `db-local` ✘ y `e2e-supabase` nº 269 ✘ por caída del espejo de Ubuntu (apt, no la tienda) → D149 reintentos de apt; `security`/`ci-gate` ✘ por gitleaks del historial; unit 790/790; test:env 151/151)
+Última actualización: 2026-11-19 (ejecución 244: CI nº 292 sobre `4319293` → governance, quality, **db-local** (D149 confirmada), db-supabase, `e2e-synthetic` ✔; `e2e-supabase` nº 270 ✔; `security`/`ci-gate` ✘ solo por gitleaks del historial; unit 790/790; test:env 151/151)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad

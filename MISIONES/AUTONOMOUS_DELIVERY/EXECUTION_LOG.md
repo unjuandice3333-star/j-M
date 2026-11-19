@@ -2417,3 +2417,13 @@
 - Errores pendientes: ninguno de la tienda. Bloqueos del propietario sin cambio (D144). Sin notificación: caída transitoria de infraestructura ya mitigada.
 - Commit: `ci: retry apt mirror fetches in db-local and e2e-supabase`.
 - Siguiente (0(gh)): comprobar que el CI del push deja `db-local` y `e2e-supabase` en verde; si el espejo sigue caído, relanzar.
+
+## Ejecución 244 — 2026-11-19 14:10 UTC (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-vc6aoq` (= main, sin la carpeta de la misión); se trabajó sobre `mission/m26-dev-qa-environments` en `4319293` = remoto, árbol limpio. `main` sin commits nuevos (`2661f2a`). Sin credenciales de Supabase QA/Wompi/Vercel; sin demonio Docker.
+- Tarea (0(gh)): comprobar que el CI del push de D149 deja `db-local` y `e2e-supabase` en verde.
+- CI nº 292 (`4319293`): governance, quality, **db-local** (paso «PostgreSQL 16 + pgTAP + pg_cron» ✔, ~4 min), db-supabase, e2e-synthetic ✔ (6.ª verde tras D148); **`e2e-supabase` nº 270 ✔**. D149 confirmada. `security` ✘ solo en «Compuertas de seguridad» (gitleaks del historial); `ci-gate` ✘ por él.
+- Archivos: `MASTER_STATUS.md` (línea de estado), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; unit 790/790 (88 archivos); test:env 151/151.
+- Errores pendientes: ninguno nuevo. Bloqueos del propietario sin cambio (D144). Sin notificación (D144).
+- Commit: `docs(mission): record run 244 ci check`.
+- Siguiente (0(gi)): comprobar el CI; solo regresiones reales o desbloqueos.
