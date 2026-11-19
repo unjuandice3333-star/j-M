@@ -1,6 +1,6 @@
 # MASTER STATUS — J&M Autonomous Delivery
 
-Última actualización: 2026-11-19 (ejecución 241: CI nº 289 sobre `b6d4cba` → governance, quality, db-local, db-supabase, `e2e-synthetic` ✔ (3.ª verde tras D148); `security`/`ci-gate` ✘ solo por gitleaks del historial; e2e-supabase nº 267 ✔; unit 790/790; test:env 151/151)
+Última actualización: 2026-11-19 (ejecución 242: CI nº 290 sobre `04216da` → governance, quality, db-local, db-supabase, `e2e-synthetic` ✔ (4.ª verde tras D148); `security`/`ci-gate` ✘ solo por gitleaks del historial; e2e-supabase nº 268 ✔; unit 790/790; test:env 151/151)
 Rama autorizada: `mission/m26-dev-qa-environments`
 
 ## Continuidad
