@@ -2356,3 +2356,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 237 ci check`.
 - Siguiente (0(gb)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 238 — 2026-11-19 (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-w2ys35` (= main); se trabajó sobre `mission/m26-dev-qa-environments` en `9e36fbd` = remoto, árbol limpio.
+- CI nº 286 (`9e36fbd`): governance, quality, db-local, db-supabase ✔; **`e2e-synthetic` ✘ 86/87** (recorrido 33: «el favorito no se guardó en la cuenta»); `security` ✘ (gitleaks del historial); `ci-gate` ✘; `e2e-supabase` nº 264 ✔.
+- Tarea: diagnosticar y corregir la intermitencia (D148). Causa: carrera de la PRUEBA (lectura única de la BD tras `networkidle` mientras supabase-js aún retenía el POST). Reproducida de forma determinista con un retardo dentro de la página; corregida con sondeo de la BD (`dbWishlist`), reutilizado por el recorrido 71.
+- Archivos: `apps/web/e2e/e2e_synthetic.cjs`, `DECISIONS.md` (D148), `MASTER_STATUS.md` (línea de estado), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790 (88 archivos); recorrido 33 ×9 sin sonda (3 con CPU saturada) ✔; 33 con sonda ✘ antes / ✔ después; 71 con sonda ✔; **E2E sintético completo 87/87**.
+- Errores pendientes: ninguno nuevo. Bloqueos del propietario sin cambio (D144).
+- Commit: `test(e2e): poll synthetic db for saved wishlist item`.
+- Siguiente (0(gc)): comprobar que el CI del push deja `e2e-synthetic` en verde; solo regresiones reales o desbloqueos.

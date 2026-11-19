@@ -24,6 +24,14 @@ function ciEnv() {
 const j = (r) => r.json();
 const reset = () => fetch(`${API_URL}/__reset`).then(j);
 const state = () => fetch(`${API_URL}/__state`).then(j);
+// D148: la BD sintética se consulta hasta que tenga `want` favoritos (máx. ~5 s). `networkidle` no basta: supabase-js
+// puede retener la escritura (candado de sesión al cargar la página) sin tráfico de red y el recorrido 33 leyó la BD
+// antes de que saliera el POST (CI nº 286). Devuelve las filas de la última lectura.
+const dbWishlist = async (want, tries = 20) => {
+  let rows = [];
+  for (let i = 0; i < tries; i += 1) { rows = (await state()).wishlist; if (rows.length === want) break; await new Promise((r) => setTimeout(r, 250)); }
+  return rows;
+};
 
 const results = [];
 async function journey(name, fn, browser, allowConsole = null, ctxOpts = { viewport: { width: 1280, height: 900 } }) {
@@ -817,7 +825,7 @@ async function main() {
       await p.getByRole('button', { name: 'Guardar en favoritos: Camiseta Básica' }).tap();
       await p.getByRole('button', { name: 'Quitar de favoritos: Camiseta Básica' }).waitFor();
       await p.waitForLoadState('networkidle');
-      if ((await state()).wishlist.length !== 1) throw new Error('el favorito no se guardó en la cuenta');
+      if ((await dbWishlist(1)).length !== 1) throw new Error('el favorito no se guardó en la cuenta');
       await visit('/cuenta/favoritos', 'AGREGAR TODO AL CARRITO');
       await check('main', 'favoritos', { min: 4 });
       // carrito y checkout
@@ -3349,11 +3357,7 @@ async function main() {
         await new Promise((r) => setTimeout(r, 1500));
         await route.fulfill({ response: resp }).catch(() => {});
       });
-      const db = async (want) => {
-        let rows = [];
-        for (let i = 0; i < 20; i += 1) { rows = (await state()).wishlist; if (rows.length === want) break; await p.waitForTimeout(250); }
-        return rows;
-      };
+      const db = dbWishlist;
       await p.goto(`${BASE}/login`); await p.getByRole('button', { name: 'Crear cuenta' }).click();
       await p.getByPlaceholder(/Juan/i).first().fill('Rosa Pérez');
       await p.locator('input[type=email]').fill('rosa.perez@correo.co'); await p.locator('input[type=password]').fill('Clave-Segura-1');
