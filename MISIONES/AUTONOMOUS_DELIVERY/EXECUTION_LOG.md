@@ -2406,3 +2406,14 @@
 - Errores pendientes: ninguno nuevo. Bloqueos del propietario sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 242 ci check`.
 - Siguiente (0(gg)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 243 — 2026-11-19 13:10 UTC (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-zeasw5` (= main, sin la carpeta de la misión); se trabajó sobre `mission/m26-dev-qa-environments` en `6f169fb` = remoto, árbol limpio. `main` sin commits nuevos (`2661f2a`). Sin credenciales de Supabase QA/Wompi/Vercel; sin demonio Docker.
+- Tarea (0(gg)): comprobar el CI del push anterior.
+- CI nº 291 (`6f169fb`): governance, quality, db-supabase, e2e-synthetic ✔ (5.ª verde tras D148); **`db-local` ✘** en «PostgreSQL 16 + pgTAP + pg_cron» y **`e2e-supabase` nº 269 ✘** en «Cliente psql»: log leído, `Unable to connect to azure.archive.ubuntu.com` (espejo de Ubuntu caído; apt sin reintentos). `security` ✘ por gitleaks del historial; `ci-gate` ✘.
+- Cambio (D149): reintentos de apt (`Acquire::Retries=5`, `Acquire::http::Timeout=30`) en esos dos pasos.
+- Archivos: `.github/workflows/ci.yml`, `.github/workflows/e2e-supabase.yml`, `MASTER_STATUS.md`, `DECISIONS.md`, `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; unit 790/790 (88 archivos); test:env 151/151; YAML válido; `migrations_policy.sh` OK; `apt-config` acepta las opciones. La prueba real es el CI del push.
+- Errores pendientes: ninguno de la tienda. Bloqueos del propietario sin cambio (D144). Sin notificación: caída transitoria de infraestructura ya mitigada.
+- Commit: `ci: retry apt mirror fetches in db-local and e2e-supabase`.
+- Siguiente (0(gh)): comprobar que el CI del push deja `db-local` y `e2e-supabase` en verde; si el espejo sigue caído, relanzar.

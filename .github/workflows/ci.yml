@@ -180,8 +180,10 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0 (node24)
       - name: PostgreSQL 16 + pgTAP + pg_cron
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-16 postgresql-16-pgtap postgresql-16-cron libtap-parser-sourcehandler-pgtap-perl
+          # D149: reintentos de apt ante caídas transitorias del espejo de Ubuntu (CI nº 291: azure.archive inaccesible).
+          APT_OPTS="-o Acquire::Retries=5 -o Acquire::http::Timeout=30"
+          sudo apt-get $APT_OPTS update -qq
+          sudo apt-get $APT_OPTS install -y -qq postgresql-16 postgresql-16-pgtap postgresql-16-cron libtap-parser-sourcehandler-pgtap-perl
           sudo systemctl stop postgresql || true
       - name: Reconstrucción y pruebas
         env:
