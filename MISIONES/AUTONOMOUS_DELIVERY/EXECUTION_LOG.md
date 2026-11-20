@@ -2527,3 +2527,13 @@
 - Errores pendientes: ninguno nuevo. Bloqueos del propietario sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 254 ci check`.
 - Siguiente (0(gs)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 255 — 2026-11-20 01:10 UTC (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-96b4bd` (= main, sin la carpeta de la misión); se trabajó sobre `mission/m26-dev-qa-environments` en `ad74f9c` = remoto, árbol limpio. Sin credenciales de Supabase QA/Wompi/Vercel; sin demonio Docker.
+- Tarea (0(gs)): comprobar CI y reconstrucción local; sin trabajo de código desbloqueado (`FINAL_ACCEPTANCE.md` §4).
+- CI nº 303 (`ad74f9c`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo en «Compuertas de seguridad» (gitleaks del historial); `ci-gate` ✘ por él; `e2e-supabase` nº 281 ✔.
+- Archivos: `MASTER_STATUS.md` (línea de estado), `EXECUTION_LOG.md`.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; lint 0; unit 790/790 (88 archivos); test:env 151/151.
+- Errores pendientes: ninguno nuevo. Bloqueos del propietario sin cambio (D144). Sin notificación (D144).
+- Commit: `docs(mission): record run 255 ci check`.
+- Siguiente (0(gt)): comprobar el CI; solo regresiones reales o desbloqueos.
