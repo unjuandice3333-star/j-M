@@ -2617,3 +2617,11 @@
 - Errores pendientes: ninguno nuevo. Bloqueos del propietario sin cambio (D144). Sin notificación (D144).
 - Commit: `docs(mission): record run 263 ci check`.
 - Siguiente (0(hb)): comprobar el CI; solo regresiones reales o desbloqueos.
+
+## Ejecución 264 — 2026-11-20 (rutina programada)
+- Estado inicial: contenedor en `claude/gracious-pasteur-qpj7zx` (= main); se trabajó sobre `mission/m26-dev-qa-environments` en `b1a9f46` = remoto, árbol limpio. Sin credenciales de Supabase QA/Wompi/Vercel; sin demonio Docker.
+- CI nº 312 (`b1a9f46`): governance, quality, db-local, db-supabase, e2e-synthetic ✔; `security` ✘ solo en «Compuertas de seguridad» (gitleaks del historial); `ci-gate` ✘ por él; `e2e-supabase` nº 290 ✔.
+- Pruebas (aquí): install --frozen-lockfile OK; build OK; unit 790/790 (88 archivos).
+- Decisión D150: notificación al propietario recomendando pausar la rutina; las próximas ejecuciones sin cambios no harán commit.
+- Commit: `docs(mission): record run 264 and pause recommendation`.
+- Siguiente: verificar desbloqueos (`FINAL_ACCEPTANCE.md` §4); sin commit si no hay cambios.
